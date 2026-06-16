@@ -14,6 +14,11 @@ use Illuminate\Support\Carbon;
  * @property int         $id
  * @property string      $name
  * @property string|null $address
+ * @property array|null  $location
+ * @property string|null $contact_email
+ * @property string|null $contact_phone
+ * @property string|null $city
+ * @property string|null $country
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
@@ -27,6 +32,15 @@ class Site extends TenantModel
     protected array $fillable = [
         'name',
         'address',
+        'location',
+        'contact_email',
+        'contact_phone',
+        'city',
+        'country',
+    ];
+
+    protected array $casts = [
+        'location' => 'array',
     ];
 
     /** @return HasMany<Unit> */

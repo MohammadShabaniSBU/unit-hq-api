@@ -18,6 +18,8 @@ return new class extends Migration
             $table->decimal('actual_width', 8, 2)->nullable();
             $table->decimal('actual_depth', 8, 2)->nullable();
             $table->decimal('actual_height', 8, 2)->nullable();
+            $table->text('note')->nullable();
+            $table->boolean('enabled')->default(true);
             $table->timestamps();
 
             $table->unique(['site_id', 'unit_number']);

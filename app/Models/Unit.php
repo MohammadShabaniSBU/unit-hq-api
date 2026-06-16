@@ -24,10 +24,12 @@ use Illuminate\Support\Carbon;
  * @property int        $site_id
  * @property int        $unit_class_id
  * @property string     $unit_number
- * @property float|null $actual_width
- * @property float|null $actual_depth
- * @property float|null $actual_height
- * @property Carbon     $created_at
+ * @property float|null  $actual_width
+ * @property float|null  $actual_depth
+ * @property float|null  $actual_height
+ * @property string|null $note
+ * @property bool        $enabled
+ * @property Carbon      $created_at
  * @property Carbon     $updated_at
  *
  * @property-read Site                           $site
@@ -47,6 +49,8 @@ class Unit extends TenantModel
         'actual_width',
         'actual_depth',
         'actual_height',
+        'note',
+        'enabled',
     ];
 
     protected function casts(): array
@@ -55,6 +59,7 @@ class Unit extends TenantModel
             'actual_width'  => 'decimal:2',
             'actual_depth'  => 'decimal:2',
             'actual_height' => 'decimal:2',
+            'enabled'       => 'boolean',
         ];
     }
 

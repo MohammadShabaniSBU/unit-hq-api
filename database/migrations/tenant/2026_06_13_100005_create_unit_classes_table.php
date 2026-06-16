@@ -10,13 +10,9 @@ return new class extends Migration
     {
         Schema::create('unit_classes', function (Blueprint $table) {
             $table->id();
-            $table->string('code_slug')->unique();
+            $table->string('code')->unique();
             $table->string('label');
-            $table->string('tier');
-            $table->decimal('width', 8, 2);
-            $table->decimal('depth', 8, 2);
-            $table->decimal('height', 8, 2);
-            $table->json('amenities')->nullable();
+            $table->decimal('size', 8, 2)->nullable();
             // Convenience pointer to the currently active price — authoritative
             // pricing history lives in unit_class_rates + prices.
             $table->foreignId('current_price_id')->nullable()->constrained('prices')->nullOnDelete();

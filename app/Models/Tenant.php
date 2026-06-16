@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Stancl\Tenancy\Contracts\TenantWithDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDomains;
+use Stancl\Tenancy\Database\Models\Tenant as TenantModel;
 
 /**
  * Tenant routing registry. One row per storage company.
@@ -14,21 +16,20 @@ use Illuminate\Support\Carbon;
  * @property int         $id
  * @property string      $name
  * @property string      $slug
- * @property string      $db_connection              connection name or DSN
- * @property string|null $stripe_connect_account_id
- * @property string      $stripe_onboarding_status   pending|active|restricted
+ * @property array|null  $data
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  */
-class Tenant extends Model
+class Tenant extends TenantModel implements TenantWithDatabase
 {
-    use HasFactory;
+    use HasDatabase, HasDomains;
 
-    protected array $fillable = [
-        'name',
-        'slug',
-        'db_connection',
-        'stripe_connect_account_id',
-        'stripe_onboarding_status',
-    ];
+    public static function getCustomColumns(): array
+    {
+        return [
+            'id',
+            'name',
+            'slug',
+        ];
+    }
 }
