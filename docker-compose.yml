@@ -8,12 +8,14 @@ services:
       - traefik-network
       - postgres-network
     working_dir: /app
+    ports:
+      - 8003:80
     volumes:
       - .:/app
       - .docker/prod.supervisord.conf:/opt/docker/etc/supervisor.d/jobs.conf
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.unit-hq-api.rule=Host(`api.unithq.local`)"
+      - "traefik.http.routers.unit-hq-api.rule=Host(`test2.unithq.local`)"
       - "traefik.http.services.unit-hq-api.loadbalancer.server.port=80"
       - "traefik.docker.network=traefik-network"
     logging:
