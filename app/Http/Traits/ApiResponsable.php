@@ -7,6 +7,15 @@ use Illuminate\Http\JsonResponse;
 
 trait ApiResponsable
 {
+    protected function perPage(int $default = 15, int $max = 100): int
+    {
+        if (! request()->has('per_page')) {
+            return $default;
+        }
+
+        return min(max(request()->integer('per_page'), 1), $max);
+    }
+
     protected function success(mixed $data = null, string $message = 'OK', int $statusCode = 200): JsonResponse
     {
         return response()->json([
