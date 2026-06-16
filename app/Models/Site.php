@@ -29,7 +29,7 @@ class Site extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'name',
         'address',
         'location',
@@ -39,9 +39,12 @@ class Site extends TenantModel
         'country',
     ];
 
-    protected array $casts = [
-        'location' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'location' => 'array',
+        ];
+    }
 
     /** @return HasMany<Unit> */
     public function units(): HasMany

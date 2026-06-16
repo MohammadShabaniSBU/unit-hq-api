@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,23 +28,13 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Task>    $createdTasks
  * @property-read Collection<int, Comment> $comments
  */
+#[Fillable(['name', 'email', 'password', 'role'])]
+#[Hidden(['password', 'remember_token'])]
 class Employee extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     protected $connection = 'tenant';
-
-    protected array $fillable = [
-        'name',
-        'email',
-        'password',
-        'role',
-    ];
-
-    protected array $hidden = [
-        'password',
-        'remember_token',
-    ];
 
     protected function casts(): array
     {

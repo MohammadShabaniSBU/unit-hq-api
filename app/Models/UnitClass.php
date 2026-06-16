@@ -30,7 +30,7 @@ class UnitClass extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'code',
         'label',
         'size',

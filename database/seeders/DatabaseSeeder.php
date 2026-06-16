@@ -11,7 +11,10 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Seed the central/platform database.
+     *
+     * Tenant-scoped data (sites, units, employees, etc.) lives in TenantSeeder:
+     *   php artisan tenants:seed --seeder=TenantSeeder
      */
     public function run(): void
     {

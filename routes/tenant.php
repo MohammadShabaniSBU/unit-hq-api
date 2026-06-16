@@ -38,7 +38,7 @@ Route::middleware([
     PreventAccessFromCentralDomains::class,
 ])->prefix('api')->group(function () {
     Route::apiResource('sites', SiteController::class);
-    Route::apiResource('sites.units', UnitController::class)->shallow();
+    Route::apiResource('units', UnitController::class);
     Route::apiResource('unit-classes', UnitClassController::class);
     Route::apiResource('unit-class-rates', UnitClassRateController::class)
         ->only(['index', 'store']);
