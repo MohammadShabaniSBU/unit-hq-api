@@ -26,7 +26,7 @@ class UnitClassRate extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'unit_class_id',
         'site_id',
         'price_id',

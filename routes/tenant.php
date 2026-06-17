@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Facility\SettingController;
 use App\Http\Controllers\Facility\SiteController;
 use App\Http\Controllers\Facility\UnitClassController;
+use App\Http\Controllers\Facility\UnitClassPriceController;
+use App\Http\Controllers\Facility\UnitClassPriceMatrixController;
 use App\Http\Controllers\Facility\UnitClassRateController;
 use App\Http\Controllers\Facility\UnitController;
 use Illuminate\Support\Facades\Route;
@@ -37,10 +40,19 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->prefix('api')->group(function () {
+
+    Route::get('settings/general', [SettingController::class, 'showGeneral']);
+    Route::patch('settings/general', [SettingController::class, 'updateGeneral']);
+    Route::get('settings/billing', [SettingController::class, 'showBilling']);
+    Route::patch('settings/billing', [SettingController::class, 'updateBilling']);
+
     Route::get('sites/options', [SiteController::class, 'options']);
     Route::get('unit-classes/options', [UnitClassController::class, 'options']);
     Route::apiResource('sites', SiteController::class);
     Route::apiResource('units', UnitController::class);
+    Route::get('unit-class-price-matrix', [UnitClassPriceMatrixController::class, 'index']);
+    Route::get('unit-classes/{unitClass}/prices', [UnitClassPriceController::class, 'index']);
+    Route::post('unit-classes/{unitClass}/prices', [UnitClassPriceController::class, 'store']);
     Route::apiResource('unit-classes', UnitClassController::class);
     Route::apiResource('unit-class-rates', UnitClassRateController::class)
         ->only(['index', 'store']);

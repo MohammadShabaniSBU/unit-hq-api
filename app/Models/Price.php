@@ -32,7 +32,7 @@ class Price extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'amount',
         'currency',
         'billing_period',

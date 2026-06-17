@@ -19,6 +19,14 @@ class UnitClassController extends Controller
         );
     }
 
+    public function options(): JsonResponse
+    {
+        $options = UnitClass::query()->orderBy('label')->get(['id', 'label'])
+            ->map(fn (UnitClass $unitClass) => ['value' => $unitClass->id, 'title' => $unitClass->label]);
+
+        return $this->success($options, 'Unit class options retrieved successfully.');
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
