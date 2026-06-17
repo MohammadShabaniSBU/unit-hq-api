@@ -18,6 +18,14 @@ class SiteController extends Controller
         );
     }
 
+    public function options(): JsonResponse
+    {
+        $options = Site::query()->orderBy('name')->get(['id', 'name'])
+            ->map(fn (Site $site) => ['value' => $site->id, 'title' => $site->name]);
+
+        return $this->success($options, 'Site options retrieved successfully.');
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

@@ -37,6 +37,8 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->prefix('api')->group(function () {
+    Route::get('sites/options', [SiteController::class, 'options']);
+    Route::get('unit-classes/options', [UnitClassController::class, 'options']);
     Route::apiResource('sites', SiteController::class);
     Route::apiResource('units', UnitController::class);
     Route::apiResource('unit-classes', UnitClassController::class);

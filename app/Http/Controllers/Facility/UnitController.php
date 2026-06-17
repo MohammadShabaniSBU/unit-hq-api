@@ -13,7 +13,7 @@ class UnitController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Unit::query()->latest();
+        $query = Unit::query()->with(['site', 'unitClass'])->latest();
 
         if ($request->filled('site_id')) {
             $query->where('site_id', $request->integer('site_id'));
