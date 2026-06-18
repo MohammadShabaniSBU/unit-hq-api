@@ -18,12 +18,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('unit_id')->constrained('units');
             $table->foreignId('contact_id')->constrained('contacts');
+            $table->string('status')->default('pending');
             $table->foreignId('offer_option_id')->constrained('offer_options');
             $table->timestamp('expires_at');
             $table->text('hold_notes')->nullable();
             $table->timestamps();
 
             $table->index('unit_id');
+            $table->index('status');
             $table->index('expires_at');
         });
     }

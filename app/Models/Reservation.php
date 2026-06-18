@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,8 +18,9 @@ use Illuminate\Support\Carbon;
  *
  * @property int         $id
  * @property int         $unit_id
- * @property int         $contact_id
- * @property int         $offer_option_id
+ * @property int                $contact_id
+ * @property ReservationStatus  $status
+ * @property int                $offer_option_id
  * @property Carbon      $expires_at
  * @property string|null $hold_notes
  * @property Carbon      $created_at
@@ -45,6 +47,7 @@ class Reservation extends TenantModel
     protected function casts(): array
     {
         return [
+            'status'     => ReservationStatus::class,
             'expires_at' => 'datetime',
         ];
     }

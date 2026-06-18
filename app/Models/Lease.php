@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LeaseStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $end_date       Y-m-d
  * @property string      $actual_rate    NUMERIC(10,2)
  * @property string|null $actual_insurance NUMERIC(10,2)
- * @property string      $status         active|terminated|expired
+ * @property LeaseStatus $status         active|moved_out|terminated|expired
  * @property Carbon      $signed_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
@@ -59,6 +60,7 @@ class Lease extends TenantModel
     protected function casts(): array
     {
         return [
+            'status'           => LeaseStatus::class,
             'start_date'       => 'date',
             'end_date'         => 'date',
             'actual_rate'      => 'decimal:2',

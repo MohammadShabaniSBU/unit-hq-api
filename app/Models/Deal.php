@@ -2,21 +2,26 @@
 
 namespace App\Models;
 
+use App\Enums\DealStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
 /**
- * The pursuit record. Holds pipeline stage, forecast, and intent.
+ * The pursuit record. Starts when someone expresses interest and ends when
+ * they become a tenant or walk away. Pipeline stage is stored on `status`.
+ *
+ * offer_sent and offer_viewed are cached here for simple pipeline reporting,
+ * even though the linked Offer record also tracks send/view events.
+ *
  * Expected values live on Deal. Actual values live on Lease.
  *
  * @property int         $id
  * @property int         $contact_id
- * @property string      $pipeline_stage
+ * @property DealStatus  $status
  * @property string      $expected_value  NUMERIC(10,2)
  * @property string|null $expected_move_in Y-m-d
  * @property string|null $intent_notes
@@ -35,7 +40,7 @@ class Deal extends TenantModel
 
     protected array $fillable = [
         'contact_id',
-        'pipeline_stage',
+        'status',
         'expected_value',
         'expected_move_in',
         'intent_notes',
@@ -44,9 +49,15 @@ class Deal extends TenantModel
     protected function casts(): array
     {
         return [
-            'expected_value'    => 'decimal:2',
-            'expected_move_in'  => 'date',
+            'status'           => DealStatus::class,
+            'expected_value'   => 'decimal:2',
+            'expected_move_in' => 'date',
         ];
+    }
+
+    public function isActivePursuit(): bool
+    {
+        return $this->status->isActivePursuit();
     }
 
     /** @return BelongsTo<Contact, Deal> */
