@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DealStatus;
+use App\Enums\StayPeriod;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,16 +20,22 @@ use Illuminate\Support\Carbon;
  *
  * Expected values live on Deal. Actual values live on Lease.
  *
- * @property int         $id
- * @property int         $contact_id
- * @property DealStatus  $status
- * @property string      $expected_value  NUMERIC(10,2)
- * @property string|null $expected_move_in Y-m-d
- * @property string|null $intent_notes
- * @property Carbon      $created_at
- * @property Carbon      $updated_at
+ * @property int              $id
+ * @property int              $contact_id
+ * @property DealStatus       $status
+ * @property string           $expected_value  NUMERIC(10,2)
+ * @property string|null      $expected_move_in Y-m-d
+ * @property int|null         $expected_stay_length
+ * @property StayPeriod|null  $expected_stay_period
+ * @property string|null      $storage_reason
+ * @property string|null      $desired_size  NUMERIC(8,2)
+ * @property int|null         $desired_unit_class_id
+ * @property string|null      $intent_notes
+ * @property Carbon           $created_at
+ * @property Carbon           $updated_at
  *
  * @property-read Contact                      $contact
+ * @property-read UnitClass|null               $desiredUnitClass
  * @property-read Collection<int, Offer>       $offers
  * @property-read Collection<int, Lease>       $leases
  * @property-read Collection<int, Task>        $tasks
@@ -38,20 +45,27 @@ class Deal extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'contact_id',
         'status',
         'expected_value',
         'expected_move_in',
+        'expected_stay_length',
+        'expected_stay_period',
+        'storage_reason',
+        'desired_size',
+        'desired_unit_class_id',
         'intent_notes',
     ];
 
     protected function casts(): array
     {
         return [
-            'status'           => DealStatus::class,
-            'expected_value'   => 'decimal:2',
-            'expected_move_in' => 'date',
+            'status'               => DealStatus::class,
+            'expected_value'       => 'decimal:2',
+            'expected_move_in'     => 'date',
+            'expected_stay_period' => StayPeriod::class,
+            'desired_size'         => 'decimal:2',
         ];
     }
 
@@ -64,6 +78,12 @@ class Deal extends TenantModel
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    /** @return BelongsTo<UnitClass, Deal> */
+    public function desiredUnitClass(): BelongsTo
+    {
+        return $this->belongsTo(UnitClass::class, 'desired_unit_class_id');
     }
 
     /** @return HasMany<Offer> */

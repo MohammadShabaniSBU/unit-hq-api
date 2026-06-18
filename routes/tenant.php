@@ -48,6 +48,7 @@ Route::middleware([
     Route::apiResource('sites', Facility\SiteController::class);
     Route::apiResource('units', Facility\UnitController::class);
     Route::apiResource('contacts', Controllers\ContactController::class);
+    Route::apiResource('deals', Controllers\DealController::class);
 
     Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);
     Route::get('unit-classes/{unitClass}/prices', [Facility\UnitClassPriceController::class, 'index']);

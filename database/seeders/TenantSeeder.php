@@ -54,5 +54,7 @@ class TenantSeeder extends Seeder
         }
 
         Contact::factory()->count(30)->create();
+
+        $this->call(DealSeeder::class);
     }
 }
