@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
+use App\Enums\ContactSource;
 use App\Enums\DealStatus;
 use App\Enums\LeaseStatus;
 use App\Enums\ReservationStatus;
@@ -28,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property ContactLifecycleStatus    $status
  * @property ContactRecordStatus       $contact_status
  * @property int|null                  $canonical_contact_id
- * @property string|null               $source
+ * @property ContactSource|null        $source
  * @property string|null               $source_detail
  * @property int|null                  $assigned_to
  * @property Carbon|null               $last_contacted_at
@@ -53,7 +54,7 @@ class Contact extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'first_name',
         'last_name',
         'email',
@@ -71,6 +72,7 @@ class Contact extends TenantModel
         return [
             'status'            => ContactLifecycleStatus::class,
             'contact_status'    => ContactRecordStatus::class,
+            'source'            => ContactSource::class,
             'last_contacted_at' => 'datetime',
         ];
     }

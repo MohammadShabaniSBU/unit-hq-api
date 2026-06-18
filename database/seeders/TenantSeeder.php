@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Contact;
+use App\Models\Country;
 use App\Models\Employee;
 use App\Models\Site;
 use App\Models\Unit;
@@ -19,24 +21,38 @@ class TenantSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(CountrySeeder::class);
+
         Employee::factory()->manager()->create();
         Employee::factory()->staff()->count(4)->create();
 
-        $sites = Site::factory()->count(3)->create();
+        $spain = Country::query()->where('code', 'ES')->firstOrFail();
+        $sites = Site::factory()->count(5)->create(['country_id' => $spain->id]);
 
-        $unitClasses = collect([
-            ['code' => 'S', 'label' => 'Small Unit', 'size' => 5.00],
-            ['code' => 'M', 'label' => 'Medium Unit', 'size' => 10.00],
-            ['code' => 'L', 'label' => 'Large Unit', 'size' => 20.00],
-            ['code' => 'XL', 'label' => 'Extra Large Unit', 'size' => 40.00],
-        ])->map(fn (array $attributes) => UnitClass::factory()->create($attributes));
+        $unitClasses = collect();
+        foreach (range(1, 10) as $n) {
+            $unitClasses->push(UnitClass::factory()->create([
+                'code' => "SS{$n}",
+                'label' => "SS Unit {$n}",
+                'size' => 5.00 + ($n - 1),
+            ]));
+            $unitClasses->push(UnitClass::factory()->create([
+                'code' => "AL{$n}",
+                'label' => "AL Unit {$n}",
+                'size' => 10.00 + ($n - 1) * 2,
+            ]));
+        }
 
-        Unit::factory()
-            ->count(20)
-            ->recycle($sites->merge($unitClasses))
-            ->sequence(fn ($sequence) => [
-                'unit_number' => sprintf('A-%03d', $sequence->index + 1),
-            ])
-            ->create();
+        foreach ($unitClasses as $unitClass) {
+            foreach (range(1, 10) as $n) {
+                Unit::factory()->create([
+                    'site_id' => $sites->random()->id,
+                    'unit_class_id' => $unitClass->id,
+                    'unit_number' => sprintf('%s-%02d', $unitClass->code, $n),
+                ]);
+            }
+        }
+
+        Contact::factory()->count(30)->create();
     }
 }

@@ -7,13 +7,14 @@ use App\Http\Resources\SiteResource;
 use App\Models\Site;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SiteController extends Controller
 {
     public function index(): JsonResponse
     {
         return $this->paginated(
-            Site::query()->latest()->paginate($this->perPage())->through(fn (Site $site) => SiteResource::make($site)),
+            Site::query()->with('country')->latest()->paginate($this->perPage())->through(fn (Site $site) => SiteResource::make($site)),
             'Sites retrieved successfully.'
         );
     }
@@ -37,13 +38,13 @@ class SiteController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'city'          => ['nullable', 'string', 'max:255'],
-            'country'       => ['nullable', 'string', 'max:255'],
+            'country_id'    => ['nullable', 'integer', Rule::exists('countries', 'id')],
         ]);
 
         $site = Site::query()->create($validated);
 
         return $this->created(
-            SiteResource::make($site),
+            SiteResource::make($site->load('country')),
             'Site created successfully.'
         );
     }
@@ -51,7 +52,7 @@ class SiteController extends Controller
     public function show(Site $site): JsonResponse
     {
         return $this->success(
-            SiteResource::make($site),
+            SiteResource::make($site->load('country')),
             'Site retrieved successfully.'
         );
     }
@@ -67,13 +68,13 @@ class SiteController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'city'          => ['nullable', 'string', 'max:255'],
-            'country'       => ['nullable', 'string', 'max:255'],
+            'country_id'    => ['nullable', 'integer', Rule::exists('countries', 'id')],
         ]);
 
         $site->update($validated);
 
         return $this->success(
-            SiteResource::make($site->fresh()),
+            SiteResource::make($site->fresh()->load('country')),
             'Site updated successfully.'
         );
     }

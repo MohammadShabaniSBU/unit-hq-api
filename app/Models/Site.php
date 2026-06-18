@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -18,10 +19,11 @@ use Illuminate\Support\Carbon;
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $city
- * @property string|null $country
+ * @property int|null    $country_id
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
+ * @property-read Country|null                   $country
  * @property-read Collection<int, Unit>          $units
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  */
@@ -36,7 +38,7 @@ class Site extends TenantModel
         'contact_email',
         'contact_phone',
         'city',
-        'country',
+        'country_id',
     ];
 
     protected function casts(): array
@@ -44,6 +46,12 @@ class Site extends TenantModel
         return [
             'location' => 'array',
         ];
+    }
+
+    /** @return BelongsTo<Country, $this> */
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
     }
 
     /** @return HasMany<Unit> */

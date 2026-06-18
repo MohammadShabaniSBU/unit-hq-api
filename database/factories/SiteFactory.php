@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Country;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -25,7 +26,8 @@ class SiteFactory extends Factory
             'contact_email' => fake()->companyEmail(),
             'contact_phone' => fake()->phoneNumber(),
             'city' => fake()->city(),
-            'country' => fake()->country(),
+            'country_id' => Country::query()->inRandomOrder()->value('id')
+                ?? Country::factory(),
         ];
     }
 }

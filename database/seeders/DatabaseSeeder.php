@@ -15,6 +15,10 @@ class DatabaseSeeder extends Seeder
      *
      * Tenant-scoped data (sites, units, employees, etc.) lives in TenantSeeder:
      *   php artisan tenants:seed --seeder=TenantSeeder
+     *
+     * Reference data (countries) is seeded automatically on tenant creation via
+     * TenantBootstrapSeeder, or manually:
+     *   php artisan tenants:seed --seeder=CountrySeeder
      */
     public function run(): void
     {

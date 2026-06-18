@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('contact_email')->nullable();
             $table->string('contact_phone')->nullable();
             $table->string('city')->nullable();
-            $table->string('country')->nullable();
+            $table->foreignId('country_id')->nullable()->constrained('countries')->nullOnDelete();
             $table->timestamps();
         });
     }
