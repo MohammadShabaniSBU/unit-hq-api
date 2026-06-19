@@ -31,7 +31,7 @@ class PropertyDefinition extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'entity_type',
         'key',
         'label',

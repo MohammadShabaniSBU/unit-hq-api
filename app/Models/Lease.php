@@ -44,7 +44,7 @@ class Lease extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'unit_id',
         'contact_id',
         'reservation_id',

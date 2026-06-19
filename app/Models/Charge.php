@@ -37,7 +37,7 @@ class Charge extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'lease_id',
         'invoice_id',
         'charge_type',

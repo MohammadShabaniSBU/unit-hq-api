@@ -30,7 +30,7 @@ class Invoice extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'lease_id',
         'billing_period_start',
         'billing_period_end',

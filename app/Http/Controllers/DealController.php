@@ -89,4 +89,33 @@ class DealController extends Controller
 
         return $this->noContent('Deal deleted successfully.');
     }
+
+    public function options(Request $request): JsonResponse
+    {
+        $request->validate([
+            'search' => ['nullable', 'string'],
+        ]);
+
+        $search = $request->string('search')->trim()->value();
+
+        $query = Deal::query()->with('contact')->latest()->limit(20);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('contact', function ($contactQuery) use ($search) {
+                    $contactQuery->where('first_name', 'ilike', "%{$search}%")
+                        ->orWhere('last_name', 'ilike', "%{$search}%");
+                })->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        $options = $query->get()->map(fn (Deal $deal) => [
+            'value' => $deal->id,
+            'label' => 'Deal #' . $deal->id . ($deal->contact
+                ? ' — ' . trim("{$deal->contact->first_name} {$deal->contact->last_name}")
+                : ''),
+        ]);
+
+        return $this->success($options, 'Deal options retrieved successfully.');
+    }
 }

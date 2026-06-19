@@ -27,7 +27,7 @@ class Comment extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'commentable_type',
         'commentable_id',
         'employee_id',

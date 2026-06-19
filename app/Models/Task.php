@@ -40,7 +40,7 @@ class Task extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'taskable_type',
         'taskable_id',
         'assigned_to',

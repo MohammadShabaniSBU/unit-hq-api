@@ -27,7 +27,7 @@ class OfferDelivery extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'offer_id',
         'channel',
         'recipient_address',

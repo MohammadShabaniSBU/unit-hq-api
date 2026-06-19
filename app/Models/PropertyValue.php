@@ -27,7 +27,7 @@ class PropertyValue extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'property_definition_id',
         'propertable_type',
         'propertable_id',

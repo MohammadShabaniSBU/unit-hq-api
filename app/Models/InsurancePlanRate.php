@@ -21,7 +21,7 @@ class InsurancePlanRate extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'insurance_plan_id',
         'price_id',
     ];

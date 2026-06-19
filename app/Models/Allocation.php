@@ -26,7 +26,7 @@ class Allocation extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'payment_id',
         'charge_id',
         'amount',

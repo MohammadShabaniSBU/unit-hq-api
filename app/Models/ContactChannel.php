@@ -27,7 +27,7 @@ class ContactChannel extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'contact_id',
         'type',
         'value',

@@ -35,7 +35,7 @@ class Payment extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'lease_id',
         'amount',
         'stripe_payment_intent_id',

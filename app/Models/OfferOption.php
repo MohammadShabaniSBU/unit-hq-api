@@ -39,7 +39,7 @@ class OfferOption extends TenantModel
 {
     use HasFactory;
 
-    protected array $fillable = [
+    protected $fillable = [
         'offer_id',
         'unit_class_id',
         'price_id',

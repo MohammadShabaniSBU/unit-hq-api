@@ -30,7 +30,7 @@ class StripeWebhookEvent extends TenantModel
 
     public $timestamps = false;
 
-    protected array $fillable = [
+    protected $fillable = [
         'stripe_event_id',
         'event_type',
         'payload',

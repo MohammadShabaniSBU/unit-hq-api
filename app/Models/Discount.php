@@ -28,7 +28,7 @@ class Discount extends TenantModel
 
     const UPDATED_AT = null;
 
-    protected array $fillable = [
+    protected $fillable = [
         'code',
         'label',
         'discount_type',
