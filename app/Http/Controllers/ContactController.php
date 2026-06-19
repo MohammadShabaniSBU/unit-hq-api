@@ -65,6 +65,18 @@ class ContactController extends Controller
 
     public function show(Contact $contact): JsonResponse
     {
+        $contact->load([
+            'channels',
+            'deals.desiredUnitClass',
+            'deals.offers',
+            'leases.unit.site',
+            'leases.unit.unitClass',
+            'reservations.unit.site',
+            'reservations.unit.unitClass',
+            'tasks',
+            'comments',
+        ]);
+
         return $this->success(
             ContactResource::make($contact),
             'Contact retrieved successfully.'

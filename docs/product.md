@@ -80,7 +80,7 @@ Prices vary by UnitClass and Site via the `UnitClassRate` junction table. A 5×5
 
 ### Insurance
 
-`InsurancePlan` follows the same pricing pattern. Rates live in `InsurancePlanRate` → `Price`.
+`Insurance` follows the same pricing pattern. Rates live in `InsuranceRate` → `Price`.
 
 ### Discounts
 
@@ -272,7 +272,7 @@ Three distinct human models with different scopes and purposes:
 | Revenue model | Not yet decided: application fees on rent vs flat SaaS subscription vs both. Interacts with Stripe charge type decision. |
 | Discount formalisation | `discount_type` values and effective-date rules not yet decided. |
 | Jurisdiction rules | Configurable late-fee and lien thresholds need a `jurisdiction_rules` table design. |
-| InsurancePlanRate scoping | Whether rates vary by site is unspecified; current design is plan-level. |
+| InsuranceRate scoping | Whether rates vary by site is unspecified; current design is plan-level. |
 | Promotions | Spec notes these are separate from discounts; model not yet defined. |
 | Task reminder delivery | Channel (in-app, email, push) not yet decided. |
 | Comment redaction | GDPR / compliance redaction path planned as `is_redacted` + `redacted_by` extension. |

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use App\Models\Reservation;
 
 /**
  * The pursuit record. Starts when someone expresses interest and ends when
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int              $id
  * @property int              $contact_id
+ * @property int|null         $site_id
  * @property DealStatus       $status
  * @property string|null      $expected_move_in Y-m-d
  * @property int|null         $expected_stay_length
@@ -34,12 +36,14 @@ use Illuminate\Support\Carbon;
  * @property Carbon           $created_at
  * @property Carbon           $updated_at
  *
- * @property-read Contact                      $contact
- * @property-read UnitClass|null               $desiredUnitClass
- * @property-read Collection<int, Offer>       $offers
- * @property-read Collection<int, Lease>       $leases
- * @property-read Collection<int, Task>        $tasks
- * @property-read Collection<int, Comment>     $comments
+ * @property-read Contact                          $contact
+ * @property-read Site|null                        $site
+ * @property-read UnitClass|null                   $desiredUnitClass
+ * @property-read Collection<int, Offer>           $offers
+ * @property-read Collection<int, Reservation>     $reservations
+ * @property-read Collection<int, Lease>           $leases
+ * @property-read Collection<int, Task>            $tasks
+ * @property-read Collection<int, Comment>         $comments
  */
 class Deal extends TenantModel
 {
@@ -47,6 +51,7 @@ class Deal extends TenantModel
 
     protected $fillable = [
         'contact_id',
+        'site_id',
         'status',
         'expected_move_in',
         'expected_stay_length',
@@ -79,6 +84,12 @@ class Deal extends TenantModel
         return $this->belongsTo(Contact::class);
     }
 
+    /** @return BelongsTo<Site, Deal> */
+    public function site(): BelongsTo
+    {
+        return $this->belongsTo(Site::class);
+    }
+
     /** @return BelongsTo<UnitClass, Deal> */
     public function desiredUnitClass(): BelongsTo
     {
@@ -89,6 +100,12 @@ class Deal extends TenantModel
     public function offers(): HasMany
     {
         return $this->hasMany(Offer::class);
+    }
+
+    /** @return HasMany<Reservation> */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
     }
 
     /** @return HasMany<Lease> */

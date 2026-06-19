@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('deals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contact_id')->constrained('contacts')->cascadeOnDelete();
+            $table->foreignId('site_id')->nullable()->constrained('sites')->nullOnDelete();
             $table->string('status')->default('new');
             $table->date('expected_move_in')->nullable();
             $table->unsignedSmallInteger('expected_stay_length')->nullable();

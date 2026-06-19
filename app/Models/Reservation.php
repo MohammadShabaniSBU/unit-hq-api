@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use App\Models\Deal;
 
 /**
  * Inventory hold record. Always references a specific unit — never a class.
@@ -16,19 +17,21 @@ use Illuminate\Support\Carbon;
  * Unit availability is derived from active leases + non-expired reservations.
  * is_available is never stored as a column on Unit.
  *
- * @property int         $id
- * @property int         $unit_id
+ * @property int                $id
+ * @property int                $unit_id
  * @property int                $contact_id
+ * @property int|null           $deal_id
  * @property ReservationStatus  $status
- * @property int                $offer_option_id
- * @property Carbon      $expires_at
- * @property string|null $hold_notes
- * @property Carbon      $created_at
- * @property Carbon      $updated_at
+ * @property int|null           $offer_option_id
+ * @property Carbon             $expires_at
+ * @property string|null        $hold_notes
+ * @property Carbon             $created_at
+ * @property Carbon             $updated_at
  *
  * @property-read Unit              $unit
  * @property-read Contact           $contact
- * @property-read OfferOption       $offerOption
+ * @property-read Deal|null         $deal
+ * @property-read OfferOption|null  $offerOption
  * @property-read Lease|null        $lease
  * @property-read MorphMany<Comment> $comments
  */
@@ -39,7 +42,9 @@ class Reservation extends TenantModel
     protected $fillable = [
         'unit_id',
         'contact_id',
+        'deal_id',
         'offer_option_id',
+        'status',
         'expires_at',
         'hold_notes',
     ];
@@ -62,6 +67,12 @@ class Reservation extends TenantModel
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    /** @return BelongsTo<Deal, Reservation> */
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class);
     }
 
     /** @return BelongsTo<OfferOption, Reservation> */

@@ -35,6 +35,7 @@ class DealController extends Controller
     {
         $validated = $request->validate([
             'contact_id'            => ['required', 'integer', 'exists:contacts,id'],
+            'site_id'               => ['nullable', 'integer', 'exists:sites,id'],
             'status'                => ['nullable', Rule::enum(DealStatus::class)],
             'expected_move_in'      => ['nullable', 'date'],
             'expected_stay_length'  => ['nullable', 'integer', 'min:1'],
@@ -55,8 +56,21 @@ class DealController extends Controller
 
     public function show(Deal $deal): JsonResponse
     {
+        $deal->load([
+            'contact',
+            'desiredUnitClass',
+            'offers.options.unitClass',
+            'reservations.unit.site',
+            'reservations.unit.unitClass',
+            'leases.unit.site',
+            'leases.unit.unitClass',
+            'leases.reservation',
+            'tasks',
+            'comments',
+        ]);
+
         return $this->success(
-            DealResource::make($deal->load('desiredUnitClass')),
+            DealResource::make($deal),
             'Deal retrieved successfully.'
         );
     }
@@ -65,6 +79,7 @@ class DealController extends Controller
     {
         $validated = $request->validate([
             'contact_id'            => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
+            'site_id'               => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
             'status'                => ['sometimes', 'nullable', Rule::enum(DealStatus::class)],
             'expected_move_in'      => ['sometimes', 'nullable', 'date'],
             'expected_stay_length'  => ['sometimes', 'nullable', 'integer', 'min:1'],

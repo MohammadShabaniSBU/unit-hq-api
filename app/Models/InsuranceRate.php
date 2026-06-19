@@ -8,31 +8,31 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int    $id
- * @property int    $insurance_plan_id
+ * @property int    $insurance_id
  * @property int    $price_id
  * @property Carbon $created_at
  *
- * @property-read InsurancePlan $insurancePlan
- * @property-read Price         $price
+ * @property-read Insurance $insurance
+ * @property-read Price     $price
  */
-class InsurancePlanRate extends TenantModel
+class InsuranceRate extends TenantModel
 {
     use HasFactory;
 
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'insurance_plan_id',
+        'insurance_id',
         'price_id',
     ];
 
-    /** @return BelongsTo<InsurancePlan, InsurancePlanRate> */
-    public function insurancePlan(): BelongsTo
+    /** @return BelongsTo<Insurance, InsuranceRate> */
+    public function insurance(): BelongsTo
     {
-        return $this->belongsTo(InsurancePlan::class);
+        return $this->belongsTo(Insurance::class);
     }
 
-    /** @return BelongsTo<Price, InsurancePlanRate> */
+    /** @return BelongsTo<Price, InsuranceRate> */
     public function price(): BelongsTo
     {
         return $this->belongsTo(Price::class);

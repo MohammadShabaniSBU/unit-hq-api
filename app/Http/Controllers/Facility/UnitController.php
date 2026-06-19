@@ -96,4 +96,22 @@ class UnitController extends Controller
 
         return $this->noContent('Unit deleted successfully.');
     }
+
+    public function options(Request $request): JsonResponse
+    {
+        $query = Unit::query()->with(['site', 'unitClass'])->where('enabled', true)->limit(100);
+
+        if ($request->filled('site_id')) {
+            $query->where('site_id', $request->integer('site_id'));
+        }
+
+        $options = $query->get()->map(fn (Unit $unit) => [
+            'value' => $unit->id,
+            'label' => $unit->unit_number
+                . ($unit->site ? ' · ' . $unit->site->name : '')
+                . ($unit->unitClass ? ' · ' . $unit->unitClass->label : ''),
+        ]);
+
+        return $this->success($options, 'Unit options retrieved successfully.');
+    }
 }

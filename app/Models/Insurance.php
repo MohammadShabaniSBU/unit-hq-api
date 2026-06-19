@@ -11,23 +11,34 @@ use Illuminate\Support\Carbon;
  * @property int         $id
  * @property string      $name
  * @property string|null $description
+ * @property string      $coverage    NUMERIC(10,2)
+ * @property string      $currency    CHAR(3) e.g. EUR
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
- * @property-read Collection<int, InsurancePlanRate> $rates
+ * @property-read Collection<int, InsuranceRate> $rates
  */
-class InsurancePlan extends TenantModel
+class Insurance extends TenantModel
 {
     use HasFactory;
 
     protected $fillable = [
         'name',
         'description',
+        'coverage',
+        'currency',
     ];
 
-    /** @return HasMany<InsurancePlanRate> */
+    protected function casts(): array
+    {
+        return [
+            'coverage' => 'decimal:2',
+        ];
+    }
+
+    /** @return HasMany<InsuranceRate, Insurance> */
     public function rates(): HasMany
     {
-        return $this->hasMany(InsurancePlanRate::class);
+        return $this->hasMany(InsuranceRate::class);
     }
 }

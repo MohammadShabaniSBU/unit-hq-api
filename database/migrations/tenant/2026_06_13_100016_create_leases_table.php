@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained('contacts');
             $table->foreignId('reservation_id')->nullable()->constrained('reservations')->nullOnDelete();
             $table->foreignId('deal_id')->nullable()->constrained('deals')->nullOnDelete();
+            $table->foreignId('insurance_id')->nullable()->constrained('insurances')->nullOnDelete();
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->decimal('actual_rate', 10, 2);

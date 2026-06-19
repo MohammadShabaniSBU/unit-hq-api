@@ -67,8 +67,8 @@ flowchart TB
     subgraph pricing [Pricing]
         Price
         UnitClassRate
-        InsurancePlan
-        InsurancePlanRate
+        Insurance
+        InsuranceRate
         Discount
     end
 
@@ -254,8 +254,8 @@ erDiagram
     sites ||--o{ unit_class_rates : priced_via
     prices ||--o{ unit_class_rates : referenced_by
     unit_classes ||--o| prices : current_price
-    insurance_plans ||--o{ insurance_plan_rates : priced_via
-    prices ||--o{ insurance_plan_rates : referenced_by
+    insurances ||--o{ insurance_rates : priced_via
+    prices ||--o{ insurance_rates : referenced_by
     prices ||--o{ offer_options : quoted_on
 
     prices {
@@ -277,17 +277,19 @@ erDiagram
         timestamptz created_at
     }
 
-    insurance_plans {
+    insurances {
         bigint id PK
         varchar name
         text description "nullable"
+        decimal coverage
+        char currency "default EUR"
         timestamptz created_at
         timestamptz updated_at
     }
 
-    insurance_plan_rates {
+    insurance_rates {
         bigint id PK
-        bigint insurance_plan_id FK
+        bigint insurance_id FK
         bigint price_id FK
         timestamptz created_at
     }
@@ -659,7 +661,7 @@ erDiagram
 1. **Discount model** — `discount_type`, `value`, and effective-date rules need formalization before this table is used in production logic.
 2. **Revenue model** — application fee vs SaaS subscription (or both) affects a future `platform_charges` table in the Platform DB.
 3. **Jurisdiction rules** — configurable late-fee / lien thresholds need a future `jurisdiction_rules` table in the Tenant DB.
-4. **InsurancePlanRate scoping** — whether rates vary by site is not yet explicit in the spec; current ERD shows plan-level junction only.
+4. **InsuranceRate scoping** — whether rates vary by site is not yet explicit in the spec; current ERD shows plan-level junction only.
 5. **Promotions** — separate from `Discount` per the original spec; stub only until further definition.
 6. **Property validation** — server-side validation of `property_values.value` against `data_type` and `options` (application layer vs DB check constraint) is undecided.
 7. **Task reminder delivery** — channel (in-app, email, push) not yet decided; `remind_at` column is channel-agnostic.

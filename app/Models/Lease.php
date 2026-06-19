@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property int         $contact_id
  * @property int|null    $reservation_id
  * @property int|null    $deal_id
+ * @property int|null    $insurance_id
  * @property string      $start_date     Y-m-d
  * @property string|null $end_date       Y-m-d
  * @property string      $actual_rate    NUMERIC(10,2)
@@ -36,6 +37,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contact                      $contact
  * @property-read Reservation|null             $reservation
  * @property-read Deal|null                    $deal
+ * @property-read Insurance|null               $insurance
  * @property-read Collection<int, Invoice>     $invoices
  * @property-read Collection<int, Charge>      $charges
  * @property-read Collection<int, Payment>     $payments
@@ -49,6 +51,7 @@ class Lease extends TenantModel
         'contact_id',
         'reservation_id',
         'deal_id',
+        'insurance_id',
         'start_date',
         'end_date',
         'actual_rate',
@@ -91,6 +94,12 @@ class Lease extends TenantModel
     public function deal(): BelongsTo
     {
         return $this->belongsTo(Deal::class);
+    }
+
+    /** @return BelongsTo<Insurance, Lease> */
+    public function insurance(): BelongsTo
+    {
+        return $this->belongsTo(Insurance::class);
     }
 
     /** @return HasMany<Invoice> */

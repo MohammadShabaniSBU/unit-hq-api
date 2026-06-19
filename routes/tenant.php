@@ -44,6 +44,7 @@ Route::middleware([
     Route::get('countries/options', [Facility\CountryController::class, 'options']);
     Route::get('sites/options', [Facility\SiteController::class, 'options']);
     Route::get('unit-classes/options', [Facility\UnitClassController::class, 'options']);
+    Route::get('units/options', [Facility\UnitController::class, 'options']);
 
     Route::apiResource('sites', Facility\SiteController::class);
     Route::apiResource('units', Facility\UnitController::class);
@@ -59,6 +60,11 @@ Route::middleware([
     Route::post('offer-options', [Controllers\OfferOptionController::class, 'store']);
     Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'update']);
     Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
+
+    Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
+    Route::apiResource('reservations', Controllers\ReservationController::class);
+
+    Route::apiResource('leases', Controllers\LeaseController::class);
 
     Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);
     Route::get('unit-classes/{unitClass}/prices', [Facility\UnitClassPriceController::class, 'index']);

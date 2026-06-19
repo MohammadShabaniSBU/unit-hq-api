@@ -8,16 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('insurance_plans', function (Blueprint $table) {
+        Schema::create('insurances', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
+            $table->decimal('coverage', 10, 2)->default(0);
+            $table->char('currency', 3)->default('EUR');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('insurance_plans');
+        Schema::dropIfExists('insurances');
     }
 };
