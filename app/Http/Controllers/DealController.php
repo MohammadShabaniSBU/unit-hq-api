@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
+use App\Enums\StorageReason;
 use App\Http\Resources\DealResource;
 use App\Models\Deal;
 use Illuminate\Http\JsonResponse;
@@ -35,11 +36,10 @@ class DealController extends Controller
         $validated = $request->validate([
             'contact_id'            => ['required', 'integer', 'exists:contacts,id'],
             'status'                => ['nullable', Rule::enum(DealStatus::class)],
-            'expected_value'        => ['nullable', 'numeric', 'min:0'],
             'expected_move_in'      => ['nullable', 'date'],
             'expected_stay_length'  => ['nullable', 'integer', 'min:1'],
             'expected_stay_period'  => ['nullable', Rule::enum(StayPeriod::class)],
-            'storage_reason'        => ['nullable', 'string'],
+            'storage_reason'        => ['nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
             'intent_notes'          => ['nullable', 'string'],
@@ -66,11 +66,10 @@ class DealController extends Controller
         $validated = $request->validate([
             'contact_id'            => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
             'status'                => ['sometimes', 'nullable', Rule::enum(DealStatus::class)],
-            'expected_value'        => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'expected_move_in'      => ['sometimes', 'nullable', 'date'],
             'expected_stay_length'  => ['sometimes', 'nullable', 'integer', 'min:1'],
             'expected_stay_period'  => ['sometimes', 'nullable', Rule::enum(StayPeriod::class)],
-            'storage_reason'        => ['sometimes', 'nullable', 'string'],
+            'storage_reason'        => ['sometimes', 'nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['sometimes', 'nullable', 'integer', 'exists:unit_classes,id'],
             'intent_notes'          => ['sometimes', 'nullable', 'string'],

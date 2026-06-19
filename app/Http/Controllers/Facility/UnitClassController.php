@@ -22,7 +22,7 @@ class UnitClassController extends Controller
     public function options(): JsonResponse
     {
         $options = UnitClass::query()->orderBy('label')->get(['id', 'label'])
-            ->map(fn (UnitClass $unitClass) => ['value' => $unitClass->id, 'title' => $unitClass->label]);
+            ->map(fn (UnitClass $unitClass) => ['value' => $unitClass->id, 'label' => $unitClass->label]);
 
         return $this->success($options, 'Unit class options retrieved successfully.');
     }

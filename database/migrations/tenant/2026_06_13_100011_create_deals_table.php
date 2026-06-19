@@ -12,11 +12,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('contact_id')->constrained('contacts')->cascadeOnDelete();
             $table->string('status')->default('new');
-            $table->decimal('expected_value', 10, 2)->default(0);
             $table->date('expected_move_in')->nullable();
             $table->unsignedSmallInteger('expected_stay_length')->nullable();
             $table->string('expected_stay_period')->nullable();
-            $table->text('storage_reason')->nullable();
+            $table->string('storage_reason')->nullable();
             $table->decimal('desired_size', 8, 2)->nullable();
             $table->foreignId('desired_unit_class_id')->nullable()->constrained('unit_classes')->nullOnDelete();
             $table->text('intent_notes')->nullable();

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -16,7 +17,10 @@ class DealSeeder extends Seeder
         Contact::query()->each(function (Contact $contact) {
             Deal::factory()
                 ->count(fake()->numberBetween(1, 2))
-                ->create(['contact_id' => $contact->id]);
+                ->create([
+                    'contact_id'     => $contact->id,
+                    'storage_reason' => fake()->randomElement(StorageReason::cases())->value,
+                ]);
         });
     }
 }

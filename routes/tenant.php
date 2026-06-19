@@ -47,6 +47,7 @@ Route::middleware([
 
     Route::apiResource('sites', Facility\SiteController::class);
     Route::apiResource('units', Facility\UnitController::class);
+    Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
     Route::apiResource('contacts', Controllers\ContactController::class);
     Route::apiResource('deals', Controllers\DealController::class);
 

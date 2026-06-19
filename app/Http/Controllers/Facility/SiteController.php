@@ -22,7 +22,7 @@ class SiteController extends Controller
     public function options(): JsonResponse
     {
         $options = Site::query()->orderBy('name')->get(['id', 'name'])
-            ->map(fn (Site $site) => ['value' => $site->id, 'title' => $site->name]);
+            ->map(fn (Site $site) => ['value' => $site->id, 'label' => $site->name]);
 
         return $this->success($options, 'Site options retrieved successfully.');
     }

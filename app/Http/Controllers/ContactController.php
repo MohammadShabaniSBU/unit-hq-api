@@ -99,4 +99,27 @@ class ContactController extends Controller
 
         return $this->noContent('Contact deleted successfully.');
     }
+
+    public function options(Request $request): JsonResponse
+    {
+        $request->validate([
+            'search' => ['required', 'string', 'min:2'],
+        ]);
+
+        $search = $request->string('search')->trim()->value();
+
+        $options = Contact::query()
+            ->where('first_name', 'ilike', "%{$search}%")
+            ->orWhere('last_name', 'ilike', "%{$search}%")
+            ->orWhere('email', 'ilike', "%{$search}%")
+            ->orderBy('first_name')
+            ->limit(20)
+            ->get(['id', 'first_name', 'last_name'])
+            ->map(fn (Contact $contact) => [
+                'value' => $contact->id,
+                'label' => trim("{$contact->first_name} {$contact->last_name}"),
+            ]);
+
+        return $this->success($options, 'Contact options retrieved successfully.');
+    }
 }

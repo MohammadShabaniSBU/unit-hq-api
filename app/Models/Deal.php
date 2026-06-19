@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
+use App\Enums\StorageReason;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,11 +24,10 @@ use Illuminate\Support\Carbon;
  * @property int              $id
  * @property int              $contact_id
  * @property DealStatus       $status
- * @property string           $expected_value  NUMERIC(10,2)
  * @property string|null      $expected_move_in Y-m-d
  * @property int|null         $expected_stay_length
  * @property StayPeriod|null  $expected_stay_period
- * @property string|null      $storage_reason
+ * @property StorageReason|null $storage_reason
  * @property string|null      $desired_size  NUMERIC(8,2)
  * @property int|null         $desired_unit_class_id
  * @property string|null      $intent_notes
@@ -48,7 +48,6 @@ class Deal extends TenantModel
     protected $fillable = [
         'contact_id',
         'status',
-        'expected_value',
         'expected_move_in',
         'expected_stay_length',
         'expected_stay_period',
@@ -62,9 +61,9 @@ class Deal extends TenantModel
     {
         return [
             'status'               => DealStatus::class,
-            'expected_value'       => 'decimal:2',
             'expected_move_in'     => 'date',
             'expected_stay_period' => StayPeriod::class,
+            'storage_reason'       => StorageReason::class,
             'desired_size'         => 'decimal:2',
         ];
     }

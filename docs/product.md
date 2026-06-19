@@ -101,7 +101,7 @@ Each stage has a distinct purpose:
 | Stage | Record | What lives here |
 |-------|--------|-----------------|
 | Identity | Contact | Name, email, phone — the durable person record |
-| Pursuit | Deal | Pipeline stage, forecast value, intent notes |
+| Pursuit | Deal | Pipeline stage, intent notes |
 | Proposal | Offer + OfferOption | Commercial options presented to the contact |
 | Hold | Reservation | Inventory hold on a specific unit |
 | Contract | Lease | Signed agreement, actual rate, billing anchor |
@@ -112,7 +112,7 @@ The durable identity record. Holds personal details only. Not all contacts will 
 
 ### Deal
 
-The pursuit record. Holds pipeline stage, expected value, and intent notes. One contact can have multiple deals (e.g. enquiring for different locations).
+The pursuit record. Holds pipeline stage and intent notes. One contact can have multiple deals (e.g. enquiring for different locations).
 
 ### Offer
 

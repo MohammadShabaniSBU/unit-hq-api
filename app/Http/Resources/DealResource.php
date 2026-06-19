@@ -13,7 +13,6 @@ class DealResource extends BaseResource
             'id'                     => $this->id,
             'contact_id'             => $this->contact_id,
             'status'                 => $this->status,
-            'expected_value'         => $this->expected_value,
             'expected_move_in'       => $this->date($this->expected_move_in),
             'expected_stay_length'   => $this->expected_stay_length,
             'expected_stay_period'   => $this->expected_stay_period,

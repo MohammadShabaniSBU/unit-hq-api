@@ -340,7 +340,6 @@ erDiagram
         bigint id PK
         bigint contact_id FK
         varchar pipeline_stage
-        numeric expected_value "NUMERIC(10,2)"
         date expected_move_in "nullable"
         text intent_notes "nullable"
         timestamptz created_at
