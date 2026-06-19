@@ -7,6 +7,7 @@ use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
+use App\Models\Site;
 use App\Models\UnitClass;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -28,6 +29,7 @@ class DealFactory extends Factory
 
         return [
             'contact_id'            => Contact::factory(),
+            'site_id'               => Site::query()->inRandomOrder()->value('id') ?? Site::factory(),
             'status'                => fake()->randomElement(DealStatus::cases()),
             'expected_move_in'      => fake()->dateTimeBetween('now', '+3 months')->format('Y-m-d'),
             'expected_stay_length'  => $stayLength,

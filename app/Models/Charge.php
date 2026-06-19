@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * is_overdue: due_date < today AND SUM(allocations) < amount.
  *
  * @property int         $id
- * @property int         $lease_id
+ * @property int         $contract_id
  * @property int|null    $invoice_id
  * @property string      $charge_type rent|insurance|late_fee|lien_fee|other
  * @property string      $amount      NUMERIC(10,2)
@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int|null    $reversal_of_charge_id
  * @property Carbon      $created_at
  *
- * @property-read Lease                        $lease
+ * @property-read Contract                     $contract
  * @property-read Invoice|null                 $invoice
  * @property-read Charge|null                  $reversalOf
  * @property-read Collection<int, Allocation>  $allocations
@@ -38,7 +38,7 @@ class Charge extends TenantModel
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'lease_id',
+        'contract_id',
         'invoice_id',
         'charge_type',
         'amount',
@@ -55,10 +55,10 @@ class Charge extends TenantModel
         ];
     }
 
-    /** @return BelongsTo<Lease, Charge> */
-    public function lease(): BelongsTo
+    /** @return BelongsTo<Contract, Charge> */
+    public function contract(): BelongsTo
     {
-        return $this->belongsTo(Lease::class);
+        return $this->belongsTo(Contract::class);
     }
 
     /** @return BelongsTo<Invoice, Charge> */
@@ -73,7 +73,7 @@ class Charge extends TenantModel
         return $this->belongsTo(Charge::class, 'reversal_of_charge_id');
     }
 
-    /** @return HasMany<Allocation> */
+    /** @return HasMany<Allocation, Charge> */
     public function allocations(): HasMany
     {
         return $this->hasMany(Allocation::class);

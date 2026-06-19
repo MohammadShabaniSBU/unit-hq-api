@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Polymorphic task. Attachable to Deal, Contact, Lease, Unit, or any future
+ * Polymorphic task. Attachable to Deal, Contact, Contract, Unit, or any future
  * entity — add it as a morph target with no schema change.
  *
  * completed_at is stored alongside status = done so that SLA reporting can

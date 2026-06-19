@@ -62,9 +62,8 @@ class DealController extends Controller
             'offers.options.unitClass',
             'reservations.unit.site',
             'reservations.unit.unitClass',
-            'leases.unit.site',
-            'leases.unit.unitClass',
-            'leases.reservation',
+            'contracts.items.item',
+            'contracts.reservation',
             'tasks',
             'comments',
         ]);

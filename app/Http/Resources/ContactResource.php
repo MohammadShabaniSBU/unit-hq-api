@@ -4,7 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use App\Http\Resources\DealResource;
-use App\Http\Resources\LeaseResource;
+use App\Http\Resources\ContractResource;
 use App\Http\Resources\ReservationResource;
 
 class ContactResource extends BaseResource
@@ -36,7 +36,7 @@ class ContactResource extends BaseResource
                 ])
             ),
             'deals'                => DealResource::collection($this->whenLoaded('deals')),
-            'leases'               => LeaseResource::collection($this->whenLoaded('leases')),
+            'contracts'            => ContractResource::collection($this->whenLoaded('contracts')),
             'reservations'         => ReservationResource::collection($this->whenLoaded('reservations')),
             'tasks'                => $this->whenLoaded('tasks', fn () =>
                 $this->tasks->map(fn ($task) => [

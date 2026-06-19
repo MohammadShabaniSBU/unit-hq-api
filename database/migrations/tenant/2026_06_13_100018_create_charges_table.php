@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::create('charges', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lease_id')->constrained('leases')->cascadeOnDelete();
+            $table->foreignId('contract_id')->constrained('contracts')->cascadeOnDelete();
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
             $table->string('charge_type');
             $table->decimal('amount', 10, 2);
@@ -26,7 +26,7 @@ return new class extends Migration
             $table->foreignId('reversal_of_charge_id')->nullable()->constrained('charges')->nullOnDelete();
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index(['lease_id', 'due_date']);
+            $table->index(['contract_id', 'due_date']);
             $table->index('invoice_id');
         });
     }

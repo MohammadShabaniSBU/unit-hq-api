@@ -6,7 +6,7 @@ use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
 use App\Enums\DealStatus;
-use App\Enums\LeaseStatus;
+use App\Enums\ContractStatus;
 use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,7 +45,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Deal>        $deals
  * @property-read Collection<int, Offer>       $offers
  * @property-read Collection<int, Reservation> $reservations
- * @property-read Collection<int, Lease>       $leases
+ * @property-read Collection<int, Contract>    $contracts
  * @property-read Collection<int, Task>        $tasks
  * @property-read Collection<int, Comment>     $comments
  * @property-read Collection<int, PropertyValue> $propertyValues
@@ -88,12 +88,12 @@ class Contact extends TenantModel
     }
 
     /**
-     * Derive lifecycle status from linked Deals, Reservations, and Leases.
+     * Derive lifecycle status from linked Deals, Reservations, and Contracts.
      * Priority order (highest wins): tenant → opportunity → lead → past_tenant → lost → prospect.
      */
     public function deriveLifecycleStatus(): ContactLifecycleStatus
     {
-        if ($this->leases()->where('status', LeaseStatus::Active->value)->exists()) {
+        if ($this->contracts()->where('status', ContractStatus::Active->value)->exists()) {
             return ContactLifecycleStatus::Tenant;
         }
 
@@ -108,7 +108,7 @@ class Contact extends TenantModel
             return ContactLifecycleStatus::Lead;
         }
 
-        if ($this->leases()->where('status', LeaseStatus::MovedOut->value)->exists()) {
+        if ($this->contracts()->where('status', ContractStatus::MovedOut->value)->exists()) {
             return ContactLifecycleStatus::PastTenant;
         }
 
@@ -119,7 +119,7 @@ class Contact extends TenantModel
                 ReservationStatus::Pending->value,
                 ReservationStatus::Confirmed->value,
             ])->exists()
-            && ! $this->leases()->where('status', LeaseStatus::Active->value)->exists()
+            && ! $this->contracts()->where('status', ContractStatus::Active->value)->exists()
         ) {
             return ContactLifecycleStatus::Lost;
         }
@@ -187,10 +187,10 @@ class Contact extends TenantModel
         return $this->hasMany(Reservation::class);
     }
 
-    /** @return HasMany<Lease> */
-    public function leases(): HasMany
+    /** @return HasMany<Contract, Contact> */
+    public function contracts(): HasMany
     {
-        return $this->hasMany(Lease::class);
+        return $this->hasMany(Contract::class);
     }
 
     /** @return MorphMany<Task> */

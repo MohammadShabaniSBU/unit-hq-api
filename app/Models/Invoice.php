@@ -14,14 +14,14 @@ use Illuminate\Support\Carbon;
  * allocations, not from the status column here.
  *
  * @property int         $id
- * @property int         $lease_id
+ * @property int         $contract_id
  * @property string      $billing_period_start Y-m-d
  * @property string      $billing_period_end   Y-m-d
  * @property string      $status               draft|issued|paid|void
  * @property Carbon|null $issued_at
  * @property Carbon      $created_at
  *
- * @property-read Lease                    $lease
+ * @property-read Contract                 $contract
  * @property-read Collection<int, Charge>  $charges
  */
 class Invoice extends TenantModel
@@ -31,7 +31,7 @@ class Invoice extends TenantModel
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'lease_id',
+        'contract_id',
         'billing_period_start',
         'billing_period_end',
         'status',
@@ -47,13 +47,13 @@ class Invoice extends TenantModel
         ];
     }
 
-    /** @return BelongsTo<Lease, Invoice> */
-    public function lease(): BelongsTo
+    /** @return BelongsTo<Contract, Invoice> */
+    public function contract(): BelongsTo
     {
-        return $this->belongsTo(Lease::class);
+        return $this->belongsTo(Contract::class);
     }
 
-    /** @return HasMany<Charge> */
+    /** @return HasMany<Charge, Invoice> */
     public function charges(): HasMany
     {
         return $this->hasMany(Charge::class);

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Employee;
+use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -41,6 +42,20 @@ class TenantSeeder extends Seeder
                 'label' => "AL Unit {$n}",
                 'size' => 10.00 + ($n - 1) * 2,
             ]));
+        }
+
+        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
+
+        foreach ($unitClasses as $unitClass) {
+            $price = Price::create([
+                'amount'         => fake()->randomFloat(2, 50, 300),
+                'currency'       => 'EUR',
+                'billing_period' => 'monthly',
+                'effective_from' => now()->subMonths(6)->toDateString(),
+                'effective_to'   => null,
+                'created_by'     => $manager->id,
+            ]);
+            $unitClass->update(['current_price_id' => $price->id]);
         }
 
         foreach ($unitClasses as $unitClass) {

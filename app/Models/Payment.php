@@ -14,17 +14,17 @@ use Illuminate\Support\Carbon;
  * idempotency_key — never optimistically from the client.
  *
  * Reversals are made by inserting a new payment with reversal_of_payment_id.
- * Unallocated amount (payment.amount - SUM allocations) is credit on the lease.
+ * Unallocated amount (payment.amount - SUM allocations) is credit on the contract.
  *
  * @property int         $id
- * @property int         $lease_id
+ * @property int         $contract_id
  * @property string      $amount                NUMERIC(10,2)
  * @property string|null $stripe_payment_intent_id
  * @property string      $idempotency_key
  * @property int|null    $reversal_of_payment_id
  * @property Carbon      $created_at
  *
- * @property-read Lease                       $lease
+ * @property-read Contract                    $contract
  * @property-read Payment|null                $reversalOf
  * @property-read Collection<int, Allocation> $allocations
  * @property-read StripeWebhookEvent|null     $webhookEvent
@@ -36,7 +36,7 @@ class Payment extends TenantModel
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'lease_id',
+        'contract_id',
         'amount',
         'stripe_payment_intent_id',
         'idempotency_key',
@@ -50,10 +50,10 @@ class Payment extends TenantModel
         ];
     }
 
-    /** @return BelongsTo<Lease, Payment> */
-    public function lease(): BelongsTo
+    /** @return BelongsTo<Contract, Payment> */
+    public function contract(): BelongsTo
     {
-        return $this->belongsTo(Lease::class);
+        return $this->belongsTo(Contract::class);
     }
 
     /** @return BelongsTo<Payment, Payment> */
@@ -62,13 +62,13 @@ class Payment extends TenantModel
         return $this->belongsTo(Payment::class, 'reversal_of_payment_id');
     }
 
-    /** @return HasMany<Allocation> */
+    /** @return HasMany<Allocation, Payment> */
     public function allocations(): HasMany
     {
         return $this->hasMany(Allocation::class);
     }
 
-    /** @return HasOne<StripeWebhookEvent> */
+    /** @return HasOne<StripeWebhookEvent, Payment> */
     public function webhookEvent(): HasOne
     {
         return $this->hasOne(StripeWebhookEvent::class);

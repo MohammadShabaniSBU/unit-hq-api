@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 /**
  * Maps a payment to a charge for a specific amount. Append-only.
  * A charge is fully paid when SUM(allocations.amount) = charge.amount.
- * Unallocated payment amount is credit on the lease.
+ * Unallocated payment amount is credit on the contract.
  *
  * @property int    $id
  * @property int    $payment_id

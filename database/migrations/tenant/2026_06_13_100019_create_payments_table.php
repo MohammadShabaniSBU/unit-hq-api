@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lease_id')->constrained('leases')->cascadeOnDelete();
+            $table->foreignId('contract_id')->constrained('contracts')->cascadeOnDelete();
             $table->decimal('amount', 10, 2);
             $table->string('stripe_payment_intent_id')->nullable()->index();
             $table->string('idempotency_key')->unique();
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('reversal_of_payment_id')->nullable()->constrained('payments')->nullOnDelete();
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index('lease_id');
+            $table->index('contract_id');
         });
     }
 

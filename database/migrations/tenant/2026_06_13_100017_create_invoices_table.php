@@ -15,14 +15,14 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lease_id')->constrained('leases')->cascadeOnDelete();
+            $table->foreignId('contract_id')->constrained('contracts')->cascadeOnDelete();
             $table->date('billing_period_start');
             $table->date('billing_period_end');
             $table->string('status')->default('draft');
             $table->timestamp('issued_at')->nullable();
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index('lease_id');
+            $table->index('contract_id');
         });
     }
 

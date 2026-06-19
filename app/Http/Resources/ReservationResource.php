@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\ContractResource;
 use Illuminate\Http\Request;
 
 class ReservationResource extends BaseResource
@@ -36,7 +37,7 @@ class ReservationResource extends BaseResource
                 'id'   => $this->contact->id,
                 'name' => trim($this->contact->first_name . ' ' . $this->contact->last_name),
             ]),
-            'lease'           => LeaseResource::make($this->whenLoaded('lease')),
+            'contract'        => ContractResource::make($this->whenLoaded('contract')),
         ];
     }
 }

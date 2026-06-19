@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
@@ -18,7 +17,7 @@ use Illuminate\Support\Carbon;
  * its class. Billing and listings use class dimensions; surveys use actuals.
  *
  * is_available is always derived — never stored as a column.
- * Derived: absence of active leases + non-expired reservations for this unit.
+ * Derived: absence of active contracts + non-expired reservations for this unit.
  *
  * @property int        $id
  * @property int        $site_id
@@ -35,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read Site                           $site
  * @property-read UnitClass                      $unitClass
  * @property-read Collection<int, Reservation>   $reservations
- * @property-read Collection<int, Lease>         $leases
+ * @property-read Collection<int, ContractItem>  $contractItems
  * @property-read Collection<int, PropertyValue> $propertyValues
  */
 class Unit extends TenantModel
@@ -81,10 +80,10 @@ class Unit extends TenantModel
         return $this->hasMany(Reservation::class);
     }
 
-    /** @return HasMany<Lease> */
-    public function leases(): HasMany
+    /** @return MorphMany<ContractItem, Unit> */
+    public function contractItems(): MorphMany
     {
-        return $this->hasMany(Lease::class);
+        return $this->morphMany(ContractItem::class, 'item');
     }
 
     /** @return MorphMany<PropertyValue> */

@@ -64,7 +64,7 @@ Route::middleware([
     Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
     Route::apiResource('reservations', Controllers\ReservationController::class);
 
-    Route::apiResource('leases', Controllers\LeaseController::class);
+    Route::apiResource('contracts', Controllers\ContractController::class);
 
     Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);
     Route::get('unit-classes/{unitClass}/prices', [Facility\UnitClassPriceController::class, 'index']);

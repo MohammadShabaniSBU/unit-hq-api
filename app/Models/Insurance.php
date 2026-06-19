@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -16,7 +17,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
- * @property-read Collection<int, InsuranceRate> $rates
+ * @property-read Collection<int, InsuranceRate>  $rates
+ * @property-read Collection<int, ContractItem>  $contractItems
  */
 class Insurance extends TenantModel
 {
@@ -40,5 +42,11 @@ class Insurance extends TenantModel
     public function rates(): HasMany
     {
         return $this->hasMany(InsuranceRate::class);
+    }
+
+    /** @return MorphMany<ContractItem, Insurance> */
+    public function contractItems(): MorphMany
+    {
+        return $this->morphMany(ContractItem::class, 'item');
     }
 }

@@ -14,7 +14,7 @@ use App\Models\Deal;
  * Inventory hold record. Always references a specific unit — never a class.
  * Created in a single transaction with OfferOption.selected_at and Offer.status.
  *
- * Unit availability is derived from active leases + non-expired reservations.
+ * Unit availability is derived from active contracts + non-expired reservations.
  * is_available is never stored as a column on Unit.
  *
  * @property int                $id
@@ -32,7 +32,7 @@ use App\Models\Deal;
  * @property-read Contact           $contact
  * @property-read Deal|null         $deal
  * @property-read OfferOption|null  $offerOption
- * @property-read Lease|null        $lease
+ * @property-read Contract|null     $contract
  * @property-read MorphMany<Comment> $comments
  */
 class Reservation extends TenantModel
@@ -81,10 +81,10 @@ class Reservation extends TenantModel
         return $this->belongsTo(OfferOption::class);
     }
 
-    /** @return HasOne<Lease> */
-    public function lease(): HasOne
+    /** @return HasOne<Contract, Reservation> */
+    public function contract(): HasOne
     {
-        return $this->hasOne(Lease::class);
+        return $this->hasOne(Contract::class);
     }
 
     /** @return MorphMany<Comment> */

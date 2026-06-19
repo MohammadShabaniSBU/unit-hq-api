@@ -20,7 +20,7 @@ use App\Models\Reservation;
  * offer_sent and offer_viewed are cached here for simple pipeline reporting,
  * even though the linked Offer record also tracks send/view events.
  *
- * Expected values live on Deal. Actual values live on Lease.
+ * Expected values live on Deal. Actual values live on Contract.
  *
  * @property int              $id
  * @property int              $contact_id
@@ -41,7 +41,7 @@ use App\Models\Reservation;
  * @property-read UnitClass|null                   $desiredUnitClass
  * @property-read Collection<int, Offer>           $offers
  * @property-read Collection<int, Reservation>     $reservations
- * @property-read Collection<int, Lease>           $leases
+ * @property-read Collection<int, Contract>         $contracts
  * @property-read Collection<int, Task>            $tasks
  * @property-read Collection<int, Comment>         $comments
  */
@@ -108,10 +108,10 @@ class Deal extends TenantModel
         return $this->hasMany(Reservation::class);
     }
 
-    /** @return HasMany<Lease> */
-    public function leases(): HasMany
+    /** @return HasMany<Contract, Deal> */
+    public function contracts(): HasMany
     {
-        return $this->hasMany(Lease::class);
+        return $this->hasMany(Contract::class);
     }
 
     /** @return MorphMany<Task> */

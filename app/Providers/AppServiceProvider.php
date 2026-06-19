@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Insurance;
+use App\Models\Unit;
 use App\Session\MorphDatabaseSessionHandler;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Relation::morphMap([
+            'unit'      => Unit::class,
+            'insurance' => Insurance::class,
+        ]);
+
         Session::extend('database', function ($app) {
             $config = $app->make('config');
             $connection = $app['db']->connection($config->get('session.connection'));
