@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read Country|null                   $country
  * @property-read Collection<int, Unit>          $units
  * @property-read Collection<int, UnitClassRate> $unitClassRates
+ * @property-read Collection<int, SiteMap>       $siteMaps
  */
 class Site extends TenantModel
 {
@@ -64,5 +65,11 @@ class Site extends TenantModel
     public function unitClassRates(): HasMany
     {
         return $this->hasMany(UnitClassRate::class);
+    }
+
+    /** @return HasMany<SiteMap> */
+    public function siteMaps(): HasMany
+    {
+        return $this->hasMany(SiteMap::class)->orderBy('sort_order');
     }
 }

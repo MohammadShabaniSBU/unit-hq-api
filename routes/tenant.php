@@ -47,6 +47,11 @@ Route::middleware([
     Route::get('units/options', [Facility\UnitController::class, 'options']);
 
     Route::apiResource('sites', Facility\SiteController::class);
+    Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
+    Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
+    Route::get('site-maps/{siteMap}', [Facility\SiteMapController::class, 'show']);
+    Route::patch('site-maps/{siteMap}', [Facility\SiteMapController::class, 'update']);
+    Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destroy']);
     Route::apiResource('units', Facility\UnitController::class);
 
     Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
