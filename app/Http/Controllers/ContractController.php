@@ -82,7 +82,7 @@ class ContractController extends Controller
 
     public function show(Contract $contract): JsonResponse
     {
-        $contract->load(['items.item', 'contact', 'reservation', 'deal']);
+        $contract->load(['items.item', 'contact', 'reservation', 'deal', 'notes']);
 
         return $this->success(
             ContractResource::make($contract),

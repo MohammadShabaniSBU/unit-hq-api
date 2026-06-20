@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotes;
+
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
@@ -47,18 +49,19 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Reservation> $reservations
  * @property-read Collection<int, Contract>    $contracts
  * @property-read Collection<int, Task>        $tasks
- * @property-read Collection<int, Comment>     $comments
+ * @property-read Collection<int, Note>        $notes
  * @property-read Collection<int, PropertyValue> $propertyValues
  */
 class Contact extends TenantModel
 {
-    use HasFactory;
+    use HasFactory, HasNotes;
 
     protected $fillable = [
         'first_name',
         'last_name',
         'email',
         'company',
+        'status',
         'contact_status',
         'canonical_contact_id',
         'source',
@@ -197,12 +200,6 @@ class Contact extends TenantModel
     public function tasks(): MorphMany
     {
         return $this->morphMany(Task::class, 'taskable');
-    }
-
-    /** @return MorphMany<Comment> */
-    public function comments(): MorphMany
-    {
-        return $this->morphMany(Comment::class, 'commentable');
     }
 
     /** @return MorphMany<PropertyValue> */

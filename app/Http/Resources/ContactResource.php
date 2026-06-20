@@ -28,13 +28,7 @@ class ContactResource extends BaseResource
             'created_by'           => $this->created_by,
             'created_at'           => $this->datetime($this->created_at),
             'updated_at'           => $this->datetime($this->updated_at),
-            'channels'             => $this->whenLoaded('channels', fn () =>
-                $this->channels->map(fn ($ch) => [
-                    'id'    => $ch->id,
-                    'type'  => $ch->type,
-                    'value' => $ch->value,
-                ])
-            ),
+            'channels'             => ContactChannelResource::collection($this->whenLoaded('channels')),
             'deals'                => DealResource::collection($this->whenLoaded('deals')),
             'contracts'            => ContractResource::collection($this->whenLoaded('contracts')),
             'reservations'         => ReservationResource::collection($this->whenLoaded('reservations')),
@@ -50,13 +44,7 @@ class ContactResource extends BaseResource
                     'created_at'  => $this->datetime($task->created_at),
                 ])
             ),
-            'comments'             => $this->whenLoaded('comments', fn () =>
-                $this->comments->map(fn ($comment) => [
-                    'id'         => $comment->id,
-                    'body'       => $comment->body,
-                    'created_at' => $this->datetime($comment->created_at),
-                ])
-            ),
+            'notes'                => NoteResource::collection($this->whenLoaded('notes')),
         ];
     }
 }

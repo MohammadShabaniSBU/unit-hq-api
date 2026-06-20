@@ -23,7 +23,6 @@ class DealResource extends BaseResource
             'storage_reason'         => $this->storage_reason,
             'desired_size'           => $this->desired_size,
             'desired_unit_class_id'  => $this->desired_unit_class_id,
-            'intent_notes'           => $this->intent_notes,
             'created_at'             => $this->datetime($this->created_at),
             'updated_at'             => $this->datetime($this->updated_at),
             'desired_unit_class'     => UnitClassResource::make($this->whenLoaded('desiredUnitClass')),
@@ -50,13 +49,7 @@ class DealResource extends BaseResource
                     'created_at'  => $this->datetime($task->created_at),
                 ])
             ),
-            'comments'               => $this->whenLoaded('comments', fn () =>
-                $this->comments->map(fn ($comment) => [
-                    'id'         => $comment->id,
-                    'body'       => $comment->body,
-                    'created_at' => $this->datetime($comment->created_at),
-                ])
-            ),
+            'notes'                  => NoteResource::collection($this->whenLoaded('notes')),
         ];
     }
 }

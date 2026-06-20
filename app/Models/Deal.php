@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
+use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,7 +33,6 @@ use App\Models\Reservation;
  * @property StorageReason|null $storage_reason
  * @property string|null      $desired_size  NUMERIC(8,2)
  * @property int|null         $desired_unit_class_id
- * @property string|null      $intent_notes
  * @property Carbon           $created_at
  * @property Carbon           $updated_at
  *
@@ -43,11 +43,11 @@ use App\Models\Reservation;
  * @property-read Collection<int, Reservation>     $reservations
  * @property-read Collection<int, Contract>         $contracts
  * @property-read Collection<int, Task>            $tasks
- * @property-read Collection<int, Comment>         $comments
+ * @property-read Collection<int, Note>              $notes
  */
 class Deal extends TenantModel
 {
-    use HasFactory;
+    use HasFactory, HasNotes;
 
     protected $fillable = [
         'contact_id',
@@ -59,7 +59,6 @@ class Deal extends TenantModel
         'storage_reason',
         'desired_size',
         'desired_unit_class_id',
-        'intent_notes',
     ];
 
     protected function casts(): array
@@ -118,11 +117,5 @@ class Deal extends TenantModel
     public function tasks(): MorphMany
     {
         return $this->morphMany(Task::class, 'taskable');
-    }
-
-    /** @return MorphMany<Comment> */
-    public function comments(): MorphMany
-    {
-        return $this->morphMany(Comment::class, 'commentable');
     }
 }

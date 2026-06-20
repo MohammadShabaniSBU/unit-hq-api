@@ -77,7 +77,7 @@ class OfferController extends Controller
     public function show(Offer $offer): JsonResponse
     {
         return $this->success(
-            OfferResource::make($offer->load(['options', 'deal', 'contact'])),
+            OfferResource::make($offer->load(['options', 'deal', 'contact', 'notes'])),
             'Offer retrieved successfully.'
         );
     }

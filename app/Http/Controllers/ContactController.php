@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
 use App\Http\Resources\ContactResource;
@@ -73,7 +74,7 @@ class ContactController extends Controller
             'reservations.unit.site',
             'reservations.unit.unitClass',
             'tasks',
-            'comments',
+            'notes',
         ]);
 
         return $this->success(
@@ -89,6 +90,7 @@ class ContactController extends Controller
             'last_name'            => ['sometimes', 'required', 'string', 'max:255'],
             'email'                => ['sometimes', 'nullable', 'email', 'max:255'],
             'company'              => ['sometimes', 'nullable', 'string', 'max:255'],
+            'status'               => ['sometimes', 'nullable', Rule::enum(ContactLifecycleStatus::class)],
             'contact_status'       => ['sometimes', 'nullable', Rule::enum(ContactRecordStatus::class)],
             'canonical_contact_id' => ['sometimes', 'nullable', 'integer', 'exists:contacts,id'],
             'source'               => ['sometimes', 'nullable', Rule::enum(ContactSource::class)],

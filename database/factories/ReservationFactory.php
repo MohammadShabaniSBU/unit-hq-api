@@ -27,7 +27,6 @@ class ReservationFactory extends Factory
             'offer_option_id' => null,
             'status'          => ReservationStatus::Pending,
             'expires_at'      => now()->addDays(14),
-            'hold_notes'      => null,
         ];
     }
 

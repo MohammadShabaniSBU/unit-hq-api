@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,10 +38,11 @@ use Illuminate\Support\Carbon;
  * @property-read Contact                         $contact
  * @property-read Collection<int, OfferOption>    $options
  * @property-read Collection<int, OfferDelivery>  $deliveries
+ * @property-read Collection<int, Note>             $notes
  */
 class Offer extends TenantModel
 {
-    use HasFactory;
+    use HasFactory, HasNotes;
 
     protected $fillable = [
         'deal_id',

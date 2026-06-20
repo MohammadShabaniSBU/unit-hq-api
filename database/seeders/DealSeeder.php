@@ -90,7 +90,6 @@ class DealSeeder extends Seeder
                             'offer_option_id' => $selectedOption->id,
                             'status'          => ReservationStatus::Confirmed,
                             'expires_at'      => now()->addDays(14),
-                            'hold_notes'      => null,
                         ]);
                     }
                 }

@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Enums\ReservationStatus;
+use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use App\Models\Deal;
 
@@ -24,7 +24,6 @@ use App\Models\Deal;
  * @property ReservationStatus  $status
  * @property int|null           $offer_option_id
  * @property Carbon             $expires_at
- * @property string|null        $hold_notes
  * @property Carbon             $created_at
  * @property Carbon             $updated_at
  *
@@ -33,11 +32,11 @@ use App\Models\Deal;
  * @property-read Deal|null         $deal
  * @property-read OfferOption|null  $offerOption
  * @property-read Contract|null     $contract
- * @property-read MorphMany<Comment> $comments
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Note> $notes
  */
 class Reservation extends TenantModel
 {
-    use HasFactory;
+    use HasFactory, HasNotes;
 
     protected $fillable = [
         'unit_id',
@@ -46,7 +45,6 @@ class Reservation extends TenantModel
         'offer_option_id',
         'status',
         'expires_at',
-        'hold_notes',
     ];
 
     protected function casts(): array
@@ -85,11 +83,5 @@ class Reservation extends TenantModel
     public function contract(): HasOne
     {
         return $this->hasOne(Contract::class);
-    }
-
-    /** @return MorphMany<Comment> */
-    public function comments(): MorphMany
-    {
-        return $this->morphMany(Comment::class, 'commentable');
     }
 }

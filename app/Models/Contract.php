@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ContractStatus;
+use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,10 +40,11 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Invoice>         $invoices
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
+ * @property-read Collection<int, Note>              $notes
  */
 class Contract extends TenantModel
 {
-    use HasFactory;
+    use HasFactory, HasNotes;
 
     protected $fillable = [
         'contact_id',

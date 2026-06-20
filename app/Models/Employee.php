@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Price>   $createdPrices
  * @property-read Collection<int, Task>    $assignedTasks
  * @property-read Collection<int, Task>    $createdTasks
- * @property-read Collection<int, Comment> $comments
+ * @property-read Collection<int, Note> $notes
  */
 #[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
@@ -61,9 +61,9 @@ class Employee extends Authenticatable
         return $this->hasMany(Task::class, 'created_by');
     }
 
-    /** @return HasMany<Comment> */
-    public function comments(): HasMany
+    /** @return HasMany<Note> */
+    public function notes(): HasMany
     {
-        return $this->hasMany(Comment::class);
+        return $this->hasMany(Note::class);
     }
 }

@@ -42,6 +42,7 @@ class ContractResource extends BaseResource
                     'status' => $this->deal->status,
                 ] : null
             ),
+            'notes'          => NoteResource::collection($this->whenLoaded('notes')),
         ];
     }
 

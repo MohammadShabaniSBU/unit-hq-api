@@ -39,7 +39,6 @@ class DealFactory extends Factory
                 : null,
             'desired_size'          => $unitClass?->size ?? fake()->randomFloat(2, 5, 30),
             'desired_unit_class_id' => $unitClass?->id,
-            'intent_notes'          => fake()->optional(0.6)->sentence(),
         ];
     }
 }

@@ -51,6 +51,9 @@ Route::middleware([
 
     Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
     Route::apiResource('contacts', Controllers\ContactController::class);
+    Route::post('contacts/{contact}/channels', [Controllers\ContactChannelController::class, 'store']);
+    Route::patch('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'update']);
+    Route::delete('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'destroy']);
 
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::apiResource('deals', Controllers\DealController::class);

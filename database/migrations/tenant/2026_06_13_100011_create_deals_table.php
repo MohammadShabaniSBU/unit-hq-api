@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('storage_reason')->nullable();
             $table->decimal('desired_size', 8, 2)->nullable();
             $table->foreignId('desired_unit_class_id')->nullable()->constrained('unit_classes')->nullOnDelete();
-            $table->text('intent_notes')->nullable();
             $table->timestamps();
 
             $table->index('contact_id');

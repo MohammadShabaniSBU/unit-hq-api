@@ -21,7 +21,6 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->foreignId('offer_option_id')->constrained('offer_options');
             $table->timestamp('expires_at');
-            $table->text('hold_notes')->nullable();
             $table->timestamps();
 
             $table->index('unit_id');

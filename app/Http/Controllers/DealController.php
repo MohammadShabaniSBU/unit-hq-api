@@ -43,7 +43,6 @@ class DealController extends Controller
             'storage_reason'        => ['nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
-            'intent_notes'          => ['nullable', 'string'],
         ]);
 
         $deal = Deal::query()->create($validated);
@@ -65,7 +64,7 @@ class DealController extends Controller
             'contracts.items.item',
             'contracts.reservation',
             'tasks',
-            'comments',
+            'notes',
         ]);
 
         return $this->success(
@@ -86,7 +85,6 @@ class DealController extends Controller
             'storage_reason'        => ['sometimes', 'nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['sometimes', 'nullable', 'integer', 'exists:unit_classes,id'],
-            'intent_notes'          => ['sometimes', 'nullable', 'string'],
         ]);
 
         $deal->update($validated);

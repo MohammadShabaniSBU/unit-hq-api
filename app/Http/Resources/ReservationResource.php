@@ -17,7 +17,6 @@ class ReservationResource extends BaseResource
             'offer_option_id' => $this->offer_option_id,
             'status'          => $this->status,
             'expires_at'      => $this->datetime($this->expires_at),
-            'hold_notes'      => $this->hold_notes,
             'created_at'      => $this->datetime($this->created_at),
             'updated_at'      => $this->datetime($this->updated_at),
             'unit'            => $this->whenLoaded('unit', fn () => [
@@ -37,6 +36,7 @@ class ReservationResource extends BaseResource
                 'id'   => $this->contact->id,
                 'name' => trim($this->contact->first_name . ' ' . $this->contact->last_name),
             ]),
+            'notes'           => NoteResource::collection($this->whenLoaded('notes')),
             'contract'        => ContractResource::make($this->whenLoaded('contract')),
         ];
     }

@@ -27,6 +27,7 @@ class OfferResource extends BaseResource
                 'id'   => $this->contact->id,
                 'name' => trim($this->contact->first_name . ' ' . $this->contact->last_name),
             ]),
+            'notes'           => NoteResource::collection($this->whenLoaded('notes')),
         ];
     }
 }

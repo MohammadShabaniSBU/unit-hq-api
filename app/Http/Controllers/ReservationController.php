@@ -48,7 +48,6 @@ class ReservationController extends Controller
             'offer_option_id' => ['nullable', 'integer', 'exists:offer_options,id'],
             'status'          => ['nullable', Rule::enum(ReservationStatus::class)],
             'expires_at'      => ['required', 'date'],
-            'hold_notes'      => ['nullable', 'string'],
         ]);
 
         $reservation = Reservation::query()->create($validated);
@@ -61,7 +60,7 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation): JsonResponse
     {
-        $reservation->load(['unit.site', 'unit.unitClass', 'contact', 'contract']);
+        $reservation->load(['unit.site', 'unit.unitClass', 'contact', 'contract', 'notes']);
 
         return $this->success(
             ReservationResource::make($reservation),
@@ -75,7 +74,6 @@ class ReservationController extends Controller
             'unit_id'    => ['sometimes', 'required', 'integer', 'exists:units,id'],
             'status'     => ['sometimes', 'required', Rule::enum(ReservationStatus::class)],
             'expires_at' => ['sometimes', 'required', 'date'],
-            'hold_notes' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $reservation->update($validated);
