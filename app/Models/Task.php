@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaskType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -26,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property string      $priority     low|medium|high|urgent
  * @property string      $status       open|in_progress|done|cancelled
+ * @property string|null $type         call|email|follow_up|unit_tour|other
  * @property Carbon|null $due_at
  * @property Carbon|null $remind_at
  * @property Carbon|null $completed_at
@@ -49,6 +51,7 @@ class Task extends TenantModel
         'description',
         'priority',
         'status',
+        'type',
         'due_at',
         'remind_at',
         'completed_at',
@@ -57,6 +60,7 @@ class Task extends TenantModel
     protected function casts(): array
     {
         return [
+            'type'         => TaskType::class,
             'due_at'       => 'datetime',
             'remind_at'    => 'datetime',
             'completed_at' => 'datetime',
