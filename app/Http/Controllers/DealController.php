@@ -58,7 +58,9 @@ class DealController extends Controller
         $deal->load([
             'contact',
             'desiredUnitClass',
-            'offers.options.unitClass',
+            'offers.options.unitClassRate.unitClass',
+            'offers.options.unitClassRate.site',
+            'offers.options.unitClassRate.price',
             'reservations.unit.site',
             'reservations.unit.unitClass',
             'contracts.items.item',

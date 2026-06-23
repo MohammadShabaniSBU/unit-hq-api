@@ -21,8 +21,7 @@ return new class extends Migration
         Schema::create('offer_options', function (Blueprint $table) {
             $table->id();
             $table->foreignId('offer_id')->constrained('offers')->cascadeOnDelete();
-            $table->foreignId('unit_class_id')->constrained('unit_classes');
-            $table->foreignId('price_id')->constrained('prices');
+            $table->foreignId('unit_class_rate_id')->constrained('unit_class_rates');
             $table->foreignId('discount_id')->nullable()->constrained('discounts')->nullOnDelete();
             $table->string('label');
             $table->text('description')->nullable();

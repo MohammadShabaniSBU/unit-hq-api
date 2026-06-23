@@ -111,12 +111,13 @@ class UnitClassPriceController extends Controller
         $price ??= $rate?->price;
 
         return [
-            'site_id'        => $site->id,
-            'site_name'      => $site->name,
-            'price_id'       => $price?->id,
-            'amount'         => $price?->amount,
-            'currency'       => $price?->currency,
-            'billing_period' => $price?->billing_period,
+            'unit_class_rate_id' => $rate?->id,
+            'site_id'            => $site->id,
+            'site_name'          => $site->name,
+            'price_id'           => $price?->id,
+            'amount'             => $price?->amount,
+            'currency'           => $price?->currency,
+            'billing_period'     => $price?->billing_period,
         ];
     }
 }

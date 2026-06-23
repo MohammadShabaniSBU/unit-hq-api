@@ -62,6 +62,15 @@ Route::middleware([
     Route::post('contacts/{contact}/tasks', [Controllers\ContactTaskController::class, 'store']);
     Route::patch('contacts/{contact}/tasks/{task}', [Controllers\ContactTaskController::class, 'update']);
 
+    Route::post('notes', [Controllers\NoteController::class, 'store']);
+
+    Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
+    Route::post('copilot/conversations', [Controllers\CopilotController::class, 'store']);
+    Route::get('copilot/conversations/{id}', [Controllers\CopilotController::class, 'show']);
+    Route::delete('copilot/conversations/{id}', [Controllers\CopilotController::class, 'destroy']);
+    Route::put('copilot/conversations/{id}/messages', [Controllers\CopilotController::class, 'syncMessages']);
+    Route::post('copilot/chat', [Controllers\CopilotController::class, 'chat']);
+
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::apiResource('deals', Controllers\DealController::class);
 

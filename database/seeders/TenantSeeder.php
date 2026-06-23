@@ -9,6 +9,7 @@ use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
+use App\Models\UnitClassRate;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -56,6 +57,14 @@ class TenantSeeder extends Seeder
                 'created_by'     => $manager->id,
             ]);
             $unitClass->update(['current_price_id' => $price->id]);
+
+            foreach ($sites as $site) {
+                UnitClassRate::create([
+                    'unit_class_id' => $unitClass->id,
+                    'site_id'       => $site->id,
+                    'price_id'      => $price->id,
+                ]);
+            }
         }
 
         foreach ($unitClasses as $unitClass) {

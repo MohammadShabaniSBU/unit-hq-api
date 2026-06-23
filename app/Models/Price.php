@@ -24,7 +24,6 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Employee                       $creator
  * @property-read Collection<int, UnitClassRate> $unitClassRates
- * @property-read Collection<int, OfferOption>   $offerOptions
  */
 class Price extends TenantModel
 {
@@ -62,9 +61,4 @@ class Price extends TenantModel
         return $this->hasMany(UnitClassRate::class);
     }
 
-    /** @return HasMany<OfferOption> */
-    public function offerOptions(): HasMany
-    {
-        return $this->hasMany(OfferOption::class);
-    }
 }

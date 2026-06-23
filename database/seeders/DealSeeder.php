@@ -11,7 +11,7 @@ use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Reservation;
 use App\Models\Unit;
-use App\Models\UnitClass;
+use App\Models\UnitClassRate;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -22,12 +22,18 @@ class DealSeeder extends Seeder
 
     public function run(): void
     {
-        $unitClassesWithPrice = UnitClass::query()
-            ->whereNotNull('current_price_id')
-            ->with('currentPrice')
-            ->get();
+        $latestRateIds = UnitClassRate::query()
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('unit_class_id')
+            ->pluck('id');
 
-        Contact::query()->each(function (Contact $contact) use ($unitClassesWithPrice) {
+        $ratesByUnitClass = UnitClassRate::query()
+            ->with(['unitClass', 'price'])
+            ->whereIn('id', $latestRateIds)
+            ->get()
+            ->keyBy('unit_class_id');
+
+        Contact::query()->each(function (Contact $contact) use ($ratesByUnitClass) {
             $deals = Deal::factory()
                 ->count(fake()->numberBetween(1, 2))
                 ->create([
@@ -53,32 +59,34 @@ class DealSeeder extends Seeder
                     'accepted_at'     => $this->acceptedAt($offerStatus),
                 ]);
 
-                $optionCount = fake()->numberBetween(1, min(3, $unitClassesWithPrice->count()));
-                $selectedClasses = $unitClassesWithPrice->shuffle()->take($optionCount);
+                $availableRates = $ratesByUnitClass->values()->shuffle();
+                $optionCount = fake()->numberBetween(1, min(3, $availableRates->count()));
+                $selectedRates = $availableRates->take($optionCount);
                 $selectedOption = null;
+                $selectedRate = null;
 
-                foreach ($selectedClasses->values() as $index => $unitClass) {
+                foreach ($selectedRates->values() as $index => $rate) {
                     $isFirst = $index === 0;
 
                     $option = OfferOption::create([
-                        'offer_id'      => $offer->id,
-                        'unit_class_id' => $unitClass->id,
-                        'price_id'      => $unitClass->current_price_id,
-                        'label'         => $unitClass->label,
-                        'description'   => fake()->optional(0.5)->sentence(),
-                        'display_order' => $index,
-                        'selected_at'   => ($offerStatus === 'accepted' && $isFirst) ? now() : null,
+                        'offer_id'           => $offer->id,
+                        'unit_class_rate_id' => $rate->id,
+                        'label'              => $rate->unitClass->label,
+                        'description'        => fake()->optional(0.5)->sentence(),
+                        'display_order'      => $index,
+                        'selected_at'        => ($offerStatus === 'accepted' && $isFirst) ? now() : null,
                     ]);
 
                     if ($offerStatus === 'accepted' && $isFirst) {
                         $selectedOption = $option;
-                        $selectedUnitClass = $unitClass;
+                        $selectedRate = $rate;
                     }
                 }
 
-                if ($offerStatus === 'accepted' && $selectedOption !== null) {
+                if ($offerStatus === 'accepted' && $selectedOption !== null && $selectedRate !== null) {
                     $unit = Unit::query()
-                        ->where('unit_class_id', $selectedUnitClass->id)
+                        ->where('unit_class_id', $selectedRate->unit_class_id)
+                        ->where('site_id', $selectedRate->site_id)
                         ->inRandomOrder()
                         ->first();
 

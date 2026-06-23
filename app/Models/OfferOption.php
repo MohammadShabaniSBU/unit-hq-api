@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
- * Line item inside an offer. References a UnitClass (not a specific unit).
+ * Line item inside an offer. References a UnitClassRate snapshot so site,
+ * unit class, and price remain fixed even if rates change later.
  * At most one option per offer may have selected_at populated — enforced by
  * a partial unique index on (offer_id) WHERE selected_at IS NOT NULL.
  *
@@ -19,8 +20,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int         $id
  * @property int         $offer_id
- * @property int         $unit_class_id
- * @property int         $price_id
+ * @property int         $unit_class_rate_id
  * @property int|null    $discount_id
  * @property string      $label
  * @property string|null $description
@@ -29,11 +29,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
- * @property-read Offer        $offer
- * @property-read UnitClass    $unitClass
- * @property-read Price        $price
- * @property-read Discount|null $discount
- * @property-read Reservation|null $reservation
+ * @property-read Offer             $offer
+ * @property-read UnitClassRate     $unitClassRate
+ * @property-read Discount|null     $discount
+ * @property-read Reservation|null  $reservation
  */
 class OfferOption extends TenantModel
 {
@@ -41,8 +40,7 @@ class OfferOption extends TenantModel
 
     protected $fillable = [
         'offer_id',
-        'unit_class_id',
-        'price_id',
+        'unit_class_rate_id',
         'discount_id',
         'label',
         'description',
@@ -64,16 +62,10 @@ class OfferOption extends TenantModel
         return $this->belongsTo(Offer::class);
     }
 
-    /** @return BelongsTo<UnitClass, OfferOption> */
-    public function unitClass(): BelongsTo
+    /** @return BelongsTo<UnitClassRate, OfferOption> */
+    public function unitClassRate(): BelongsTo
     {
-        return $this->belongsTo(UnitClass::class);
-    }
-
-    /** @return BelongsTo<Price, OfferOption> */
-    public function price(): BelongsTo
-    {
-        return $this->belongsTo(Price::class);
+        return $this->belongsTo(UnitClassRate::class);
     }
 
     /** @return BelongsTo<Discount, OfferOption> */

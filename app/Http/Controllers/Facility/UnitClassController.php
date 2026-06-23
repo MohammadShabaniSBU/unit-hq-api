@@ -19,9 +19,19 @@ class UnitClassController extends Controller
         );
     }
 
-    public function options(): JsonResponse
+    public function options(Request $request): JsonResponse
     {
-        $options = UnitClass::query()->orderBy('label')->get(['id', 'label'])
+        $validated = $request->validate([
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+        ]);
+
+        $query = UnitClass::query()->orderBy('label');
+
+        if (!empty($validated['site_id'])) {
+            $query->whereHas('unitClassRates', fn ($q) => $q->where('site_id', $validated['site_id']));
+        }
+
+        $options = $query->get(['id', 'label'])
             ->map(fn (UnitClass $unitClass) => ['value' => $unitClass->id, 'label' => $unitClass->label]);
 
         return $this->success($options, 'Unit class options retrieved successfully.');
