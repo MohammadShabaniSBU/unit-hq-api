@@ -22,6 +22,8 @@ class OfferOptionController extends Controller
 
         $offerOption = OfferOption::query()->create($validated);
 
+        $offerOption->load(OfferOption::unitClassRateEagerLoads());
+
         return $this->created(
             OfferOptionResource::make($offerOption),
             'Offer option created successfully.'
@@ -40,8 +42,10 @@ class OfferOptionController extends Controller
 
         $offerOption->update($validated);
 
+        $offerOption = $offerOption->fresh()->load(OfferOption::unitClassRateEagerLoads());
+
         return $this->success(
-            OfferOptionResource::make($offerOption->fresh()),
+            OfferOptionResource::make($offerOption),
             'Offer option updated successfully.'
         );
     }

@@ -56,6 +56,16 @@ class OfferOption extends TenantModel
         ];
     }
 
+    /** @return array<int, string> */
+    public static function unitClassRateEagerLoads(): array
+    {
+        return [
+            'unitClassRate.unitClass',
+            'unitClassRate.site',
+            'unitClassRate.price',
+        ];
+    }
+
     /** @return BelongsTo<Offer, OfferOption> */
     public function offer(): BelongsTo
     {

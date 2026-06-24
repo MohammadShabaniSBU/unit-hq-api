@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\OfferResource;
 use App\Models\Offer;
+use App\Models\OfferOption;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,10 @@ class OfferController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Offer::query()->with(['options', 'contact'])->latest();
+        $query = Offer::query()->with([
+            'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+            'contact',
+        ])->latest();
 
         if ($request->filled('deal_id')) {
             $query->where('deal_id', $request->integer('deal_id'));
@@ -68,7 +72,9 @@ class OfferController extends Controller
         });
 
         return $this->created(
-            OfferResource::make($offer->load('options')),
+            OfferResource::make($offer->load([
+                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+            ])),
             'Offer created successfully.'
         );
     }
@@ -76,7 +82,12 @@ class OfferController extends Controller
     public function show(Offer $offer): JsonResponse
     {
         return $this->success(
-            OfferResource::make($offer->load(['options', 'deal', 'contact', 'notes'])),
+            OfferResource::make($offer->load([
+                'deal',
+                'contact',
+                'notes',
+                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+            ])),
             'Offer retrieved successfully.'
         );
     }
@@ -97,7 +108,9 @@ class OfferController extends Controller
         $offer->update($validated);
 
         return $this->success(
-            OfferResource::make($offer->fresh()->load('options')),
+            OfferResource::make($offer->fresh()->load([
+                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+            ])),
             'Offer updated successfully.'
         );
     }
