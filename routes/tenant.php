@@ -59,6 +59,9 @@ Route::middleware([
     Route::post('contacts/{contact}/channels', [Controllers\ContactChannelController::class, 'store']);
     Route::patch('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'update']);
     Route::delete('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'destroy']);
+    Route::post('contacts/{contact}/addresses', [Controllers\ContactAddressController::class, 'store']);
+    Route::patch('contacts/{contact}/addresses/{address}', [Controllers\ContactAddressController::class, 'update']);
+    Route::delete('contacts/{contact}/addresses/{address}', [Controllers\ContactAddressController::class, 'destroy']);
     Route::post('contacts/{contact}/tasks', [Controllers\ContactTaskController::class, 'store']);
     Route::patch('contacts/{contact}/tasks/{task}', [Controllers\ContactTaskController::class, 'update']);
 

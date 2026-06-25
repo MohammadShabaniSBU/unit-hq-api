@@ -44,6 +44,7 @@ use Illuminate\Support\Carbon;
  * @property-read Employee|null                $assignee
  * @property-read Employee|null                $creator
  * @property-read Collection<int, ContactChannel> $channels
+ * @property-read Collection<int, ContactAddress> $addresses
  * @property-read Collection<int, Deal>        $deals
  * @property-read Collection<int, Offer>       $offers
  * @property-read Collection<int, Reservation> $reservations
@@ -170,6 +171,12 @@ class Contact extends TenantModel
     public function channels(): HasMany
     {
         return $this->hasMany(ContactChannel::class);
+    }
+
+    /** @return HasMany<ContactAddress> */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(ContactAddress::class);
     }
 
     /** @return HasMany<Deal> */

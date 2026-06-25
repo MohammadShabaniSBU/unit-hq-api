@@ -68,6 +68,7 @@ class ContactController extends Controller
     {
         $contact->load([
             'channels',
+            'addresses.country',
             'deals.desiredUnitClass',
             'deals.offers',
             'contracts.items.item',

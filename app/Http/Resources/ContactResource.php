@@ -29,6 +29,7 @@ class ContactResource extends BaseResource
             'created_at'           => $this->datetime($this->created_at),
             'updated_at'           => $this->datetime($this->updated_at),
             'channels'             => ContactChannelResource::collection($this->whenLoaded('channels')),
+            'addresses'            => ContactAddressResource::collection($this->whenLoaded('addresses')),
             'deals'                => DealResource::collection($this->whenLoaded('deals')),
             'contracts'            => ContractResource::collection($this->whenLoaded('contracts')),
             'reservations'         => ReservationResource::collection($this->whenLoaded('reservations')),
