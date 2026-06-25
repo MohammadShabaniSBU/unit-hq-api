@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Unit;
 use Illuminate\Http\Request;
 
 class UnitResource extends BaseResource
@@ -19,6 +20,9 @@ class UnitResource extends BaseResource
             'actual_height' => $this->actual_height,
             'note'          => $this->note,
             'enabled'       => $this->enabled,
+            'status'        => $this->resource instanceof Unit
+                ? $this->resource->deriveStatus()->value
+                : null,
             'created_at'    => $this->datetime($this->created_at),
             'updated_at'    => $this->datetime($this->updated_at),
             'site'          => SiteResource::make($this->whenLoaded('site')),

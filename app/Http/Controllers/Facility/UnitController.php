@@ -13,10 +13,24 @@ class UnitController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Unit::query()->with(['site', 'unitClass'])->latest();
+        $validated = $request->validate([
+            'site_id'  => ['nullable', 'integer', 'exists:sites,id'],
+            'for_map'  => ['nullable', 'boolean'],
+        ]);
 
-        if ($request->filled('site_id')) {
-            $query->where('site_id', $request->integer('site_id'));
+        $query = Unit::query()
+            ->with(['site', 'unitClass'])
+            ->withMapStatus()
+            ->latest();
+
+        if (! empty($validated['site_id'])) {
+            $query->where('site_id', $validated['site_id']);
+        }
+
+        if ($request->boolean('for_map') && ! empty($validated['site_id'])) {
+            $units = $query->get()->map(fn (Unit $unit) => UnitResource::make($unit));
+
+            return $this->success($units, 'Units retrieved successfully.');
         }
 
         return $this->paginated(

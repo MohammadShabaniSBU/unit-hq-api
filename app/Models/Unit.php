@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ContractStatus;
 use App\Enums\ReservationStatus;
+use App\Enums\UnitStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -96,12 +97,76 @@ class Unit extends TenantModel
     }
 
     /** @param Builder<Unit> $query */
+    public function scopeWithMapStatus(Builder $query): Builder
+    {
+        $itemType = $this->getMorphClass();
+
+        return $query->withExists([
+            'contractItems as has_active_contract' => function (Builder $contractItemsQuery) use ($itemType): void {
+                $contractItemsQuery
+                    ->where('item_type', $itemType)
+                    ->whereHas('contract', function (Builder $contractQuery): void {
+                        $contractQuery->where('status', ContractStatus::Active->value);
+                    });
+            },
+            'reservations as has_active_reservation' => function (Builder $reservationQuery): void {
+                $reservationQuery
+                    ->whereIn('status', [
+                        ReservationStatus::Pending->value,
+                        ReservationStatus::Confirmed->value,
+                    ])
+                    ->where('expires_at', '>', now());
+            },
+        ]);
+    }
+
+    public function deriveStatus(): UnitStatus
+    {
+        if (! $this->enabled) {
+            return UnitStatus::Archived;
+        }
+
+        if ($this->has_active_contract ?? $this->hasActiveContract()) {
+            return UnitStatus::Occupied;
+        }
+
+        if ($this->has_active_reservation ?? $this->hasActiveReservation()) {
+            return UnitStatus::Reserved;
+        }
+
+        return UnitStatus::Free;
+    }
+
+    public function hasActiveContract(): bool
+    {
+        return $this->contractItems()
+            ->where('item_type', $this->getMorphClass())
+            ->whereHas('contract', function (Builder $contractQuery): void {
+                $contractQuery->where('status', ContractStatus::Active->value);
+            })
+            ->exists();
+    }
+
+    public function hasActiveReservation(): bool
+    {
+        return $this->reservations()
+            ->whereIn('status', [
+                ReservationStatus::Pending->value,
+                ReservationStatus::Confirmed->value,
+            ])
+            ->where('expires_at', '>', now())
+            ->exists();
+    }
+
+    /** @param Builder<Unit> $query */
     public function scopeReservable(Builder $query): Builder
     {
+        $itemType = (new static)->getMorphClass();
+
         return $query
-            ->whereDoesntHave('contractItems', function (Builder $contractItemsQuery): void {
+            ->whereDoesntHave('contractItems', function (Builder $contractItemsQuery) use ($itemType): void {
                 $contractItemsQuery
-                    ->where('item_type', 'unit')
+                    ->where('item_type', $itemType)
                     ->whereHas('contract', function (Builder $contractQuery): void {
                         $contractQuery->where('status', ContractStatus::Active->value);
                     });

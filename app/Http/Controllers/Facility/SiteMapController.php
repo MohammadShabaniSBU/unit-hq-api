@@ -11,10 +11,15 @@ use Illuminate\Http\Request;
 
 class SiteMapController extends Controller
 {
-    public function index(Site $site): JsonResponse
+    public function index(Request $request, Site $site): JsonResponse
     {
-        $maps = $site->siteMaps()
-            ->get(['id', 'site_id', 'floor_name', 'sort_order', 'created_at', 'updated_at']);
+        $columns = ['id', 'site_id', 'floor_name', 'sort_order', 'created_at', 'updated_at'];
+
+        if ($request->boolean('with_svg')) {
+            $columns[] = 'svg_map';
+        }
+
+        $maps = $site->siteMaps()->get($columns);
 
         return $this->success(
             SiteMapResource::collection($maps),
