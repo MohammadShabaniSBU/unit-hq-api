@@ -28,7 +28,12 @@ class UnitClassController extends Controller
         $query = UnitClass::query()->orderBy('label');
 
         if (!empty($validated['site_id'])) {
-            $query->whereHas('unitClassRates', fn ($q) => $q->where('site_id', $validated['site_id']));
+            $query->whereHas('units', function ($unitsQuery) use ($validated): void {
+                $unitsQuery
+                    ->where('site_id', $validated['site_id'])
+                    ->where('enabled', true)
+                    ->reservable();
+            });
         }
 
         $options = $query->get(['id', 'label'])

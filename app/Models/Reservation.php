@@ -20,6 +20,7 @@ use App\Models\Deal;
  * @property int                $id
  * @property int                $unit_id
  * @property int                $contact_id
+ * @property int|null           $price_id
  * @property int|null           $deal_id
  * @property ReservationStatus  $status
  * @property int|null           $offer_option_id
@@ -29,6 +30,7 @@ use App\Models\Deal;
  *
  * @property-read Unit              $unit
  * @property-read Contact           $contact
+ * @property-read Price|null        $price
  * @property-read Deal|null         $deal
  * @property-read OfferOption|null  $offerOption
  * @property-read Contract|null     $contract
@@ -41,6 +43,7 @@ class Reservation extends TenantModel
     protected $fillable = [
         'unit_id',
         'contact_id',
+        'price_id',
         'deal_id',
         'offer_option_id',
         'status',
@@ -65,6 +68,12 @@ class Reservation extends TenantModel
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    /** @return BelongsTo<Price, Reservation> */
+    public function price(): BelongsTo
+    {
+        return $this->belongsTo(Price::class);
     }
 
     /** @return BelongsTo<Deal, Reservation> */

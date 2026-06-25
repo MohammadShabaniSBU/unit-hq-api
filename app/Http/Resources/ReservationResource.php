@@ -14,6 +14,8 @@ class ReservationResource extends BaseResource
             'id'              => $this->id,
             'unit_id'         => $this->unit_id,
             'contact_id'      => $this->contact_id,
+            'price_id'        => $this->price_id,
+            'deal_id'         => $this->deal_id,
             'offer_option_id' => $this->offer_option_id,
             'status'          => $this->status,
             'expires_at'      => $this->datetime($this->expires_at),

@@ -99,10 +99,23 @@ class UnitController extends Controller
 
     public function options(Request $request): JsonResponse
     {
-        $query = Unit::query()->with(['site', 'unitClass'])->where('enabled', true)->limit(100);
+        $validated = $request->validate([
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+            'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
+        ]);
 
-        if ($request->filled('site_id')) {
-            $query->where('site_id', $request->integer('site_id'));
+        $query = Unit::query()
+            ->with(['site', 'unitClass'])
+            ->where('enabled', true)
+            ->reservable()
+            ->limit(100);
+
+        if (! empty($validated['site_id'])) {
+            $query->where('site_id', $validated['site_id']);
+        }
+
+        if (! empty($validated['unit_class_id'])) {
+            $query->where('unit_class_id', $validated['unit_class_id']);
         }
 
         $options = $query->get()->map(fn (Unit $unit) => [

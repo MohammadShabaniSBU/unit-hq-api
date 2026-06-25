@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\ContractStatus;
+use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -90,5 +93,26 @@ class Unit extends TenantModel
     public function propertyValues(): MorphMany
     {
         return $this->morphMany(PropertyValue::class, 'propertable');
+    }
+
+    /** @param Builder<Unit> $query */
+    public function scopeReservable(Builder $query): Builder
+    {
+        return $query
+            ->whereDoesntHave('contractItems', function (Builder $contractItemsQuery): void {
+                $contractItemsQuery
+                    ->where('item_type', 'unit')
+                    ->whereHas('contract', function (Builder $contractQuery): void {
+                        $contractQuery->where('status', ContractStatus::Active->value);
+                    });
+            })
+            ->whereDoesntHave('reservations', function (Builder $reservationQuery): void {
+                $reservationQuery
+                    ->whereIn('status', [
+                        ReservationStatus::Pending->value,
+                        ReservationStatus::Confirmed->value,
+                    ])
+                    ->where('expires_at', '>', now());
+            });
     }
 }

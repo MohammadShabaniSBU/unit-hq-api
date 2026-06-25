@@ -7,11 +7,15 @@ use App\Enums\ReservationStatus;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\ReservationResource;
 use App\Models\Contract;
+use App\Models\Deal;
 use App\Models\Reservation;
+use App\Models\Unit;
+use App\Models\UnitClassRate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
@@ -42,7 +46,9 @@ class ReservationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'unit_id'         => ['required', 'integer', 'exists:units,id'],
+            'site_id'         => ['required', 'integer', 'exists:sites,id'],
+            'unit_class_id'   => ['required', 'integer', 'exists:unit_classes,id'],
+            'unit_id'         => ['nullable', 'integer', 'exists:units,id'],
             'contact_id'      => ['required', 'integer', 'exists:contacts,id'],
             'deal_id'         => ['nullable', 'integer', 'exists:deals,id'],
             'offer_option_id' => ['nullable', 'integer', 'exists:offer_options,id'],
@@ -50,10 +56,63 @@ class ReservationController extends Controller
             'expires_at'      => ['required', 'date'],
         ]);
 
-        $reservation = Reservation::query()->create($validated);
+        $reservation = DB::transaction(function () use ($validated): Reservation {
+            if (! empty($validated['deal_id'])) {
+                $deal = Deal::query()->findOrFail($validated['deal_id']);
+
+                if ($deal->site_id === null) {
+                    throw ValidationException::withMessages([
+                        'deal_id' => ['Selected deal is missing a site and cannot create a reservation.'],
+                    ]);
+                }
+
+                if ($deal->site_id !== $validated['site_id']) {
+                    throw ValidationException::withMessages([
+                        'site_id' => ['Selected site must match the deal site.'],
+                    ]);
+                }
+            }
+
+            $latestRate = UnitClassRate::query()
+                ->where('site_id', $validated['site_id'])
+                ->where('unit_class_id', $validated['unit_class_id'])
+                ->latest('id')
+                ->first();
+
+            if (! $latestRate) {
+                throw ValidationException::withMessages([
+                    'unit_class_id' => ['No active price configured for this unit class at the selected site.'],
+                ]);
+            }
+
+            $unitQuery = Unit::query()
+                ->where('site_id', $validated['site_id'])
+                ->where('unit_class_id', $validated['unit_class_id'])
+                ->where('enabled', true)
+                ->reservable()
+                ->lockForUpdate();
+
+            $selectedUnit = ! empty($validated['unit_id'])
+                ? $unitQuery->whereKey($validated['unit_id'])->first()
+                : $unitQuery->inRandomOrder()->first();
+
+            if (! $selectedUnit) {
+                throw ValidationException::withMessages([
+                    'unit_id' => ['No available unit found for the selected site and unit class.'],
+                ]);
+            }
+
+            $reservationData = $validated;
+            unset($reservationData['site_id'], $reservationData['unit_class_id'], $reservationData['unit_id']);
+
+            $reservationData['unit_id'] = $selectedUnit->id;
+            $reservationData['price_id'] = $latestRate->price_id;
+
+            return Reservation::query()->create($reservationData);
+        });
 
         return $this->created(
-            ReservationResource::make($reservation->load(['unit.site', 'unit.unitClass', 'contact'])),
+            ReservationResource::make($reservation->load(['unit.site', 'unit.unitClass', 'contact', 'deal'])),
             'Reservation created successfully.'
         );
     }
