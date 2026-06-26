@@ -45,6 +45,7 @@ Route::middleware([
     Route::get('sites/options', [Facility\SiteController::class, 'options']);
     Route::get('unit-classes/options', [Facility\UnitClassController::class, 'options']);
     Route::get('units/options', [Facility\UnitController::class, 'options']);
+    Route::get('insurances/options', [Controllers\InsuranceController::class, 'options']);
 
     Route::apiResource('sites', Facility\SiteController::class);
     Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
@@ -89,6 +90,7 @@ Route::middleware([
     Route::apiResource('contracts', Controllers\ContractController::class);
 
     Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);
+    Route::get('unit-class-occupancy-matrix', [Facility\UnitClassOccupancyMatrixController::class, 'index']);
     Route::get('unit-classes/{unitClass}/prices', [Facility\UnitClassPriceController::class, 'index']);
     Route::post('unit-classes/{unitClass}/prices', [Facility\UnitClassPriceController::class, 'store']);
 

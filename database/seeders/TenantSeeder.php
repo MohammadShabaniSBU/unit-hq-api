@@ -2,9 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ContractStatus;
 use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\ContractItem;
 use App\Models\Country;
 use App\Models\Employee;
+use App\Models\Insurance;
+use App\Models\InsuranceRate;
 use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
@@ -47,6 +52,7 @@ class TenantSeeder extends Seeder
 
         $manager = Employee::query()->where('role', 'manager')->firstOrFail();
 
+        $priceByUnitClass = [];
         foreach ($unitClasses as $unitClass) {
             $price = Price::create([
                 'amount'         => fake()->randomFloat(2, 50, 300),
@@ -57,6 +63,7 @@ class TenantSeeder extends Seeder
                 'created_by'     => $manager->id,
             ]);
             $unitClass->update(['current_price_id' => $price->id]);
+            $priceByUnitClass[$unitClass->id] = $price;
 
             foreach ($sites as $site) {
                 UnitClassRate::create([
@@ -67,18 +74,73 @@ class TenantSeeder extends Seeder
             }
         }
 
-        foreach ($unitClasses as $unitClass) {
-            foreach (range(1, 10) as $n) {
-                Unit::factory()->create([
-                    'site_id' => $sites->random()->id,
-                    'unit_class_id' => $unitClass->id,
-                    'unit_number' => sprintf('%s-%02d', $unitClass->code, $n),
+        $insurances = [
+            ['name' => 'Basic', 'coverage' => 3000, 'amount' => 3],
+            ['name' => 'Premium', 'coverage' => 5000, 'amount' => 5],
+        ];
+
+        foreach ($insurances as $insuranceData) {
+            $insurance = Insurance::create([
+                'name'     => $insuranceData['name'],
+                'coverage' => $insuranceData['coverage'],
+                'currency' => 'EUR',
+            ]);
+
+            $price = Price::create([
+                'amount'         => $insuranceData['amount'],
+                'currency'       => 'EUR',
+                'billing_period' => 'monthly',
+                'effective_from' => now()->subMonths(6)->toDateString(),
+                'effective_to'   => null,
+                'created_by'     => $manager->id,
+            ]);
+
+            foreach ($sites as $site) {
+                InsuranceRate::create([
+                    'insurance_id' => $insurance->id,
+                    'site_id'      => $site->id,
+                    'price_id'     => $price->id,
                 ]);
             }
         }
 
-        Contact::factory()->count(30)->create();
+        $units = collect();
+        foreach ($unitClasses as $unitClass) {
+            foreach (range(1, 25) as $n) {
+                $units->push(Unit::factory()->create([
+                    'site_id'       => $sites->random()->id,
+                    'unit_class_id' => $unitClass->id,
+                    'unit_number'   => sprintf('%s-%02d', $unitClass->code, $n),
+                ]));
+            }
+        }
+
+        Contact::factory()->count(50)->create();
 
         $this->call(DealSeeder::class);
+
+        $contacts = Contact::all();
+        $occupiedUnits = $units->shuffle()->take((int) ($units->count() * 0.40));
+
+        foreach ($occupiedUnits as $unit) {
+            $contact   = $contacts->random();
+            $price     = $priceByUnitClass[$unit->unit_class_id];
+            $startDate = now()->subDays(fake()->numberBetween(30, 365));
+
+            $contract = Contract::create([
+                'contact_id'  => $contact->id,
+                'start_date'  => $startDate->toDateString(),
+                'end_date'    => null,
+                'status'      => ContractStatus::Active,
+                'signed_at'   => $startDate,
+            ]);
+
+            ContractItem::create([
+                'contract_id' => $contract->id,
+                'item_type'   => 'unit',
+                'item_id'     => $unit->id,
+                'rate'        => $price->amount,
+            ]);
+        }
     }
 }

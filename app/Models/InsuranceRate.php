@@ -8,11 +8,13 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int    $id
- * @property int    $insurance_id
- * @property int    $price_id
- * @property Carbon $created_at
+ * @property int         $insurance_id
+ * @property int|null    $site_id
+ * @property int         $price_id
+ * @property Carbon      $created_at
  *
  * @property-read Insurance $insurance
+ * @property-read Site      $site
  * @property-read Price     $price
  */
 class InsuranceRate extends TenantModel
@@ -23,6 +25,7 @@ class InsuranceRate extends TenantModel
 
     protected $fillable = [
         'insurance_id',
+        'site_id',
         'price_id',
     ];
 
@@ -30,6 +33,12 @@ class InsuranceRate extends TenantModel
     public function insurance(): BelongsTo
     {
         return $this->belongsTo(Insurance::class);
+    }
+
+    /** @return BelongsTo<Site, InsuranceRate> */
+    public function site(): BelongsTo
+    {
+        return $this->belongsTo(Site::class);
     }
 
     /** @return BelongsTo<Price, InsuranceRate> */

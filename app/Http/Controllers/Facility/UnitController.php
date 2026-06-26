@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Facility;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UnitResource;
 use App\Models\Unit;
+use App\Models\UnitClassRate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -132,13 +133,58 @@ class UnitController extends Controller
             $query->where('unit_class_id', $validated['unit_class_id']);
         }
 
-        $options = $query->get()->map(fn (Unit $unit) => [
-            'value' => $unit->id,
-            'label' => $unit->unit_number
-                . ($unit->site ? ' · ' . $unit->site->name : '')
-                . ($unit->unitClass ? ' · ' . $unit->unitClass->label : ''),
-        ]);
+        $units = $query->get();
+        $rateMap = $this->buildUnitClassRateMap($units);
+
+        $options = $units->map(function (Unit $unit) use ($rateMap) {
+            $price = $rateMap[$unit->unit_class_id][$unit->site_id] ?? null;
+
+            return [
+                'value'          => $unit->id,
+                'label'          => $unit->unit_number
+                    . ($unit->site ? ' · ' . $unit->site->name : '')
+                    . ($unit->unitClass ? ' · ' . $unit->unitClass->label : ''),
+                'site_id'        => $unit->site_id,
+                'price_amount'   => $price['amount'] ?? null,
+                'price_currency' => $price['currency'] ?? null,
+            ];
+        });
 
         return $this->success($options, 'Unit options retrieved successfully.');
+    }
+
+    /** @param \Illuminate\Support\Collection<int, Unit> $units */
+    /** @return array<int, array<int, array{amount: string, currency: string}>> */
+    private function buildUnitClassRateMap($units): array
+    {
+        if ($units->isEmpty()) {
+            return [];
+        }
+
+        $latestRateIds = UnitClassRate::query()
+            ->selectRaw('MAX(id) as id')
+            ->whereIn('unit_class_id', $units->pluck('unit_class_id')->unique())
+            ->whereIn('site_id', $units->pluck('site_id')->unique())
+            ->groupBy('unit_class_id', 'site_id')
+            ->pluck('id');
+
+        $rateMap = [];
+
+        UnitClassRate::query()
+            ->with('price')
+            ->whereIn('id', $latestRateIds)
+            ->get()
+            ->each(function (UnitClassRate $rate) use (&$rateMap): void {
+                if ($rate->price === null) {
+                    return;
+                }
+
+                $rateMap[$rate->unit_class_id][$rate->site_id] = [
+                    'amount'   => $rate->price->amount,
+                    'currency' => $rate->price->currency,
+                ];
+            });
+
+        return $rateMap;
     }
 }
