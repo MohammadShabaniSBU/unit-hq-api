@@ -46,6 +46,9 @@ Route::middleware([
     Route::get('unit-classes/options', [Facility\UnitClassController::class, 'options']);
     Route::get('units/options', [Facility\UnitController::class, 'options']);
     Route::get('insurances/options', [Controllers\InsuranceController::class, 'options']);
+    Route::get('insurance-rate-matrix', [Facility\InsurancePriceMatrixController::class, 'index']);
+    Route::post('insurances/{insurance}/rates', [Facility\InsuranceRateController::class, 'store']);
+    Route::apiResource('insurances', Facility\InsurancePlanController::class)->only(['index', 'store', 'update']);
 
     Route::apiResource('sites', Facility\SiteController::class);
     Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
@@ -97,4 +100,6 @@ Route::middleware([
     Route::apiResource('unit-classes', Facility\UnitClassController::class);
 
     Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)->only(['index', 'store']);
+
+    Route::apiResource('email-templates', Controllers\EmailTemplateController::class);
 });
