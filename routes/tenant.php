@@ -102,4 +102,6 @@ Route::middleware([
     Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)->only(['index', 'store']);
 
     Route::apiResource('email-templates', Controllers\EmailTemplateController::class);
+
+    Route::apiResource('automations', Controllers\AutomationController::class);
 });
