@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\OfferResource;
 use App\Models\Offer;
 use App\Models\OfferOption;
+use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,7 @@ class OfferController extends Controller
             $offer = Offer::query()->create($validated);
 
             foreach ($options as $optionData) {
+                $optionData['unit_id'] = Unit::resolveUnitIdForRate($optionData['unit_class_rate_id']);
                 $offer->options()->create($optionData);
             }
 

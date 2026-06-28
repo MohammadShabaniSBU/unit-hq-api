@@ -22,6 +22,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('offer_id')->constrained('offers')->cascadeOnDelete();
             $table->foreignId('unit_class_rate_id')->constrained('unit_class_rates');
+            $table->foreignId('unit_id')->nullable()->constrained('units')->nullOnDelete();
             $table->foreignId('discount_id')->nullable()->constrained('discounts')->nullOnDelete();
             $table->string('label');
             $table->text('description')->nullable();

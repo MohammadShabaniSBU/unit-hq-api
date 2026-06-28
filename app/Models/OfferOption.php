@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int         $id
  * @property int         $offer_id
  * @property int         $unit_class_rate_id
+ * @property int|null    $unit_id
  * @property int|null    $discount_id
  * @property string      $label
  * @property string|null $description
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Offer             $offer
  * @property-read UnitClassRate     $unitClassRate
+ * @property-read Unit|null         $unit
  * @property-read Discount|null     $discount
  * @property-read Reservation|null  $reservation
  */
@@ -41,6 +43,7 @@ class OfferOption extends TenantModel
     protected $fillable = [
         'offer_id',
         'unit_class_rate_id',
+        'unit_id',
         'discount_id',
         'label',
         'description',
@@ -63,6 +66,7 @@ class OfferOption extends TenantModel
             'unitClassRate.unitClass',
             'unitClassRate.site',
             'unitClassRate.price',
+            'unit',
         ];
     }
 
@@ -76,6 +80,12 @@ class OfferOption extends TenantModel
     public function unitClassRate(): BelongsTo
     {
         return $this->belongsTo(UnitClassRate::class);
+    }
+
+    /** @return BelongsTo<Unit, OfferOption> */
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 
     /** @return BelongsTo<Discount, OfferOption> */

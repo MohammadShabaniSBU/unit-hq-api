@@ -63,14 +63,21 @@ class DealSeeder extends Seeder
                 $optionCount = fake()->numberBetween(1, min(3, $availableRates->count()));
                 $selectedRates = $availableRates->take($optionCount);
                 $selectedOption = null;
-                $selectedRate = null;
 
                 foreach ($selectedRates->values() as $index => $rate) {
                     $isFirst = $index === 0;
 
+                    $unit = Unit::query()
+                        ->reservable()
+                        ->where('unit_class_id', $rate->unit_class_id)
+                        ->where('site_id', $rate->site_id)
+                        ->inRandomOrder()
+                        ->first();
+
                     $option = OfferOption::create([
                         'offer_id'           => $offer->id,
                         'unit_class_rate_id' => $rate->id,
+                        'unit_id'            => $unit?->id,
                         'label'              => $rate->unitClass->label,
                         'description'        => fake()->optional(0.5)->sentence(),
                         'display_order'      => $index,
@@ -79,27 +86,18 @@ class DealSeeder extends Seeder
 
                     if ($offerStatus === 'accepted' && $isFirst) {
                         $selectedOption = $option;
-                        $selectedRate = $rate;
                     }
                 }
 
-                if ($offerStatus === 'accepted' && $selectedOption !== null && $selectedRate !== null) {
-                    $unit = Unit::query()
-                        ->where('unit_class_id', $selectedRate->unit_class_id)
-                        ->where('site_id', $selectedRate->site_id)
-                        ->inRandomOrder()
-                        ->first();
-
-                    if ($unit) {
-                        Reservation::create([
-                            'unit_id'         => $unit->id,
-                            'contact_id'      => $contact->id,
-                            'deal_id'         => $deal->id,
-                            'offer_option_id' => $selectedOption->id,
-                            'status'          => ReservationStatus::Confirmed,
-                            'expires_at'      => now()->addDays(14),
-                        ]);
-                    }
+                if ($offerStatus === 'accepted' && $selectedOption !== null && $selectedOption->unit_id !== null) {
+                    Reservation::create([
+                        'unit_id'         => $selectedOption->unit_id,
+                        'contact_id'      => $contact->id,
+                        'deal_id'         => $deal->id,
+                        'offer_option_id' => $selectedOption->id,
+                        'status'          => ReservationStatus::Confirmed,
+                        'expires_at'      => now()->addDays(14),
+                    ]);
                 }
             }
         });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\OfferOptionResource;
 use App\Models\OfferOption;
+use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,8 @@ class OfferOptionController extends Controller
             'description'    => ['nullable', 'string'],
             'display_order'  => ['required', 'integer', 'min:0'],
         ]);
+
+        $validated['unit_id'] = Unit::resolveUnitIdForRate($validated['unit_class_rate_id']);
 
         $offerOption = OfferOption::query()->create($validated);
 
@@ -39,6 +42,10 @@ class OfferOptionController extends Controller
             'description'    => ['sometimes', 'nullable', 'string'],
             'display_order'  => ['sometimes', 'required', 'integer', 'min:0'],
         ]);
+
+        if (array_key_exists('unit_class_rate_id', $validated)) {
+            $validated['unit_id'] = Unit::resolveUnitIdForRate($validated['unit_class_rate_id']);
+        }
 
         $offerOption->update($validated);
 

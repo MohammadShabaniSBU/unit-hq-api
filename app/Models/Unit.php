@@ -180,4 +180,20 @@ class Unit extends TenantModel
                     ->where('expires_at', '>', now());
             });
     }
+
+    public static function resolveUnitIdForRate(int $unitClassRateId): ?int
+    {
+        $rate = UnitClassRate::query()->find($unitClassRateId);
+
+        if ($rate === null) {
+            return null;
+        }
+
+        return static::query()
+            ->reservable()
+            ->where('unit_class_id', $rate->unit_class_id)
+            ->where('site_id', $rate->site_id)
+            ->inRandomOrder()
+            ->value('id');
+    }
 }
