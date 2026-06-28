@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\SettingKey;
 use App\Settings\BillingSettings;
 use App\Settings\GeneralSettings;
+use App\Settings\LeasingSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Carbon;
 
@@ -64,6 +65,23 @@ class Setting extends TenantModel
     {
         static::updateOrCreate(
             ['name' => SettingKey::Billing->value],
+            ['payload' => $settings->toArray()]
+        );
+    }
+
+    public static function leasing(): LeasingSettings
+    {
+        $setting = static::where('name', SettingKey::Leasing)->first();
+
+        return $setting
+            ? LeasingSettings::fromArray($setting->payload)
+            : LeasingSettings::default();
+    }
+
+    public static function setLeasing(LeasingSettings $settings): void
+    {
+        static::updateOrCreate(
+            ['name' => SettingKey::Leasing->value],
             ['payload' => $settings->toArray()]
         );
     }

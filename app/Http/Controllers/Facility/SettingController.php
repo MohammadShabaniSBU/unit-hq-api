@@ -67,4 +67,36 @@ class SettingController extends Controller
             'Billing settings updated successfully.'
         );
     }
+
+    public function showLeasing(): JsonResponse
+    {
+        return $this->success(
+            Setting::leasing()->toArray(),
+            'Leasing settings retrieved successfully.'
+        );
+    }
+
+    public function updateLeasing(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'default_offer_expiration_value'       => ['sometimes', 'required', 'integer', 'min:1'],
+            'default_offer_expiration_unit'        => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
+            'default_reservation_expiration_value' => ['sometimes', 'required', 'integer', 'min:1'],
+            'default_reservation_expiration_unit'  => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
+        ]);
+
+        Setting::setLeasing(
+            Setting::leasing()->with(
+                defaultOfferExpirationValue: $validated['default_offer_expiration_value'] ?? null,
+                defaultOfferExpirationUnit: $validated['default_offer_expiration_unit'] ?? null,
+                defaultReservationExpirationValue: $validated['default_reservation_expiration_value'] ?? null,
+                defaultReservationExpirationUnit: $validated['default_reservation_expiration_unit'] ?? null,
+            )
+        );
+
+        return $this->success(
+            Setting::leasing()->toArray(),
+            'Leasing settings updated successfully.'
+        );
+    }
 }

@@ -108,9 +108,12 @@ class TenantSeeder extends Seeder
         foreach ($unitClasses as $unitClass) {
             foreach (range(1, 25) as $n) {
                 $units->push(Unit::factory()->create([
-                    'site_id'       => $sites->random()->id,
-                    'unit_class_id' => $unitClass->id,
-                    'unit_number'   => sprintf('%s-%02d', $unitClass->code, $n),
+                    'site_id'        => $sites->random()->id,
+                    'unit_class_id'  => $unitClass->id,
+                    'unit_number'    => sprintf('%s-%02d', $unitClass->code, $n),
+                    'actual_width'   => fake()->randomFloat(2, 1.5, 5.0),
+                    'actual_depth'   => fake()->randomFloat(2, 2.0, 6.0),
+                    'actual_height'  => fake()->randomFloat(2, 2.0, 3.5),
                 ]));
             }
         }

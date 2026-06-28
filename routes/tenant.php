@@ -40,6 +40,8 @@ Route::middleware([
     Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);
     Route::get('settings/billing', [Facility\SettingController::class, 'showBilling']);
     Route::patch('settings/billing', [Facility\SettingController::class, 'updateBilling']);
+    Route::get('settings/leasing', [Facility\SettingController::class, 'showLeasing']);
+    Route::patch('settings/leasing', [Facility\SettingController::class, 'updateLeasing']);
 
     Route::get('countries/options', [Facility\CountryController::class, 'options']);
     Route::get('sites/options', [Facility\SiteController::class, 'options']);

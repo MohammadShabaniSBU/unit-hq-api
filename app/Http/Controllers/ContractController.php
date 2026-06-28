@@ -30,6 +30,13 @@ class ContractController extends Controller
             $query->where('status', $request->string('status'));
         }
 
+        if ($request->filled('unit_id')) {
+            $query->whereHas('items', function ($q) use ($request): void {
+                $q->where('item_type', 'unit')
+                  ->where('item_id', $request->integer('unit_id'));
+            });
+        }
+
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Contract $contract) => ContractResource::make($contract)),
             'Contracts retrieved successfully.'

@@ -22,7 +22,7 @@ class ReservationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Reservation::query()
-            ->with(['unit.site', 'unit.unitClass', 'contact', 'contract'])
+            ->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price'])
             ->latest();
 
         if ($request->filled('contact_id')) {
@@ -35,6 +35,10 @@ class ReservationController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('unit_id')) {
+            $query->where('unit_id', $request->integer('unit_id'));
         }
 
         return $this->paginated(
