@@ -81,6 +81,31 @@ class OfferController extends Controller
         );
     }
 
+    public function showByToken(string $token): JsonResponse
+    {
+        $offer = Offer::query()
+            ->where('token', $token)
+            ->with([
+                'contact',
+                'deal',
+                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads())
+                    ->orderBy('display_order'),
+            ])
+            ->firstOrFail();
+
+        if (is_null($offer->first_viewed_at)) {
+            $offer->update([
+                'first_viewed_at' => now(),
+                'status'          => 'viewed',
+            ]);
+        }
+
+        return $this->success(
+            OfferResource::make($offer),
+            'Offer retrieved successfully.'
+        );
+    }
+
     public function show(Offer $offer): JsonResponse
     {
         return $this->success(

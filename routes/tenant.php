@@ -83,11 +83,13 @@ Route::middleware([
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::apiResource('deals', Controllers\DealController::class);
 
+    Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
     Route::apiResource('offers', Controllers\OfferController::class);
 
     Route::post('offer-options', [Controllers\OfferOptionController::class, 'store']);
     Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'update']);
     Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
+    Route::post('offer-options/{offerOption}/select', [Controllers\OfferOptionController::class, 'select']);
 
     Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
     Route::apiResource('reservations', Controllers\ReservationController::class);
