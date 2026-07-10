@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int    $id
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array  $props
  * @property int    $order
  */
-class EmailBlock extends TenantModel
+class EmailBlock extends Model
 {
     protected $fillable = [
         'email_template_id',

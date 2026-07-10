@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Defines an operator-configurable custom field for a specific entity type.
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Collection<int, PropertyValue> $values
  */
-class PropertyDefinition extends TenantModel
+class PropertyDefinition extends Model
 {
     use HasFactory;
 

@@ -12,8 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /**
- * Company staff who operate the tenant dashboard.
- * Authenticatable within the tenant DB — no cross-tenant access.
+ * Company staff who operate the dashboard.
  *
  * @property int    $id
  * @property string $name
@@ -33,8 +32,6 @@ use Illuminate\Support\Carbon;
 class Employee extends Authenticatable
 {
     use HasFactory, Notifiable;
-
-    protected $connection = 'tenant';
 
     protected function casts(): array
     {

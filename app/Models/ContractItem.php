@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * A single line item on a contract. Uses a polymorphic relation so that
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property-read Contract         $contract
  * @property-read Unit|Insurance   $item
  */
-class ContractItem extends TenantModel
+class ContractItem extends Model
 {
     use HasFactory;
 

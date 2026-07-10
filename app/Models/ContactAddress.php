@@ -6,6 +6,7 @@ use App\Enums\ContactAddressType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Structured address for a contact (home, work, billing, other).
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contact       $contact
  * @property-read Country|null  $country
  */
-class ContactAddress extends TenantModel
+class ContactAddress extends Model
 {
     use HasFactory;
 

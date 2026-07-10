@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only credit entry. Confirmed from Stripe webhooks using
@@ -29,7 +30,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Allocation> $allocations
  * @property-read StripeWebhookEvent|null     $webhookEvent
  */
-class Payment extends TenantModel
+class Payment extends Model
 {
     use HasFactory;
 

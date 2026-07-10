@@ -6,9 +6,9 @@ unit-hq — Self-Storage SaaS Platform
 
 ## Product goal
 
-A complete all-in-one digital platform for self-storage companies, built as multi-tenant B2B SaaS. The platform covers facility management, payments and billing, and a CRM for lead tracking. Operators should never need another application.
+A complete all-in-one digital platform for a self-storage company. The platform covers facility management, payments and billing, and a CRM for lead tracking. Operators should never need another application.
 
-Each storage company (tenant) gets an isolated database. The platform is operated by platform administrators who provision and manage tenants.
+The platform runs as a single-company deployment against one database. A superadmin (`User`) administers the deployment itself; day-to-day operation is done by company staff (`Employee`).
 
 ---
 
@@ -16,21 +16,14 @@ Each storage company (tenant) gets an isolated database. The platform is operate
 
 ```mermaid
 flowchart TD
-    subgraph platform [Platform]
-        PA["Platform Admins (users)"]
-        TR["Tenant Registry (tenants)"]
-    end
-
-    subgraph tenant [Per-Tenant]
+    subgraph app [Application]
+        SA["Superadmin (users)"]
         EMP["Employees (company staff)"]
         CRM["CRM — Contacts, Deals, Offers"]
         FAC["Facility — Sites, Units"]
         BIL["Billing — Ledger, Invoices"]
         STR["Stripe Connect"]
     end
-
-    PA --> TR
-    TR -->|"routes DB connection"| tenant
 ```
 
 ---
@@ -195,7 +188,7 @@ None of these are stored as columns — they are always computed at query time t
 
 ### Architecture
 
-The platform uses **Stripe Connect** with one connected account per storage company. Stripe account info lives in the platform-level `tenants` table.
+The platform uses **Stripe Connect** with a single connected account for the company.
 
 - **Existing operators** connect via OAuth
 - **New operators** use Stripe-hosted onboarding
@@ -213,9 +206,6 @@ Stripe events are inputs reconciled against the ledger — the ledger remains th
 
 ```
 Stripe webhook received
-  → platform reads account from event
-  → looks up tenants by stripe_connect_account_id
-  → routes to that tenant's DB
   → inserts stripe_webhook_events row (status: pending)
   → reconciles against idempotency_key on payments table
   → if new: inserts payment + allocations
@@ -255,13 +245,13 @@ Append-only comment log. Attachable to `Contact`, `Deal`, `Task`, and `Reservati
 
 ## People model
 
-Three distinct human models with different scopes and purposes:
+Three distinct human models with different scopes and purposes, all in a single database:
 
-| Model | Database | Purpose | Authenticates |
-|-------|----------|---------|---------------|
-| `User` | Platform DB | Platform administrator — provisions and manages tenants | Yes — platform dashboard |
-| `Employee` | Tenant DB | Company staff — operates the tenant dashboard | Yes — operator dashboard |
-| `Contact` | Tenant DB | Prospective or current renter | No — interacts via shareable offer token |
+| Model | Purpose | Authenticates |
+|-------|---------|---------------|
+| `User` | Superadmin — administers the deployment itself | Yes — superadmin access |
+| `Employee` | Company staff — operates the dashboard | Yes — operator dashboard |
+| `Contact` | Prospective or current renter | No — interacts via shareable offer token |
 
 ---
 

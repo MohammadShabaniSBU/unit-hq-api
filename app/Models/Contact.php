@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Durable identity record for prospective and current renters.
@@ -53,7 +54,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Note>        $notes
  * @property-read Collection<int, PropertyValue> $propertyValues
  */
-class Contact extends TenantModel
+class Contact extends Model
 {
     use HasFactory, HasNotes;
 

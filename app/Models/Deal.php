@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use App\Models\Reservation;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * The pursuit record. Starts when someone expresses interest and ends when
@@ -45,7 +46,7 @@ use App\Models\Reservation;
  * @property-read Collection<int, Task>            $tasks
  * @property-read Collection<int, Note>              $notes
  */
-class Deal extends TenantModel
+class Deal extends Model
 {
     use HasFactory, HasNotes;
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * SVG floor plan for a site. A site may have multiple maps (e.g. per floor).
@@ -19,7 +20,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Site $site
  */
-class SiteMap extends TenantModel
+class SiteMap extends Model
 {
     use HasFactory;
 

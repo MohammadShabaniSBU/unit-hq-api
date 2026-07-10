@@ -17,15 +17,11 @@ class MorphDatabaseSessionHandler extends DatabaseSessionHandler
             return $this;
         }
 
-        if (tenancy()->initialized) {
-            $user = $this->container->make(Guard::class)->user();
+        $user = $this->container->make(Guard::class)->user();
 
-            $payload['sessionable_type'] = $user instanceof Authenticatable ? $user->getMorphClass() : null;
-            $payload['sessionable_id'] = $user instanceof Authenticatable ? $user->getKey() : null;
+        $payload['sessionable_type'] = $user instanceof Authenticatable ? $user->getMorphClass() : null;
+        $payload['sessionable_id'] = $user instanceof Authenticatable ? $user->getKey() : null;
 
-            return $this;
-        }
-
-        return parent::addUserInformation($payload);
+        return $this;
     }
 }

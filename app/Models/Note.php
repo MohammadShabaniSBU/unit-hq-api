@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only note log. Attachable to Contact, Deal, Offer, Contract, and Reservation.
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property-read \Illuminate\Database\Eloquent\Model $notable
  * @property-read Employee $employee
  */
-class Note extends TenantModel
+class Note extends Model
 {
     use HasFactory;
 

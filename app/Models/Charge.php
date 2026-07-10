@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only debit entry. Never updated or deleted.
@@ -31,7 +32,7 @@ use Illuminate\Support\Carbon;
  * @property-read Charge|null                  $reversalOf
  * @property-read Collection<int, Allocation>  $allocations
  */
-class Charge extends TenantModel
+class Charge extends Model
 {
     use HasFactory;
 

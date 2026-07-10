@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Operational and billing anchor created at contract signing.
@@ -42,7 +43,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Payment>         $payments
  * @property-read Collection<int, Note>              $notes
  */
-class Contract extends TenantModel
+class Contract extends Model
 {
     use HasFactory, HasNotes;
 

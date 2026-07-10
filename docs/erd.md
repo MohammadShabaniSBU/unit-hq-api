@@ -4,18 +4,14 @@ Self-Storage SaaS — unit-hq
 
 ---
 
-## Multi-tenancy architecture
+## Architecture
 
-This platform uses a **database-per-tenant** model. Two distinct database scopes exist.
+This platform runs as a **single database** for one storage company. There is no per-tenant database routing and no `company_id` FK columns — the whole database implicitly belongs to the one company running it.
 
 ```mermaid
 flowchart LR
-    subgraph platform_db [Platform_DB]
-        users["users (admins)"]
-        tenants["tenants (routing registry)"]
-    end
-
-    subgraph tenant_db [Tenant_DB_per_company]
+    subgraph db [Database]
+        users["users (superadmin)"]
         employees
         contacts
         sites
@@ -26,13 +22,7 @@ flowchart LR
         ledger["charges / payments / allocations"]
         stripe_events["stripe_webhook_events"]
     end
-
-    users -->|"manage"| tenants
-    tenants -->|"routes to"| tenant_db
 ```
-
-- **Platform DB** — one shared database for the platform. Holds admin users and a tenant routing table only.
-- **Tenant DB** — one database per storage company. Holds all domain data. No `company_id` FK columns; isolation is enforced at the DB connection level.
 
 ---
 
@@ -40,8 +30,8 @@ flowchart LR
 
 | Rule | Implication |
 |------|-------------|
-| DB-per-tenant isolation | No `company_id` FK on tenant DB tables; scope enforced by connection routing |
-| Three human models | `users` (platform admins), `employees` (company staff), `contacts` (prospective renters) |
+| Single database | No `company_id` FK anywhere; the whole database belongs to the one company running it |
+| Three human models | `users` (superadmin), `employees` (company staff), `contacts` (prospective renters) |
 | No Building model | Facility hierarchy is Site → Unit only |
 | Money never as float | `NUMERIC(10,2)` on all monetary columns |
 | Price immutability | `effective_from` / `effective_to`; rate changes = new `prices` row, never UPDATE in place |
@@ -51,11 +41,11 @@ flowchart LR
 | Offer token security | `offers.token` is a crypto-random URL-safe string, not the PK |
 | Single option selection | Partial unique index on `offer_options(offer_id) WHERE selected_at IS NOT NULL` |
 | Pipeline order | Contact → Deal → Offer → OfferOption → Reservation → Lease |
-| Stripe Connect | One connected account per tenant; Stripe info lives in Platform DB `tenants` table |
+| Stripe Connect | One connected account for the company |
 
 ---
 
-## High-level domain map (Tenant DB)
+## High-level domain map
 
 ```mermaid
 flowchart TB
@@ -123,7 +113,7 @@ sequenceDiagram
 
 ---
 
-## 1. Platform DB
+## 1. Users (Superadmin)
 
 ```mermaid
 erDiagram
@@ -136,29 +126,14 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-
-    tenants {
-        bigint id PK
-        varchar name
-        varchar slug UK
-        varchar db_connection "connection name or DSN"
-        varchar stripe_connect_account_id UK "nullable until onboarded"
-        varchar stripe_onboarding_status "pending|active|restricted"
-        timestamptz created_at
-        timestamptz updated_at
-    }
 ```
 
 **Notes:**
-- `users` are platform administrators only — they can create, edit, and delete tenants.
-- `tenants` is the routing registry — the application reads `db_connection` to resolve which database to use for a request.
-- Stripe Connect account info lives here because it is tenant-wide, not tied to any domain row inside the tenant DB.
-
-**Indexes:** `tenants(slug)` UNIQUE, `tenants(stripe_connect_account_id)` UNIQUE
+- `users` are superadmins who administer the deployment itself, separate from company staff (`employees`).
 
 ---
 
-## 2. Tenant DB — People
+## 2. People
 
 ```mermaid
 erDiagram
@@ -184,15 +159,15 @@ erDiagram
 ```
 
 **Notes:**
-- `employees` authenticate into the operator dashboard. `role` controls what they can do within the tenant.
+- `employees` authenticate into the operator dashboard. `role` controls what they can do within the company.
 - `contacts` are durable identity records for people who enquire or rent. Not all contacts will become tenants.
-- No `company_id` — every row in the tenant DB is implicitly scoped to that company by the DB connection.
+- No `company_id` — there is only one company, so no scoping column is needed.
 
 **Indexes:** `employees(email)` UNIQUE, `contacts(email)`
 
 ---
 
-## 3. Tenant DB — Facility Management
+## 3. Facility Management
 
 Hierarchy: **Site → Unit** (no Building layer).
 
@@ -245,7 +220,7 @@ erDiagram
 
 ---
 
-## 4. Tenant DB — Pricing
+## 4. Pricing
 
 ```mermaid
 erDiagram
@@ -317,7 +292,7 @@ erDiagram
 
 ---
 
-## 5. Tenant DB — CRM, Offers, and Pipeline
+## 5. CRM, Offers, and Pipeline
 
 Pipeline: **Contact → Deal → Offer → OfferOption → Reservation → Lease**
 
@@ -431,7 +406,7 @@ erDiagram
 
 ---
 
-## 6. Tenant DB — Billing and Ledger
+## 6. Billing and Ledger
 
 Three layers: **ledger entries** → **invoice grouping** → **payment-to-charge allocation**.
 
@@ -504,7 +479,7 @@ erDiagram
 
 ---
 
-## 7. Tenant DB — Stripe Reconciliation
+## 7. Stripe Reconciliation
 
 ```mermaid
 erDiagram
@@ -523,15 +498,14 @@ erDiagram
 ```
 
 **Integration notes:**
-- No `company_id` column — the row is already in the tenant's own DB.
-- Webhook routing: platform receives event, reads `account` from Stripe payload, looks up `tenants(stripe_connect_account_id)`, routes to that tenant's DB.
+- No `company_id` column — there is only one company and one connected Stripe account.
 - Payment confirmation from webhooks + `idempotency_key` — never optimistically from the client.
 - Ledger is the system of record; Stripe events are inputs reconciled against it.
 - Accounts v2; connected account is the merchant of record wherever possible.
 
 ---
 
-## 8. Tenant DB — Dynamic Properties (Polymorphic)
+## 8. Dynamic Properties (Polymorphic)
 
 Operator-defined custom fields for any entity. Currently attached to `units`; extensible to `contacts` or any other model with no schema change.
 
@@ -575,7 +549,7 @@ erDiagram
 
 ---
 
-## 9. Tenant DB — Tasks
+## 9. Tasks
 
 Polymorphic task system. Attachable to `Deal` and `Contact` today; extensible to any entity with no schema change.
 
@@ -610,7 +584,7 @@ erDiagram
 
 ---
 
-## 10. Tenant DB — Comments
+## 10. Comments
 
 Append-only comment log. Attachable to `Contact`, `Deal`, `Task`, and `Reservation`.
 
@@ -659,8 +633,8 @@ erDiagram
 ## 12. Open / TBD items
 
 1. **Discount model** — `discount_type`, `value`, and effective-date rules need formalization before this table is used in production logic.
-2. **Revenue model** — application fee vs SaaS subscription (or both) affects a future `platform_charges` table in the Platform DB.
-3. **Jurisdiction rules** — configurable late-fee / lien thresholds need a future `jurisdiction_rules` table in the Tenant DB.
+2. **Revenue model** — application fee vs subscription (or both) affects a future `platform_charges` table.
+3. **Jurisdiction rules** — configurable late-fee / lien thresholds need a future `jurisdiction_rules` table.
 4. **InsuranceRate scoping** — whether rates vary by site is not yet explicit in the spec; current ERD shows plan-level junction only.
 5. **Promotions** — separate from `Discount` per the original spec; stub only until further definition.
 6. **Property validation** — server-side validation of `property_values.value` against `data_type` and `options` (application layer vs DB check constraint) is undecided.

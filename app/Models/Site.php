@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * A physical storage facility location. Top of the tenant facility hierarchy.
@@ -28,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  * @property-read Collection<int, SiteMap>       $siteMaps
  */
-class Site extends TenantModel
+class Site extends Model
 {
     use HasFactory;
 

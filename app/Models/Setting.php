@@ -8,6 +8,7 @@ use App\Settings\GeneralSettings;
 use App\Settings\LeasingSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Tenant-scoped settings store. Each row holds one setting type with a typed JSON payload.
@@ -18,7 +19,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  */
-class Setting extends TenantModel
+class Setting extends Model
 {
     use HasFactory;
 

@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
 
-class AgentConversation extends TenantModel
+class AgentConversation extends Model
 {
     protected $table = 'agent_conversations';
 

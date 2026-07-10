@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AutomationRunStepStatus;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * The execution record for a single node within a run.
@@ -32,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property-read AutomationRun       $run
  * @property-read AutomationNode|null $node
  */
-class AutomationRunStep extends TenantModel
+class AutomationRunStep extends Model
 {
     protected $fillable = [
         'run_id',

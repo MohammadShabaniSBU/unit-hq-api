@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use App\Models\Deal;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Inventory hold record. Always references a specific unit — never a class.
@@ -36,7 +37,7 @@ use App\Models\Deal;
  * @property-read Contract|null     $contract
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Note> $notes
  */
-class Reservation extends TenantModel
+class Reservation extends Model
 {
     use HasFactory, HasNotes;
 

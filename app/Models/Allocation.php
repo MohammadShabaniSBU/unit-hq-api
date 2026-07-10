@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Maps a payment to a charge for a specific amount. Append-only.
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property-read Payment $payment
  * @property-read Charge  $charge
  */
-class Allocation extends TenantModel
+class Allocation extends Model
 {
     use HasFactory;
 

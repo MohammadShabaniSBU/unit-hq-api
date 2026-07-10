@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Commercial product definition. Defines the size and pricing for a category of units.
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Unit>          $units
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  */
-class UnitClass extends TenantModel
+class UnitClass extends Model
 {
     use HasFactory;
 

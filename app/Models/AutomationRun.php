@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * A single execution instance of an automation.
@@ -31,7 +32,7 @@ use Illuminate\Support\Carbon;
  * @property-read Automation|null                     $automation
  * @property-read Collection<int, AutomationRunStep>  $steps
  */
-class AutomationRun extends TenantModel
+class AutomationRun extends Model
 {
     protected $fillable = [
         'automation_id',

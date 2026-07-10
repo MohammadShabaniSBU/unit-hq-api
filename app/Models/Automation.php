@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Top-level automation definition — a named, versioned flow graph.
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, AutomationEdge> $edges
  * @property-read Collection<int, AutomationRun>  $runs
  */
-class Automation extends TenantModel
+class Automation extends Model
 {
     protected $fillable = [
         'name',

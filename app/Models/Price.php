@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Immutable monetary amount record. Never updated in place.
@@ -25,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read Employee                       $creator
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  */
-class Price extends TenantModel
+class Price extends Model
 {
     use HasFactory;
 

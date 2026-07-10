@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int         $id
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, InsuranceRate>  $rates
  * @property-read Collection<int, ContractItem>  $contractItems
  */
-class Insurance extends TenantModel
+class Insurance extends Model
 {
     use HasFactory;
 

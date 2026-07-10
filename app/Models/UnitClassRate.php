@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Junction: a unit class priced per site. A new row is inserted on each
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property-read Site      $site
  * @property-read Price     $price
  */
-class UnitClassRate extends TenantModel
+class UnitClassRate extends Model
 {
     use HasFactory;
 

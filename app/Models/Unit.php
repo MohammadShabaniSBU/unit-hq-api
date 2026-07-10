@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Physical unit instance. References its class for commercial attributes
@@ -41,7 +42,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, ContractItem>  $contractItems
  * @property-read Collection<int, PropertyValue> $propertyValues
  */
-class Unit extends TenantModel
+class Unit extends Model
 {
     use HasFactory;
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Line item inside an offer. References a UnitClassRate snapshot so site,
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property-read Discount|null     $discount
  * @property-read Reservation|null  $reservation
  */
-class OfferOption extends TenantModel
+class OfferOption extends Model
 {
     use HasFactory;
 

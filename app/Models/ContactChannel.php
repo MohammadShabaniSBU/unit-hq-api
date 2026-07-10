@@ -6,6 +6,7 @@ use App\Enums\ContactChannelType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Communication channel for a contact (phone, SMS, WhatsApp, secondary email).
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Contact $contact
  */
-class ContactChannel extends TenantModel
+class ContactChannel extends Model
 {
     use HasFactory;
 

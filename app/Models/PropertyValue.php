@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Stores the value of a PropertyDefinition for a specific entity instance.
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property-read PropertyDefinition $definition
  * @property-read \Illuminate\Database\Eloquent\Model $propertable
  */
-class PropertyValue extends TenantModel
+class PropertyValue extends Model
 {
     use HasFactory;
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Raw Stripe webhook event stored for reconciliation.
@@ -24,7 +25,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Payment|null $payment
  */
-class StripeWebhookEvent extends TenantModel
+class StripeWebhookEvent extends Model
 {
     use HasFactory;
 

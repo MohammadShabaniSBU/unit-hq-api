@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Commercial proposal. Sits between Deal and Reservation in the pipeline.
@@ -40,7 +41,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, OfferDelivery>  $deliveries
  * @property-read Collection<int, Note>             $notes
  */
-class Offer extends TenantModel
+class Offer extends Model
 {
     use HasFactory, HasNotes;
 

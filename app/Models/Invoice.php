@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Groups charges for a billing period. Invoices are a view over charges —
@@ -24,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contract                 $contract
  * @property-read Collection<int, Charge>  $charges
  */
-class Invoice extends TenantModel
+class Invoice extends Model
 {
     use HasFactory;
 

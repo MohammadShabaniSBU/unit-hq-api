@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Polymorphic task. Attachable to Deal, Contact, Contract, Unit, or any future
@@ -38,7 +39,7 @@ use Illuminate\Support\Carbon;
  * @property-read Employee|null $assignee
  * @property-read Employee      $creator
  */
-class Task extends TenantModel
+class Task extends Model
 {
     use HasFactory;
 

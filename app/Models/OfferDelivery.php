@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * One row per send event. An offer can be resent across multiple channels
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Offer $offer
  */
-class OfferDelivery extends TenantModel
+class OfferDelivery extends Model
 {
     use HasFactory;
 

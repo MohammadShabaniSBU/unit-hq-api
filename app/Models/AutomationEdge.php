@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * A directed connection between two nodes in the automation graph.
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property-read AutomationNode $sourceNode
  * @property-read AutomationNode $targetNode
  */
-class AutomationEdge extends TenantModel
+class AutomationEdge extends Model
 {
     protected $fillable = [
         'automation_id',

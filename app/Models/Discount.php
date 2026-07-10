@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * TBD: discount_type (percentage|fixed_amount) and effective-date rules
@@ -22,7 +23,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Collection<int, OfferOption> $offerOptions
  */
-class Discount extends TenantModel
+class Discount extends Model
 {
     use HasFactory;
 
