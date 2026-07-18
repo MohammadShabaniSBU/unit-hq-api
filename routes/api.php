@@ -17,6 +17,10 @@ Route::get('settings/billing', [Facility\SettingController::class, 'showBilling'
 Route::patch('settings/billing', [Facility\SettingController::class, 'updateBilling']);
 Route::get('settings/leasing', [Facility\SettingController::class, 'showLeasing']);
 Route::patch('settings/leasing', [Facility\SettingController::class, 'updateLeasing']);
+Route::get('settings/activity-log', [Facility\SettingController::class, 'showActivityLog']);
+Route::patch('settings/activity-log', [Facility\SettingController::class, 'updateActivityLog']);
+
+Route::get('activities', [Controllers\ActivityController::class, 'index']);
 
 Route::get('countries/options', [Facility\CountryController::class, 'options']);
 Route::get('sites/options', [Facility\SiteController::class, 'options']);

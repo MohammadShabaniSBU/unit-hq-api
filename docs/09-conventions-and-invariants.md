@@ -15,10 +15,13 @@
 6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.
 7. **One selected option per offer** — enforced by partial unique index on `offer_id WHERE selected_at IS NOT NULL`.
 8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
-9. **Money is `NUMERIC(10,2)`** — never floats.
+9. **Money is `NUMERIC(10,2)`** — never floats. Same in activitylog `properties`: store amounts as strings (e.g. `"184.90"`), never floats.
 10. **Payments confirmed from Stripe webhooks + idempotency keys** — never optimistically from the client. Ledger is the system of record; Stripe events are reconciled inputs.
 11. **Offer acceptance is one transaction** — `selected_at` + status flip + reservation insert together.
 12. **Offer expiry is read-time**, not a background job.
+13. **Activitylog `description` is a machine key** (e.g. `deal.stage_changed`, `contract.signed`) — never a human sentence. Panel translates via i18n.
+14. **Activity / system_events are append-only** — no update/delete endpoints. Prune and GDPR redaction commands are the only writers that mutate history.
+15. **Manual activity rows go through `RecordsActivity`** with a `LogChannel` — never bare `activity()` without `log_name`.
 
 ## Code conventions
 

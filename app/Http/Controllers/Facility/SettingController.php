@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Facility;
 
+use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
@@ -97,6 +98,35 @@ class SettingController extends Controller
         return $this->success(
             Setting::leasing()->toArray(),
             'Leasing settings updated successfully.'
+        );
+    }
+
+    public function showActivityLog(): JsonResponse
+    {
+        return $this->success(
+            Setting::activityLog()->toArray(),
+            'Activity log settings retrieved successfully.'
+        );
+    }
+
+    public function updateActivityLog(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'channels' => ['sometimes', 'required', 'array'],
+            'channels.*' => ['string', Rule::in(LogChannel::optionalValues())],
+            'retention_months' => ['sometimes', 'required', 'integer', 'min:3', 'max:60'],
+        ]);
+
+        Setting::setActivityLog(
+            Setting::activityLog()->with(
+                channels: $validated['channels'] ?? null,
+                retentionMonths: $validated['retention_months'] ?? null,
+            )
+        );
+
+        return $this->success(
+            Setting::activityLog()->toArray(),
+            'Activity log settings updated successfully.'
         );
     }
 }

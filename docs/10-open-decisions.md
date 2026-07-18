@@ -8,6 +8,7 @@
 - Interaction model name (over CommunicationLog / Communication).
 - Insurance is **site-scoped** via InsuranceRate.
 - Stripe Connect with the company's connected account as merchant of record.
+- **GDPR activity/system_events redaction:** `contacts:redact {contact}` nulls an allowlisted set of JSON keys in `activity_log.properties` and surviving `system_events.payload` for rows whose subject is that contact, then inserts a tier-3 `contact.redacted` event (fact only — never what was removed). Config: `config/redaction.php`.
 
 ## Undecided
 
@@ -18,7 +19,7 @@
 | Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
 | Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |
 | Task reminders | Delivery channel undecided |
-| GDPR | Note/comment redaction approach |
+| GDPR | Note/comment redaction approach (activity log redaction decided above) |
 
 ## Active WIP (from git status)
 

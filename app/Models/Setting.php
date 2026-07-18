@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SettingKey;
+use App\Settings\ActivityLogSettings;
 use App\Settings\BillingSettings;
 use App\Settings\GeneralSettings;
 use App\Settings\LeasingSettings;
@@ -83,6 +84,23 @@ class Setting extends Model
     {
         static::updateOrCreate(
             ['name' => SettingKey::Leasing->value],
+            ['payload' => $settings->toArray()]
+        );
+    }
+
+    public static function activityLog(): ActivityLogSettings
+    {
+        $setting = static::where('name', SettingKey::ActivityLog)->first();
+
+        return $setting
+            ? ActivityLogSettings::fromArray($setting->payload)
+            : ActivityLogSettings::default();
+    }
+
+    public static function setActivityLog(ActivityLogSettings $settings): void
+    {
+        static::updateOrCreate(
+            ['name' => SettingKey::ActivityLog->value],
             ['payload' => $settings->toArray()]
         );
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\DiscountType;
+use App\Enums\LogChannel;
+use App\Models\Concerns\LogsDirtyActivity;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,7 +28,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Discount extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsDirtyActivity;
+
+    protected function activityLogChannel(): LogChannel
+    {
+        return LogChannel::Facility;
+    }
 
     const UPDATED_AT = null;
 

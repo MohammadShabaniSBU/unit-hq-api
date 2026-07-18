@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\LogChannel;
+use App\Models\Concerns\LogsDirtyActivity;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,7 +31,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class UnitClass extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsDirtyActivity;
+
+    protected function activityLogChannel(): LogChannel
+    {
+        return LogChannel::Facility;
+    }
 
     protected $fillable = [
         'code',

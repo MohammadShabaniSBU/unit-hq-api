@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\ContactChannelType;
+use App\Enums\LogChannel;
+use App\Models\Concerns\LogsDirtyActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -26,7 +28,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ContactChannel extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsDirtyActivity;
+
+    protected function activityLogChannel(): LogChannel
+    {
+        return LogChannel::Crm;
+    }
 
     protected $fillable = [
         'contact_id',

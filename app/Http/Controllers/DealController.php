@@ -7,6 +7,7 @@ use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
 use App\Http\Resources\DealResource;
 use App\Models\Deal;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,6 +47,10 @@ class DealController extends Controller
         ]);
 
         $deal = Deal::query()->create($validated);
+
+        RecordsActivity::core('deal.created', $deal, [
+            'status' => $deal->status?->value ?? $deal->status,
+        ]);
 
         return $this->created(
             DealResource::make($deal->load('desiredUnitClass')),
@@ -89,10 +94,31 @@ class DealController extends Controller
             'desired_unit_class_id' => ['sometimes', 'nullable', 'integer', 'exists:unit_classes,id'],
         ]);
 
+        $previousStatus = $deal->status;
         $deal->update($validated);
+        $deal = $deal->fresh()->load('desiredUnitClass');
+
+        if (array_key_exists('status', $validated)) {
+            $newStatus = $deal->status;
+            $from = $previousStatus instanceof DealStatus ? $previousStatus->value : $previousStatus;
+            $to = $newStatus instanceof DealStatus ? $newStatus->value : $newStatus;
+
+            if ($from !== $to) {
+                RecordsActivity::core('deal.stage_changed', $deal, [
+                    'from' => $from,
+                    'to' => $to,
+                ]);
+
+                if ($newStatus === DealStatus::ClosedWon) {
+                    RecordsActivity::core('deal.won', $deal, ['status' => $to]);
+                } elseif ($newStatus === DealStatus::ClosedLost) {
+                    RecordsActivity::core('deal.lost', $deal, ['status' => $to]);
+                }
+            }
+        }
 
         return $this->success(
-            DealResource::make($deal->fresh()->load('desiredUnitClass')),
+            DealResource::make($deal),
             'Deal updated successfully.'
         );
     }

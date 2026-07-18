@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Models\Insurance;
 use App\Models\Unit;
 use App\Session\MorphDatabaseSessionHandler;
+use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 
@@ -39,6 +42,20 @@ class AppServiceProvider extends ServiceProvider
                 $config->get('session.lifetime'),
                 $app,
             );
+        });
+
+        Queue::createPayloadUsing(function (): array {
+            $requestId = RequestId::get();
+
+            return $requestId !== null ? ['request_id' => $requestId] : [];
+        });
+
+        Queue::before(function (JobProcessing $event): void {
+            $requestId = $event->job->payload()['request_id'] ?? null;
+
+            if (is_string($requestId) && $requestId !== '') {
+                RequestId::set($requestId);
+            }
         });
     }
 }

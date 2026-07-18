@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\HasNotes;
-
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
-use App\Enums\DealStatus;
 use App\Enums\ContractStatus;
+use App\Enums\DealStatus;
+use App\Enums\LogChannel;
 use App\Enums\ReservationStatus;
+use App\Models\Concerns\HasNotes;
+use App\Models\Concerns\LogsDirtyActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -56,7 +57,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Contact extends Model
 {
-    use HasFactory, HasNotes;
+    use HasFactory, HasNotes, LogsDirtyActivity;
+
+    protected function activityLogChannel(): LogChannel
+    {
+        return LogChannel::Crm;
+    }
 
     protected $fillable = [
         'first_name',

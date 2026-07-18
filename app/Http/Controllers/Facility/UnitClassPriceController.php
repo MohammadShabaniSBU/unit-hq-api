@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Facility;
 
+use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\Price;
@@ -9,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -92,6 +94,15 @@ class UnitClassPriceController extends Controller
                 'unit_class_id' => $unitClass->id,
                 'site_id'       => $validated['site_id'],
                 'price_id'      => $price->id,
+            ]);
+
+            RecordsActivity::log(LogChannel::Facility, 'rate.changed', $unitClass, [
+                'unit_class_id' => $unitClass->id,
+                'site_id' => $validated['site_id'],
+                'old_price_id' => $existingRate?->price_id,
+                'new_price_id' => $price->id,
+                'amount' => (string) $price->amount,
+                'currency' => $price->currency,
             ]);
 
             $site = Site::query()->findOrFail($validated['site_id']);

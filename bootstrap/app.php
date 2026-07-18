@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\AssignRequestId;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,7 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->append(AssignRequestId::class);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('system-events:maintain')->daily();
+        $schedule->command('activitylog:prune-tiers')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

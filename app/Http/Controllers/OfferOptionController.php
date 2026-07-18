@@ -9,7 +9,9 @@ use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Reservation;
 use App\Models\Setting;
+use App\Models\SystemEvent;
 use App\Models\Unit;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -89,6 +91,10 @@ class OfferOptionController extends Controller
             ]);
         }
 
+        SystemEvent::record('offer.accept.started', $offer, [
+            'offer_option_id' => $offerOption->id,
+        ]);
+
         $offer = DB::transaction(function () use ($offerOption): Offer {
             $offer = Offer::query()->whereKey($offerOption->offer_id)->lockForUpdate()->firstOrFail();
 
@@ -130,6 +136,21 @@ class OfferOptionController extends Controller
                 'status'          => ReservationStatus::Pending,
                 'expires_at'      => $this->reservationExpiresAt(),
             ]);
+
+            SystemEvent::record('offer.accept.committed', $offer, [
+                'offer_option_id' => $offerOption->id,
+                'unit_id' => $unitId,
+            ]);
+
+            $props = [
+                'offer_option_id' => $offerOption->id,
+                'unit_id' => $unitId,
+            ];
+            RecordsActivity::core('offer.accepted', $offer, $props);
+            $offer->loadMissing('contact');
+            if ($offer->contact !== null) {
+                RecordsActivity::core('offer.accepted', $offer->contact, $props);
+            }
 
             return $offer->fresh()->load([
                 'contact',

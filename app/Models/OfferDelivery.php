@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\LogChannel;
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -43,6 +45,22 @@ class OfferDelivery extends Model
             'sent_at'      => 'datetime',
             'delivered_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Log offer.sent once on create. Status flaps (queued→sent→delivered) stay tier-1 only.
+        static::created(function (self $delivery): void {
+            $delivery->loadMissing('offer');
+            if ($delivery->offer === null) {
+                return;
+            }
+
+            RecordsActivity::log(LogChannel::Comms, 'offer.sent', $delivery->offer, [
+                'channel' => $delivery->channel,
+                'delivery_id' => $delivery->id,
+            ]);
+        });
     }
 
     /** @return BelongsTo<Offer, OfferDelivery> */

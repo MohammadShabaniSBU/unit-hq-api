@@ -6,6 +6,7 @@ use App\Enums\ContractStatus;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\Unit;
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,6 +81,13 @@ class ContractController extends Controller
                 ]);
             }
 
+            $signedProps = ['reservation_id' => $contract->reservation_id];
+            RecordsActivity::core('contract.signed', $contract, $signedProps);
+            $contract->loadMissing('contact');
+            if ($contract->contact !== null) {
+                RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
+            }
+
             return $contract;
         });
 
@@ -108,9 +116,33 @@ class ContractController extends Controller
             'signed_at'  => ['sometimes', 'required', 'date'],
         ]);
 
+        $previousStatus = $contract->status;
         $contract->update($validated);
+        $contract->refresh();
 
-        $this->loadDetailRelations($contract->refresh());
+        if (array_key_exists('status', $validated)) {
+            $endedStatuses = [
+                ContractStatus::MovedOut,
+                ContractStatus::Terminated,
+                ContractStatus::Expired,
+                ContractStatus::MovedOut->value,
+                ContractStatus::Terminated->value,
+                ContractStatus::Expired->value,
+            ];
+            $wasEnded = in_array($previousStatus, $endedStatuses, true);
+            $isEnded = in_array($contract->status, $endedStatuses, true);
+
+            if ($isEnded && ! $wasEnded) {
+                RecordsActivity::core('contract.ended', $contract, [
+                    'reservation_id' => $contract->reservation_id,
+                    'status' => $contract->status instanceof ContractStatus
+                        ? $contract->status->value
+                        : $contract->status,
+                ]);
+            }
+        }
+
+        $this->loadDetailRelations($contract);
 
         return $this->success(
             ContractResource::make($contract),

@@ -13,6 +13,7 @@ use App\Models\Discount;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -115,7 +116,14 @@ class ReservationController extends Controller
             $reservationData['unit_id'] = $selectedUnit->id;
             $reservationData['price_id'] = $latestRate->price_id;
 
-            return Reservation::query()->create($reservationData);
+            $reservation = Reservation::query()->create($reservationData);
+
+            RecordsActivity::core('reservation.created', $reservation, [
+                'unit_id' => $reservation->unit_id,
+                'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
+            ]);
+
+            return $reservation;
         });
 
         return $this->created(
@@ -142,10 +150,27 @@ class ReservationController extends Controller
             'expires_at' => ['sometimes', 'required', 'date'],
         ]);
 
+        $previousStatus = $reservation->status;
         $reservation->update($validated);
+        $reservation = $reservation->fresh()->load(['unit.site', 'unit.unitClass', 'contact', 'contract']);
+
+        if (array_key_exists('status', $validated)) {
+            $newStatus = $reservation->status;
+            $becameCancelled = $newStatus === ReservationStatus::Cancelled
+                || $newStatus === ReservationStatus::Cancelled->value;
+            $wasCancelled = $previousStatus === ReservationStatus::Cancelled
+                || $previousStatus === ReservationStatus::Cancelled->value;
+
+            if ($becameCancelled && ! $wasCancelled) {
+                RecordsActivity::core('reservation.cancelled', $reservation, [
+                    'unit_id' => $reservation->unit_id,
+                    'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
+                ]);
+            }
+        }
 
         return $this->success(
-            ReservationResource::make($reservation->fresh()->load(['unit.site', 'unit.unitClass', 'contact', 'contract'])),
+            ReservationResource::make($reservation),
             'Reservation updated successfully.'
         );
     }
@@ -307,6 +332,13 @@ class ReservationController extends Controller
             }
 
             $reservation->update(['status' => ReservationStatus::Confirmed->value]);
+
+            $signedProps = ['reservation_id' => $reservation->id];
+            RecordsActivity::core('contract.signed', $contract, $signedProps);
+            $contract->loadMissing('contact');
+            if ($contract->contact !== null) {
+                RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
+            }
 
             return $contract;
         });
