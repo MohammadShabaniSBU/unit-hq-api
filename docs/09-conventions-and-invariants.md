@@ -1,0 +1,43 @@
+# Conventions & Hard Invariants
+
+> Read this before writing any code. These rules override convenience.
+
+## Data invariants — never break
+
+1. **Mono-tenant** — one database, one company. No `company_id` / `tenant_id` columns, no tenancy package, no tenant scoping anywhere.
+2. **Price immutability** — never `UPDATE` a price amount. History via new rows + `effective_to` closing.
+3. **Ledger immutability** — charges/payments are append-only; corrections are opposing rows via `reversal_of_*_id`.
+4. **Notes are append-only.**
+5. **Derived state only** — never store `is_available`, balance owed, overdue flags, or unallocated credit as columns. Always compute:
+   - Availability = no active contract + no non-expired reservation
+   - Balance = Σ charges − Σ payments
+   - Overdue = per-charge, by due date
+6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.
+7. **One selected option per offer** — enforced by partial unique index on `offer_id WHERE selected_at IS NOT NULL`.
+8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
+9. **Money is `NUMERIC(10,2)`** — never floats.
+10. **Payments confirmed from Stripe webhooks + idempotency keys** — never optimistically from the client. Ledger is the system of record; Stripe events are reconciled inputs.
+11. **Offer acceptance is one transaction** — `selected_at` + status flip + reservation insert together.
+12. **Offer expiry is read-time**, not a background job.
+
+## Code conventions
+
+### API (Laravel)
+
+- **No `app/Services/` layer** — fat controllers/models; DB transactions for multi-step operations.
+- Response shape via `ApiResponsable`: `{ message, data }` / paginated `{ meta }`.
+- Morph map registered explicitly — e.g. `unit → Unit`, `insurance → Insurance`.
+- Tests: PHPUnit + SQLite in-memory.
+
+### Panel (Nuxt)
+
+- SPA only (`ssr: false`).
+- All UI strings through i18n (`locales/en.json`, `es.json`) — never hardcoded.
+- HTTP via `useApi()`; types in `app/types/`; composables `useXxx` / `useXxxList`.
+- TypeScript arrays as `Array<T>`, not `T[]`.
+- CI = `pnpm lint` + `pnpm typecheck`.
+
+## Naming
+
+- The pipeline's final entity is **`Contract`** in code (docs/ERD may say "Lease").
+- Activity comments are **`Notes`** in code (ERD may say "comments").

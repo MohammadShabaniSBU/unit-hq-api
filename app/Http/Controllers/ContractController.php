@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\ContractStatus;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
+use App\Models\Unit;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +91,7 @@ class ContractController extends Controller
 
     public function show(Contract $contract): JsonResponse
     {
-        $contract->load(['items.item', 'contact', 'reservation', 'deal', 'notes']);
+        $this->loadDetailRelations($contract);
 
         return $this->success(
             ContractResource::make($contract),
@@ -108,8 +110,10 @@ class ContractController extends Controller
 
         $contract->update($validated);
 
+        $this->loadDetailRelations($contract->refresh());
+
         return $this->success(
-            ContractResource::make($contract->fresh()->load(['items.item', 'contact', 'reservation'])),
+            ContractResource::make($contract),
             'Contract updated successfully.'
         );
     }
@@ -119,5 +123,23 @@ class ContractController extends Controller
         $contract->delete();
 
         return $this->noContent('Contract deleted successfully.');
+    }
+
+    private function loadDetailRelations(Contract $contract): void
+    {
+        $contract->load([
+            'contact',
+            'reservation',
+            'deal',
+            'notes.employee',
+            'items.discount',
+            'invoices' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
+            'payments' => fn ($query) => $query->orderByDesc('created_at')->with('allocations'),
+            'items.item' => function (MorphTo $morphTo): void {
+                $morphTo->morphWith([
+                    Unit::class => ['site', 'unitClass'],
+                ]);
+            },
+        ]);
     }
 }

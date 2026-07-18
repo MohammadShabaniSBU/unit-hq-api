@@ -9,7 +9,7 @@ services:
       - postgres-network
     working_dir: /app
     ports:
-      - 8003:80
+      - 8000:80
     volumes:
       - .:/app
       - .docker/prod.supervisord.conf:/opt/docker/etc/supervisor.d/jobs.conf

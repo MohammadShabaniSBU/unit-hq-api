@@ -26,6 +26,7 @@ Route::get('insurances/options', [Controllers\InsuranceController::class, 'optio
 Route::get('insurance-rate-matrix', [Facility\InsurancePriceMatrixController::class, 'index']);
 Route::post('insurances/{insurance}/rates', [Facility\InsuranceRateController::class, 'store']);
 Route::apiResource('insurances', Facility\InsurancePlanController::class)->only(['index', 'store', 'update']);
+Route::apiResource('discounts', Controllers\DiscountController::class);
 
 Route::apiResource('sites', Facility\SiteController::class);
 Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
@@ -37,6 +38,7 @@ Route::apiResource('units', Facility\UnitController::class);
 
 Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
 Route::apiResource('contacts', Controllers\ContactController::class);
+Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
 Route::post('contacts/{contact}/channels', [Controllers\ContactChannelController::class, 'store']);
 Route::patch('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'update']);
 Route::delete('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'destroy']);
@@ -66,6 +68,7 @@ Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::
 Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
 Route::post('offer-options/{offerOption}/select', [Controllers\OfferOptionController::class, 'select']);
 
+Route::get('reservations/{reservation}/convert-preview', [Controllers\ReservationController::class, 'convertPreview']);
 Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
 Route::apiResource('reservations', Controllers\ReservationController::class);
 

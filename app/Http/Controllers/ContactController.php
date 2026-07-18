@@ -6,7 +6,11 @@ use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
 use App\Http\Resources\ContactResource;
+use App\Http\Resources\InvoiceResource;
+use App\Http\Resources\PaymentResource;
 use App\Models\Contact;
+use App\Models\Invoice;
+use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -112,6 +116,28 @@ class ContactController extends Controller
         $contact->delete();
 
         return $this->noContent('Contact deleted successfully.');
+    }
+
+    public function transactions(Contact $contact): JsonResponse
+    {
+        $contractScope = fn ($query) => $query->where('contact_id', $contact->id);
+
+        $invoices = Invoice::query()
+            ->whereHas('contract', $contractScope)
+            ->with(['charges', 'contract.items.item'])
+            ->orderByDesc('billing_period_start')
+            ->get();
+
+        $payments = Payment::query()
+            ->whereHas('contract', $contractScope)
+            ->with(['allocations', 'contract.items.item'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $this->success([
+            'invoices' => InvoiceResource::collection($invoices)->resolve(),
+            'payments' => PaymentResource::collection($payments)->resolve(),
+        ], 'Contact transactions retrieved successfully.');
     }
 
     public function options(Request $request): JsonResponse

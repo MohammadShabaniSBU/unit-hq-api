@@ -120,4 +120,76 @@ class Contract extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    /**
+     * Max non-void invoice billing_period_end (Space Manager "Charged To" analogue).
+     * Query-time only — never stored.
+     */
+    public function billedThrough(): ?string
+    {
+        $end = $this->invoices()
+            ->where('status', '!=', 'void')
+            ->max('billing_period_end');
+
+        return $end !== null ? Carbon::parse($end)->toDateString() : null;
+    }
+
+    /**
+     * SUM(charges.amount) − SUM(payments.amount). Query-time only — never stored.
+     */
+    public function balanceOwed(): string
+    {
+        $chargesTotal = (float) $this->charges()->sum('amount');
+        $paymentsTotal = (float) $this->payments()->sum('amount');
+
+        return number_format($chargesTotal - $paymentsTotal, 2, '.', '');
+    }
+
+    /**
+     * SUM(payments.amount) − SUM(allocations.amount). Query-time only — never stored.
+     */
+    public function unallocatedCredit(): string
+    {
+        $paymentsTotal = (float) $this->payments()->sum('amount');
+        $allocatedTotal = (float) Allocation::query()
+            ->whereHas('payment', fn ($query) => $query->where('contract_id', $this->id))
+            ->sum('amount');
+
+        return number_format(max(0, $paymentsTotal - $allocatedTotal), 2, '.', '');
+    }
+
+    /**
+     * Sum of unpaid portions of charges past due_date. Query-time only — never stored.
+     */
+    public function overdueAmount(): string
+    {
+        $today = Carbon::today()->toDateString();
+        $overdue = 0.0;
+
+        $charges = $this->charges()
+            ->with('allocations')
+            ->where('due_date', '<', $today)
+            ->get();
+
+        foreach ($charges as $charge) {
+            $remaining = (float) $charge->amount - (float) $charge->allocations->sum('amount');
+
+            if ($remaining > 0) {
+                $overdue += $remaining;
+            }
+        }
+
+        return number_format($overdue, 2, '.', '');
+    }
+
+    /** @return array{billed_through: string|null, balance_owed: string, unallocated_credit: string, overdue_amount: string} */
+    public function billingSummary(): array
+    {
+        return [
+            'billed_through'     => $this->billedThrough(),
+            'balance_owed'       => $this->balanceOwed(),
+            'unallocated_credit' => $this->unallocatedCredit(),
+            'overdue_amount'     => $this->overdueAmount(),
+        ];
+    }
 }

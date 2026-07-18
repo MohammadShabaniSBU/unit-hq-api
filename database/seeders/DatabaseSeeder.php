@@ -147,5 +147,7 @@ class DatabaseSeeder extends Seeder
                 'rate'        => $price->amount,
             ]);
         }
+
+        $this->call(BillingSeeder::class);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ContractItem;
+use App\Models\Discount;
 use App\Models\Insurance;
 use App\Models\Unit;
 use Illuminate\Http\Request;
@@ -13,36 +14,48 @@ class ContractResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
-            'id'             => $this->id,
-            'contact_id'     => $this->contact_id,
-            'reservation_id' => $this->reservation_id,
-            'deal_id'        => $this->deal_id,
-            'start_date'     => $this->date($this->start_date),
-            'end_date'       => $this->date($this->end_date),
-            'status'         => $this->status,
-            'signed_at'      => $this->datetime($this->signed_at),
-            'created_at'     => $this->datetime($this->created_at),
-            'updated_at'     => $this->datetime($this->updated_at),
-            'items'          => $this->whenLoaded('items', fn () =>
+            'id'              => $this->id,
+            'contact_id'      => $this->contact_id,
+            'reservation_id'  => $this->reservation_id,
+            'deal_id'         => $this->deal_id,
+            'start_date'      => $this->date($this->start_date),
+            'end_date'        => $this->date($this->end_date),
+            'status'          => $this->status instanceof \BackedEnum
+                ? $this->status->value
+                : $this->status,
+            'signed_at'       => $this->datetime($this->signed_at),
+            'created_at'      => $this->datetime($this->created_at),
+            'updated_at'      => $this->datetime($this->updated_at),
+            'items'           => $this->whenLoaded('items', fn () =>
                 $this->items->map(fn (ContractItem $item) => $this->formatItem($item))
             ),
-            'contact'        => $this->whenLoaded('contact', fn () => [
+            'contact'         => $this->whenLoaded('contact', fn () => [
                 'id'   => $this->contact->id,
                 'name' => trim($this->contact->first_name . ' ' . $this->contact->last_name),
             ]),
-            'reservation'    => $this->whenLoaded('reservation', fn () =>
+            'reservation'     => $this->whenLoaded('reservation', fn () =>
                 $this->reservation ? [
                     'id'     => $this->reservation->id,
                     'status' => $this->reservation->status,
                 ] : null
             ),
-            'deal'           => $this->whenLoaded('deal', fn () =>
+            'deal'            => $this->whenLoaded('deal', fn () =>
                 $this->deal ? [
                     'id'     => $this->deal->id,
                     'status' => $this->deal->status,
                 ] : null
             ),
-            'notes'          => NoteResource::collection($this->whenLoaded('notes')),
+            'notes'           => NoteResource::collection($this->whenLoaded('notes')),
+            'invoices'        => $this->whenLoaded('invoices', fn () =>
+                InvoiceResource::collection($this->invoices)->resolve()
+            ),
+            'payments'        => $this->whenLoaded('payments', fn () =>
+                PaymentResource::collection($this->payments)->resolve()
+            ),
+            'billing_summary' => $this->when(
+                $this->relationLoaded('invoices') && $this->relationLoaded('payments'),
+                fn () => $this->billingSummary()
+            ),
         ];
     }
 
@@ -50,11 +63,28 @@ class ContractResource extends BaseResource
     private function formatItem(ContractItem $contractItem): array
     {
         $data = [
-            'id'        => $contractItem->id,
-            'item_type' => $contractItem->item_type,
-            'item_id'   => $contractItem->item_id,
-            'rate'      => $contractItem->rate,
+            'id'               => $contractItem->id,
+            'item_type'        => $contractItem->item_type,
+            'item_id'          => $contractItem->item_id,
+            'rate'             => $contractItem->rate,
+            'discount_id'      => $contractItem->discount_id,
+            'base_rate'        => $contractItem->base_rate,
+            'discount_ends_at' => $this->date($contractItem->discount_ends_at),
         ];
+
+        if ($contractItem->relationLoaded('discount')) {
+            /** @var Discount|null $discount */
+            $discount = $contractItem->discount;
+            $data['discount'] = $discount ? [
+                'id'            => $discount->id,
+                'code'          => $discount->code,
+                'label'         => $discount->label,
+                'discount_type' => $discount->discount_type instanceof \BackedEnum
+                    ? $discount->discount_type->value
+                    : $discount->discount_type,
+                'value'         => $discount->value,
+            ] : null;
+        }
 
         if ($contractItem->relationLoaded('item')) {
             $item = $contractItem->item;
