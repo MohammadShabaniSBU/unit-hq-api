@@ -21,11 +21,15 @@ class ChargeFactory extends Factory
      */
     public function definition(): array
     {
+        $amount = fake()->randomFloat(2, 50, 300);
+
         return [
             'contract_id'           => Contract::factory(),
             'invoice_id'            => Invoice::factory(),
             'charge_type'           => 'rent',
-            'amount'                => fake()->randomFloat(2, 50, 300),
+            'net_amount'            => $amount,
+            'amount'                => $amount,
+            'tax_amount'            => 0,
             'due_date'              => fake()->dateTimeBetween('-6 months', '+1 month')->format('Y-m-d'),
             'description'           => null,
             'reversal_of_charge_id' => null,

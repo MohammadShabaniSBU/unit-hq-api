@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\BillingAnchorModel;
+use App\Enums\BillingInterval;
 use App\Enums\ContractStatus;
+use App\Enums\ProrationMethod;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,20 +22,35 @@ use Illuminate\Support\Carbon;
  * Every charge, payment, and allocation references a contract.
  *
  * Line items (unit, insurance, etc.) live on ContractItem as a polymorphic
- * collection rather than flat FK columns. Each item carries its own rate.
+ * collection rather than flat FK columns. Each item carries its own amount.
+ *
+ * Cadence (billing_interval/_count), billing_anchor_model, proration_method,
+ * and deposit_amount are snapshotted from settings at signing — a later
+ * settings change never rewrites existing contracts. billing_anchor_date is
+ * derived once via App\Support\Billing\BillingMath::resolveAnchorDate, never
+ * assigned move_in directly. billed_through is a billing cursor the billing
+ * job advances — never cached money (invariant #5).
  *
  * reservation_id is nullable for walk-in contracts that bypass the pipeline.
  *
- * @property int            $id
- * @property int            $contact_id
- * @property int|null       $reservation_id
- * @property int|null       $deal_id
- * @property string         $start_date     Y-m-d
- * @property string|null    $end_date       Y-m-d
- * @property ContractStatus $status         active|moved_out|terminated|expired
- * @property Carbon         $signed_at
- * @property Carbon         $created_at
- * @property Carbon         $updated_at
+ * @property int                 $id
+ * @property int                 $contact_id
+ * @property int|null            $reservation_id
+ * @property int|null            $deal_id
+ * @property string              $start_date              Y-m-d
+ * @property string|null         $end_date                Y-m-d
+ * @property BillingInterval     $billing_interval         day|week|month
+ * @property int                 $billing_interval_count
+ * @property BillingAnchorModel  $billing_anchor_model     anniversary|calendar
+ * @property string|null         $billing_anchor_date      Y-m-d
+ * @property string|null         $billed_through          Y-m-d — cursor, not cached money
+ * @property ProrationMethod     $proration_method         daily|full_period|none
+ * @property string|null         $move_in_date             Y-m-d
+ * @property string              $deposit_amount           NUMERIC(10,2)
+ * @property ContractStatus      $status                   active|moved_out|terminated|expired
+ * @property Carbon              $signed_at
+ * @property Carbon              $created_at
+ * @property Carbon              $updated_at
  *
  * @property-read Contact                          $contact
  * @property-read Reservation|null                 $reservation
@@ -55,6 +73,14 @@ class Contract extends Model
         'deal_id',
         'start_date',
         'end_date',
+        'billing_interval',
+        'billing_interval_count',
+        'billing_anchor_model',
+        'billing_anchor_date',
+        'billed_through',
+        'proration_method',
+        'move_in_date',
+        'deposit_amount',
         'status',
         'signed_at',
     ];
@@ -62,10 +88,18 @@ class Contract extends Model
     protected function casts(): array
     {
         return [
-            'status'     => ContractStatus::class,
-            'start_date' => 'date',
-            'end_date'   => 'date',
-            'signed_at'  => 'datetime',
+            'status'                 => ContractStatus::class,
+            'billing_interval'       => BillingInterval::class,
+            'billing_interval_count' => 'integer',
+            'billing_anchor_model'   => BillingAnchorModel::class,
+            'billing_anchor_date'    => 'date',
+            'billed_through'         => 'date',
+            'proration_method'       => ProrationMethod::class,
+            'move_in_date'           => 'date',
+            'deposit_amount'         => 'decimal:2',
+            'start_date'             => 'date',
+            'end_date'               => 'date',
+            'signed_at'              => 'datetime',
         ];
     }
 
@@ -209,16 +243,16 @@ class Contract extends Model
     }
 
     /**
-     * Max non-void invoice billing_period_end (Space Manager "Charged To" analogue).
-     * Query-time only — never stored.
+     * Billing cursor — the date the billing job has advanced through. Set once
+     * at signing (full first period, or the stub's anchor) and advanced by the
+     * recurring billing job thereafter. Stored, but it's a cursor, not cached
+     * money (invariant #5): it never encodes balance or amount.
      */
     public function billedThrough(): ?string
     {
-        $end = $this->invoices()
-            ->where('status', '!=', 'void')
-            ->max('billing_period_end');
-
-        return $end !== null ? Carbon::parse($end)->toDateString() : null;
+        return $this->billed_through !== null
+            ? Carbon::parse($this->billed_through)->toDateString()
+            : null;
     }
 
     /**

@@ -20,9 +20,15 @@ class ContractResource extends BaseResource
             'deal_id'         => $this->deal_id,
             'start_date'      => $this->date($this->start_date),
             'end_date'        => $this->date($this->end_date),
-            'status'          => $this->status instanceof \BackedEnum
-                ? $this->status->value
-                : $this->status,
+            'billing_interval'       => $this->enumValue($this->billing_interval),
+            'billing_interval_count' => $this->billing_interval_count,
+            'billing_anchor_model'   => $this->enumValue($this->billing_anchor_model),
+            'billing_anchor_date'    => $this->date($this->billing_anchor_date),
+            'billed_through'         => $this->date($this->billed_through),
+            'proration_method'       => $this->enumValue($this->proration_method),
+            'move_in_date'           => $this->date($this->move_in_date),
+            'deposit_amount'         => $this->deposit_amount,
+            'status'          => $this->enumValue($this->status),
             'signed_at'       => $this->datetime($this->signed_at),
             'created_at'      => $this->datetime($this->created_at),
             'updated_at'      => $this->datetime($this->updated_at),
@@ -52,6 +58,9 @@ class ContractResource extends BaseResource
             'payments'        => $this->whenLoaded('payments', fn () =>
                 PaymentResource::collection($this->payments)->resolve()
             ),
+            'charges'         => $this->whenLoaded('charges', fn () =>
+                ChargeResource::collection($this->charges)->resolve()
+            ),
             'billing_summary' => $this->when(
                 $this->relationLoaded('invoices') && $this->relationLoaded('payments'),
                 fn () => $this->billingSummary()
@@ -63,14 +72,28 @@ class ContractResource extends BaseResource
     private function formatItem(ContractItem $contractItem): array
     {
         $data = [
-            'id'               => $contractItem->id,
-            'item_type'        => $contractItem->item_type,
-            'item_id'          => $contractItem->item_id,
-            'rate'             => $contractItem->rate,
-            'discount_id'      => $contractItem->discount_id,
-            'base_rate'        => $contractItem->base_rate,
-            'discount_ends_at' => $this->date($contractItem->discount_ends_at),
+            'id'                    => $contractItem->id,
+            'item_type'             => $contractItem->item_type,
+            'item_id'               => $contractItem->item_id,
+            'amount'                => $contractItem->amount,
+            'price_id'              => $contractItem->price_id,
+            'discount_id'           => $contractItem->discount_id,
+            'base_rate'             => $contractItem->base_rate,
+            'discount_ends_at'      => $this->date($contractItem->discount_ends_at),
+            'tax_rate_id'           => $contractItem->tax_rate_id,
+            'tax_rate_snapshot'     => $contractItem->tax_rate_snapshot,
+            'declared_goods_value'  => $contractItem->declared_goods_value,
+            'description'           => $contractItem->description,
         ];
+
+        if ($contractItem->relationLoaded('taxRate')) {
+            $data['tax_rate'] = $contractItem->taxRate ? [
+                'id'   => $contractItem->taxRate->id,
+                'name' => $contractItem->taxRate->name,
+                'code' => $contractItem->taxRate->code,
+                'rate' => $contractItem->taxRate->rate,
+            ] : null;
+        }
 
         if ($contractItem->relationLoaded('discount')) {
             /** @var Discount|null $discount */
@@ -116,5 +139,10 @@ class ContractResource extends BaseResource
         }
 
         return $data;
+    }
+
+    private function enumValue(mixed $value): mixed
+    {
+        return $value instanceof \BackedEnum ? $value->value : $value;
     }
 }

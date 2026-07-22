@@ -8,6 +8,7 @@ use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SettingController extends Controller
 {
@@ -52,14 +53,35 @@ class SettingController extends Controller
     public function updateBilling(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'default_currency'       => ['sometimes', 'required', 'string', 'size:3'],
-            'default_billing_period' => ['sometimes', 'required', 'string', Rule::in(['monthly', 'weekly', 'annual'])],
+            'default_currency'               => ['sometimes', 'required', 'string', 'size:3'],
+            'default_billing_interval'       => ['sometimes', 'required', 'string', Rule::in(['day', 'week', 'month'])],
+            'default_billing_interval_count' => ['sometimes', 'required', 'integer', 'min:1'],
+            'billing_anchor_model'           => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar'])],
+            'billing_anchor_day'             => ['sometimes', 'required', 'integer', 'min:1', 'max:28'],
+            'proration_method'               => ['sometimes', 'required', 'string', Rule::in(['daily', 'full_period', 'none'])],
+            'default_deposit_amount'         => ['sometimes', 'required', 'numeric', 'min:0'],
         ]);
+
+        $anchorModel = $validated['billing_anchor_model'] ?? Setting::billing()->billingAnchorModel;
+        $interval = $validated['default_billing_interval'] ?? Setting::billing()->defaultBillingInterval;
+
+        if ($anchorModel === 'calendar' && $interval !== 'month') {
+            throw ValidationException::withMessages([
+                'billing_anchor_model' => ['The calendar anchor model requires a monthly billing interval.'],
+            ]);
+        }
 
         Setting::setBilling(
             Setting::billing()->with(
                 defaultCurrency: $validated['default_currency'] ?? null,
-                defaultBillingPeriod: $validated['default_billing_period'] ?? null,
+                defaultBillingInterval: $validated['default_billing_interval'] ?? null,
+                defaultBillingIntervalCount: $validated['default_billing_interval_count'] ?? null,
+                billingAnchorModel: $validated['billing_anchor_model'] ?? null,
+                billingAnchorDay: $validated['billing_anchor_day'] ?? null,
+                prorationMethod: $validated['proration_method'] ?? null,
+                defaultDepositAmount: isset($validated['default_deposit_amount'])
+                    ? number_format((float) $validated['default_deposit_amount'], 2, '.', '')
+                    : null,
             )
         );
 

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $description
  * @property string      $coverage    NUMERIC(10,2)
  * @property string      $currency    CHAR(3) e.g. EUR
+ * @property string|null $tax_rate_code default tax_rates.code for contract items on this plan
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
@@ -37,6 +38,7 @@ class Insurance extends Model
         'description',
         'coverage',
         'currency',
+        'tax_rate_code',
     ];
 
     protected function casts(): array

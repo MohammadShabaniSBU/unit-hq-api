@@ -45,9 +45,10 @@ class UnitClassController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'code'  => ['required', 'string', 'max:255', 'unique:unit_classes,code'],
-            'label' => ['required', 'string', 'max:255'],
-            'size'  => ['nullable', 'numeric', 'min:0'],
+            'code'          => ['required', 'string', 'max:255', 'unique:unit_classes,code'],
+            'label'         => ['required', 'string', 'max:255'],
+            'size'          => ['nullable', 'numeric', 'min:0'],
+            'tax_rate_code' => ['nullable', 'string', 'max:100'],
         ]);
 
         $unitClass = UnitClass::query()->create($validated);
@@ -69,9 +70,10 @@ class UnitClassController extends Controller
     public function update(Request $request, UnitClass $unitClass): JsonResponse
     {
         $validated = $request->validate([
-            'code'  => ['sometimes', 'required', 'string', 'max:255', Rule::unique('unit_classes', 'code')->ignore($unitClass->id)],
-            'label' => ['sometimes', 'required', 'string', 'max:255'],
-            'size'  => ['nullable', 'numeric', 'min:0'],
+            'code'          => ['sometimes', 'required', 'string', 'max:255', Rule::unique('unit_classes', 'code')->ignore($unitClass->id)],
+            'label'         => ['sometimes', 'required', 'string', 'max:255'],
+            'size'          => ['nullable', 'numeric', 'min:0'],
+            'tax_rate_code' => ['nullable', 'string', 'max:100'],
         ]);
 
         $unitClass->update($validated);

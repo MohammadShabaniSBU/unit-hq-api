@@ -24,10 +24,11 @@ class InsurancePlanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'coverage'    => ['required', 'numeric', 'min:0'],
-            'currency'    => ['required', 'string', 'size:3'],
+            'name'          => ['required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string'],
+            'coverage'      => ['required', 'numeric', 'min:0'],
+            'currency'      => ['required', 'string', 'size:3'],
+            'tax_rate_code' => ['nullable', 'string', 'max:100'],
         ]);
 
         $insurance = Insurance::query()->create($validated);
@@ -41,10 +42,11 @@ class InsurancePlanController extends Controller
     public function update(Request $request, Insurance $insurance): JsonResponse
     {
         $validated = $request->validate([
-            'name'        => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'coverage'    => ['sometimes', 'required', 'numeric', 'min:0'],
-            'currency'    => ['sometimes', 'required', 'string', 'size:3'],
+            'name'          => ['sometimes', 'required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string'],
+            'coverage'      => ['sometimes', 'required', 'numeric', 'min:0'],
+            'currency'      => ['sometimes', 'required', 'string', 'size:3'],
+            'tax_rate_code' => ['nullable', 'string', 'max:100'],
         ]);
 
         $insurance->update($validated);

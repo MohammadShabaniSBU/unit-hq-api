@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContractStatus;
+use App\Enums\ProrationMethod;
 use App\Enums\ReservationStatus;
+use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
@@ -11,10 +13,18 @@ use App\Http\Resources\ReservationResource;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Discount;
+use App\Models\Insurance;
 use App\Models\Reservation;
+use App\Models\Setting;
+use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Billing\BillingMath;
+use App\Support\Billing\ContractBilling;
+use App\Support\Billing\FirstPeriodPlan;
+use App\Support\Billing\TaxBreakdown;
 use App\Support\RecordsActivity;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,6 +34,8 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
+    use GeneratesFirstPeriodCharges;
+
     public function index(Request $request): JsonResponse
     {
         $query = Reservation::query()
@@ -222,9 +234,11 @@ class ReservationController extends Controller
 
         $validated = $request->validate([
             'start_date'     => ['nullable', 'date'],
+            'move_in_date'   => ['nullable', 'date'],
             'unit_rate'      => ['nullable', 'numeric', 'min:0'],
             'insurance_id'   => ['nullable', 'integer', 'exists:insurances,id'],
             'insurance_rate' => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $reservation->load([
@@ -236,7 +250,9 @@ class ReservationController extends Controller
             'offerOption.unitClassRate.price',
         ]);
 
+        $billing = Setting::billing();
         $startDate = Carbon::parse($validated['start_date'] ?? now()->toDateString())->startOfDay();
+        $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $startDate->toDateString())->startOfDay();
         $pricing = $this->resolveConvertPricing($reservation, $startDate);
 
         $suggestedUnitRate = $pricing['suggested_unit_rate'];
@@ -249,19 +265,32 @@ class ReservationController extends Controller
             $insuranceRate = round((float) ($validated['insurance_rate'] ?? 0), 2);
         }
 
-        $billingPeriod = $reservation->price?->billing_period
-            ?? $reservation->offerOption?->unitClassRate?->price?->billing_period
-            ?? 'monthly';
-
         $currency = $reservation->price?->currency
             ?? $reservation->offerOption?->unitClassRate?->price?->currency
             ?? null;
 
-        $firstPeriod = $this->buildFirstPeriodEstimate(
-            $startDate,
-            $billingPeriod,
-            $unitRate,
-            $insuranceRate,
+        $depositAmount = $validated['deposit_amount'] ?? $billing->defaultDepositAmount;
+
+        $unitTaxRate = ContractBilling::resolveTaxRate($reservation->unit->unitClass?->tax_rate_code, $moveIn);
+        $insuranceTaxRate = ! empty($validated['insurance_id'])
+            ? ContractBilling::resolveTaxRate(Insurance::query()->find($validated['insurance_id'])?->tax_rate_code, $moveIn)
+            : null;
+
+        $plan = ContractBilling::planFirstPeriod(
+            $moveIn,
+            $billing->billingAnchorModel,
+            $billing->defaultBillingInterval,
+            $billing->defaultBillingIntervalCount,
+            $billing->billingAnchorDay,
+        );
+
+        $firstPeriod = $this->buildFirstPeriodPreview(
+            $plan,
+            $billing->prorationMethod,
+            (string) $unitRate,
+            $unitTaxRate,
+            $insuranceRate !== null ? (string) $insuranceRate : null,
+            $insuranceTaxRate,
         );
 
         $rateOverridden = $pricing['discount'] !== null
@@ -285,13 +314,19 @@ class ReservationController extends Controller
                     'code'  => $reservation->unit->unitClass->code_slug,
                 ] : null,
             ],
-            'billing_period'      => $billingPeriod,
+            'billing_interval'       => $billing->defaultBillingInterval,
+            'billing_interval_count' => $billing->defaultBillingIntervalCount,
+            'billing_anchor_model'   => $billing->billingAnchorModel,
             'currency'            => $currency,
             'base_rate'           => $this->formatMoney($pricing['base_rate']),
             'suggested_unit_rate' => $this->formatMoney($suggestedUnitRate),
             'unit_rate'           => $this->formatMoney($unitRate),
+            'unit_tax_rate'       => $this->formatTaxRate($unitTaxRate),
             'insurance_id'        => $validated['insurance_id'] ?? null,
             'insurance_rate'      => $insuranceRate !== null ? $this->formatMoney($insuranceRate) : null,
+            'insurance_tax_rate'  => $this->formatTaxRate($insuranceTaxRate),
+            'deposit_amount'      => $this->formatMoney((float) $depositAmount),
+            'move_in_date'        => $moveIn->toDateString(),
             'discount'            => $pricing['discount'] !== null
                 ? DiscountResource::make($pricing['discount'])->resolve()
                 : null,
@@ -311,38 +346,60 @@ class ReservationController extends Controller
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([
-            'start_date'     => ['required', 'date'],
-            'end_date'       => ['nullable', 'date', 'after:start_date'],
-            'signed_at'      => ['nullable', 'date'],
-            'unit_rate'      => ['required', 'numeric', 'min:0'],
-            'insurance_id'   => ['nullable', 'integer', 'exists:insurances,id'],
-            'insurance_rate' => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'start_date'            => ['required', 'date'],
+            'end_date'              => ['nullable', 'date', 'after:start_date'],
+            'move_in_date'          => ['nullable', 'date'],
+            'signed_at'             => ['nullable', 'date'],
+            'unit_rate'             => ['required', 'numeric', 'min:0'],
+            'unit_tax_rate_id'      => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'insurance_id'          => ['nullable', 'integer', 'exists:insurances,id'],
+            'insurance_rate'        => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'insurance_tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'deposit_amount'        => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $contract = DB::transaction(function () use ($reservation, $validated) {
             $reservation->load([
+                'unit.unitClass',
                 'offerOption.discount',
                 'offerOption.unitClassRate.price',
             ]);
 
+            $billing = Setting::billing();
             $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+            $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
             $pricing = $this->resolveConvertPricing($reservation, $startDate);
             $unitRate = round((float) $validated['unit_rate'], 2);
 
             $contract = Contract::query()->create([
-                'contact_id'     => $reservation->contact_id,
-                'reservation_id' => $reservation->id,
-                'deal_id'        => $reservation->deal_id,
-                'start_date'     => $validated['start_date'],
-                'end_date'       => $validated['end_date'] ?? null,
-                'status'         => ContractStatus::Active->value,
-                'signed_at'      => $validated['signed_at'] ?? now(),
+                'contact_id'             => $reservation->contact_id,
+                'reservation_id'         => $reservation->id,
+                'deal_id'                => $reservation->deal_id,
+                'start_date'             => $validated['start_date'],
+                'end_date'               => $validated['end_date'] ?? null,
+                'status'                 => ContractStatus::Active->value,
+                'signed_at'              => $validated['signed_at'] ?? now(),
+                'billing_interval'       => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'billing_anchor_model'   => $billing->billingAnchorModel,
+                'proration_method'       => $billing->prorationMethod,
+                'move_in_date'           => $moveIn->toDateString(),
+                'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
             ]);
 
+            $unitTaxRate = $this->resolveContractItemTaxRate(
+                'unit',
+                $reservation->unit_id,
+                $validated['unit_tax_rate_id'] ?? null,
+                $moveIn,
+            );
+
             $unitItemData = [
-                'item_type' => 'unit',
-                'item_id'   => $reservation->unit_id,
-                'rate'      => $unitRate,
+                'item_type'         => 'unit',
+                'item_id'           => $reservation->unit_id,
+                'amount'            => $unitRate,
+                'tax_rate_id'       => $unitTaxRate?->id,
+                'tax_rate_snapshot' => $unitTaxRate?->rate,
             ];
 
             if ($pricing['discount'] !== null) {
@@ -351,15 +408,34 @@ class ReservationController extends Controller
                 $unitItemData['discount_ends_at'] = $pricing['discount_ends_at'];
             }
 
-            $contract->items()->create($unitItemData);
+            $contractItems = collect([$contract->items()->create($unitItemData)]);
 
             if (! empty($validated['insurance_id'])) {
-                $contract->items()->create([
-                    'item_type' => 'insurance',
-                    'item_id'   => $validated['insurance_id'],
-                    'rate'      => round((float) $validated['insurance_rate'], 2),
-                ]);
+                $insuranceTaxRate = $this->resolveContractItemTaxRate(
+                    'insurance',
+                    $validated['insurance_id'],
+                    $validated['insurance_tax_rate_id'] ?? null,
+                    $moveIn,
+                );
+
+                $contractItems->push($contract->items()->create([
+                    'item_type'         => 'insurance',
+                    'item_id'           => $validated['insurance_id'],
+                    'amount'            => round((float) $validated['insurance_rate'], 2),
+                    'tax_rate_id'       => $insuranceTaxRate?->id,
+                    'tax_rate_snapshot' => $insuranceTaxRate?->rate,
+                ]));
             }
+
+            $plan = ContractBilling::planFirstPeriod(
+                $moveIn,
+                $billing->billingAnchorModel,
+                $billing->defaultBillingInterval,
+                $billing->defaultBillingIntervalCount,
+                $billing->billingAnchorDay,
+            );
+
+            $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
 
             $reservation->update(['status' => ReservationStatus::Confirmed->value]);
 
@@ -430,41 +506,89 @@ class ReservationController extends Controller
     }
 
     /**
-     * Anniversary first period from start date (matches billing seed convention).
+     * The real first-charge preview — same BillingMath::firstChargeWindow +
+     * prorate + applyTax path convert() uses to write charges, so this never
+     * diverges from what gets billed.
      *
      * @return array{
      *     start_date: string,
      *     end_date: string,
-     *     days: int,
-     *     unit_amount: string,
-     *     insurance_amount: string|null,
-     *     total: string
+     *     has_stub: bool,
+     *     skipped: bool,
+     *     days_occupied: int|null,
+     *     days_in_period: int|null,
+     *     unit: array{net: string, tax: string, gross: string}|null,
+     *     insurance: array{net: string, tax: string, gross: string}|null,
+     *     total_net: string,
+     *     total_tax: string,
+     *     total_gross: string
      * }
      */
-    private function buildFirstPeriodEstimate(
-        Carbon $startDate,
-        string $billingPeriod,
-        float $unitRate,
-        ?float $insuranceRate,
+    private function buildFirstPeriodPreview(
+        FirstPeriodPlan $plan,
+        ProrationMethod|string $prorationMethod,
+        string $unitAmount,
+        ?TaxRate $unitTaxRate,
+        ?string $insuranceAmount,
+        ?TaxRate $insuranceTaxRate,
     ): array {
-        $periodStart = $startDate->copy()->startOfDay();
-        $periodEnd = match ($billingPeriod) {
-            'weekly' => $periodStart->copy()->addWeek()->subDay(),
-            'annual' => $periodStart->copy()->addYear()->subDay(),
-            default  => $periodStart->copy()->addMonth()->subDay(),
-        };
+        $method = $prorationMethod instanceof ProrationMethod ? $prorationMethod : ProrationMethod::from($prorationMethod);
+        $skipped = $plan->hasStub && $method === ProrationMethod::None;
 
-        $days = $periodStart->diffInDays($periodEnd) + 1;
-        $insuranceAmount = $insuranceRate !== null ? round($insuranceRate, 2) : null;
-        $total = round($unitRate + ($insuranceAmount ?? 0.0), 2);
+        $unitLine = null;
+        $insuranceLine = null;
+
+        if (! $skipped) {
+            $unitNet = ContractBilling::firstPeriodNetForItem($plan, $unitAmount, $method);
+            $unitLine = $this->formatChargeLine(
+                BillingMath::applyTax($unitNet, $unitTaxRate !== null ? (string) $unitTaxRate->rate : null)
+            );
+
+            if ($insuranceAmount !== null) {
+                $insuranceNet = ContractBilling::firstPeriodNetForItem($plan, $insuranceAmount, $method);
+                $insuranceLine = $this->formatChargeLine(
+                    BillingMath::applyTax($insuranceNet, $insuranceTaxRate !== null ? (string) $insuranceTaxRate->rate : null)
+                );
+            }
+        }
 
         return [
-            'start_date'       => $periodStart->toDateString(),
-            'end_date'         => $periodEnd->toDateString(),
-            'days'             => $days,
-            'unit_amount'      => $this->formatMoney($unitRate),
-            'insurance_amount' => $insuranceAmount !== null ? $this->formatMoney($insuranceAmount) : null,
-            'total'            => $this->formatMoney($total),
+            'start_date'     => $plan->windowStart->toDateString(),
+            'end_date'       => $plan->windowEnd->toDateString(),
+            'has_stub'       => $plan->hasStub,
+            'skipped'        => $skipped,
+            'days_occupied'  => $plan->daysOccupied,
+            'days_in_period' => $plan->daysInPeriod,
+            'unit'           => $unitLine,
+            'insurance'      => $insuranceLine,
+            'total_net'      => bcadd($unitLine['net'] ?? '0.00', $insuranceLine['net'] ?? '0.00', 2),
+            'total_tax'      => bcadd($unitLine['tax'] ?? '0.00', $insuranceLine['tax'] ?? '0.00', 2),
+            'total_gross'    => bcadd($unitLine['gross'] ?? '0.00', $insuranceLine['gross'] ?? '0.00', 2),
+        ];
+    }
+
+    /** @return array{net: string, tax: string, gross: string} */
+    private function formatChargeLine(TaxBreakdown $breakdown): array
+    {
+        return [
+            'net'   => $breakdown->net,
+            'tax'   => $breakdown->tax,
+            'gross' => $breakdown->gross,
+        ];
+    }
+
+    /** @return array{id: int, name: string, code: string, rate: string}|null */
+    private function formatTaxRate(?TaxRate $taxRate): ?array
+    {
+        if ($taxRate === null) {
+            return null;
+        }
+
+        return [
+            'id'   => $taxRate->id,
+            'name' => $taxRate->name,
+            'code' => $taxRate->code,
+            'rate' => (string) $taxRate->rate,
         ];
     }
 

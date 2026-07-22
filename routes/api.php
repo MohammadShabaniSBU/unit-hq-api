@@ -32,6 +32,12 @@ Route::post('insurances/{insurance}/rates', [Facility\InsuranceRateController::c
 Route::apiResource('insurances', Facility\InsurancePlanController::class)->only(['index', 'store', 'update']);
 Route::apiResource('discounts', Controllers\DiscountController::class);
 
+Route::get('tax-rates/options', [Controllers\TaxRateController::class, 'options']);
+Route::get('tax-rates', [Controllers\TaxRateController::class, 'index']);
+Route::post('tax-rates', [Controllers\TaxRateController::class, 'store']);
+Route::patch('tax-rates/{taxRate}', [Controllers\TaxRateController::class, 'update']);
+Route::post('tax-rates/{taxRate}/default', [Controllers\TaxRateController::class, 'setDefault']);
+
 Route::apiResource('sites', Facility\SiteController::class);
 Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
 Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);

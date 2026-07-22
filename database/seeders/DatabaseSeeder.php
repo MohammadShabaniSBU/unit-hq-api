@@ -11,11 +11,14 @@ use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Price;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\User;
+use App\Support\Billing\ContractBilling;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -126,25 +129,47 @@ class DatabaseSeeder extends Seeder
 
         $contacts = Contact::all();
         $occupiedUnits = $units->shuffle()->take((int) ($units->count() * 0.40));
+        $billing = Setting::billing();
 
         foreach ($occupiedUnits as $unit) {
             $contact   = $contacts->random();
             $price     = $priceByUnitClass[$unit->unit_class_id];
             $startDate = now()->subDays(fake()->numberBetween(30, 365));
+            $moveIn    = CarbonImmutable::parse($startDate->toDateString())->startOfDay();
+
+            // Same path ContractController::store uses, so seeded contracts
+            // carry the same billing_anchor_date / billed_through invariants
+            // as real ones — no separate ad-hoc seed logic.
+            $plan = ContractBilling::planFirstPeriod(
+                $moveIn,
+                $billing->billingAnchorModel,
+                $billing->defaultBillingInterval,
+                $billing->defaultBillingIntervalCount,
+                $billing->billingAnchorDay,
+            );
 
             $contract = Contract::create([
-                'contact_id'  => $contact->id,
-                'start_date'  => $startDate->toDateString(),
-                'end_date'    => null,
-                'status'      => ContractStatus::Active,
-                'signed_at'   => $startDate,
+                'contact_id'             => $contact->id,
+                'start_date'             => $startDate->toDateString(),
+                'end_date'               => null,
+                'status'                 => ContractStatus::Active,
+                'signed_at'              => $startDate,
+                'billing_interval'       => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'billing_anchor_model'   => $billing->billingAnchorModel,
+                'billing_anchor_date'    => $plan->anchorDate->toDateString(),
+                'billed_through'         => $plan->billedThrough->toDateString(),
+                'proration_method'       => $billing->prorationMethod,
+                'move_in_date'           => $moveIn->toDateString(),
+                'deposit_amount'         => $billing->defaultDepositAmount,
             ]);
 
             ContractItem::create([
                 'contract_id' => $contract->id,
                 'item_type'   => 'unit',
                 'item_id'     => $unit->id,
-                'rate'        => $price->amount,
+                'amount'      => $price->amount,
+                'price_id'    => $price->id,
             ]);
         }
 

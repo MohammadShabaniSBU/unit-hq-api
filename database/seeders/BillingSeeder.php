@@ -172,9 +172,13 @@ class BillingSeeder extends Seeder
 
         $rentCharge = Charge::query()->create([
             'contract_id'           => $contract->id,
+            'contract_item_id'      => $unitItem->id,
             'invoice_id'            => $invoice->id,
             'charge_type'           => 'rent',
-            'amount'                => $unitItem->rate,
+            'period_start'          => $period['start']->toDateString(),
+            'period_end'            => $period['end']->toDateString(),
+            'net_amount'            => $unitItem->amount,
+            'amount'                => $unitItem->amount,
             'due_date'              => $period['due_date']->toDateString(),
             'description'           => 'Monthly rent',
             'reversal_of_charge_id' => null,
@@ -187,9 +191,13 @@ class BillingSeeder extends Seeder
         if ($insuranceItem !== null) {
             $insuranceCharge = Charge::query()->create([
                 'contract_id'           => $contract->id,
+                'contract_item_id'      => $insuranceItem->id,
                 'invoice_id'            => $invoice->id,
                 'charge_type'           => 'insurance',
-                'amount'                => $insuranceItem->rate,
+                'period_start'          => $period['start']->toDateString(),
+                'period_end'            => $period['end']->toDateString(),
+                'net_amount'            => $insuranceItem->amount,
+                'amount'                => $insuranceItem->amount,
                 'due_date'              => $period['due_date']->toDateString(),
                 'description'           => 'Monthly insurance',
                 'reversal_of_charge_id' => null,

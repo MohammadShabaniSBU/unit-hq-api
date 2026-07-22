@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContractStatus;
+use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Resources\ContractCardResource;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
+use App\Models\Setting;
 use App\Models\Unit;
+use App\Support\Billing\ContractBilling;
 use App\Support\RecordsActivity;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class ContractController extends Controller
 {
+    use GeneratesFirstPeriodCharges;
+
     public function index(Request $request): JsonResponse
     {
         $query = Contract::query()
@@ -55,32 +61,67 @@ class ContractController extends Controller
             'deal_id'        => ['nullable', 'integer', 'exists:deals,id'],
             'start_date'     => ['required', 'date'],
             'end_date'       => ['nullable', 'date', 'after:start_date'],
+            'move_in_date'   => ['nullable', 'date'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'status'         => ['nullable', Rule::enum(ContractStatus::class)],
             'signed_at'      => ['nullable', 'date'],
             'items'          => ['required', 'array', 'min:1'],
-            'items.*.item_type' => ['required', 'string', Rule::in(['unit', 'insurance'])],
-            'items.*.item_id'   => ['required', 'integer'],
-            'items.*.rate'      => ['required', 'numeric', 'min:0'],
+            'items.*.item_type'             => ['required', 'string', Rule::in(['unit', 'insurance'])],
+            'items.*.item_id'               => ['required', 'integer'],
+            'items.*.amount'                => ['required', 'numeric', 'min:0'],
+            'items.*.tax_rate_id'           => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'items.*.declared_goods_value'  => ['nullable', 'numeric', 'min:0'],
+            'items.*.description'           => ['nullable', 'string'],
         ]);
 
         $contract = DB::transaction(function () use ($validated) {
+            $billing = Setting::billing();
+            $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
+
             $contract = Contract::query()->create([
-                'contact_id'     => $validated['contact_id'],
-                'reservation_id' => $validated['reservation_id'] ?? null,
-                'deal_id'        => $validated['deal_id'] ?? null,
-                'start_date'     => $validated['start_date'],
-                'end_date'       => $validated['end_date'] ?? null,
-                'status'         => $validated['status'] ?? ContractStatus::Active->value,
-                'signed_at'      => $validated['signed_at'] ?? now(),
+                'contact_id'             => $validated['contact_id'],
+                'reservation_id'         => $validated['reservation_id'] ?? null,
+                'deal_id'                => $validated['deal_id'] ?? null,
+                'start_date'             => $validated['start_date'],
+                'end_date'               => $validated['end_date'] ?? null,
+                'status'                 => $validated['status'] ?? ContractStatus::Active->value,
+                'signed_at'              => $validated['signed_at'] ?? now(),
+                'billing_interval'       => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'billing_anchor_model'   => $billing->billingAnchorModel,
+                'proration_method'       => $billing->prorationMethod,
+                'move_in_date'           => $moveIn->toDateString(),
+                'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
             ]);
 
-            foreach ($validated['items'] as $itemData) {
-                $contract->items()->create([
-                    'item_type' => $itemData['item_type'],
-                    'item_id'   => $itemData['item_id'],
-                    'rate'      => $itemData['rate'],
+            $contractItems = collect($validated['items'])->map(function (array $itemData) use ($contract, $moveIn) {
+                $taxRate = $this->resolveContractItemTaxRate(
+                    $itemData['item_type'],
+                    $itemData['item_id'],
+                    $itemData['tax_rate_id'] ?? null,
+                    $moveIn,
+                );
+
+                return $contract->items()->create([
+                    'item_type'             => $itemData['item_type'],
+                    'item_id'               => $itemData['item_id'],
+                    'amount'                => $itemData['amount'],
+                    'tax_rate_id'           => $taxRate?->id,
+                    'tax_rate_snapshot'     => $taxRate?->rate,
+                    'declared_goods_value'  => $itemData['declared_goods_value'] ?? null,
+                    'description'           => $itemData['description'] ?? null,
                 ]);
-            }
+            });
+
+            $plan = ContractBilling::planFirstPeriod(
+                $moveIn,
+                $billing->billingAnchorModel,
+                $billing->defaultBillingInterval,
+                $billing->defaultBillingIntervalCount,
+                $billing->billingAnchorDay,
+            );
+
+            $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
 
             $signedProps = ['reservation_id' => $contract->reservation_id];
             RecordsActivity::core('contract.signed', $contract, $signedProps);
@@ -196,8 +237,10 @@ class ContractController extends Controller
             'deal',
             'notes.employee',
             'items.discount',
+            'items.taxRate',
             'invoices' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
             'payments' => fn ($query) => $query->orderByDesc('created_at')->with('allocations'),
+            'charges'  => fn ($query) => $query->orderByDesc('due_date'),
             'items.item' => function (MorphTo $morphTo): void {
                 $morphTo->morphWith([
                     Unit::class => ['site', 'unitClass'],

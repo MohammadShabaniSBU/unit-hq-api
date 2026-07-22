@@ -15,6 +15,7 @@ class InsurancePlanResource extends BaseResource
             'description' => $this->description,
             'coverage'    => $this->coverage,
             'currency'    => $this->currency,
+            'tax_rate_code' => $this->tax_rate_code,
             'created_at'  => $this->datetime($this->created_at),
             'updated_at'  => $this->datetime($this->updated_at),
         ];

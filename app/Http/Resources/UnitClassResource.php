@@ -15,6 +15,7 @@ class UnitClassResource extends BaseResource
             'label'            => $this->label,
             'size'             => $this->size,
             'current_price_id' => $this->current_price_id,
+            'tax_rate_code'    => $this->tax_rate_code,
             'created_at'       => $this->datetime($this->created_at),
             'updated_at'       => $this->datetime($this->updated_at),
             'current_price'    => PriceResource::make($this->whenLoaded('currentPrice')),

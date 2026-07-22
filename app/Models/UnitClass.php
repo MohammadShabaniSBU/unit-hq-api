@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string      $label
  * @property float|null  $size
  * @property int|null    $current_price_id
+ * @property string|null $tax_rate_code    default tax_rates.code for contract items on this class
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
@@ -43,6 +44,7 @@ class UnitClass extends Model
         'label',
         'size',
         'current_price_id',
+        'tax_rate_code',
     ];
 
     protected function casts(): array
