@@ -6,14 +6,14 @@ use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
 use App\Models\Concerns\HasNotes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
-use App\Models\Reservation;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * The pursuit record. Starts when someone expresses interest and ends when
@@ -76,6 +76,78 @@ class Deal extends Model
     public function isActivePursuit(): bool
     {
         return $this->status->isActivePursuit();
+    }
+
+    /**
+     * Search by deal id or linked contact name / email / company.
+     *
+     * @param  Builder<Deal>  $query
+     * @return Builder<Deal>
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        $digits = preg_replace('/\D+/', '', $term) ?? '';
+
+        return $query->where(function (Builder $q) use ($term, $digits) {
+            if ($digits !== '') {
+                $q->where('id', $digits);
+            }
+
+            $q->orWhereHas('contact', function (Builder $contactQuery) use ($term) {
+                $contactQuery->where(function (Builder $inner) use ($term) {
+                    $inner->where('first_name', 'like', "%{$term}%")
+                        ->orWhere('last_name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%")
+                        ->orWhere('company', 'like', "%{$term}%");
+                });
+            });
+        });
+    }
+
+    /**
+     * Grouped count of deals per pipeline status, honoring the same search filter.
+     * Returns every status key (including zero counts), in enum order.
+     *
+     * @return array<string, int>
+     */
+    public static function statusCounts(?string $search = null): array
+    {
+        $raw = static::query()
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'status');
+
+        $counts = collect($raw)->mapWithKeys(function (mixed $count, mixed $status) {
+            $key = $status instanceof DealStatus
+                ? $status->value
+                : (string) $status;
+
+            return [$key => (int) $count];
+        });
+
+        return collect(DealStatus::cases())
+            ->mapWithKeys(fn (DealStatus $case) => [
+                $case->value => (int) ($counts[$case->value] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
+     * Base query for a single board column: one status, optional search,
+     * contact + unit class, sorted by keyset order (updated_at DESC, id DESC).
+     *
+     * @param  Builder<Deal>  $query
+     * @return Builder<Deal>
+     */
+    public function scopeForBoardColumn(Builder $query, DealStatus $status, ?string $search = null): Builder
+    {
+        return $query
+            ->where('status', $status->value)
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->with(['contact', 'desiredUnitClass'])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
     }
 
     /** @return BelongsTo<Contact, Deal> */

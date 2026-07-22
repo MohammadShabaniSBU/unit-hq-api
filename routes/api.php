@@ -65,9 +65,15 @@ Route::put('copilot/conversations/{id}/messages', [Controllers\CopilotController
 Route::post('copilot/chat', [Controllers\CopilotController::class, 'chat']);
 
 Route::get('deals/options', [Controllers\DealController::class, 'options']);
+Route::get('deals/board', [Controllers\DealBoardController::class, 'index']);
+Route::get('deals/board/columns/{status}', [Controllers\DealBoardController::class, 'column']);
+Route::patch('deals/{deal}/status', [Controllers\DealController::class, 'updateStatus']);
 Route::apiResource('deals', Controllers\DealController::class);
 
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
+Route::get('offers/board', [Controllers\OfferBoardController::class, 'index']);
+Route::get('offers/board/columns/{status}', [Controllers\OfferBoardController::class, 'column']);
+Route::patch('offers/{offer}/status', [Controllers\OfferController::class, 'updateStatus']);
 Route::apiResource('offers', Controllers\OfferController::class);
 
 Route::post('offer-options', [Controllers\OfferOptionController::class, 'store']);

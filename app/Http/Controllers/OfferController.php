@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\OfferCardResource;
 use App\Http\Resources\OfferResource;
 use App\Models\Offer;
 use App\Models\OfferOption;
@@ -14,9 +15,6 @@ use Illuminate\Validation\Rule;
 
 class OfferController extends Controller
 {
-    /** @var array<int, string> */
-    private const STATUSES = ['draft', 'sent', 'viewed', 'accepted', 'expired'];
-
     public function index(Request $request): JsonResponse
     {
         $query = Offer::query()->with([
@@ -44,7 +42,7 @@ class OfferController extends Controller
             'deal_id'         => ['required', 'integer', 'exists:deals,id'],
             'contact_id'      => ['required', 'integer', 'exists:contacts,id'],
             'token'           => ['nullable', 'string', 'unique:offers,token'],
-            'status'          => ['nullable', Rule::in(self::STATUSES)],
+            'status'          => ['nullable', Rule::in(Offer::STATUSES)],
             'expires_at'      => ['required', 'date'],
             'sent_at'         => ['nullable', 'date'],
             'first_viewed_at' => ['nullable', 'date'],
@@ -125,7 +123,7 @@ class OfferController extends Controller
             'deal_id'         => ['sometimes', 'required', 'integer', 'exists:deals,id'],
             'contact_id'      => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
             'token'           => ['sometimes', 'nullable', 'string', Rule::unique('offers', 'token')->ignore($offer->id)],
-            'status'          => ['sometimes', 'nullable', Rule::in(self::STATUSES)],
+            'status'          => ['sometimes', 'nullable', Rule::in(Offer::STATUSES)],
             'expires_at'      => ['sometimes', 'required', 'date'],
             'sent_at'         => ['sometimes', 'nullable', 'date'],
             'first_viewed_at' => ['sometimes', 'nullable', 'date'],
@@ -139,6 +137,20 @@ class OfferController extends Controller
                 'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
             ])),
             'Offer updated successfully.'
+        );
+    }
+
+    public function updateStatus(Request $request, Offer $offer): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(Offer::STATUSES)],
+        ]);
+
+        $offer->update(['status' => $validated['status']]);
+
+        return $this->success(
+            OfferCardResource::make($offer->fresh()->load('contact')->loadCount('options')),
+            'Offer status updated successfully.'
         );
     }
 

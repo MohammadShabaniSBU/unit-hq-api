@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Http\Resources\OfferCardResource;
+use App\Models\Offer;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class OfferBoardController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $search = $this->boardSearch($request);
+        $perColumn = $this->perColumn($request);
+        $counts = Offer::statusCounts($search);
+
+        $columns = collect(Offer::STATUSES)->map(function (string $status) use ($search, $perColumn, $counts) {
+            $page = Offer::query()
+                ->forBoardColumn($status, $search)
+                ->cursorPaginate($perColumn);
+
+            return [
+                'status' => $status,
+                'total' => $counts[$status],
+                'cards' => OfferCardResource::collection($page->items())->resolve(),
+                'next_cursor' => optional($page->nextCursor())->encode(),
+                'has_more' => $page->hasMorePages(),
+            ];
+        })->all();
+
+        return $this->success(
+            ['columns' => $columns],
+            'Offer board retrieved successfully.'
+        );
+    }
+
+    public function column(Request $request, string $status): JsonResponse
+    {
+        if (! in_array($status, Offer::STATUSES, true)) {
+            return $this->notFound('Unknown offer status.');
+        }
+
+        $search = $this->boardSearch($request);
+        $perColumn = $this->perColumn($request);
+
+        $page = Offer::query()
+            ->forBoardColumn($status, $search)
+            ->cursorPaginate($perColumn);
+
+        return $this->success([
+            'status' => $status,
+            'total' => Offer::statusCounts($search)[$status],
+            'cards' => OfferCardResource::collection($page->items())->resolve(),
+            'next_cursor' => optional($page->nextCursor())->encode(),
+            'has_more' => $page->hasMorePages(),
+        ], 'Offer board column retrieved successfully.');
+    }
+
+    private function boardSearch(Request $request): ?string
+    {
+        $search = $request->string('search')->trim()->toString();
+
+        return $search !== '' ? $search : null;
+    }
+
+    private function perColumn(Request $request): int
+    {
+        return max(1, min((int) $request->integer('per_column', 30), 100));
+    }
+}

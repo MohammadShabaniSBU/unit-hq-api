@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
+use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
 use App\Models\Deal;
 use App\Support\RecordsActivity;
@@ -120,6 +121,38 @@ class DealController extends Controller
         return $this->success(
             DealResource::make($deal),
             'Deal updated successfully.'
+        );
+    }
+
+    public function updateStatus(Request $request, Deal $deal): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(DealStatus::class)],
+        ]);
+
+        $previousStatus = $deal->status;
+        $deal->update(['status' => $validated['status']]);
+        $deal = $deal->fresh()->load(['contact', 'desiredUnitClass']);
+
+        $from = $previousStatus instanceof DealStatus ? $previousStatus->value : $previousStatus;
+        $to = $deal->status instanceof DealStatus ? $deal->status->value : $deal->status;
+
+        if ($from !== $to) {
+            RecordsActivity::core('deal.stage_changed', $deal, [
+                'from' => $from,
+                'to' => $to,
+            ]);
+
+            if ($deal->status === DealStatus::ClosedWon) {
+                RecordsActivity::core('deal.won', $deal, ['status' => $to]);
+            } elseif ($deal->status === DealStatus::ClosedLost) {
+                RecordsActivity::core('deal.lost', $deal, ['status' => $to]);
+            }
+        }
+
+        return $this->success(
+            DealCardResource::make($deal),
+            'Deal status updated successfully.'
         );
     }
 
