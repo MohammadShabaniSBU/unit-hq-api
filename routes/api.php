@@ -88,10 +88,16 @@ Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::
 Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
 Route::post('offer-options/{offerOption}/select', [Controllers\OfferOptionController::class, 'select']);
 
+Route::get('reservations/board', [Controllers\ReservationBoardController::class, 'index']);
+Route::get('reservations/board/columns/{status}', [Controllers\ReservationBoardController::class, 'column']);
+Route::patch('reservations/{reservation}/status', [Controllers\ReservationController::class, 'updateStatus']);
 Route::get('reservations/{reservation}/convert-preview', [Controllers\ReservationController::class, 'convertPreview']);
 Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
 Route::apiResource('reservations', Controllers\ReservationController::class);
 
+Route::get('contracts/board', [Controllers\ContractBoardController::class, 'index']);
+Route::get('contracts/board/columns/{status}', [Controllers\ContractBoardController::class, 'column']);
+Route::patch('contracts/{contract}/status', [Controllers\ContractController::class, 'updateStatus']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
 Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);

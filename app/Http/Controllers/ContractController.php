@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContractStatus;
+use App\Http\Resources\ContractCardResource;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\Unit;
@@ -121,25 +122,7 @@ class ContractController extends Controller
         $contract->refresh();
 
         if (array_key_exists('status', $validated)) {
-            $endedStatuses = [
-                ContractStatus::MovedOut,
-                ContractStatus::Terminated,
-                ContractStatus::Expired,
-                ContractStatus::MovedOut->value,
-                ContractStatus::Terminated->value,
-                ContractStatus::Expired->value,
-            ];
-            $wasEnded = in_array($previousStatus, $endedStatuses, true);
-            $isEnded = in_array($contract->status, $endedStatuses, true);
-
-            if ($isEnded && ! $wasEnded) {
-                RecordsActivity::core('contract.ended', $contract, [
-                    'reservation_id' => $contract->reservation_id,
-                    'status' => $contract->status instanceof ContractStatus
-                        ? $contract->status->value
-                        : $contract->status,
-                ]);
-            }
+            $this->logEndedIfNeeded($contract, $previousStatus);
         }
 
         $this->loadDetailRelations($contract);
@@ -150,11 +133,59 @@ class ContractController extends Controller
         );
     }
 
+    public function updateStatus(Request $request, Contract $contract): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(ContractStatus::class)],
+        ]);
+
+        $previousStatus = $contract->status;
+        $contract->update(['status' => $validated['status']]);
+        $contract = $contract->fresh()->load([
+            'contact',
+            'unitItem.item' => function (MorphTo $morphTo): void {
+                $morphTo->morphWith([
+                    Unit::class => ['site'],
+                ]);
+            },
+        ]);
+
+        $this->logEndedIfNeeded($contract, $previousStatus);
+
+        return $this->success(
+            ContractCardResource::make($contract),
+            'Contract status updated successfully.'
+        );
+    }
+
     public function destroy(Contract $contract): JsonResponse
     {
         $contract->delete();
 
         return $this->noContent('Contract deleted successfully.');
+    }
+
+    private function logEndedIfNeeded(Contract $contract, mixed $previousStatus): void
+    {
+        $endedStatuses = [
+            ContractStatus::MovedOut,
+            ContractStatus::Terminated,
+            ContractStatus::Expired,
+            ContractStatus::MovedOut->value,
+            ContractStatus::Terminated->value,
+            ContractStatus::Expired->value,
+        ];
+        $wasEnded = in_array($previousStatus, $endedStatuses, true);
+        $isEnded = in_array($contract->status, $endedStatuses, true);
+
+        if ($isEnded && ! $wasEnded) {
+            RecordsActivity::core('contract.ended', $contract, [
+                'reservation_id' => $contract->reservation_id,
+                'status' => $contract->status instanceof ContractStatus
+                    ? $contract->status->value
+                    : $contract->status,
+            ]);
+        }
     }
 
     private function loadDetailRelations(Contract $contract): void

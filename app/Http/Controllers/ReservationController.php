@@ -6,6 +6,7 @@ use App\Enums\ContractStatus;
 use App\Enums\ReservationStatus;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
+use App\Http\Resources\ReservationCardResource;
 use App\Http\Resources\ReservationResource;
 use App\Models\Contract;
 use App\Models\Deal;
@@ -172,6 +173,35 @@ class ReservationController extends Controller
         return $this->success(
             ReservationResource::make($reservation),
             'Reservation updated successfully.'
+        );
+    }
+
+    public function updateStatus(Request $request, Reservation $reservation): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(ReservationStatus::class)],
+        ]);
+
+        $previousStatus = $reservation->status;
+        $reservation->update(['status' => $validated['status']]);
+        $reservation = $reservation->fresh()->load(['contact', 'unit.site']);
+
+        $newStatus = $reservation->status;
+        $becameCancelled = $newStatus === ReservationStatus::Cancelled
+            || $newStatus === ReservationStatus::Cancelled->value;
+        $wasCancelled = $previousStatus === ReservationStatus::Cancelled
+            || $previousStatus === ReservationStatus::Cancelled->value;
+
+        if ($becameCancelled && ! $wasCancelled) {
+            RecordsActivity::core('reservation.cancelled', $reservation, [
+                'unit_id' => $reservation->unit_id,
+                'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
+            ]);
+        }
+
+        return $this->success(
+            ReservationCardResource::make($reservation),
+            'Reservation status updated successfully.'
         );
     }
 

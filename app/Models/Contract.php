@@ -4,13 +4,15 @@ namespace App\Models;
 
 use App\Enums\ContractStatus;
 use App\Models\Concerns\HasNotes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Operational and billing anchor created at contract signing.
@@ -65,6 +67,91 @@ class Contract extends Model
             'end_date'   => 'date',
             'signed_at'  => 'datetime',
         ];
+    }
+
+    /**
+     * @param  Builder<Contract>  $query
+     * @return Builder<Contract>
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        $digits = preg_replace('/\D+/', '', $term) ?? '';
+
+        return $query->where(function (Builder $q) use ($term, $digits) {
+            if ($digits !== '') {
+                $q->where('id', $digits)
+                    ->orWhere('deal_id', $digits);
+            }
+
+            $q->orWhereHas('contact', function (Builder $contactQuery) use ($term) {
+                $contactQuery->where(function (Builder $inner) use ($term) {
+                    $inner->where('first_name', 'like', "%{$term}%")
+                        ->orWhere('last_name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%")
+                        ->orWhere('company', 'like', "%{$term}%");
+                });
+            })->orWhereHas('unitItem', function (Builder $itemQuery) use ($term) {
+                $itemQuery->whereIn(
+                    'item_id',
+                    Unit::query()
+                        ->where('unit_number', 'like', "%{$term}%")
+                        ->select('id')
+                );
+            });
+        });
+    }
+
+    /**
+     * Grouped count of contracts per status, honoring the same search filter.
+     * Returns every status key (including zero counts), in enum order.
+     *
+     * @return array<string, int>
+     */
+    public static function statusCounts(?string $search = null): array
+    {
+        $raw = static::query()
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'status');
+
+        $counts = collect($raw)->mapWithKeys(function (mixed $count, mixed $status) {
+            $key = $status instanceof ContractStatus
+                ? $status->value
+                : (string) $status;
+
+            return [$key => (int) $count];
+        });
+
+        return collect(ContractStatus::cases())
+            ->mapWithKeys(fn (ContractStatus $case) => [
+                $case->value => (int) ($counts[$case->value] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
+     * Base query for a single board column: one status, optional search,
+     * contact + unitItem.item.site, sorted by keyset order (updated_at DESC, id DESC).
+     *
+     * @param  Builder<Contract>  $query
+     * @return Builder<Contract>
+     */
+    public function scopeForBoardColumn(Builder $query, ContractStatus $status, ?string $search = null): Builder
+    {
+        return $query
+            ->where('status', $status->value)
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->with([
+                'contact',
+                'unitItem.item' => function (MorphTo $morphTo): void {
+                    $morphTo->morphWith([
+                        Unit::class => ['site'],
+                    ]);
+                },
+            ])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
     }
 
     /** @return BelongsTo<Contact, Contract> */
