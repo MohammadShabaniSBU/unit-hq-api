@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
+use App\Http\Resources\ContactCardResource;
 use App\Http\Resources\ContactResource;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\PaymentResource;
@@ -22,13 +23,7 @@ class ContactController extends Controller
         $query = Contact::query()->latest();
 
         if ($request->filled('search')) {
-            $search = $request->string('search')->trim()->value();
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%");
-            });
+            $query->search($request->string('search')->trim()->value());
         }
 
         if ($request->filled('assigned_to')) {
@@ -108,6 +103,20 @@ class ContactController extends Controller
         return $this->success(
             ContactResource::make($contact->fresh()),
             'Contact updated successfully.'
+        );
+    }
+
+    public function updateStatus(Request $request, Contact $contact): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(ContactLifecycleStatus::class)],
+        ]);
+
+        $contact->update(['status' => $validated['status']]);
+
+        return $this->success(
+            ContactCardResource::make($contact->fresh()->loadCount('deals')),
+            'Contact status updated successfully.'
         );
     }
 

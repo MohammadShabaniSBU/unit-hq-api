@@ -41,6 +41,9 @@ Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destro
 Route::apiResource('units', Facility\UnitController::class);
 
 Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
+Route::get('contacts/board', [Controllers\ContactBoardController::class, 'index']);
+Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardController::class, 'column']);
+Route::patch('contacts/{contact}/status', [Controllers\ContactController::class, 'updateStatus']);
 Route::apiResource('contacts', Controllers\ContactController::class);
 Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
 Route::post('contacts/{contact}/channels', [Controllers\ContactChannelController::class, 'store']);

@@ -99,6 +99,68 @@ class Contact extends Model
     }
 
     /**
+     * Search by first name, last name, email, or company.
+     *
+     * @param  Builder<Contact>  $query
+     * @return Builder<Contact>
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('first_name', 'like', "%{$term}%")
+                ->orWhere('last_name', 'like', "%{$term}%")
+                ->orWhere('email', 'like', "%{$term}%")
+                ->orWhere('company', 'like', "%{$term}%");
+        });
+    }
+
+    /**
+     * Grouped count of contacts per lifecycle status, honoring the same search filter.
+     * Returns every status key (including zero counts), in enum order.
+     *
+     * @return array<string, int>
+     */
+    public static function statusCounts(?string $search = null): array
+    {
+        $raw = static::query()
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'status');
+
+        $counts = collect($raw)->mapWithKeys(function (mixed $count, mixed $status) {
+            $key = $status instanceof ContactLifecycleStatus
+                ? $status->value
+                : (string) $status;
+
+            return [$key => (int) $count];
+        });
+
+        return collect(ContactLifecycleStatus::cases())
+            ->mapWithKeys(fn (ContactLifecycleStatus $case) => [
+                $case->value => (int) ($counts[$case->value] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
+     * Base query for a single board column: one status, optional search,
+     * deal counts, sorted by keyset order (updated_at DESC, id DESC).
+     *
+     * @param  Builder<Contact>  $query
+     * @return Builder<Contact>
+     */
+    public function scopeForBoardColumn(Builder $query, ContactLifecycleStatus $status, ?string $search = null): Builder
+    {
+        return $query
+            ->where('status', $status->value)
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->withCount('deals')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+    }
+
+    /**
      * Derive lifecycle status from linked Deals, Reservations, and Contracts.
      * Priority order (highest wins): tenant → opportunity → lead → past_tenant → lost → prospect.
      */
