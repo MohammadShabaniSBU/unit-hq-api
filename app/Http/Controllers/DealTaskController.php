@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Http\Resources\TaskResource;
 use App\Enums\TaskType;
-use App\Models\Contact;
+use App\Http\Resources\TaskResource;
+use App\Models\Deal;
 use App\Models\Employee;
 use App\Models\Task;
 use Carbon\Carbon;
@@ -13,16 +15,16 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-class ContactTaskController extends Controller
+class DealTaskController extends Controller
 {
-    public function store(Request $request, Contact $contact): JsonResponse
+    public function store(Request $request, Deal $deal): JsonResponse
     {
         $validated = $request->validate([
-            'title'       => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'priority'    => ['nullable', Rule::in(Task::PRIORITIES)],
-            'type'        => ['nullable', Rule::enum(TaskType::class)],
-            'due_at'      => ['nullable', 'date'],
+            'priority' => ['nullable', Rule::in(Task::PRIORITIES)],
+            'type' => ['nullable', Rule::enum(TaskType::class)],
+            'due_at' => ['nullable', 'date'],
         ]);
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
@@ -34,10 +36,10 @@ class ContactTaskController extends Controller
         }
 
         /** @var Task $task */
-        $task = $contact->tasks()->create([
+        $task = $deal->tasks()->create([
             ...$validated,
-            'priority'   => $validated['priority'] ?? 'medium',
-            'status'     => 'open',
+            'priority' => $validated['priority'] ?? 'medium',
+            'status' => 'open',
             'created_by' => $createdBy,
         ]);
 
@@ -47,9 +49,9 @@ class ContactTaskController extends Controller
         );
     }
 
-    public function update(Request $request, Contact $contact, Task $task): JsonResponse
+    public function update(Request $request, Deal $deal, Task $task): JsonResponse
     {
-        if ($task->taskable_type !== Contact::class || $task->taskable_id !== $contact->id) {
+        if ($task->taskable_type !== Deal::class || $task->taskable_id !== $deal->id) {
             return $this->notFound('Task not found.');
         }
 

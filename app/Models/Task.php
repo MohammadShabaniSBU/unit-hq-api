@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\TaskType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * Polymorphic task. Attachable to Deal, Contact, Contract, Unit, or any future
@@ -43,6 +45,12 @@ class Task extends Model
 {
     use HasFactory;
 
+    /** @var array<int, string> */
+    public const STATUSES = ['open', 'in_progress', 'done', 'cancelled'];
+
+    /** @var array<int, string> */
+    public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+
     protected $fillable = [
         'taskable_type',
         'taskable_id',
@@ -65,6 +73,107 @@ class Task extends Model
             'due_at'       => 'datetime',
             'remind_at'    => 'datetime',
             'completed_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Search by title, description, id, or linked contact name.
+     *
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        $digits = preg_replace('/\D+/', '', $term) ?? '';
+
+        return $query->where(function (Builder $q) use ($term, $digits) {
+            $q->where('title', 'like', "%{$term}%")
+                ->orWhere('description', 'like', "%{$term}%");
+
+            if ($digits !== '') {
+                $q->orWhere('id', $digits);
+            }
+
+            $q->orWhere(function (Builder $morph) use ($term) {
+                $morph->where('taskable_type', Contact::class)
+                    ->whereHasMorph('taskable', [Contact::class], function (Builder $contactQuery) use ($term) {
+                        $contactQuery->where(function (Builder $inner) use ($term) {
+                            $inner->where('first_name', 'like', "%{$term}%")
+                                ->orWhere('last_name', 'like', "%{$term}%")
+                                ->orWhere('email', 'like', "%{$term}%")
+                                ->orWhere('company', 'like', "%{$term}%");
+                        });
+                    });
+            });
+        });
+    }
+
+    /**
+     * Grouped count of tasks per status, honoring the same search filter.
+     * Returns every status key (including zero counts), in STATUSES order.
+     *
+     * @return array<string, int>
+     */
+    public static function statusCounts(?string $search = null): array
+    {
+        $raw = static::query()
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'status');
+
+        $counts = collect($raw)->mapWithKeys(fn (mixed $count, mixed $status) => [
+            (string) $status => (int) $count,
+        ]);
+
+        return collect(self::STATUSES)
+            ->mapWithKeys(fn (string $status) => [
+                $status => (int) ($counts[$status] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
+     * Base query for a single board column: one status, optional search,
+     * assignee + taskable, due date ascending (nulls last).
+     *
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
+    public function scopeForBoardColumn(Builder $query, string $status, ?string $search = null): Builder
+    {
+        return $query
+            ->where('status', $status)
+            ->when($search, fn (Builder $q) => $q->search($search))
+            ->with(['assignee', 'taskable'])
+            ->orderByRaw('due_at IS NULL')
+            ->orderBy('due_at')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * Short payload describing the parent entity for list/board cards.
+     *
+     * @return array{type: string, id: int, label: string}|null
+     */
+    public function taskablePayload(): ?array
+    {
+        if (! $this->relationLoaded('taskable') || $this->taskable === null) {
+            return null;
+        }
+
+        $type = Str::snake(class_basename($this->taskable_type));
+        $label = match (true) {
+            $this->taskable instanceof Contact => trim("{$this->taskable->first_name} {$this->taskable->last_name}"),
+            $this->taskable instanceof Deal => 'Deal #' . $this->taskable->id,
+            default => class_basename($this->taskable_type) . ' #' . $this->taskable_id,
+        };
+
+        return [
+            'type' => $type,
+            'id' => (int) $this->taskable_id,
+            'label' => $label !== '' ? $label : class_basename($this->taskable_type) . ' #' . $this->taskable_id,
         ];
     }
 

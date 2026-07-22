@@ -45,7 +45,9 @@ class DealResource extends BaseResource
                     'description' => $task->description,
                     'priority'    => $task->priority,
                     'status'      => $task->status,
+                    'type'        => $task->type?->value,
                     'due_date'    => $this->date($task->due_at),
+                    'remind_at'   => $this->datetime($task->remind_at),
                     'created_at'  => $this->datetime($task->created_at),
                 ])
             ),

@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 
-class TaskResource extends BaseResource
+class TaskCardResource extends BaseResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
@@ -12,15 +14,10 @@ class TaskResource extends BaseResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'description' => $this->description,
             'priority' => $this->priority,
             'status' => $this->status,
             'type' => $this->type instanceof \BackedEnum ? $this->type->value : $this->type,
             'due_date' => $this->date($this->due_at),
-            'remind_at' => $this->datetime($this->remind_at),
-            'assigned_to' => $this->assigned_to,
-            'completed_at' => $this->datetime($this->completed_at),
-            'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),
             'assignee' => $this->whenLoaded('assignee', fn () => $this->assignee === null ? null : [
                 'id' => $this->assignee->id,

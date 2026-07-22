@@ -55,6 +55,11 @@ Route::delete('contacts/{contact}/addresses/{address}', [Controllers\ContactAddr
 Route::post('contacts/{contact}/tasks', [Controllers\ContactTaskController::class, 'store']);
 Route::patch('contacts/{contact}/tasks/{task}', [Controllers\ContactTaskController::class, 'update']);
 
+Route::get('tasks/board', [Controllers\TaskBoardController::class, 'index']);
+Route::get('tasks/board/columns/{status}', [Controllers\TaskBoardController::class, 'column']);
+Route::get('tasks', [Controllers\TaskController::class, 'index']);
+Route::patch('tasks/{task}/status', [Controllers\TaskController::class, 'updateStatus']);
+
 Route::post('notes', [Controllers\NoteController::class, 'store']);
 
 Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
@@ -68,6 +73,8 @@ Route::get('deals/options', [Controllers\DealController::class, 'options']);
 Route::get('deals/board', [Controllers\DealBoardController::class, 'index']);
 Route::get('deals/board/columns/{status}', [Controllers\DealBoardController::class, 'column']);
 Route::patch('deals/{deal}/status', [Controllers\DealController::class, 'updateStatus']);
+Route::post('deals/{deal}/tasks', [Controllers\DealTaskController::class, 'store']);
+Route::patch('deals/{deal}/tasks/{task}', [Controllers\DealTaskController::class, 'update']);
 Route::apiResource('deals', Controllers\DealController::class);
 
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
