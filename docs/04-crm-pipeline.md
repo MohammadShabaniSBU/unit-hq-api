@@ -49,11 +49,14 @@ Separate **send-event log** — one row per send: channel (email / SMS / WhatsAp
 
 The **inventory hold** — always references a **specific unit**, never a unit type. Holds `offer_option_id` FK.
 
-## Contract (ERD says "Lease" — code says Contract)
+## Contract (ERD may say "Lease" — code says Contract)
 
-The operational and billing anchor, created at signing.
+The operational and billing anchor, created at signing (walk-in or reservation convert).
 
-- **Line items live on `ContractItem`** (polymorphic: unit, insurance, …), each with its **own rate** — not flat FKs on the contract.
+- **Line items live on `ContractItem`** (polymorphic: unit, insurance, …), each with its **own `amount`** (net period price) — not flat FKs on the contract. Column was renamed from `rate` → `amount`.
+- Items also carry optional `price_id`, `description`, `declared_goods_value`, and tax snapshots (`tax_rate_id`, `tax_rate_snapshot`).
+- At signing the contract snapshots org billing: interval / count, `billing_anchor_model`, derived `billing_anchor_date`, `proration_method`, `move_in_date`, `deposit_amount`, and sets `billed_through` (billing cursor).
+- **First-period charges are written in the same transaction** as the contract (one charge per item + optional deposit). Preview (`convert-preview`) uses the same `BillingMath` / `ContractBilling` path so UI and ledger never diverge. Full detail: `05-billing-ledger.md`.
 - `reservation_id` is **nullable** to support walk-ins.
 - The ledger attaches to the Contract: every charge, payment, and allocation references it.
-- Reservation → contract conversion paths are active WIP.
+- Core activity: `contract.signed` via `RecordsActivity::core` (money in properties as strings).

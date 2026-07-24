@@ -12,14 +12,14 @@ The **Building layer has been removed** — the hierarchy is intentionally flat:
 
 The physical storage facility (also called "Center").
 
-- Settings (currency, billing period, timezone, late-fee rules) are **singleton rows** in the single database — mono-tenant, so no company scoping is needed.
+- Settings (currency, billing cadence / anchor / proration / deposit, timezone, late-fee rules, tax rates) are **singleton / catalogue rows** in the single database — mono-tenant, so no company scoping is needed.
 - Site maps (`site_maps`) support the visual unit map in the panel.
 
 ## UnitClass — the sellable product
 
 The **commercial product definition**, not the physical box.
 
-- Fields: `slug`, `label`, `tier` (for grouping), nominal dimensions (W×D×H), amenities, and a pointer to its **current price**.
+- Fields: `slug`, `label`, `tier` (for grouping), nominal dimensions (W×D×H), amenities, a pointer to its **current price**, and optional `tax_rate_code` (default exclusive tax for new contract lines).
 - **Type and size are not separate dimensions** — the class *is* the product identity.
 - Billing and public listings always use **class dimensions**, never per-unit dimensions.
 

@@ -12,9 +12,9 @@ unit-hq is a **mono-tenant** (single-company) self-storage operations platform. 
 |---|---|
 | Facility | Sites, unit classes, units, site maps, rates, insurance, discounts |
 | CRM / Leasing | Contacts → Deals → Offers → Reservations → Contracts |
-| Billing | Charges, payments, invoices, allocations (append-only ledger) |
+| Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
 | Payments | Stripe Connect — connected account is the merchant of record |
-| Extras | Settings, email templates, automations, AI copilot, dynamic properties, tasks/notes |
+| Extras | Settings (incl. tax rates), email templates, automations, AI copilot, dynamic properties, tasks/notes |
 
 ## Workspace layout
 
@@ -41,17 +41,18 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 | Comments | `Notes` (`HasNotes`) |
 | Pipeline end "Lease" | `/contracts` API + panel pages |
 
-**Always use `Contract` in code.** Canonical in-repo docs: `unit-hq-api/docs/product.md`, `unit-hq-api/docs/erd.md`.
+**Always use `Contract` in code.** Domain docs live in this folder (`00`–`10`); there is no separate `product.md` / `erd.md` in-repo.
 
 ## Doc set index
 
 - `01-stack.md` — tech stack, repo conventions, quick start
 - `02-facility.md` — Site / UnitClass / Unit / rates
-- `03-pricing.md` — Price model, immutability, insurance, discounts
+- `03-pricing.md` — Price model, tax rates, insurance, discounts
 - `04-crm-pipeline.md` — Contact → Deal → Offer → Reservation → Contract
-- `05-billing-ledger.md` — Charges, payments, allocations, invoices, Stripe
+- `05-billing-ledger.md` — Contract billing (cadence/anchor/tax/deposit), charges, payments, invoices, Stripe
 - `06-communications.md` — ContactChannel, Interaction, OfferDelivery
 - `07-people-and-auth.md` — User / Employee / Contact, roles, site scoping
 - `08-activity-logging.md` — activitylog + system_events
 - `09-conventions-and-invariants.md` — hard rules; read before writing code
-- `10-open-decisions.md` — what is not decided yet
+- `10-open-decisions.md` — decided vs undecided vs out of scope
+- `AGENTS.md` — short index for AI assistants

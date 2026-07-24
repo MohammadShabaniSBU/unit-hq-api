@@ -9,15 +9,29 @@
 - Insurance is **site-scoped** via InsuranceRate.
 - Stripe Connect with the company's connected account as merchant of record.
 - **GDPR activity/system_events redaction:** `contacts:redact {contact}` nulls an allowlisted set of JSON keys in `activity_log.properties` and surviving `system_events.payload` for rows whose subject is that contact, then inserts a tier-3 `contact.redacted` event (fact only — never what was removed). Config: `config/redaction.php`.
-- **Contract billing model (contract/contract_item/tax_rate enhancement):**
-  - **Tax basis: exclusive.** Item `amount` is net; `tax = round(net × rate/100, 2)`; `gross = net + tax`.
+- **Contract billing model (contract / contract_item / tax_rate enhancement) — shipped:**
+  - **Tax basis: exclusive.** Item `amount` is net; `tax = round(net × rate/100, 2)`; `gross = net + tax`. Catalogue: immutable `tax_rates` versions by `code`; products hold `tax_rate_code`; items/charges snapshot id + %.
   - **Billing timing: in advance.** First charge `due_date` = move-in.
-  - **Default proration: `daily`** (org setting; snapshotted per contract at signing).
-  - **Billing anchor: selectable per org**, snapshotted per contract — `anniversary` (anchor = move-in, every period full, no stub) or `calendar` (anchor = fixed day-of-month; off-boundary move-in prorates a stub).
-  - **Proration basis: calendar-days** — divide by the real day-length of the containing period, never a nominal 30. Arithmetic is `bcmath`, multiply-before-divide at high intermediate scale, single half-up round at the end (dividing first silently truncates money).
-  - **Calendar cadence is month-only in v1** — `week`/`day` + `calendar` anchor is a validation error.
+  - **Default proration: `daily`** (org setting; snapshotted per contract at signing). Alternatives: `full_period`, `none`.
+  - **Billing anchor: selectable per org**, snapshotted per contract —
+    - `anniversary` — anchor = move-in; every period full; no stub
+    - `calendar` — fixed day-of-month (`billing_anchor_day` 1..28); requires monthly cadence; off-boundary move-in → stub
+    - `calendar_week` — fixed ISO weekday (`billing_anchor_day` 1=Mon..7=Sun); requires weekly cadence; off-boundary move-in → stub
+  - **Proration basis: calendar-days** — divide by the real day-length of the containing period, never a nominal 30. Arithmetic is `bcmath` (`BillingMath`), multiply-before-divide at high intermediate scale, single half-up round at the end.
   - **Cadence has no per-contract override in v1** — every contract inherits the org's billing interval/count at signing.
   - **`billed_through` is a stored cursor**, not derived from invoices and never cached money.
+  - **Deposit:** optional charge at create when `deposit_amount > 0`; not revenue; no refund lifecycle in v1.
+  - **First-period charges** written in the same transaction as contract create / reservation convert; convert-preview shares `ContractBilling` / `BillingMath`.
+  - Detail: `05-billing-ledger.md`, `03-pricing.md`, `09-conventions-and-invariants.md`.
+
+## Explicitly out of scope (for now)
+
+- Discount snapshot JSON / full discount-on-contract-item model (discount columns exist; formal model still open below).
+- Deposit refund / deduction lifecycle.
+- Recurring billing job beyond first-charge generation (cursor is ready; job is not).
+- Per-contract cadence override.
+- Calendar multi-period epoch for `interval_count > 1` (still one boundary per month-day / weekday).
+- Stripe PaymentIntent wiring for deposits / first period.
 
 ## Undecided
 
@@ -30,13 +44,10 @@
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
 
-## Active WIP (from git status)
+## Active WIP
 
-- Discounts API + UI
-- Contract detail / update
+- Discounts API + UI (formal model still open)
+- Contract detail / update surfaces
 - Contact transactions
-- Invoice / payment resources
-- Billing seeder
-- Reservation → contract conversion paths
-
-Billing / discount / contract UX is actively landing on top of the schema described in these docs.
+- Invoice / payment resources polish
+- Recurring billing job (consume `billed_through`)

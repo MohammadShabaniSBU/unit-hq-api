@@ -30,10 +30,10 @@ final class ContractBilling
         BillingAnchorModel|string $anchorModel,
         BillingInterval|string $interval,
         int $intervalCount,
-        int $anchorDayOfMonth,
+        int $anchorDay,
     ): FirstPeriodPlan {
-        $anchor = BillingMath::resolveAnchorDate($moveIn, $anchorModel, $interval, $intervalCount, $anchorDayOfMonth);
-        $window = BillingMath::firstChargeWindow($moveIn, $anchor, $anchorDayOfMonth);
+        $anchor = BillingMath::resolveAnchorDate($moveIn, $anchorModel, $interval, $intervalCount, $anchorDay);
+        $window = BillingMath::firstChargeWindow($moveIn, $anchor, $anchorModel, $anchorDay);
 
         if ($window === null) {
             $periodEnd = BillingMath::advancePeriod($moveIn, $interval, $intervalCount);

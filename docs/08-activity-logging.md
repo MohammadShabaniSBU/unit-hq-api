@@ -24,7 +24,7 @@ Three logging tiers on two tables:
 |---|---|---|
 | `core` | 3 | Always on |
 | `crm` | 2 | Contact / ContactChannel diffs |
-| `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed` |
+| `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned` |
 | `comms` | 2 | `offer.sent` |
 | `billing` | 2 | Reserved for billing attribute/events |
 

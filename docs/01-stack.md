@@ -5,7 +5,7 @@
 - **Laravel 13**, PHP 8.3
 - **Auth:** Sanctum
 - **DB:** SQLite locally, PostgreSQL in deployment. Single database (mono-tenant).
-- **Architecture:** business logic lives in **controllers + models** — there is deliberately **no `app/Services/` layer**. Multi-step operations use explicit DB transactions.
+- **Architecture:** business logic lives in **controllers + models** — there is deliberately **no `app/Services/` layer**. Multi-step operations use explicit DB transactions. Shared billing math / orchestration: `App\Support\Billing\` (`BillingMath`, `ContractBilling`).
 - **API response shape** via `ApiResponsable`: `{ message, data }`, paginated responses include `{ meta }`.
 - **Tests:** PHPUnit with SQLite in-memory.
 - **AI Copilot:** built with the Laravel AI SDK (agent conversations stored in DB).
@@ -28,7 +28,7 @@
 - **Billing** — invoices, payments, ledger, overdue
 - **Marketing** — email builder, automations, campaigns
 - **Analytics** — occupancy, conversion, revenue
-- **Settings** — general, billing, leasing, Stripe Connect
+- **Settings** — general, billing, tax rates, leasing, activity log, Stripe Connect
 - **Inbox / Copilot** — messaging + AI conversations
 
 ## Quick start

@@ -26,15 +26,19 @@ final class BillingMath
 
     /**
      * The contract's billing_anchor_date.
-     * anniversary -> move_in. calendar -> first day-of-month boundary at or
-     * after move_in (same day if move_in already lands on the boundary).
+     * anniversary    -> move_in
+     * calendar       -> first day-of-month boundary at or after move_in
+     * calendar_week  -> first ISO weekday boundary at or after move_in
+     *
+     * $anchorDay is day-of-month (1..28) for calendar, or ISO weekday
+     * (1=Mon..7=Sun) for calendar_week.
      */
     public static function resolveAnchorDate(
         CarbonImmutable $moveIn,
         BillingAnchorModel|string $anchorModel,
         BillingInterval|string $interval,
         int $intervalCount,
-        int $anchorDayOfMonth = 1,
+        int $anchorDay = 1,
     ): CarbonImmutable {
         $model = self::anchorModel($anchorModel);
         $moveIn = self::midnight($moveIn);
@@ -43,14 +47,22 @@ final class BillingMath
             return $moveIn;
         }
 
+        if ($model === BillingAnchorModel::CalendarWeek) {
+            if (self::interval($interval) !== BillingInterval::Week) {
+                throw new InvalidArgumentException('Calendar week anchor model requires a weekly billing interval.');
+            }
+
+            return self::nextWeekdayAtOrAfter($moveIn, $anchorDay);
+        }
+
         if (self::interval($interval) !== BillingInterval::Month) {
             throw new InvalidArgumentException('Calendar anchor model requires a monthly billing interval.');
         }
 
-        return self::nextBoundaryAtOrAfter($moveIn, $anchorDayOfMonth);
+        return self::nextBoundaryAtOrAfter($moveIn, $anchorDay);
     }
 
-    /** The calendar boundary <= $date. */
+    /** The calendar day-of-month boundary <= $date. */
     public static function previousBoundary(CarbonImmutable $date, int $anchorDayOfMonth): CarbonImmutable
     {
         $date = self::midnight($date);
@@ -65,7 +77,7 @@ final class BillingMath
         return self::boundaryInMonth($prevMonth->year, $prevMonth->month, $anchorDayOfMonth);
     }
 
-    /** The calendar boundary >= $date. */
+    /** The calendar day-of-month boundary >= $date. */
     public static function nextBoundaryAtOrAfter(CarbonImmutable $date, int $anchorDayOfMonth): CarbonImmutable
     {
         $date = self::midnight($date);
@@ -78,6 +90,34 @@ final class BillingMath
         $nextMonth = $date->addMonthsNoOverflow(1);
 
         return self::boundaryInMonth($nextMonth->year, $nextMonth->month, $anchorDayOfMonth);
+    }
+
+    /**
+     * The ISO weekday boundary <= $date.
+     * $isoWeekday is 1=Monday .. 7=Sunday (Carbon dayOfWeekIso).
+     */
+    public static function previousWeekdayBoundary(CarbonImmutable $date, int $isoWeekday): CarbonImmutable
+    {
+        $date = self::midnight($date);
+        self::assertIsoWeekday($isoWeekday);
+
+        $delta = ($date->dayOfWeekIso - $isoWeekday + 7) % 7;
+
+        return $date->subDays($delta);
+    }
+
+    /**
+     * The ISO weekday boundary >= $date (same day when already on that weekday).
+     * $isoWeekday is 1=Monday .. 7=Sunday (Carbon dayOfWeekIso).
+     */
+    public static function nextWeekdayAtOrAfter(CarbonImmutable $date, int $isoWeekday): CarbonImmutable
+    {
+        $date = self::midnight($date);
+        self::assertIsoWeekday($isoWeekday);
+
+        $delta = ($isoWeekday - $date->dayOfWeekIso + 7) % 7;
+
+        return $date->addDays($delta);
     }
 
     /**
@@ -100,11 +140,14 @@ final class BillingMath
     /**
      * First-charge window. Null means no stub (anniversary, or move_in already
      * lands on the calendar boundary) — caller bills a full period from move_in.
+     *
+     * $anchorDay is day-of-month for calendar, ISO weekday for calendar_week.
      */
     public static function firstChargeWindow(
         CarbonImmutable $moveIn,
         CarbonImmutable $anchorDate,
-        int $anchorDayOfMonth,
+        BillingAnchorModel|string $anchorModel,
+        int $anchorDay,
     ): ?FirstChargeWindow {
         $moveIn = self::midnight($moveIn);
         $anchorDate = self::midnight($anchorDate);
@@ -113,7 +156,12 @@ final class BillingMath
             return null;
         }
 
-        $periodStart = self::previousBoundary($moveIn, $anchorDayOfMonth);
+        $model = self::anchorModel($anchorModel);
+
+        $periodStart = $model === BillingAnchorModel::CalendarWeek
+            ? self::previousWeekdayBoundary($moveIn, $anchorDay)
+            : self::previousBoundary($moveIn, $anchorDay);
+
         $daysOccupied = self::daysBetween($moveIn, $anchorDate);
         $daysInPeriod = self::daysBetween($periodStart, $anchorDate);
 
@@ -178,6 +226,13 @@ final class BillingMath
         $day = min($anchorDayOfMonth, $base->daysInMonth);
 
         return $base->addDays($day - 1);
+    }
+
+    private static function assertIsoWeekday(int $isoWeekday): void
+    {
+        if ($isoWeekday < 1 || $isoWeekday > 7) {
+            throw new InvalidArgumentException('ISO weekday must be between 1 (Monday) and 7 (Sunday).');
+        }
     }
 
     private static function daysBetween(CarbonImmutable $earlier, CarbonImmutable $later): int

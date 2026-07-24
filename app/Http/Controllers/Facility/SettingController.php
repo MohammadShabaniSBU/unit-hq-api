@@ -56,7 +56,7 @@ class SettingController extends Controller
             'default_currency'               => ['sometimes', 'required', 'string', 'size:3'],
             'default_billing_interval'       => ['sometimes', 'required', 'string', Rule::in(['day', 'week', 'month'])],
             'default_billing_interval_count' => ['sometimes', 'required', 'integer', 'min:1'],
-            'billing_anchor_model'           => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar'])],
+            'billing_anchor_model'           => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar', 'calendar_week'])],
             'billing_anchor_day'             => ['sometimes', 'required', 'integer', 'min:1', 'max:28'],
             'proration_method'               => ['sometimes', 'required', 'string', Rule::in(['daily', 'full_period', 'none'])],
             'default_deposit_amount'         => ['sometimes', 'required', 'numeric', 'min:0'],
@@ -68,6 +68,18 @@ class SettingController extends Controller
         if ($anchorModel === 'calendar' && $interval !== 'month') {
             throw ValidationException::withMessages([
                 'billing_anchor_model' => ['The calendar anchor model requires a monthly billing interval.'],
+            ]);
+        }
+
+        if ($anchorModel === 'calendar_week' && $interval !== 'week') {
+            throw ValidationException::withMessages([
+                'billing_anchor_model' => ['The calendar week anchor model requires a weekly billing interval.'],
+            ]);
+        }
+
+        if (isset($validated['billing_anchor_day']) && $anchorModel === 'calendar_week' && $validated['billing_anchor_day'] > 7) {
+            throw ValidationException::withMessages([
+                'billing_anchor_day' => ['The calendar week anchor day must be between 1 (Monday) and 7 (Sunday).'],
             ]);
         }
 
