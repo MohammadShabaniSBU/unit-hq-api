@@ -6,6 +6,15 @@
 Contact → Deal → Offer → OfferOption (selected) → Reservation → Contract
 ```
 
+## Advanced filters (list search)
+
+Ad-hoc nested AND/OR filters over native fields **and** custom attributes, for Contacts / Deals / Offers / Reservations / Units / Contracts:
+
+- `GET /api/{entity}/filters/schema` — generative field list (native + active `attr:{id}`).
+- `POST /api/{entity}/search` — body `{ filter, sort?, page, per_page, search?, status? }`; response is standard paginated shape.
+- Filter tree is **not persisted** server-side (panel mirrors applied tree in `?f=`). Saved views deferred.
+- Engine: `App\Support\Filtering\` (`FilterBuilder`, `FilterTreeValidator`, `FilterableFields`, …).
+
 ## Contact
 
 Durable **person record holding identity only**. Contacts do **not** log in — they interact via offer token links.

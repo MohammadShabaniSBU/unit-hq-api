@@ -70,9 +70,13 @@ Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
 Route::get('site-maps/{siteMap}', [Facility\SiteMapController::class, 'show']);
 Route::patch('site-maps/{siteMap}', [Facility\SiteMapController::class, 'update']);
 Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destroy']);
+Route::get('units/filters/schema', [Facility\UnitController::class, 'filterSchema']);
+Route::post('units/search', [Facility\UnitController::class, 'search']);
 Route::apiResource('units', Facility\UnitController::class);
 
 Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
+Route::get('contacts/filters/schema', [Controllers\ContactController::class, 'filterSchema']);
+Route::post('contacts/search', [Controllers\ContactController::class, 'search']);
 Route::get('contacts/board', [Controllers\ContactBoardController::class, 'index']);
 Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardController::class, 'column']);
 Route::patch('contacts/{contact}/status', [Controllers\ContactController::class, 'updateStatus']);
@@ -102,6 +106,8 @@ Route::put('copilot/conversations/{id}/messages', [Controllers\CopilotController
 Route::post('copilot/chat', [Controllers\CopilotController::class, 'chat']);
 
 Route::get('deals/options', [Controllers\DealController::class, 'options']);
+Route::get('deals/filters/schema', [Controllers\DealController::class, 'filterSchema']);
+Route::post('deals/search', [Controllers\DealController::class, 'search']);
 Route::get('deals/board', [Controllers\DealBoardController::class, 'index']);
 Route::get('deals/board/columns/{status}', [Controllers\DealBoardController::class, 'column']);
 Route::patch('deals/{deal}/status', [Controllers\DealController::class, 'updateStatus']);
@@ -110,6 +116,8 @@ Route::patch('deals/{deal}/tasks/{task}', [Controllers\DealTaskController::class
 Route::apiResource('deals', Controllers\DealController::class);
 
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
+Route::get('offers/filters/schema', [Controllers\OfferController::class, 'filterSchema']);
+Route::post('offers/search', [Controllers\OfferController::class, 'search']);
 Route::get('offers/board', [Controllers\OfferBoardController::class, 'index']);
 Route::get('offers/board/columns/{status}', [Controllers\OfferBoardController::class, 'column']);
 Route::patch('offers/{offer}/status', [Controllers\OfferController::class, 'updateStatus']);
@@ -120,6 +128,8 @@ Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::
 Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
 Route::post('offer-options/{offerOption}/select', [Controllers\OfferOptionController::class, 'select']);
 
+Route::get('reservations/filters/schema', [Controllers\ReservationController::class, 'filterSchema']);
+Route::post('reservations/search', [Controllers\ReservationController::class, 'search']);
 Route::get('reservations/board', [Controllers\ReservationBoardController::class, 'index']);
 Route::get('reservations/board/columns/{status}', [Controllers\ReservationBoardController::class, 'column']);
 Route::patch('reservations/{reservation}/status', [Controllers\ReservationController::class, 'updateStatus']);
@@ -127,6 +137,8 @@ Route::get('reservations/{reservation}/convert-preview', [Controllers\Reservatio
 Route::post('reservations/{reservation}/convert', [Controllers\ReservationController::class, 'convert']);
 Route::apiResource('reservations', Controllers\ReservationController::class);
 
+Route::get('contracts/filters/schema', [Controllers\ContractController::class, 'filterSchema']);
+Route::post('contracts/search', [Controllers\ContractController::class, 'search']);
 Route::get('contracts/board', [Controllers\ContractBoardController::class, 'index']);
 Route::get('contracts/board/columns/{status}', [Controllers\ContractBoardController::class, 'column']);
 Route::patch('contracts/{contract}/status', [Controllers\ContractController::class, 'updateStatus']);

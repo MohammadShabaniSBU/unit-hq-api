@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\ContractCardResource;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
@@ -21,6 +23,7 @@ use Illuminate\Validation\Rule;
 class ContractController extends Controller
 {
     use GeneratesFirstPeriodCharges;
+    use SearchesWithFilters;
 
     public function index(Request $request): JsonResponse
     {
@@ -50,6 +53,36 @@ class ContractController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Contract $contract) => ContractResource::make($contract)),
             'Contracts retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Contract);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Contract,
+            Contract::query()->with(['items.item', 'contact', 'reservation']),
+            fn (Contract $contract) => ContractResource::make($contract),
+            'Contracts retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('contact_id')) {
+                    $query->where('contact_id', $request->integer('contact_id'));
+                }
+                if ($request->filled('deal_id')) {
+                    $query->where('deal_id', $request->integer('deal_id'));
+                }
+                if ($request->filled('unit_id')) {
+                    $query->whereHas('items', function ($q) use ($request): void {
+                        $q->where('item_type', 'unit')
+                            ->where('item_id', $request->integer('unit_id'));
+                    });
+                }
+            },
         );
     }
 

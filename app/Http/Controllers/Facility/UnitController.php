@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Facility;
 
+use App\Enums\AttributeEntityType;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UnitResource;
 use App\Models\Unit;
@@ -12,6 +14,8 @@ use Illuminate\Validation\Rule;
 
 class UnitController extends Controller
 {
+    use SearchesWithFilters;
+
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -37,6 +41,27 @@ class UnitController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Unit $unit) => UnitResource::make($unit)),
             'Units retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Unit);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Unit,
+            Unit::query()->with(['site', 'unitClass'])->withMapStatus(),
+            fn (Unit $unit) => UnitResource::make($unit),
+            'Units retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('site_id')) {
+                    $query->where('site_id', $request->integer('site_id'));
+                }
+            },
         );
     }
 

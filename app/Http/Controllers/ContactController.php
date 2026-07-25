@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttributeEntityType;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\ContactCardResource;
 use App\Http\Resources\ContactResource;
 use App\Http\Resources\InvoiceResource;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class ContactController extends Controller
 {
+    use SearchesWithFilters;
+
     public function index(Request $request): JsonResponse
     {
         $query = Contact::query()->latest();
@@ -37,6 +41,27 @@ class ContactController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Contact $contact) => ContactResource::make($contact)),
             'Contacts retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Contact);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Contact,
+            Contact::query(),
+            fn (Contact $contact) => ContactResource::make($contact),
+            'Contacts retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('assigned_to')) {
+                    $query->where('assigned_to', $request->integer('assigned_to'));
+                }
+            },
         );
     }
 

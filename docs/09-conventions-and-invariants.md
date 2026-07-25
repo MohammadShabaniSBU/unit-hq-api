@@ -36,7 +36,8 @@
 ### API (Laravel)
 
 - **No `app/Services/` layer** — fat controllers/models; DB transactions for multi-step operations.
-- Shared pure helpers live under **`App\Support\`** (e.g. `App\Support\Billing\BillingMath`, `ContractBilling`) — same tier as `RecordsActivity`, never a Services directory.
+- Shared pure helpers live under **`App\Support\`** (e.g. `App\Support\Billing\BillingMath`, `ContractBilling`, `App\Support\Filtering\FilterBuilder`) — same tier as `RecordsActivity`, never a Services directory.
+- **Advanced list filters** — never trust client column names. Native fields come from `FilterableFields` whitelist; custom attrs via `attr:{definitionId}` + correlated `whereExists` on `attribute_values` (no join-per-condition). Validate tree (`FilterTreeValidator`) before `FilterBuilder` runs.
 - Response shape via `ApiResponsable`: `{ message, data }` / paginated `{ meta }`.
 - Morph map registered explicitly — e.g. `contact`, `deal`, `offer`, `reservation`, `unit`, `contract`, `insurance`.
 - Tests: PHPUnit + SQLite in-memory.

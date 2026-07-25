@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
 use App\Enums\ProrationMethod;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
@@ -35,6 +37,7 @@ use Illuminate\Validation\ValidationException;
 class ReservationController extends Controller
 {
     use GeneratesFirstPeriodCharges;
+    use SearchesWithFilters;
 
     public function index(Request $request): JsonResponse
     {
@@ -61,6 +64,33 @@ class ReservationController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Reservation $r) => ReservationResource::make($r)),
             'Reservations retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Reservation);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Reservation,
+            Reservation::query()->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price']),
+            fn (Reservation $r) => ReservationResource::make($r),
+            'Reservations retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('contact_id')) {
+                    $query->where('contact_id', $request->integer('contact_id'));
+                }
+                if ($request->filled('deal_id')) {
+                    $query->where('deal_id', $request->integer('deal_id'));
+                }
+                if ($request->filled('unit_id')) {
+                    $query->where('unit_id', $request->integer('unit_id'));
+                }
+            },
         );
     }
 

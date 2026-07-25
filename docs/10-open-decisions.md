@@ -39,7 +39,7 @@
 - Per-contract cadence override.
 - Calendar multi-period epoch for `interval_count > 1` (still one boundary per month-day / weekday).
 - Stripe PaymentIntent wiring for deposits / first period.
-- Custom-attribute advance filters, saved views, and column promotion.
+- Custom-attribute **saved views** and column promotion (advanced filters / `POST …/search` shipped; snapshots deferred).
 - Object-customization drag-and-drop reorder (arrow reorder ships first); multi-column / conditional / per-role layouts.
 - Removing or renaming `attribute_definitions.group_name` (catalog metadata unused by layout; kept for now).
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttributeEntityType;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\OfferCardResource;
 use App\Http\Resources\OfferResource;
 use App\Models\Offer;
@@ -15,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class OfferController extends Controller
 {
+    use SearchesWithFilters;
+
     public function index(Request $request): JsonResponse
     {
         $query = Offer::query()->with([
@@ -33,6 +37,30 @@ class OfferController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Offer $offer) => OfferResource::make($offer)),
             'Offers retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Offer);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Offer,
+            Offer::query()->with([
+                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+                'contact',
+            ]),
+            fn (Offer $offer) => OfferResource::make($offer),
+            'Offers retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('deal_id')) {
+                    $query->where('deal_id', $request->integer('deal_id'));
+                }
+            },
         );
     }
 

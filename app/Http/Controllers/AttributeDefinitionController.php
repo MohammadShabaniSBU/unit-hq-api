@@ -9,6 +9,7 @@ use App\Enums\AttributeType;
 use App\Http\Resources\AttributeDefinitionResource;
 use App\Models\AttributeDefinition;
 use App\Models\AttributeOption;
+use App\Support\Filtering\AttributeFieldResolver;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,8 @@ class AttributeDefinitionController extends Controller
             return $definition->load('options');
         });
 
+        AttributeFieldResolver::forget($definition->entity_type);
+
         return $this->created(
             AttributeDefinitionResource::make($definition),
             'Attribute definition created successfully.'
@@ -130,6 +133,8 @@ class AttributeDefinitionController extends Controller
             return $attributeDefinition->fresh()->load('options');
         });
 
+        AttributeFieldResolver::forget($definition->entity_type);
+
         return $this->success(
             AttributeDefinitionResource::make($definition),
             'Attribute definition updated successfully.'
@@ -163,6 +168,8 @@ class AttributeDefinitionController extends Controller
             return $attributeDefinition->fresh()->load('options');
         });
 
+        AttributeFieldResolver::forget($definition->entity_type);
+
         return $this->success(
             AttributeDefinitionResource::make($definition),
             'Attribute definition archived successfully.'
@@ -195,6 +202,8 @@ class AttributeDefinitionController extends Controller
 
             return $attributeDefinition->fresh()->load('options');
         });
+
+        AttributeFieldResolver::forget($definition->entity_type);
 
         return $this->success(
             AttributeDefinitionResource::make($definition),

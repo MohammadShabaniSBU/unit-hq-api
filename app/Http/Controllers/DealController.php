@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttributeEntityType;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
+use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
 use App\Models\Deal;
@@ -15,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class DealController extends Controller
 {
+    use SearchesWithFilters;
+
     public function index(Request $request): JsonResponse
     {
         $query = Deal::query()->with(['desiredUnitClass', 'contact'])->latest();
@@ -30,6 +34,27 @@ class DealController extends Controller
         return $this->paginated(
             $query->paginate($this->perPage())->through(fn (Deal $deal) => DealResource::make($deal)),
             'Deals retrieved successfully.'
+        );
+    }
+
+    public function filterSchema(): JsonResponse
+    {
+        return $this->respondFilterSchema(AttributeEntityType::Deal);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        return $this->searchWithFilters(
+            $request,
+            AttributeEntityType::Deal,
+            Deal::query()->with(['desiredUnitClass', 'contact']),
+            fn (Deal $deal) => DealResource::make($deal),
+            'Deals retrieved successfully.',
+            function ($query, Request $request): void {
+                if ($request->filled('contact_id')) {
+                    $query->where('contact_id', $request->integer('contact_id'));
+                }
+            },
         );
     }
 
