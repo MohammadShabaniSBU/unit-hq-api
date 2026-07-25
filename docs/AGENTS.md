@@ -26,6 +26,7 @@ Before writing code, consult the doc that matches the task:
 - Money is `NUMERIC(10,2)`, never floats; PHP money math via `BillingMath` (bcmath).
 - Payments confirmed only via Stripe webhooks + idempotency keys.
 - Entity is `Contract` in code, not Lease.
+- Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card.
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
 

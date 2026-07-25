@@ -54,7 +54,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Collection<int, Task>        $tasks
  * @property-read Collection<int, Note>        $notes
  * @property-read Collection<int, Interaction> $interactions
- * @property-read Collection<int, PropertyValue> $propertyValues
  */
 class Contact extends Model
 {
@@ -283,11 +282,5 @@ class Contact extends Model
     public function interactions(): HasMany
     {
         return $this->hasMany(Interaction::class);
-    }
-
-    /** @return MorphMany<PropertyValue> */
-    public function propertyValues(): MorphMany
-    {
-        return $this->morphMany(PropertyValue::class, 'propertable');
     }
 }

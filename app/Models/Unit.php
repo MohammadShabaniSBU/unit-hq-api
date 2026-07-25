@@ -42,7 +42,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read UnitClass                      $unitClass
  * @property-read Collection<int, Reservation>   $reservations
  * @property-read Collection<int, ContractItem>  $contractItems
- * @property-read Collection<int, PropertyValue> $propertyValues
  */
 class Unit extends Model
 {
@@ -96,12 +95,6 @@ class Unit extends Model
     public function contractItems(): MorphMany
     {
         return $this->morphMany(ContractItem::class, 'item');
-    }
-
-    /** @return MorphMany<PropertyValue> */
-    public function propertyValues(): MorphMany
-    {
-        return $this->morphMany(PropertyValue::class, 'propertable');
     }
 
     /** @param Builder<Unit> $query */

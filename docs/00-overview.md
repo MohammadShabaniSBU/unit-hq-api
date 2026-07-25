@@ -14,7 +14,7 @@ unit-hq is a **mono-tenant** (single-company) self-storage operations platform. 
 | CRM / Leasing | Contacts → Deals → Offers → Reservations → Contracts |
 | Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
 | Payments | Stripe Connect — connected account is the merchant of record |
-| Extras | Settings (incl. tax rates), email templates, automations, AI copilot, dynamic properties, tasks/notes |
+| Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automations, AI copilot, tasks/notes |
 
 ## Workspace layout
 

@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(CountrySeeder::class);
+        $this->call(DefaultAttributeLayoutSeeder::class);
 
         Employee::factory()->manager()->create();
         Employee::factory()->staff()->count(4)->create();

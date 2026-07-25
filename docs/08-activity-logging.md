@@ -23,8 +23,8 @@ Three logging tiers on two tables:
 | Value | Tier | Notes |
 |---|---|---|
 | `core` | 3 | Always on |
-| `crm` | 2 | Contact / ContactChannel diffs |
-| `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned` |
+| `crm` | 2 | Contact / ContactChannel diffs; attribute value upserts on CRM entities |
+| `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned`; object-customization layout mutations; attribute value upserts on Unit |
 | `comms` | 2 | `offer.sent` |
 | `billing` | 2 | Reserved for billing attribute/events |
 
@@ -32,6 +32,15 @@ Three logging tiers on two tables:
 
 - Tier 1: `domain.action.phase` — e.g. `offer.accept.started`, `offer.accept.committed`
 - Tier 2/3 `description`: machine key — e.g. `deal.stage_changed`, `contract.signed`. Panel translates via i18n. Money in properties as strings.
+
+### Custom attributes & object customization (Tier-2)
+
+| Event | Channel | Subject | Notes |
+|---|---|---|---|
+| `attribute.value.updated` / `attribute.value.cleared` | `AttributeEntityType::activityChannel()` (`crm` except Unit → `facility`) | **Parent entity** (Contact/Deal/…) | Properties: `definition_id`, `key`, `old`, `new` |
+| `attribute.definition.created` / `.updated` / `.archived` / `.unarchived` | entity channel | `AttributeDefinition` | Definitions are archive-only (never hard-deleted) |
+| `layout.group.created` / `.updated` / `.reordered` / `.deleted` | `facility` | `AttributeGroup` (or null for reorder) | Org settings / config |
+| `layout.field.added` / `.moved` / `.reordered` / `.removed` | `facility` | `LayoutField` or group | Properties include `entity_type` |
 
 ## API
 

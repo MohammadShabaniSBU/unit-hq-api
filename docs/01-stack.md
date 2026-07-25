@@ -28,7 +28,7 @@
 - **Billing** — invoices, payments, ledger, overdue
 - **Marketing** — email builder, automations, campaigns
 - **Analytics** — occupancy, conversion, revenue
-- **Settings** — general, billing, tax rates, leasing, activity log, Stripe Connect
+- **Settings** — general, billing, tax rates, leasing, custom attributes, object customization, activity log, Stripe Connect
 - **Inbox / Copilot** — messaging + AI conversations
 
 ## Quick start

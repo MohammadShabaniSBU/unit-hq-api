@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\Deal;
 use App\Models\Insurance;
+use App\Models\Offer;
+use App\Models\Reservation;
 use App\Models\Unit;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\RequestId;
@@ -28,8 +33,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Relation::morphMap([
-            'unit'      => Unit::class,
-            'insurance' => Insurance::class,
+            'contact'     => Contact::class,
+            'deal'        => Deal::class,
+            'offer'       => Offer::class,
+            'reservation' => Reservation::class,
+            'unit'        => Unit::class,
+            'contract'    => Contract::class,
+            'insurance'   => Insurance::class,
         ]);
 
         Session::extend('database', function ($app) {

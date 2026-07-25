@@ -23,6 +23,13 @@
   - **Deposit:** optional charge at create when `deposit_amount > 0`; not revenue; no refund lifecycle in v1.
   - **First-period charges** written in the same transaction as contract create / reservation convert; convert-preview shares `ContractBilling` / `BillingMath`.
   - Detail: `05-billing-ledger.md`, `03-pricing.md`, `09-conventions-and-invariants.md`.
+- **Object customization activity logging:**
+  - Attribute value upserts/clears → Tier-2 on the **parent entity**, channel via `AttributeEntityType::activityChannel()`.
+  - Layout group/field mutations → Tier-2 `facility` (`layout.group.*` / `layout.field.*`).
+  - Definition lifecycle → Tier-2 `attribute.definition.created` / `.updated` / `.archived` / `.unarchived` (no `.deleted`).
+- **Default overview layouts** are inserted by `DefaultAttributeLayoutSeeder` (system cards + native `layout_fields`). Custom-attribute definition seeding remains deferred.
+- **Attribute definitions are archive-only** — `archived_at`; `POST …/archive` / `…/unarchive`; list `?status=active|archived|all`. No hard delete.
+- **`attribute_definitions.group_name` ≠ layout cards** — free-text catalog metadata only; overview cards are `attribute_groups` via `layout_fields`. Do not connect the Custom attributes form group field to `AttributeGroup`.
 
 ## Explicitly out of scope (for now)
 
@@ -32,6 +39,9 @@
 - Per-contract cadence override.
 - Calendar multi-period epoch for `interval_count > 1` (still one boundary per month-day / weekday).
 - Stripe PaymentIntent wiring for deposits / first period.
+- Custom-attribute advance filters, saved views, and column promotion.
+- Object-customization drag-and-drop reorder (arrow reorder ships first); multi-column / conditional / per-role layouts.
+- Removing or renaming `attribute_definitions.group_name` (catalog metadata unused by layout; kept for now).
 
 ## Undecided
 
@@ -51,3 +61,4 @@
 - Contact transactions
 - Invoice / payment resources polish
 - Recurring billing job (consume `billed_through`)
+- **Panel `canEdit` stopgap:** overview inline edit ignores role/site-scope (always editable when `NativeFields.editable` / definition present). Gaps against the site-scoping rule in `07-people-and-auth.md` until panel auth UX ships. API still authenticates.

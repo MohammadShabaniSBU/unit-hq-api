@@ -42,6 +42,28 @@ Route::post('tax-rates', [Controllers\TaxRateController::class, 'store']);
 Route::patch('tax-rates/{taxRate}', [Controllers\TaxRateController::class, 'update']);
 Route::post('tax-rates/{taxRate}/default', [Controllers\TaxRateController::class, 'setDefault']);
 
+Route::get('attribute-definitions', [Controllers\AttributeDefinitionController::class, 'index']);
+Route::post('attribute-definitions', [Controllers\AttributeDefinitionController::class, 'store']);
+Route::get('attribute-definitions/{attributeDefinition}', [Controllers\AttributeDefinitionController::class, 'show']);
+Route::patch('attribute-definitions/{attributeDefinition}', [Controllers\AttributeDefinitionController::class, 'update']);
+Route::post('attribute-definitions/{attributeDefinition}/archive', [Controllers\AttributeDefinitionController::class, 'archive']);
+Route::post('attribute-definitions/{attributeDefinition}/unarchive', [Controllers\AttributeDefinitionController::class, 'unarchive']);
+
+Route::get('settings/object-customization/{entityType}', [Controllers\ObjectCustomizationController::class, 'show']);
+Route::post('settings/object-customization/{entityType}/groups', [Controllers\ObjectCustomizationController::class, 'storeGroup']);
+Route::post('settings/object-customization/{entityType}/groups/reorder', [Controllers\ObjectCustomizationController::class, 'reorderGroups']);
+Route::patch('settings/object-customization/groups/{group}', [Controllers\ObjectCustomizationController::class, 'updateGroup']);
+Route::delete('settings/object-customization/groups/{group}', [Controllers\ObjectCustomizationController::class, 'destroyGroup']);
+Route::post('settings/object-customization/groups/{group}/fields', [Controllers\ObjectCustomizationController::class, 'storeField']);
+Route::post('settings/object-customization/groups/{group}/fields/reorder', [Controllers\ObjectCustomizationController::class, 'reorderFields']);
+Route::patch('settings/object-customization/fields/{field}', [Controllers\ObjectCustomizationController::class, 'updateField']);
+Route::delete('settings/object-customization/fields/{field}', [Controllers\ObjectCustomizationController::class, 'destroyField']);
+
+Route::get('{entityType}/{entityId}/attribute-values', [Controllers\AttributeValueController::class, 'index'])
+    ->whereIn('entityType', ['contact', 'deal', 'offer', 'reservation', 'unit', 'contract'])
+    ->whereNumber('entityId');
+Route::patch('attribute-values', [Controllers\AttributeValueController::class, 'upsert']);
+
 Route::apiResource('sites', Facility\SiteController::class);
 Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
 Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
