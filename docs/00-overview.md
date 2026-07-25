@@ -23,7 +23,7 @@ Not a monorepo — two git repos side by side:
 | Repo | Role | Stack |
 |---|---|---|
 | `unit-hq-api/` | Backend API | Laravel 13, PHP 8.3, Sanctum, SQLite (local) / PostgreSQL (deploy) |
-| `unit-hq-panel/` | Operator dashboard | Nuxt 4 (SPA, no SSR), Nuxt UI v4, Tailwind v4, Pinia, i18n (en/es), pnpm |
+| `unit-hq-panel/` | Operator dashboard | Nuxt 4 (SPA, no SSR), Nuxt UI v4, Tailwind v4, Pinia, i18n (en/es), bun |
 
 Deploy: API docker-compose runs PHP-Nginx behind Traefik and joins an external Postgres network.
 

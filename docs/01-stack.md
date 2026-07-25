@@ -19,7 +19,7 @@
 - **HTTP:** the `useApi()` composable. Types live in `app/types/`.
 - **Composable naming:** `useXxx` (single resource) / `useXxxList` (collections).
 - **TypeScript rule:** arrays are written as `Array<T>`, not `T[]` (team convention).
-- **Package manager:** pnpm. **CI:** `pnpm lint` + `pnpm typecheck` only.
+- **Package manager:** bun. **CI:** `bun run lint` + `bun run typecheck` only.
 
 ## Panel surface (rough page map)
 
@@ -39,5 +39,5 @@ composer setup   # install, .env, migrate, vite build
 composer dev     # serve + queue + pail + vite
 
 # Panel
-pnpm install && pnpm dev   # http://localhost:3000
+bun install && bun run dev   # http://localhost:3000
 ```

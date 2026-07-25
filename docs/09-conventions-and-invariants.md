@@ -44,7 +44,7 @@
 - All UI strings through i18n (`locales/en.json`, `es.json`) — never hardcoded.
 - HTTP via `useApi()`; types in `app/types/`; composables `useXxx` / `useXxxList`.
 - TypeScript arrays as `Array<T>`, not `T[]`.
-- CI = `pnpm lint` + `pnpm typecheck`.
+- CI = `bun run lint` + `bun run typecheck`.
 
 ## Naming
 

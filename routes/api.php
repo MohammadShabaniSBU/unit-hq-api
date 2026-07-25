@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 use App\Http\Controllers;
 use App\Http\Controllers\Facility;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::post('login', [Controllers\EmployeeAuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::post('logout', [Controllers\EmployeeAuthController::class, 'logout']);
+    Route::get('user', [Controllers\EmployeeAuthController::class, 'me']);
+    Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
+    Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
+});
 
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);
