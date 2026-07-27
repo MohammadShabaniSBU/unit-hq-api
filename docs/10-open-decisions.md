@@ -30,6 +30,8 @@
 - **Default overview layouts** are inserted by `DefaultAttributeLayoutSeeder` (system cards + native `layout_fields`). Custom-attribute definition seeding remains deferred.
 - **Attribute definitions are archive-only** — `archived_at`; `POST …/archive` / `…/unarchive`; list `?status=active|archived|all`. No hard delete.
 - **`attribute_definitions.group_name` ≠ layout cards** — free-text catalog metadata only; overview cards are `attribute_groups` via `layout_fields`. Do not connect the Custom attributes form group field to `AttributeGroup`.
+- **Automation engine (v1):** `App\Support\Automation\`; triggers `object_created`/`object_updated`/`schedule`; actions `update_object`/`create_object`/`send_email`; `logic.branch`. Hard loop suppress via `AutomationContext`. Bulk graph PATCH kept. `trigger.email_received` type exists but activation blocked until inbound webhook ships.
+- **`action.create_object` v1:** allowlist = Contact, Deal, Task, Note. Field values reuse `ValueSource` (`static` / `dynamic`) matching `update_object` — not TargetRecord-style per-field modes. Created record emits `subject_id` for downstream `step_output` targeting. Task/Note use `relatedTo` (TargetRecord, default `trigger_subject`) for the parent morph; `created_by` / `employee_id` default from run causer or first employee.
 
 ## Explicitly out of scope (for now)
 
@@ -42,6 +44,11 @@
 - Custom-attribute **saved views** and column promotion (advanced filters / `POST …/search` shipped; snapshots deferred).
 - Object-customization drag-and-drop reorder (arrow reorder ships first); multi-column / conditional / per-role layouts.
 - Removing or renaming `attribute_definitions.group_name` (catalog metadata unused by layout; kept for now).
+- Automation edge fan-out (one edge per `(automation_id, source_node_id, source_handle)` — unique constraint). Multi-target fan-out deferred.
+- Inbound email → `trigger.email_received` webhook handler.
+- Automation TokenPicker UI (content-field token insertion). Run-log panel shipped.
+- **`action.create_object` for Contract / Reservation / Offer** — creation is not a plain insert (billing transaction, offer-acceptance atomicity, offer token/status flow). Needs dedicated nodes calling real transactional creation paths (`ContractBilling`, offer acceptance), not the generic handler.
+- **FK-shaped create/update field pickers** — later UI polish: TargetRecordPicker-style dropdown for FK fields that still stores a dynamic expression string underneath.
 
 ## Undecided
 
@@ -53,6 +60,7 @@
 | Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
+| Automation `waiting` run status | Real delayed `logic.wait` (`ExecuteAutomationRun` with `->delay()`) needs a status other than `running` while parked, or run-log UI shows idle waits as running. Stub WaitHandler does not add the enum yet. |
 
 ## Active WIP
 

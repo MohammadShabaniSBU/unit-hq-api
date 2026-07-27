@@ -45,6 +45,7 @@ class AutomationRunStep extends Model
         'error',
         'started_at',
         'completed_at',
+        'duration_ms',
     ];
 
     protected function casts(): array
@@ -56,6 +57,7 @@ class AutomationRunStep extends Model
             'error'        => 'array',
             'started_at'   => 'datetime',
             'completed_at' => 'datetime',
+            'duration_ms'  => 'integer',
         ];
     }
 

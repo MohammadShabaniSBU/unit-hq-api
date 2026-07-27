@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
+use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -48,7 +49,7 @@ use Illuminate\Support\Carbon;
  */
 class Deal extends Model
 {
-    use HasFactory, HasNotes;
+    use HasFactory, HasNotes, HasAutomationTriggers;
 
     protected $fillable = [
         'contact_id',

@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('system-events:maintain')->daily();
         $schedule->command('activitylog:prune-tiers')->daily();
+        $schedule->command('automations:run-scheduled')->everyMinute();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

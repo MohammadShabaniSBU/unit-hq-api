@@ -156,3 +156,10 @@ Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)-
 Route::apiResource('email-templates', Controllers\EmailTemplateController::class);
 
 Route::apiResource('automations', Controllers\AutomationController::class);
+Route::post('automations/{automation}/archive', [Controllers\AutomationController::class, 'archive']);
+Route::post('automations/{automation}/unarchive', [Controllers\AutomationController::class, 'unarchive']);
+Route::post('automations/{automation}/activate', [Controllers\AutomationController::class, 'activate']);
+Route::post('automations/{automation}/deactivate', [Controllers\AutomationController::class, 'deactivate']);
+Route::get('automations/{automation}/runs', [Controllers\AutomationController::class, 'runs']);
+Route::get('automations/{automation}/runs/{run}', [Controllers\AutomationController::class, 'showRun']);
+

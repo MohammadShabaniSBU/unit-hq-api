@@ -10,6 +10,7 @@ use App\Enums\DealStatus;
 use App\Enums\LogChannel;
 use App\Enums\ReservationStatus;
 use App\Models\Concerns\HasNotes;
+use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\LogsDirtyActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -57,7 +58,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Contact extends Model
 {
-    use HasFactory, HasNotes, LogsDirtyActivity;
+    use HasFactory, HasNotes, HasAutomationTriggers, LogsDirtyActivity;
 
     protected function activityLogChannel(): LogChannel
     {

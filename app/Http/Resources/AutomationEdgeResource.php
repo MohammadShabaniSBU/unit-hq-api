@@ -12,8 +12,8 @@ class AutomationEdgeResource extends BaseResource
         return [
             'id'             => $this->id,
             'automation_id'  => $this->automation_id,
-            'source_node_id' => $this->source_node_id,
-            'target_node_id' => $this->target_node_id,
+            'source_node_id' => $this->sourceNode?->node_key ?? $this->source_node_id,
+            'target_node_id' => $this->targetNode?->node_key ?? $this->target_node_id,
             'source_handle'  => $this->source_handle,
             'target_handle'  => $this->target_handle,
             'label'          => $this->label,

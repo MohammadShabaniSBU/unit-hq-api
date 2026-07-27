@@ -6,13 +6,20 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Insurance;
+use App\Models\Note;
 use App\Models\Offer;
 use App\Models\Reservation;
+use App\Models\Task;
 use App\Models\Unit;
+use App\Events\ModelCreated;
+use App\Events\ModelDeleted;
+use App\Events\ModelUpdated;
+use App\Listeners\QueueAutomationMatching;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
             'unit'        => Unit::class,
             'contract'    => Contract::class,
             'insurance'   => Insurance::class,
+            'task'        => Task::class,
+            'note'        => Note::class,
         ]);
 
         Session::extend('database', function ($app) {
@@ -67,5 +76,9 @@ class AppServiceProvider extends ServiceProvider
                 RequestId::set($requestId);
             }
         });
+
+        Event::listen(ModelCreated::class, [QueueAutomationMatching::class, 'handle']);
+        Event::listen(ModelUpdated::class, [QueueAutomationMatching::class, 'handle']);
+        Event::listen(ModelDeleted::class, [QueueAutomationMatching::class, 'handle']);
     }
 }
