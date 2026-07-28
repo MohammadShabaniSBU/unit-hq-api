@@ -2,7 +2,7 @@
 
 ## What it is
 
-unit-hq is a **mono-tenant** (single-company) self-storage operations platform. It is an all-in-one system for one storage operator — facility management, CRM/leasing pipeline, billing ledger, and Stripe Connect payments — intended to replace a pile of separate tools so the operator never needs another application.
+unit-hq is a **mono-tenant** (single-company) self-storage operations platform. It is an all-in-one system for one storage operator — facility management, CRM/leasing pipeline, billing ledger, and per-site Stripe payments — intended to replace a pile of separate tools so the operator never needs another application.
 
 > **Tenancy decision (final):** The application is **mono-tenant**. One database, one company. There is **no** `company_id` / `tenant_id` column anywhere, no tenancy package, no per-tenant database routing, and no tenant context in queued jobs. Any earlier notes describing multi-tenancy (database-per-company, tenant-aware migration runners) are superseded.
 
@@ -13,7 +13,7 @@ unit-hq is a **mono-tenant** (single-company) self-storage operations platform. 
 | Facility | Sites, unit classes, units, site maps, rates, insurance, discounts |
 | CRM / Leasing | Contacts → Deals → Offers → Reservations → Contracts |
 | Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
-| Payments | Stripe Connect — connected account is the merchant of record |
+| Payments | Per-site direct Stripe keys — each site is the merchant of record |
 | Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automations, AI copilot, tasks/notes |
 
 ## Workspace layout

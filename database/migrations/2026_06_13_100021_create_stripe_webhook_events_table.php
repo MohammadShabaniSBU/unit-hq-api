@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Stores raw Stripe webhook events for reconciliation. The ledger is the
  * system of record — Stripe events are inputs reconciled against it.
- * Routing: platform reads account from the event, looks up tenants by
- * stripe_connect_account_id, then writes to that tenant's DB.
+ * Per-site direct charges (no Connect): site_id is added by a later
+ * migration once per-site Stripe settings/webhook routing exist.
  */
 return new class extends Migration
 {

@@ -18,7 +18,7 @@
 8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
 9. **One layout placement per native field / attribute definition per entity** — partial unique indexes on `layout_fields (entity_type, native_field_key) WHERE native_field_key IS NOT NULL` and `(entity_type, attribute_definition_id) WHERE attribute_definition_id IS NOT NULL`. `entity_type` is denormalized onto `layout_fields` and immutable after insert.
 10. **Money is `NUMERIC(10,2)`** — never floats. Same in activitylog `properties`: store amounts as strings (e.g. `"184.90"`), never floats. PHP money math uses **bcmath** (`App\Support\Billing\BillingMath`): multiply-before-divide, single half-up `round2`.
-11. **Payments confirmed from Stripe webhooks + idempotency keys** — never optimistically from the client. Ledger is the system of record; Stripe events are reconciled inputs.
+11. **Payments confirmed from Stripe webhooks + idempotency keys** — never optimistically from the client. Ledger is the system of record; Stripe events are reconciled inputs. Signature verification is **site-scoped** (per-site route token + signing secret); new `stripe_webhook_events` rows always set `site_id`.
 12. **Offer acceptance is one transaction** — `selected_at` + status flip + reservation insert together.
 13. **Offer expiry is read-time**, not a background job.
 14. **Activitylog `description` is a machine key** (e.g. `deal.stage_changed`, `contract.signed`) — never a human sentence. Panel translates via i18n.
@@ -33,6 +33,9 @@
 23. **Automations are archive-only** — never hard-delete an automation with run history. `archived_at` + `POST …/archive` / `…/unarchive`; `DELETE` aliases archive.
 24. **Automation runs / run steps are append-only** — no update/delete API. Retry = new `automation_runs` row (optionally `root_run_id` → original). Log skipped branch paths as `status=skipped` steps, not silence.
 25. **Automation-originated model writes do not re-trigger automations** — `AutomationContext` suppresses `Model*` event dispatch from `HasAutomationTriggers`. Tier-2 activity diffs still log. Causer morph is stamped at event dispatch (request lifecycle), never re-resolved inside queue workers.
+26. **Credentials are encrypted at rest and never returned in API responses** — secrets serialize as masked last-4 (`••••••ab12`); a blank submitted field means unchanged, never wipe. Shared via `App\Support\Credentials\CredentialMasker` (masking + `DecryptException` handling) and `CredentialField` (blank-means-unchanged), used by both comms provider accounts and per-site Stripe settings.
+27. **Credential lifecycle events are Tier-3 `RecordsActivity::core`** — create / rotate / remove only; properties limited to site/provider identifiers, masked last-4, and result — never the secret. Shared via `App\Support\Credentials\CredentialAudit`.
+28. **Sites are archive-only** — never hard-delete a site. `archived_at` + `POST …/archive` / `…/unarchive`; `DELETE` aliases archive. No global scope (historical relations must resolve); list/options apply an explicit `active()` scope.
 
 ## Code conventions
 

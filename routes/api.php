@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers;
 use App\Http\Controllers\Facility;
+use App\Http\Controllers\Webhooks;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [Controllers\EmployeeAuthController::class, 'login']);
@@ -13,7 +14,28 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('user', [Controllers\EmployeeAuthController::class, 'me']);
     Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
     Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
+
+    // Credential-bearing routes — always behind auth (09-conventions-and-invariants.md #26/#27).
+    Route::get('settings/communications', [Facility\CommunicationAccountController::class, 'index']);
+    Route::put('settings/communications/{providerType}', [Facility\CommunicationAccountController::class, 'update']);
+    Route::post('settings/communications/{providerType}/webhook', [Facility\CommunicationAccountController::class, 'createWebhook']);
+    Route::delete('settings/communications/{providerType}', [Facility\CommunicationAccountController::class, 'destroy']);
+
+    Route::get('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'show']);
+    Route::put('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'update']);
+    Route::post('sites/{site}/stripe-settings/webhook', [Facility\SiteStripeSettingController::class, 'createWebhook']);
+    Route::delete('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'destroy']);
+
+    // Sender identities carry no secrets, but `update` authorizes via
+    // SiteAccess::canManageSite($request->user(), ...) which needs an
+    // authenticated request to resolve — must live behind auth:sanctum too.
+    Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
+    Route::put('sites/{site}/sender-identities/{providerType}', [Facility\SiteSenderIdentityController::class, 'update']);
 });
+
+// Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
+Route::post('webhooks/brevo/{webhookUrlToken}', Webhooks\BrevoWebhookController::class);
+Route::post('webhooks/stripe/{webhookRouteToken}', Webhooks\StripeWebhookController::class);
 
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);
@@ -65,8 +87,12 @@ Route::get('{entityType}/{entityId}/attribute-values', [Controllers\AttributeVal
 Route::patch('attribute-values', [Controllers\AttributeValueController::class, 'upsert']);
 
 Route::apiResource('sites', Facility\SiteController::class);
+Route::post('sites/{site}/archive', [Facility\SiteController::class, 'archive']);
+Route::post('sites/{site}/unarchive', [Facility\SiteController::class, 'unarchive']);
+Route::get('sites/{site}/stripe/public-key', [Facility\SiteStripePublicKeyController::class, 'show']);
 Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
 Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
+Route::post('sites/{site}/maps/validate', [Facility\SiteMapController::class, 'validateSvg']);
 Route::get('site-maps/{siteMap}', [Facility\SiteMapController::class, 'show']);
 Route::patch('site-maps/{siteMap}', [Facility\SiteMapController::class, 'update']);
 Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destroy']);

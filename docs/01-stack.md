@@ -23,12 +23,14 @@
 
 ## Panel surface (rough page map)
 
-- **Leasing** — contacts, deals, offers (+ public offer preview), reservations, contracts, unit map, insurances
-- **Facility** — sites, units, unit classes, rates, discounts, insurance plans
-- **Billing** — invoices, payments, ledger, overdue
-- **Marketing** — email builder, automations, campaigns
-- **Analytics** — occupancy, conversion, revenue
-- **Settings** — general, billing, tax rates, leasing, custom attributes, object customization, activity log, Stripe Connect
+- **Pinned** — inbox
+- **Marketing** — campaigns; templates (email, SMS, WhatsApp)
+- **Automations** — automation workflows (filterable by trigger domain)
+- **Leasing** — contacts, tasks, deals, offers (+ public offer preview), unit map, reservations, contracts, move-outs
+- **Facility** — units, unit classes, rates, discounts, insurance plans, access control
+- **Billing** — invoices, payments, overdue, ledger, liens & auctions
+- **Insights** — occupancy, conversion, revenue
+- **Settings** — general, billing settings, payments (per-site Stripe connection index), communications (company provider keys), late fees & liens, tax rates, leasing, custom attributes, object customization, **facility (sites)**, activity log
 - **Inbox / Copilot** — messaging + AI conversations
 
 ## Quick start

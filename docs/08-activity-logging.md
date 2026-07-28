@@ -57,4 +57,4 @@ Three logging tiers on two tables:
 
 - **Interaction** — CRM comms timeline (`06-communications.md`)
 - **Notes** — append-only operator comments
-- **`stripe_webhook_events`** — Stripe idempotency only
+- **`stripe_webhook_events`** — Stripe idempotency only; new rows carry `site_id` (legacy may be null)

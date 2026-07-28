@@ -7,7 +7,8 @@
 - Pipeline entity naming: **Contract**, not Lease.
 - Interaction model name (over CommunicationLog / Communication).
 - Insurance is **site-scoped** via InsuranceRate.
-- Stripe Connect with the company's connected account as merchant of record.
+- **Stripe: per-site direct keys** — each site is merchant of record; no Connect; no application fees; no `mode` column. Webhook verification is site-scoped (`site_stripe_settings.webhook_route_token` + `webhook_secret`). Full flow: `05-billing-ledger.md`.
+- **Comms + Stripe credential rules are shared**: mask as `••••••` + last 4, blank submitted field = unchanged, `encrypted` cast, Tier-3 `RecordsActivity::core` on create/rotate/remove (never the secret), `DecryptException` → `credentials_unreadable` instead of a 500, archived sites keep credentials but stop sending / ignore inbound webhooks. Shared helpers: `App\Support\Credentials\`.
 - **GDPR activity/system_events redaction:** `contacts:redact {contact}` nulls an allowlisted set of JSON keys in `activity_log.properties` and surviving `system_events.payload` for rows whose subject is that contact, then inserts a tier-3 `contact.redacted` event (fact only — never what was removed). Config: `config/redaction.php`.
 - **Contract billing model (contract / contract_item / tax_rate enhancement) — shipped:**
   - **Tax basis: exclusive.** Item `amount` is net; `tax = round(net × rate/100, 2)`; `gross = net + tax`. Catalogue: immutable `tax_rates` versions by `code`; products hold `tax_rate_code`; items/charges snapshot id + %.
@@ -54,8 +55,7 @@
 
 | Topic | Options / notes |
 |---|---|
-| Revenue model | Application fees on rent vs. flat SaaS subscription vs. both |
-| Stripe charge type | Direct vs. destination charges — **tied to the revenue model** |
+| Revenue model | **Flat SaaS** (default direction). Application fees are off the table without Connect; do not reopen destination charges / platform fee collection. |
 | Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
 | Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |
 | Task reminders | Delivery channel undecided |
@@ -70,3 +70,4 @@
 - Invoice / payment resources polish
 - Recurring billing job (consume `billed_through`)
 - **Panel `canEdit` stopgap:** overview inline edit ignores role/site-scope (always editable when `NativeFields.editable` / definition present). Gaps against the site-scoping rule in `07-people-and-auth.md` until panel auth UX ships. API still authenticates.
+- **Site credential authorization stopgap:** `App\Support\Auth\SiteAccess::canManageSite()` lets every authenticated Employee manage every site's comms/Stripe credentials — there is no `Employee`↔`Site` assignment table yet to distinguish site-level staff from company-level roles. Controllers already call through this single helper so wiring real scoping later is a one-file change.

@@ -12,8 +12,17 @@ The **Building layer has been removed** — the hierarchy is intentionally flat:
 
 The physical storage facility (also called "Center").
 
-- Settings (currency, billing cadence / anchor / proration / deposit, timezone, late-fee rules, tax rates) are **singleton / catalogue rows** in the single database — mono-tenant, so no company scoping is needed.
-- Site maps (`site_maps`) support the visual unit map in the panel.
+- Fields include address lines, `city`, `state_region`, `postal_code`, `code` (unique when set), contact info, and **`timezone`** (IANA string, required on create — no org default preselected).
+- **`timezone` is per-site and authoritative** for future date-boundary interpretation (due dates, late fees). Org billing settings (currency, cadence / anchor / proration / deposit, late-fee rules, tax rates) remain **singleton / catalogue rows** — mono-tenant, no company scoping. Do **not** add an org-level timezone: any future org display timezone (reports / schedule UI) is **display-only**, never authoritative for billing.
+- Sites are **archive-only** (`archived_at`) — never hard-deleted. List/options use an explicit `active()` scope; archived sites stay resolvable by id for historical contracts. Archive is refused while the site has active contracts or non-expired reservations.
+- Integration surfaces (per-site): floor maps, sender identities, Stripe keys — see later phases / `05` / `06`.
+
+## Site maps (`site_maps`)
+
+SVG floor plans for the visual unit map. A site may have multiple floors (`floor_name` unique per site).
+
+- **Id-matching convention:** SVG element `id` attributes match `units.unit_number` for the same `site_id`. Upload validation reports three buckets — `matched`, `orphan_shapes` (id with no unit), `uncovered_units` (unit with no shape).
+- SVG is sanitized on write (scripts, event handlers, `foreignObject`, external hrefs stripped).
 
 ## UnitClass — the sellable product
 
@@ -42,5 +51,8 @@ The **commercial product definition**, not the physical box.
 | `sites` | Facilities |
 | `unit_classes` | Sellable products |
 | `units` | Physical boxes |
-| `site_maps` | Visual facility maps |
+| `site_maps` | Visual facility maps (SVG; id ↔ `unit_number`) |
 | `unit_class_rates` | Site × class → price junction |
+| `site_stripe_settings` | Per-site Stripe keys + webhook routing |
+| `site_sender_identities` | Per-site comms from-address / from-number |
+| `communication_accounts` | Provider API credentials (company- or site-scoped) |

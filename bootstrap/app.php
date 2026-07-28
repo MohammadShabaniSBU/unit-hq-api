@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(AssignRequestId::class);
+
+        // API-only: never call route('login') — that named route does not exist and
+        // throws RouteNotFoundException while building AuthenticationException.
+        $middleware->redirectGuestsTo(fn (Request $request): ?string => $request->is('api/*') || $request->expectsJson()
+            ? null
+            : '/');
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('system-events:maintain')->daily();

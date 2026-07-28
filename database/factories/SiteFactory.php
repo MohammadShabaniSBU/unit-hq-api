@@ -18,7 +18,9 @@ class SiteFactory extends Factory
     {
         return [
             'name' => fake()->city() . ' Storage',
+            'code' => fake()->unique()->bothify('SITE-###'),
             'address' => fake()->streetAddress(),
+            'address_line_2' => null,
             'location' => [
                 'lat' => fake()->latitude(),
                 'lng' => fake()->longitude(),
@@ -26,8 +28,12 @@ class SiteFactory extends Factory
             'contact_email' => fake()->companyEmail(),
             'contact_phone' => fake()->phoneNumber(),
             'city' => fake()->city(),
+            'postal_code' => fake()->postcode(),
+            'state_region' => fake()->state(),
             'country_id' => Country::query()->inRandomOrder()->value('id')
                 ?? Country::factory(),
+            'timezone' => 'Europe/Madrid',
+            'archived_at' => null,
         ];
     }
 }
