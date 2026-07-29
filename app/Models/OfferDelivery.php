@@ -20,12 +20,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon      $sent_at
  * @property Carbon|null $delivered_at
  * @property string      $delivery_status  queued|sent|delivered|failed
- * @property string|null $message_id       provider-assigned message id (delivery reconciliation)
- * @property int|null    $account_id       CommunicationAccount used to send this
+ * @property string|null $provider_message_id       provider-assigned message id (delivery reconciliation)
+ * @property int|null    $communication_account_id  CommunicationAccount used to send this
  * @property Carbon      $created_at
  *
  * @property-read Offer $offer
- * @property-read CommunicationAccount|null $account
+ * @property-read CommunicationAccount|null $communicationAccount
  */
 class OfferDelivery extends Model
 {
@@ -40,8 +40,8 @@ class OfferDelivery extends Model
         'sent_at',
         'delivered_at',
         'delivery_status',
-        'message_id',
-        'account_id',
+        'provider_message_id',
+        'communication_account_id',
     ];
 
     protected function casts(): array
@@ -75,8 +75,8 @@ class OfferDelivery extends Model
     }
 
     /** @return BelongsTo<CommunicationAccount, OfferDelivery> */
-    public function account(): BelongsTo
+    public function communicationAccount(): BelongsTo
     {
-        return $this->belongsTo(CommunicationAccount::class, 'account_id');
+        return $this->belongsTo(CommunicationAccount::class, 'communication_account_id');
     }
 }

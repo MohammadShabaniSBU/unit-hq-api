@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\CommunicationAccountScope;
-use App\Enums\CommunicationProviderType;
 use App\Enums\CredentialStatus;
+use App\Support\Communications\AccountScope;
+use App\Support\Communications\Channel;
+use App\Support\Communications\Provider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,17 +16,18 @@ use Illuminate\Support\Carbon;
 
 /**
  * Provider credentials for outbound communications. Either company-scoped
- * (one per provider_type, site_id null) or site-scoped (one per site per
- * provider_type). api_key is encrypted at rest and never serialized raw —
- * see CommunicationAccountResource / App\Support\Credentials.
+ * (scope=company, site_id null) or site-scoped. Multiple providers may be
+ * configured per channel; is_active selects the live one.
  *
  * @property int                          $id
- * @property CommunicationAccountScope    $scope
+ * @property AccountScope                 $scope
  * @property int|null                     $site_id
- * @property CommunicationProviderType    $provider_type
- * @property string|null                  $api_key
+ * @property Channel                      $channel
+ * @property Provider                     $provider
+ * @property bool                         $is_active
+ * @property array<string, mixed>|null    $credentials
  * @property string|null                  $webhook_url_token
- * @property string|null                  $webhook_provider_id
+ * @property string|null                  $webhook_endpoint_id
  * @property Carbon|null                  $webhook_configured_at
  * @property CredentialStatus             $status
  * @property Carbon|null                  $verified_at
@@ -43,10 +45,12 @@ class CommunicationAccount extends Model
     protected $fillable = [
         'scope',
         'site_id',
-        'provider_type',
-        'api_key',
+        'channel',
+        'provider',
+        'is_active',
+        'credentials',
         'webhook_url_token',
-        'webhook_provider_id',
+        'webhook_endpoint_id',
         'webhook_configured_at',
         'status',
         'verified_at',
@@ -54,15 +58,17 @@ class CommunicationAccount extends Model
     ];
 
     protected $hidden = [
-        'api_key',
+        'credentials',
     ];
 
     protected function casts(): array
     {
         return [
-            'scope' => CommunicationAccountScope::class,
-            'provider_type' => CommunicationProviderType::class,
-            'api_key' => 'encrypted',
+            'scope' => AccountScope::class,
+            'channel' => Channel::class,
+            'provider' => Provider::class,
+            'is_active' => 'boolean',
+            'credentials' => 'encrypted:array',
             'webhook_configured_at' => 'datetime',
             'status' => CredentialStatus::class,
             'verified_at' => 'datetime',

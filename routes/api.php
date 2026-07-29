@@ -17,9 +17,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     // Credential-bearing routes — always behind auth (09-conventions-and-invariants.md #26/#27).
     Route::get('settings/communications', [Facility\CommunicationAccountController::class, 'index']);
-    Route::put('settings/communications/{providerType}', [Facility\CommunicationAccountController::class, 'update']);
-    Route::post('settings/communications/{providerType}/webhook', [Facility\CommunicationAccountController::class, 'createWebhook']);
-    Route::delete('settings/communications/{providerType}', [Facility\CommunicationAccountController::class, 'destroy']);
+    Route::put('settings/communications/{channel}', [Facility\CommunicationAccountController::class, 'update']);
+    Route::post('settings/communications/{channel}/webhook', [Facility\CommunicationAccountController::class, 'createWebhook']);
+    Route::delete('settings/communications/{channel}/webhook', [Facility\CommunicationAccountController::class, 'deleteWebhook']);
+    Route::delete('settings/communications/{channel}/{provider}', [Facility\CommunicationAccountController::class, 'destroy']);
 
     Route::get('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'show']);
     Route::put('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'update']);
@@ -30,12 +31,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // SiteAccess::canManageSite($request->user(), ...) which needs an
     // authenticated request to resolve — must live behind auth:sanctum too.
     Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
-    Route::put('sites/{site}/sender-identities/{providerType}', [Facility\SiteSenderIdentityController::class, 'update']);
+    Route::put('sites/{site}/sender-identities/{channel}', [Facility\SiteSenderIdentityController::class, 'update']);
 });
 
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
-Route::post('webhooks/brevo/{webhookUrlToken}', Webhooks\BrevoWebhookController::class);
 Route::post('webhooks/stripe/{webhookRouteToken}', Webhooks\StripeWebhookController::class);
+Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
 
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);

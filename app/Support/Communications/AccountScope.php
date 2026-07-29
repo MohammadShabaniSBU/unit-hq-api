@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Support\Communications;
 
-enum CommunicationAccountScope: string
+enum AccountScope: string
 {
     case Company = 'company';
     case Site = 'site';

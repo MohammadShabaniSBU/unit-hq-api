@@ -15,19 +15,39 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class CredentialAudit
 {
-    public static function created(string $entity, ?Model $subject, ?int $siteId, string $providerType, ?string $secret, string $result): void
-    {
-        self::record($entity, 'created', $subject, $siteId, $providerType, $secret, $result);
+    public static function created(
+        string $entity,
+        ?Model $subject,
+        ?int $siteId,
+        string $provider,
+        ?string $secret,
+        string $result,
+        ?string $channel = null,
+    ): void {
+        self::record($entity, 'created', $subject, $siteId, $provider, $secret, $result, $channel);
     }
 
-    public static function rotated(string $entity, ?Model $subject, ?int $siteId, string $providerType, ?string $secret, string $result): void
-    {
-        self::record($entity, 'rotated', $subject, $siteId, $providerType, $secret, $result);
+    public static function rotated(
+        string $entity,
+        ?Model $subject,
+        ?int $siteId,
+        string $provider,
+        ?string $secret,
+        string $result,
+        ?string $channel = null,
+    ): void {
+        self::record($entity, 'rotated', $subject, $siteId, $provider, $secret, $result, $channel);
     }
 
-    public static function removed(string $entity, ?Model $subject, ?int $siteId, string $providerType, ?string $secret): void
-    {
-        self::record($entity, 'removed', $subject, $siteId, $providerType, $secret, 'removed');
+    public static function removed(
+        string $entity,
+        ?Model $subject,
+        ?int $siteId,
+        string $provider,
+        ?string $secret,
+        ?string $channel = null,
+    ): void {
+        self::record($entity, 'removed', $subject, $siteId, $provider, $secret, 'removed', $channel);
     }
 
     private static function record(
@@ -35,15 +55,22 @@ final class CredentialAudit
         string $action,
         ?Model $subject,
         ?int $siteId,
-        string $providerType,
+        string $provider,
         ?string $secret,
         string $result,
+        ?string $channel,
     ): void {
-        RecordsActivity::core("{$entity}.{$action}", $subject, [
+        $properties = [
             'site_id' => $siteId,
-            'provider_type' => $providerType,
+            'provider' => $provider,
             'masked' => CredentialMasker::mask($secret),
             'result' => $result,
-        ]);
+        ];
+
+        if ($channel !== null) {
+            $properties['channel'] = $channel;
+        }
+
+        RecordsActivity::core("{$entity}.{$action}", $subject, $properties);
     }
 }

@@ -20,46 +20,77 @@ Model name is `Interaction` (chosen over `CommunicationLog` / `Communication`). 
 | `occurred_at` | timestamp |
 | `content` / `summary` | body or summary |
 | `metadata` | JSONB for channel-specific data (e.g. call duration) |
+| `provider_message_id` | nullable; provider-assigned id for delivery reconciliation |
+| `communication_account_id` | nullable FK; which credential actually sent it |
 
 ## OfferDelivery vs Interaction
 
-`OfferDelivery` stays a **separate, specialised delivery-receipt table** (per-send status tracking). When an offer is sent, an **Interaction row is also written** so the CRM timeline stays unified. Do not merge these tables.
+`OfferDelivery` stays a **separate, specialised delivery-receipt table** (per-send status tracking). When an offer is sent, an **Interaction row is also written** so the CRM timeline stays unified. Do not merge these tables. Both carry `provider_message_id` + `communication_account_id` so a later provider switch does not break webhook reconciliation for old messages.
 
-## Related surfaces
+## Channel × provider
 
-- Email / SMS / WhatsApp templates (marketing module); campaigns.
-- Automations (top-level module — event/schedule workflows across leasing, billing, and facility).
-- Inbox + AI copilot conversations (`agent conversations`, Laravel AI SDK).
+Each **channel** (email, SMS, WhatsApp, call) can have several **providers** configured. `is_active` selects the live vendor for that channel without destroying the others' credentials — an operator can keep Postmark configured while Brevo is live and switch with one click.
+
+| Enum | Values (this slice) |
+|---|---|
+| `Channel` | `email`, `sms`, `whatsapp`, `call` — only email/sms are `isImplemented()` |
+| `Provider` | `brevo`, `postmark`, `mandrill`, `twilio`, `sinch`, `aircall` |
+| `AccountScope` | `company`, `site` |
+
+Registered adapters today: Brevo + Postmark (email), Twilio (SMS). Mandrill / Sinch registry entries are left commented until needed. WhatsApp and Calls are additive later.
+
+### Capability-by-interface
+
+Adapters do **not** expose a `capabilities()` boolean map. Capability is interface presence:
+
+| Interface | Purpose |
+|---|---|
+| `ProviderAccount` | `make`, `verify`, `credentialFields`, `channels` |
+| `SendsEmail` / `SendsSms` | outbound send |
+| `AutoRegistersWebhooks` | create/delete endpoint resources over the vendor API |
+| `ReportsDeliveryEvents` | parse inbound status callbacks into normalised `DeliveryEvent`s |
+
+The panel renders "Create webhook" only when `auto_registers_webhooks` is true (derived from `instanceof AutoRegistersWebhooks`). Postmark and Twilio show a pasteable URL instead.
+
+### Resolution order (`ProviderResolver`)
+
+Mirrors site-over-org preference:
+
+1. Site-scoped active account for this channel (when a site is given)
+2. Else company-scoped active account
+3. Else `ChannelNotConfigured`
+4. Archived site → `ChannelNotConfigured::siteArchived()` (credentials kept, sending refused)
+
+Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` (same tier as `ContractBilling` — **no** `app/Services/`).
+
+### Normalised delivery vocabulary
+
+`DeliveryStatus`: `queued`, `sent`, `delivered`, `opened`, `clicked`, `read`, `bounced`, `failed`, `spam`, `unsubscribed`. Not every channel emits every value (`opened`/`clicked` are email-only; `read` is WhatsApp-only). Vendors' raw status strings are preserved on `DeliveryEvent::$rawStatus` for debugging.
 
 ## Provider credentials (`communication_accounts`, `site_sender_identities`)
 
-Two tables split "who can send" (credential) from "who it looks like it's from" (identity):
-
 | Table | Holds | Scope |
 |---|---|---|
-| `communication_accounts` | Provider API key (`encrypted`), webhook registration state, connection status | `scope = company` (one per `provider_type`) or `scope = site` (one per `site_id` + `provider_type`) — site scope is modeled but ships no UI yet |
-| `site_sender_identities` | From-name / from-email / from-number / reply-to — **no secret** | One row per `site_id` + `provider_type`, points at the `CommunicationAccount` that actually sends |
+| `communication_accounts` | Encrypted `credentials` JSON (shape varies by provider), webhook registration state, `is_active`, connection status | `scope = company` or `scope = site` — site scope is modeled but ships no UI yet |
+| `site_sender_identities` | From-name / from-email / from-number / reply-to — **no secret**; keyed by `channel` | One row per `site_id` + `channel`. `provider_sender_id` is nulled when the site's active provider for that channel changes |
 
-Providers: `brevo` (email/SMS) and `snich` (SMS/WhatsApp, adapter stub — no live SDK). Both implement `App\Support\Communications\Providers\CommunicationProvider` (`verifyCredentials`, `registerWebhook`, `removeWebhook`); resolved via `CommunicationProviderResolver`.
+Indexes (company path): unique `(scope, site_id, channel, provider)`; partial unique one active company account per channel; one active site account per `(site_id, channel)`.
 
 ### Credential handling rules (shared with Stripe — see `05-billing-ledger.md`)
 
-- Secrets are **never returned raw**. `api_key` casts as `encrypted`; the API always serializes a masked `••••••` + last 4 (`CommunicationAccountResource`).
-- **Blank submitted field = unchanged.** `PUT /api/settings/communications/{providerType}` with an empty `api_key` leaves the stored key untouched — it never wipes a connected account.
-- Create / rotate / remove are Tier-3 `RecordsActivity::core` events (`communication_account.created` / `.rotated` / `.removed`) with properties limited to `site_id`, `provider_type`, the masked last-4, and `result` — **never the secret itself**.
-- A `DecryptException` on read (e.g. after an `APP_KEY` rotation) degrades to `credentials_unreadable: true` in the resource instead of a 500 — the panel prompts to re-enter the key.
-- **Archived sites:** credentials on a site-scoped account are left in place; the site simply stops being used as a sender, and inbound webhooks for that site are ignored (see below). Nothing is deleted on archive.
+- Secrets are **never returned raw**. `credentials` casts as `encrypted:array`; the API serializes per-field masked `••••••` + last 4.
+- **Blank submitted field = unchanged.** Never wipe a connected account.
+- Create / rotate / remove are Tier-3 `RecordsActivity::core` events with properties limited to `site_id`, `provider`, `channel`, the masked last-4, and `result` — **never the secret itself**.
+- A `DecryptException` on read degrades to `credentials_unreadable: true` instead of a 500.
+- **Archived sites:** credentials left in place; sending refused; inbound webhooks for site-scoped accounts ignored.
+- Credential rotation does **not** invalidate an existing webhook endpoint.
 
 ### Webhooks
 
-- `POST /api/webhooks/brevo/{webhook_url_token}` — public route (no Sanctum), authenticated only by the per-account URL token. Looks up the `CommunicationAccount`, ignores the event if it's site-scoped and the site `isArchived()`, records a Tier-1 `webhook.brevo.received` `SystemEvent`, and dispatches `ProcessBrevoWebhookEvent` (queued stub — matches by `message_id` and will map Brevo's `event` field onto `OfferDelivery.delivery_status` / `Interaction` once the event vocabulary is finalised) before acking fast.
-- **Webhook creation is refused** if the API's public base URL is missing, `localhost`, or a private/loopback address — `App\Support\Http\PublicUrlGuard`. In local dev (`APP_URL=http://localhost`) this means "Create webhook" always fails until a real public `APP_URL` is configured; this is intentional, not a bug.
-- Rotating/removing an account deletes the provider-side webhook endpoint first (`CommunicationProvider::removeWebhook`) before the local row is touched.
-
-### `Interaction` / `OfferDelivery` provider linkage
-
-Both tables gained nullable `message_id` (provider-assigned id, used to match inbound delivery events) and `account_id` (FK to `communication_accounts`, which credential/account actually sent it).
+- `POST /api/webhooks/{provider}/{webhook_url_token}` — public route (no Sanctum), authenticated by the per-account URL token. Looks up the account, ignores archived site-scoped accounts, records a Tier-1 `webhook.{provider}.received` `SystemEvent`, and dispatches `ProcessDeliveryWebhookEvent` before acking fast.
+- **Webhook creation is refused** if the configured public base URL (`communications.public_base_url` / `APP_URL`) is missing, `localhost`, or a private/loopback address — `App\Support\Http\PublicUrlGuard`.
+- Removing a provider deletes the remote webhook endpoint first (when `AutoRegistersWebhooks`) via stored `webhook_endpoint_id`.
 
 ### Authorization gap
 
-Site-level credential/identity routes call `App\Support\Auth\SiteAccess::canManageSite()`. Since `Employee` has no site-assignment table yet (`07-people-and-auth.md`), every authenticated employee is currently treated as company-level and can manage any site's integrations. This is a structural placeholder — once Employee↔Site assignment ships, only `SiteAccess` needs to change.
+Site-level identity routes call `App\Support\Auth\SiteAccess::canManageSite()`. Since `Employee` has no site-assignment table yet (`07-people-and-auth.md`), every authenticated employee is currently treated as company-level and can manage any site's integrations. This is a structural placeholder — once Employee↔Site assignment ships, only `SiteAccess` needs to change.

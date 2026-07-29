@@ -16,6 +16,8 @@ use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
 use App\Listeners\QueueAutomationMatching;
 use App\Session\MorphDatabaseSessionHandler;
+use App\Support\Communications\ProviderRegistry;
+use App\Support\Communications\ProviderResolver;
 use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\Events\JobProcessing;
@@ -31,7 +33,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ProviderRegistry::class);
+        $this->app->singleton(ProviderResolver::class);
     }
 
     /**

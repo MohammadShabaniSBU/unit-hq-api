@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Facility;
 
-use App\Enums\CommunicationAccountScope;
-use App\Enums\CommunicationProviderType;
 use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SiteSenderIdentityResource;
@@ -13,6 +11,8 @@ use App\Models\CommunicationAccount;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
 use App\Support\Auth\SiteAccess;
+use App\Support\Communications\AccountScope;
+use App\Support\Communications\Channel;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,12 +26,12 @@ class SiteSenderIdentityController extends Controller
     public function index(Site $site): JsonResponse
     {
         $identities = $site->senderIdentities()->get()
-            ->keyBy(fn (SiteSenderIdentity $identity) => $identity->provider_type->value);
+            ->keyBy(fn (SiteSenderIdentity $identity) => $identity->channel->value);
 
-        $rows = collect(CommunicationProviderType::cases())
-            ->map(fn (CommunicationProviderType $type) => $identities->get($type->value) ?? new SiteSenderIdentity([
+        $rows = collect(Channel::implemented())
+            ->map(fn (Channel $channel) => $identities->get($channel->value) ?? new SiteSenderIdentity([
                 'site_id' => $site->id,
-                'provider_type' => $type,
+                'channel' => $channel,
             ]));
 
         return $this->success(
@@ -40,9 +40,13 @@ class SiteSenderIdentityController extends Controller
         );
     }
 
-    public function update(Request $request, Site $site, CommunicationProviderType $providerType): JsonResponse
+    public function update(Request $request, Site $site, Channel $channel): JsonResponse
     {
         abort_unless(SiteAccess::canManageSite($request->user(), $site), 403);
+
+        if (! $channel->isImplemented()) {
+            abort(404);
+        }
 
         $validated = $request->validate([
             'from_name' => ['nullable', 'string', 'max:255'],
@@ -52,12 +56,14 @@ class SiteSenderIdentityController extends Controller
         ]);
 
         $companyAccount = CommunicationAccount::query()
-            ->where('scope', CommunicationAccountScope::Company)
-            ->where('provider_type', $providerType->value)
+            ->where('scope', AccountScope::Company)
+            ->whereNull('site_id')
+            ->where('channel', $channel)
+            ->where('is_active', true)
             ->first();
 
         $identity = SiteSenderIdentity::query()->updateOrCreate(
-            ['site_id' => $site->id, 'provider_type' => $providerType->value],
+            ['site_id' => $site->id, 'channel' => $channel->value],
             [
                 'account_id' => $companyAccount?->id,
                 'from_name' => $validated['from_name'] ?? null,
@@ -68,7 +74,7 @@ class SiteSenderIdentityController extends Controller
         );
 
         RecordsActivity::log(LogChannel::Comms, 'sender_identity.updated', $site, [
-            'provider_type' => $providerType->value,
+            'channel' => $channel->value,
         ]);
 
         return $this->success(

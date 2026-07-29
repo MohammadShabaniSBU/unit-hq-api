@@ -14,7 +14,7 @@ class SiteSenderIdentityResource extends BaseResource
         return [
             'id' => $this->id,
             'site_id' => $this->site_id,
-            'provider_type' => $this->provider_type?->value,
+            'channel' => $this->channel?->value,
             'account_id' => $this->account_id,
             'from_name' => $this->from_name,
             'from_email' => $this->from_email,
