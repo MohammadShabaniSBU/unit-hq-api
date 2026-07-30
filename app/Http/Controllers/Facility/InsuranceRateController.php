@@ -9,6 +9,7 @@ use App\Models\InsuranceRate;
 use App\Models\Price;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Support\Billing\SupportedCurrencies;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,18 +20,24 @@ class InsuranceRateController extends Controller
 {
     public function store(Request $request, Insurance $insurance): JsonResponse
     {
+        if ($request->filled('currency')) {
+            $request->merge([
+                'currency' => SupportedCurrencies::normalize((string) $request->input('currency')),
+            ]);
+        }
+
         $validated = $request->validate([
-            'site_id' => ['required', 'integer', 'exists:sites,id'],
-            'amount'  => ['required', 'numeric', 'min:0'],
+            'site_id'  => ['required', 'integer', 'exists:sites,id'],
+            'amount'   => ['required', 'numeric', 'min:0'],
+            'currency' => SupportedCurrencies::rules(required: true),
         ]);
 
         $billing = Setting::billing();
-
-        if ($billing->defaultCurrency === '' || $billing->defaultBillingPeriod === '') {
-            throw ValidationException::withMessages([
-                'amount' => ['Billing settings must be configured before setting prices.'],
-            ]);
-        }
+        $billingPeriod = match ($billing->defaultBillingInterval) {
+            'week' => 'weekly',
+            'day' => 'daily',
+            default => 'monthly',
+        };
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
 
@@ -42,7 +49,7 @@ class InsuranceRateController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $siteRate = DB::transaction(function () use ($insurance, $validated, $billing, $createdBy, $today) {
+        $siteRate = DB::transaction(function () use ($insurance, $validated, $billingPeriod, $createdBy, $today) {
             $existingRate = InsuranceRate::query()
                 ->with('price')
                 ->where('insurance_id', $insurance->id)
@@ -56,8 +63,8 @@ class InsuranceRateController extends Controller
 
             $price = Price::query()->create([
                 'amount'         => $validated['amount'],
-                'currency'       => $billing->defaultCurrency,
-                'billing_period' => $billing->defaultBillingPeriod,
+                'currency'       => $validated['currency'],
+                'billing_period' => $billingPeriod,
                 'effective_from' => $today,
                 'effective_to'   => null,
                 'created_by'     => $createdBy,

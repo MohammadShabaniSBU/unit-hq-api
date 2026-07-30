@@ -9,7 +9,7 @@ Any entity that needs pricing references a `price_id`. Current consumers: `UnitC
 | Field | Type / rule |
 |---|---|
 | `amount` | `NUMERIC(10,2)` — **floats are never used for money** |
-| `currency` | ISO code |
+| `currency` | **Sole authority** for denomination (ISO 4217 allowlist, uppercase). Site and org currency are form prefill defaults only — never read at transaction time, in a resource, or in a rollup (D1 / invariant 29). |
 | `billing_period` | Legacy label on the price row (e.g. monthly). **Contract cadence** comes from org `BillingSettings` (`default_billing_interval` + count), snapshotted onto the contract — not from this column. |
 | `effective_from` | start of validity |
 | `effective_to` | `NULL` when current |
@@ -34,7 +34,7 @@ Effective-dated and immutable, **mirroring prices**.
 | `name` | Display name |
 | `code` | Stable identity across versions (e.g. `vat`, `ipt`) |
 | `rate` | `NUMERIC(5,2)` percent |
-| `jurisdiction` | Optional short code |
+| `jurisdiction` | `NULL` (applies anywhere) or ISO 3166-1 alpha-2 with optional ISO 3166-2 subdivision (`ES`, `ES-CN`, `FR`). Validated on write (D2 / invariant 33). |
 | `is_default` | At most one `true` (partial unique index on Postgres) |
 | `effective_from` / `effective_to` | Version window; `effective_to NULL` = current |
 
@@ -43,10 +43,13 @@ Effective-dated and immutable, **mirroring prices**.
 ### Product defaults
 
 - `unit_classes.tax_rate_code` and `insurances.tax_rate_code` (nullable strings) point at a tax code.
-- At contract item create, resolution order:
+- At contract item create, resolution order (**jurisdiction-aware — *implemented in S03***;
+  until then the live code still uses the non-jurisdiction path):
   1. Explicit `tax_rate_id` override from the request (if any)
-  2. Else product `tax_rate_code` → active version at move-in
-  3. Else org default tax rate
+  2. Else product `tax_rate_code` → active version whose `jurisdiction` matches the site's
+     subdivision, else its country (`country_id` → `countries.code`), else the
+     `NULL`-jurisdiction version
+  3. Else org default tax rate, same jurisdiction filter
   4. Else no tax (`0%`)
 
 Snapshots land on `contract_items.tax_rate_id` + `tax_rate_snapshot`, and on each first-period charge.

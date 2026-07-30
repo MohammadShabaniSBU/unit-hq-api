@@ -36,6 +36,26 @@
 26. **Credentials are encrypted at rest and never returned in API responses** — secrets serialize as masked last-4 (`••••••ab12`); a blank submitted field means unchanged, never wipe. Shared via `App\Support\Credentials\CredentialMasker` (masking + `DecryptException` handling) and `CredentialField` (blank-means-unchanged), used by both comms provider accounts and per-site Stripe settings.
 27. **Credential lifecycle events are Tier-3 `RecordsActivity::core`** — create / rotate / remove only; properties limited to site/provider identifiers, masked last-4, and result — never the secret. Shared via `App\Support\Credentials\CredentialAudit`.
 28. **Sites are archive-only** — never hard-delete a site. `archived_at` + `POST …/archive` / `…/unarchive`; `DELETE` aliases archive. No global scope (historical relations must resolve); list/options apply an explicit `active()` scope.
+29. **Currency lives on the price row.** `prices.currency` is authoritative. `sites.currency`
+    and `BillingSettings.default_currency` are form prefill defaults — never read at
+    transaction time, in a resource, or in a rollup. A contract snapshots the amount **and**
+    the currency, not just the `price_id`.
+30. **Revenue is grouped by currency, never summed across it.** No aggregate returns a scalar
+    money total spanning more than one currency.
+31. **No money value crosses an API boundary without its currency**, and no panel component
+    contains a currency symbol literal. Rendering is
+    `Intl.NumberFormat(locale, { style: 'currency', currency })` with `currency` from the
+    record. Locale never determines currency.
+32. **Date boundaries resolve through the owning site's timezone** (`App\Support\Time\SiteClock`).
+    Bare `Carbon::today()` and `->toDateString()` on a timestamp are defects in any code that
+    produces or compares a DATE. Cross-site "today" is computed per site.
+33. **`tax_rates.jurisdiction` is `NULL` (applies anywhere) or ISO 3166-1 alpha-2 with an
+    optional ISO 3166-2 subdivision** (`ES`, `ES-CN`, `FR`). Validated on write.
+34. **`legal_entities` is a fiscal domain concept, not a tenancy boundary.** It identifies the
+    issuer of an invoice and the holder of payment credentials. It must never appear in a
+    global scope, a middleware-applied filter, a queue payload context, or a default query
+    constraint. Filtering an invoice *series* by entity is correct; filtering *contacts* by
+    entity is a defect.
 
 ## Code conventions
 
@@ -51,7 +71,7 @@
 ### Panel (Nuxt)
 
 - SPA only (`ssr: false`).
-- All UI strings through i18n (`locales/en.json`, `es.json`) — never hardcoded.
+- All UI strings through i18n (`locales/en.json`, `es.json`, `fr.json`) — never hardcoded.
 - HTTP via `useApi()`; types in `app/types/`; composables `useXxx` / `useXxxList`.
 - TypeScript arrays as `Array<T>`, not `T[]`.
 - CI = `bun run lint` + `bun run typecheck`.

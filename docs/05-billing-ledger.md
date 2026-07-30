@@ -5,10 +5,19 @@
 | Layer | Tables | Role |
 |---|---|---|
 | Charges / Payments | `charges`, `payments` | Atomic debit / credit — **append-only** |
-| Invoices | `invoices` | Group charges by period — **display grouping, not source of truth** |
+| Billing periods | `invoices` today → rename to `billing_periods` in S01-00b | Group charges by period — **display grouping, not source of truth** (name freed for S03 fiscal **Invoice**) |
 | Allocations | `allocations` | Map payment money onto specific charges |
 
 The design evolved from a single generic ledger-entries table to explicit `Charge` and `Payment` models, but the ledger principles are unchanged.
+
+### Invoice vs Statement (D5)
+
+- **Invoice** — a fiscal document. Numbered, immutable once issued, belongs to a series. From
+  S03 onward this is the source of truth for what was billed.
+- **Statement** — a computed view of what a contact owes right now across contracts. Never a
+  stored row. Never numbered.
+- The current `invoices` table is neither; rename to **`billing_periods`** in S01-00b so the
+  name `invoices` is free for the fiscal document.
 
 ## Hard invariants
 
@@ -19,6 +28,29 @@ The design evolved from a single generic ledger-entries table to explicit `Charg
 - Charges carry a **type** and a **due date** so late-fee assessment and lien eligibility can be automated. Jurisdiction-specific rules are configurable.
 - The ledger attaches to the **Contract** — every charge, payment, and allocation references one.
 - **`deposit` charges are not revenue** — exclude them from revenue rollups / analytics.
+- **Revenue is grouped by currency, never summed across it** (invariant 30). Aggregate helper
+  `revenueByCurrency()` lands in S01-00b after `charges.currency` exists.
+
+### Charge types (D3)
+
+`ChargeType` enum (cast on `Charge`): `rent`, `insurance`, `deposit`, `late_fee`, `lien_fee`,
+`other`, `adjustment`, `write_off`, `refund`. `isRevenue()` is false for `deposit`,
+`write_off`, and `refund`.
+
+| Type | Sign | Revenue | Notes |
+|---|---|---|---|
+| `adjustment` | ± | ± | Manual correction. Reason string required. Counts as revenue when positive and the underlying charge did. |
+| `write_off` | negative | **excluded** | Operator forgives a debt. Carries a net/tax split mirroring the charge it forgives. VAT recovery treatment deferred to S03. |
+| `refund` | positive | **excluded** | Money returned to the tenant. A **charge**, not a negative payment. |
+
+`refund` as a charge is correct given `balance = Σ charges − Σ payments` — it debits the
+tenant's credit. A refund does **not** reverse revenue; revenue reversal is a **credit note
+(S03)**. Excluding `refund` from `isRevenue()` is correct today (counting it would increase
+revenue when money went out) but leaves the original rent in revenue after a refund — that is
+expected until credit notes exist; do not “fix” `isRevenue()` in S08.
+
+`write_off` cannot use `reversal_of_charge_id` for partial write-offs — it is a new charge with
+its own amount, optionally referencing the related charge for reporting.
 
 ## Contract billing (cadence, anchor, first period)
 
@@ -119,7 +151,8 @@ Beyond type / due date / gross `amount`:
 | `tax_rate_snapshot` / `tax_amount` | Exclusive tax snapshot |
 | `contract_item_id` | Trace first-period charges to their line |
 
-`charge_type` includes at least: `rent`, `insurance`, `deposit`, plus fee types (`late_fee`, `lien_fee`, `other`).
+`charge_type` is the `ChargeType` enum (see D3 table above). First-period writers use
+`rent` / `insurance` / `deposit`.
 
 ## Stripe (per-site direct charges)
 

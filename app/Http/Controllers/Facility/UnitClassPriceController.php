@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
+use App\Support\Billing\SupportedCurrencies;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,18 +47,20 @@ class UnitClassPriceController extends Controller
 
     public function store(Request $request, UnitClass $unitClass): JsonResponse
     {
+        if ($request->filled('currency')) {
+            $request->merge([
+                'currency' => SupportedCurrencies::normalize((string) $request->input('currency')),
+            ]);
+        }
+
         $validated = $request->validate([
-            'site_id' => ['required', 'integer', 'exists:sites,id'],
-            'amount'  => ['required', 'numeric', 'min:0'],
+            'site_id'  => ['required', 'integer', 'exists:sites,id'],
+            'amount'   => ['required', 'numeric', 'min:0'],
+            'currency' => SupportedCurrencies::rules(required: true),
         ]);
 
         $billing = Setting::billing();
-
-        if ($billing->defaultCurrency === '' || $billing->defaultBillingPeriod === '') {
-            throw ValidationException::withMessages([
-                'amount' => ['Billing settings must be configured before setting prices.'],
-            ]);
-        }
+        $billingPeriod = $this->legacyBillingPeriodLabel($billing->defaultBillingInterval);
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
 
@@ -69,7 +72,7 @@ class UnitClassPriceController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $sitePrice = DB::transaction(function () use ($unitClass, $validated, $billing, $createdBy, $today) {
+        $sitePrice = DB::transaction(function () use ($unitClass, $validated, $billingPeriod, $createdBy, $today) {
             $existingRate = UnitClassRate::query()
                 ->with('price')
                 ->where('unit_class_id', $unitClass->id)
@@ -83,8 +86,8 @@ class UnitClassPriceController extends Controller
 
             $price = Price::query()->create([
                 'amount'         => $validated['amount'],
-                'currency'       => $billing->defaultCurrency,
-                'billing_period' => $billing->defaultBillingPeriod,
+                'currency'       => $validated['currency'],
+                'billing_period' => $billingPeriod,
                 'effective_from' => $today,
                 'effective_to'   => null,
                 'created_by'     => $createdBy,
@@ -130,5 +133,14 @@ class UnitClassPriceController extends Controller
             'currency'           => $price?->currency,
             'billing_period'     => $price?->billing_period,
         ];
+    }
+
+    private function legacyBillingPeriodLabel(string $interval): string
+    {
+        return match ($interval) {
+            'week' => 'weekly',
+            'day' => 'daily',
+            default => 'monthly',
+        };
     }
 }

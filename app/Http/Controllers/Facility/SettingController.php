@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Facility;
 use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\Billing\SupportedCurrencies;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -52,8 +53,14 @@ class SettingController extends Controller
 
     public function updateBilling(Request $request): JsonResponse
     {
+        if ($request->filled('default_currency')) {
+            $request->merge([
+                'default_currency' => SupportedCurrencies::normalize((string) $request->input('default_currency')),
+            ]);
+        }
+
         $validated = $request->validate([
-            'default_currency'               => ['sometimes', 'required', 'string', 'size:3'],
+            'default_currency'               => ['sometimes', ...SupportedCurrencies::rules(required: true)],
             'default_billing_interval'       => ['sometimes', 'required', 'string', Rule::in(['day', 'week', 'month'])],
             'default_billing_interval_count' => ['sometimes', 'required', 'integer', 'min:1'],
             'billing_anchor_model'           => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar', 'calendar_week'])],

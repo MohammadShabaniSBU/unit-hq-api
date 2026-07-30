@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Enums\ChargeType;
 use App\Enums\ProrationMethod;
 use App\Models\Charge;
 use App\Models\Contract;
@@ -82,7 +83,7 @@ trait GeneratesFirstPeriodCharges
         Charge::query()->create([
             'contract_id'       => $contract->id,
             'contract_item_id'  => null,
-            'charge_type'       => 'deposit',
+            'charge_type'       => ChargeType::Deposit,
             'period_start'      => null,
             'period_end'        => null,
             'net_amount'        => $contract->deposit_amount,
@@ -94,12 +95,12 @@ trait GeneratesFirstPeriodCharges
         ]);
     }
 
-    private function chargeTypeForItem(string $itemType): string
+    private function chargeTypeForItem(string $itemType): ChargeType
     {
         return match ($itemType) {
-            'unit'      => 'rent',
-            'insurance' => 'insurance',
-            default     => $itemType,
+            'unit'      => ChargeType::Rent,
+            'insurance' => ChargeType::Insurance,
+            default     => ChargeType::from($itemType),
         };
     }
 

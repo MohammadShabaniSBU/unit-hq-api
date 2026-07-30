@@ -1,5 +1,8 @@
 # S01-01 — `unit_occupancies` table and non-overlap constraint
 
+> **Revision 2.** Amended for D8 (date boundaries resolve through the site timezone). The table
+> and constraint design is unchanged from revision 1.
+
 ## Context
 
 Today, "unit X is occupied" is inferred by walking `contract_items` looking for a polymorphic
@@ -25,8 +28,8 @@ This task introduces the fact table and lets the database enforce the rule.
 **Out:**
 - Closing occupancies on move-out (S02)
 - Transfers (S02)
-- Backfill of existing contracts (task 03 of this sprint)
-- Reservations and maintenance (task 02 of this sprint)
+- Backfill of existing contracts — there is none; the seeders in task 03 are the only writer
+- Reservations and maintenance (task 02)
 
 ## Schema changes
 
@@ -100,6 +103,24 @@ still exercises the logic.
 `App\Support\Billing\`. Not a service class; static helpers, no state, per invariant "no
 `app/Services/` layer".
 
+### Dates — D8 applies here (new in revision 2)
+
+`started_on` and `ended_on` are DATE columns describing civil dates at a physical facility.
+They must never be derived from the server's clock or timezone.
+
+- `started_on` comes from `contracts.move_in_date`, which the panel supplies explicitly. Do not
+  default it to "today" anywhere in this path.
+- Any place this task needs a current date — a validation comparing move-in against today, for
+  instance — resolves it through `App\Support\Time\SiteClock::today($unit->site)` from task 00.
+  **No `Carbon::today()` in this file's code.**
+- The guard's `$from` / `$to` parameters are civil dates. If a caller holds a timestamp, it
+  converts via `SiteClock::dateAt($site, $instant)` before calling — never `->toDateString()`.
+
+A unit belongs to exactly one site, so the timezone is always unambiguously resolvable from the
+unit. Where a contract spans several units (multi-unit contract), each occupancy row resolves
+through its own unit's site. In practice sites share a timezone, but the resolution rule should
+not depend on that.
+
 **Contract signing.** In the existing contract-store transaction (and reservation convert),
 after `ContractItem` rows are created, for each item whose subject is a unit:
 
@@ -107,7 +128,9 @@ after `ContractItem` rows are created, for each item whose subject is a unit:
 2. Insert `unit_occupancies` with `started_on = contracts.move_in_date`, `ended_on = NULL`
 
 This must be inside the same transaction as the contract, items, and first-period charges —
-invariant 20.
+invariant 20. Note that task `00b` also joins this transaction (currency resolution and
+assertion); the order is: items built → currency asserted and snapshotted → occupancy guard →
+occupancy rows → charges.
 
 **Contract with an end date.** If `contracts.end_date` is set at signing, `ended_on` is set
 to it immediately. Otherwise `NULL`.
@@ -118,6 +141,10 @@ No new endpoints. Existing responses gain:
 
 - `GET /api/units/{id}` → `current_occupancy: { contract_id, started_on } | null`
 - `GET /api/contracts/{id}` → `occupancies: Array<{ unit_id, started_on, ended_on }>`
+
+Dates serialize as `YYYY-MM-DD` strings — a DATE has no time and no offset, and appending one
+invites a client to re-interpret it in the browser's timezone. This is the same class of error
+as money without a currency.
 
 ## Panel surface
 
@@ -139,6 +166,10 @@ readers.
 
 The occupancy row joins that transaction.
 
+> **32. Date boundaries resolve through the owning site's timezone** (added in task 00).
+
+Both DATE columns here are subject to it.
+
 ## Acceptance criteria
 
 - [ ] `unit_occupancies` migration runs on both SQLite and Postgres.
@@ -151,6 +182,8 @@ The occupancy row joins that transaction.
 - [ ] `Unit::currentOccupancy()` and `Contract::occupancies()` relations exist.
 - [ ] Invariant 5 in `09-conventions-and-invariants.md` amended to distinguish fact tables
       from cached derived state.
+- [ ] **No `Carbon::today()`, `now()`, or `->toDateString()` in occupancy code.** Grep clean.
+- [ ] Occupancy dates serialize as bare `YYYY-MM-DD`.
 - [ ] No existing test breaks.
 
 ## Tests required
@@ -162,4 +195,5 @@ The occupancy row joins that transaction.
 | `UnitOccupancyTest::adjacent_ranges_do_not_conflict` | Move-out 1st + move-in 1st both succeed |
 | `UnitOccupancyTest::occupancy_rolls_back_with_contract` | Failed charge generation leaves no orphan occupancy |
 | `UnitOccupancyTest::end_dated_contract_sets_ended_on` | `ended_on` populated at signing |
+| `UnitOccupancyTest::dates_are_site_local` | Sign at an instant where server date ≠ site date; `started_on` is the site's date |
 | `Pgsql/OccupancyConstraintTest::exclusion_constraint_blocks_overlap` | Postgres-only; skipped on SQLite |

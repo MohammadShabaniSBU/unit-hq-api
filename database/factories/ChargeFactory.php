@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\ChargeType;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Invoice;
@@ -26,7 +27,7 @@ class ChargeFactory extends Factory
         return [
             'contract_id'           => Contract::factory(),
             'invoice_id'            => Invoice::factory(),
-            'charge_type'           => 'rent',
+            'charge_type'           => ChargeType::Rent,
             'net_amount'            => $amount,
             'amount'                => $amount,
             'tax_amount'            => 0,

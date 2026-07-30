@@ -29,5 +29,6 @@ Before writing code, consult the doc that matches the task:
 - Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card.
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
+- Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

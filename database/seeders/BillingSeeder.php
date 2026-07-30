@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Enums\ContractStatus;
 use App\Models\Allocation;
+use App\Enums\ChargeType;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
@@ -174,7 +175,7 @@ class BillingSeeder extends Seeder
             'contract_id'           => $contract->id,
             'contract_item_id'      => $unitItem->id,
             'invoice_id'            => $invoice->id,
-            'charge_type'           => 'rent',
+            'charge_type'           => ChargeType::Rent,
             'period_start'          => $period['start']->toDateString(),
             'period_end'            => $period['end']->toDateString(),
             'net_amount'            => $unitItem->amount,
@@ -193,7 +194,7 @@ class BillingSeeder extends Seeder
                 'contract_id'           => $contract->id,
                 'contract_item_id'      => $insuranceItem->id,
                 'invoice_id'            => $invoice->id,
-                'charge_type'           => 'insurance',
+                'charge_type'           => ChargeType::Insurance,
                 'period_start'          => $period['start']->toDateString(),
                 'period_end'            => $period['end']->toDateString(),
                 'net_amount'            => $insuranceItem->amount,

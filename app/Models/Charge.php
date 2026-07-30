@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ChargeType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int         $contract_id
  * @property int|null    $contract_item_id
  * @property int|null    $invoice_id
- * @property string      $charge_type rent|insurance|deposit|late_fee|lien_fee|other
+ * @property ChargeType  $charge_type
  * @property string|null $period_start Y-m-d
  * @property string|null $period_end   Y-m-d
  * @property string|null $net_amount   NUMERIC(10,2) — pre-tax
@@ -69,6 +70,7 @@ class Charge extends Model
     protected function casts(): array
     {
         return [
+            'charge_type'        => ChargeType::class,
             'amount'             => 'decimal:2',
             'net_amount'         => 'decimal:2',
             'tax_rate_snapshot'  => 'decimal:2',

@@ -8,6 +8,7 @@ use App\Enums\LogChannel;
 use App\Http\Resources\TaxRateResource;
 use App\Models\Employee;
 use App\Models\TaxRate;
+use App\Support\Billing\JurisdictionCode;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,7 +67,7 @@ class TaxRateController extends Controller
             'name'           => ['required', 'string', 'max:255'],
             'code'           => ['required', 'string', 'max:100'],
             'rate'           => ['required', 'numeric', 'min:0', 'max:100'],
-            'jurisdiction'   => ['nullable', 'string', 'max:10'],
+            'jurisdiction'   => ['nullable', 'string', new JurisdictionCode],
             'is_default'     => ['sometimes', 'boolean'],
             'effective_from' => ['nullable', 'date'],
         ]);
@@ -116,7 +117,7 @@ class TaxRateController extends Controller
         $validated = $request->validate([
             'name'           => ['sometimes', 'required', 'string', 'max:255'],
             'rate'           => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
-            'jurisdiction'   => ['sometimes', 'nullable', 'string', 'max:10'],
+            'jurisdiction'   => ['sometimes', 'nullable', 'string', new JurisdictionCode],
             'effective_from' => ['nullable', 'date'],
         ]);
 

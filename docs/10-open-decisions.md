@@ -7,7 +7,7 @@
 - Pipeline entity naming: **Contract**, not Lease.
 - Interaction model name (over CommunicationLog / Communication).
 - Insurance is **site-scoped** via InsuranceRate.
-- **Stripe: per-site direct keys** — each site is merchant of record; no Connect; no application fees; no `mode` column. Webhook verification is site-scoped (`site_stripe_settings.webhook_route_token` + `webhook_secret`). Full flow: `05-billing-ledger.md`.
+- **Stripe: per-site direct keys** — each site is merchant of record; no Connect; no application fees; no `mode` column. Webhook verification is site-scoped (`site_stripe_settings.webhook_route_token` + `webhook_secret`). Full flow: `05-billing-ledger.md`. *(Credential *scope* moves to `legal_entities` in S03 — D6/D7; shipped keys remain per-site until then.)*
 - **Comms + Stripe credential rules are shared**: mask as `••••••` + last 4, blank submitted field = unchanged, `encrypted` cast, Tier-3 `RecordsActivity::core` on create/rotate/remove (never the secret), `DecryptException` → `credentials_unreadable` instead of a 500, archived sites keep credentials but stop sending / ignore inbound webhooks. Shared helpers: `App\Support\Credentials\`.
 - **GDPR activity/system_events redaction:** `contacts:redact {contact}` nulls an allowlisted set of JSON keys in `activity_log.properties` and surviving `system_events.payload` for rows whose subject is that contact, then inserts a tier-3 `contact.redacted` event (fact only — never what was removed). Config: `config/redaction.php`.
 - **Contract billing model (contract / contract_item / tax_rate enhancement) — shipped:**
@@ -33,6 +33,13 @@
 - **`attribute_definitions.group_name` ≠ layout cards** — free-text catalog metadata only; overview cards are `attribute_groups` via `layout_fields`. Do not connect the Custom attributes form group field to `AttributeGroup`.
 - **Automation engine (v1):** `App\Support\Automation\`; triggers `object_created`/`object_updated`/`schedule`; actions `update_object`/`create_object`/`send_email`; `logic.branch`. Hard loop suppress via `AutomationContext`. Bulk graph PATCH kept. `trigger.email_received` type exists but activation blocked until inbound webhook ships.
 - **`action.create_object` v1:** allowlist = Contact, Deal, Task, Note. Field values reuse `ValueSource` (`static` / `dynamic`) matching `update_object` — not TargetRecord-style per-field modes. Created record emits `subject_id` for downstream `step_output` targeting. Task/Note use `relatedTo` (TargetRecord, default `trigger_subject`) for the parent morph; `created_by` / `employee_id` default from run causer or first employee.
+- **D1 — Currency lives on the price row.** `prices.currency` is sole authority. Site and org currency are form prefill only. Contract snapshots amount **and** currency. Supersedes roadmap README §4 item 1.
+- **D2 — Tax jurisdiction vocabulary.** `tax_rates.jurisdiction` is `NULL` or ISO 3166-1 alpha-2 with optional ISO 3166-2 subdivision. Site country is `country_id` → `countries.code` (no denormalised `country_code`). Jurisdiction-aware resolution *implemented in S03*.
+- **D3 — Charge types.** `adjustment`, `write_off`, `refund` added to `ChargeType` with `isRevenue()` excluding `deposit` / `write_off` / `refund`. Revenue grouped by currency (aggregate in S01-00b). A refund does not reverse revenue; credit notes are S03.
+- **D4 — Panel locale `fr`.** Scaffolded alongside `en`/`es`. Locale never determines currency.
+- **D5 — Invoice vs Statement.** Fiscal **Invoice** (S03); **Statement** is a computed view. Rename current `invoices` → `billing_periods` in S01-00b.
+- **D6 / D7 — Payments and fiscal identity scope to `legal_entities`.** Not sites. Sites belong to one legal entity. `legal_entities` is fiscal, not a tenancy boundary (invariant 34). Supersedes roadmap README §4 D6/D7 site scoping. Schema in S03; doc surgery in S01-05.
+- **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
 
 ## Explicitly out of scope (for now)
 
@@ -55,6 +62,7 @@
 
 | Topic | Options / notes |
 |---|---|
+| **Spanish client legal entities (blocks S03)** | One legal entity with several sites, or several entities? Owner: **Product**. Target: **before S03 kickoff**. If open at S03 start, S03 cannot begin — say so in the retro. See `architecture-payments-and-fiscal.md`. |
 | Revenue model | **Flat SaaS** (default direction). Application fees are off the table without Connect; do not reopen destination charges / platform fee collection. |
 | Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
 | Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |

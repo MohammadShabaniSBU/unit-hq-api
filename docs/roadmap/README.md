@@ -115,13 +115,15 @@ Each phase leaves the product materially more sellable than the last.
 These get more expensive every sprint. Resolve them in the S01 kickoff, record them in
 `10-open-decisions.md`.
 
-1. **Currency authority.** `sites` carries a currency and `BillingSettings.default_currency`
+1. **Currency authority.** ~~`sites` carries a currency and `BillingSettings.default_currency`
    exists. With clients in ES/FR/UK, **site-level must win**; org-level becomes the default
-   for new sites. Document it, add the fallback resolution helper, stop reading org currency
-   directly.
+   for new sites.~~ **Superseded by D1 (S01-00):** `prices.currency` is the sole authority;
+   site and org currency are form prefill defaults only. See `10-open-decisions.md` and
+   `09-conventions-and-invariants.md` §29.
 2. **VAT is per-site, not per-org.** ES 21% / FR 20% / UK 20% with different codes. The
    `tax_rates` catalogue needs a `site_id` scope or a jurisdiction filter that the resolution
-   order in `03-pricing.md` step 3 honours.
+   order in `03-pricing.md` step 3 honours. (Jurisdiction vocabulary locked in S01-00 D2;
+   resolution implemented in S03.)
 3. **Charge types to add now:** `adjustment`, `write_off`, `refund`. Dunning and vacate both
    produce them, and adding enum values later means backfilling.
 4. **Locale `fr`** added alongside `en`/`es` in the panel, even if translations lag.
@@ -130,13 +132,16 @@ These get more expensive every sprint. Resolve them in the S01 kickoff, record t
 
 ### D6 — Payments architecture (supersedes Stripe Connect)
 
-**Stripe Connect is dropped.** There is no platform account and no money distribution, which
-removes the PSD2 money-transmitter question entirely rather than mitigating it.
+**~~Stripe Connect is dropped.~~** Credentials and fiscal identity scope to **`legal_entities`**,
+not sites — **superseded by S01-00 D6/D7.** See `architecture-payments-and-fiscal.md` and
+`10-open-decisions.md`. Task `05` does the full doc surgery.
 
-- Each **site** holds its own payment provider credentials (`payment_provider_accounts`,
-  encrypted at rest, `site_id` scoped).
-- Stripe handles **cards**. Webhooks are routed and signature-verified per site — each site's
-  Stripe account has its own endpoint secret.
+~~- Each **site** holds its own payment provider credentials (`payment_provider_accounts`,
+  encrypted at rest, `site_id` scoped).~~
+- Each **legal entity** holds payment provider credentials (S03 schema). Sites belong to one
+  legal entity.
+- Stripe handles **cards**. Webhooks are routed and signature-verified per entity (today still
+  per-site until S03 migrates).
 - **SEPA Direct Debit is bank-file based**, not processor based: Cuaderno 19-14 / `pain.008`
   export handed to the operator's bank, returns imported days later.
 
@@ -151,7 +156,10 @@ dunning against real debtors.
 
 ### D7 — Fiscal regime is per-site and toggleable
 
-`sites.fiscal_regime` — `none` (default) | `verifactu`. Plus `fiscal_regime_enabled_from`.
+~~`sites.fiscal_regime` — `none` (default) | `verifactu`. Plus `fiscal_regime_enabled_from`.~~
+
+**Superseded by S01-00 D6/D7:** `fiscal_regime` scopes to **`legal_entities`**, not sites.
+See `architecture-payments-and-fiscal.md`.
 
 Enabling begins a hash chain. **Disabling stops new registros but never breaks, edits, or
 deletes an existing chain** — chain integrity is precisely what is being attested. The switch

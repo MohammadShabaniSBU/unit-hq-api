@@ -144,7 +144,7 @@ class SiteController extends Controller
             'city' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:255'],
             'state_region' => ['nullable', 'string', 'max:255'],
-            'country_id' => ['nullable', 'integer', Rule::exists('countries', 'id')],
+            'country_id' => [$creating ? 'required' : 'sometimes', 'required', 'integer', Rule::exists('countries', 'id')],
             'timezone' => $timezoneRule,
         ]);
     }
