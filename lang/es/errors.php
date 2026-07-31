@@ -57,6 +57,10 @@ return [
         'missing_site' => 'El contrato no tiene sede de unidad para resolver la entidad emisora.',
         'missing_contact' => 'El contrato no tiene contacto para el destinatario de la factura.',
         'immutable' => 'Las facturas emitidas no se pueden modificar ni eliminar.',
+        'rectify_original_not_issued' => 'Solo se pueden rectificar facturas emitidas.',
+        'rectify_invalid_reason' => 'El motivo de rectificación no es válido.',
+        'rectify_missing_contract' => 'La factura no tiene contrato asociado para rectificar.',
+        'rectify_no_eligible_credits' => 'No hay cargos de crédito elegibles sin facturar para esta factura (deben ser ajustes negativos del mismo contrato, aún no sellados).',
     ],
 ];
 

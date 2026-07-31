@@ -17,6 +17,7 @@ use App\Models\Unit;
 use App\Models\UnitOccupancy;
 use App\Support\Billing\TransferSettlement;
 use App\Support\Contracts\ContractTransition;
+use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
 use App\Support\RecordsActivity;
@@ -37,6 +38,7 @@ trait TransfersContracts
     {
         $validated = $this->validateTransferBody($request);
         $plan = $this->buildTransferPlan($contract, $validated);
+        $plan['invoices_to_issue'] = $this->previewTransferInvoices($plan);
 
         return $this->success($plan, 'Transfer preview computed successfully.');
     }
@@ -122,7 +124,26 @@ trait TransfersContracts
                 'created_by' => auth()->id(),
             ]);
 
+            $chargeIdsBefore = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->pluck('id');
+
             $this->persistTransferPlan($contract, $plan, $newItem, $transferDate);
+
+            $newCharges = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->whereNotIn('id', $chargeIdsBefore)
+                ->get();
+
+            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
+            $split = InvoiceIssuer::splitSettlementCharges($contract, $newCharges);
+            InvoiceIssuer::issueCreditsForContract(
+                $contract,
+                $split['credits'],
+                InvoiceIssuer::REASON_TRANSFER_CREDIT,
+                auth()->id(),
+            );
+            InvoiceIssuer::issue($contract, $split['debits'], null, auth()->id());
 
             if (bccomp((string) $plan['deposit']['new_deposit_amount'], $depositBefore, 2) !== 0) {
                 $contract->forceFill([
@@ -251,7 +272,7 @@ trait TransfersContracts
                 'description' => $line['adjusts_charge_id'] !== null
                     ? $line['description'].' #'.$line['adjusts_charge_id']
                     : $line['description'],
-                'reversal_of_charge_id' => null,
+                'reversal_of_charge_id' => $line['adjusts_charge_id'],
             ]);
         }
 
@@ -292,6 +313,18 @@ trait TransfersContracts
                 'reversal_of_charge_id' => null,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return list<array{kind: string, rectifies_full_number: string|null, gross_total: string, net_total: string, tax_total: string}>
+     */
+    private function previewTransferInvoices(array $plan): array
+    {
+        $creditLines = $plan['credit'] !== null ? [$plan['credit']] : [];
+        $debitLines = $plan['debit'] !== null ? [$plan['debit']] : [];
+
+        return InvoiceIssuer::previewInvoicesToIssue($creditLines, $debitLines);
     }
 
     private function openUnitItem(Contract $contract): ContractItem

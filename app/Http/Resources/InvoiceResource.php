@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 
 class InvoiceResource extends BaseResource
@@ -44,6 +45,18 @@ class InvoiceResource extends BaseResource
             'contract' => $this->whenLoaded('contract', fn () => $this->contract === null ? null : [
                 'id' => $this->contract->id,
             ]),
+            'rectifies_invoice' => $this->whenLoaded('rectifiesInvoice', fn () => $this->rectifiesInvoice === null ? null : [
+                'id' => $this->rectifiesInvoice->id,
+                'full_number' => $this->rectifiesInvoice->full_number,
+                'kind' => $this->rectifiesInvoice->kind?->value ?? $this->rectifiesInvoice->kind,
+                'gross_total' => $this->rectifiesInvoice->gross_total,
+            ]),
+            'rectificatives' => $this->whenLoaded('rectificatives', fn () => $this->rectificatives->map(fn (Invoice $r) => [
+                'id' => $r->id,
+                'full_number' => $r->full_number,
+                'kind' => $r->kind?->value ?? $r->kind,
+                'gross_total' => $r->gross_total,
+            ])->values()->all()),
             'lines' => $this->whenLoaded('lines', fn () => InvoiceLineResource::collection($this->lines)->resolve()),
         ];
     }

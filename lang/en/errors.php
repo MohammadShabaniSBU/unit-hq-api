@@ -57,6 +57,10 @@ return [
         'missing_site' => 'The contract has no unit site to resolve the issuing legal entity.',
         'missing_contact' => 'The contract has no contact for the buyer snapshot.',
         'immutable' => 'Issued invoices cannot be modified or deleted.',
+        'rectify_original_not_issued' => 'Only issued invoices can be rectified.',
+        'rectify_invalid_reason' => 'Rectification reason is invalid.',
+        'rectify_missing_contract' => 'The invoice has no contract to rectify against.',
+        'rectify_no_eligible_credits' => 'No eligible uninvoiced credit charges for this invoice (must be negative adjustments on the same contract, not already stamped).',
     ],
 ];
 

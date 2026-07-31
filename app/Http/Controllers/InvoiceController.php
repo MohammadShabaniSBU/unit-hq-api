@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceKind;
+use App\Enums\InvoiceStatus;
 use App\Http\Resources\InvoiceResource;
 use App\Models\Charge;
 use App\Models\Contract;
@@ -33,7 +34,7 @@ class InvoiceController extends Controller
         ]);
 
         $query = Invoice::query()
-            ->with(['contact', 'contract', 'lines'])
+            ->with(['contact', 'contract', 'lines', 'rectifiesInvoice', 'rectificatives'])
             ->latest('issue_date')
             ->latest('id');
 
@@ -69,7 +70,7 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice): JsonResponse
     {
-        $invoice->load(['contact', 'contract', 'lines']);
+        $invoice->load(['contact', 'contract', 'lines', 'rectifiesInvoice', 'rectificatives']);
 
         return $this->success(
             InvoiceResource::make($invoice),
@@ -144,8 +145,90 @@ class InvoiceController extends Controller
         }
 
         return $this->created(
-            InvoiceResource::make($invoice->load(['contact', 'contract', 'lines'])),
+            InvoiceResource::make($invoice->load(['contact', 'contract', 'lines', 'rectifiesInvoice', 'rectificatives'])),
             'Invoice issued successfully.'
         );
+    }
+
+    public function rectify(Request $request, Invoice $invoice): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', Rule::in([
+                InvoiceIssuer::REASON_OPERATOR_CORRECTION,
+                InvoiceIssuer::REASON_VACATE_SETTLEMENT,
+                InvoiceIssuer::REASON_TRANSFER_CREDIT,
+            ])],
+            'charge_ids' => ['nullable', 'array', 'min:1'],
+            'charge_ids.*' => ['integer', 'exists:charges,id'],
+        ]);
+
+        if ($invoice->status !== InvoiceStatus::Issued) {
+            throw ValidationException::withMessages([
+                'invoice' => [__('errors.invoices.rectify_original_not_issued')],
+            ]);
+        }
+
+        $contract = $invoice->contract;
+        if ($contract === null) {
+            throw ValidationException::withMessages([
+                'invoice' => [__('errors.invoices.rectify_missing_contract')],
+            ]);
+        }
+
+        if (isset($validated['charge_ids'])) {
+            $charges = Charge::query()
+                ->whereIn('id', $validated['charge_ids'])
+                ->get();
+
+            if ($charges->count() !== count($validated['charge_ids'])) {
+                throw ValidationException::withMessages([
+                    'charge_ids' => [__('errors.invoices.rectify_no_eligible_credits')],
+                ]);
+            }
+        } else {
+            $charges = $this->eligibleCreditsForInvoice($invoice, $contract);
+        }
+
+        $eligible = InvoiceIssuer::filterCreditCharges($contract, $charges, $invoice);
+        if ($eligible->isEmpty() || (isset($validated['charge_ids']) && $eligible->count() !== $charges->count())) {
+            throw ValidationException::withMessages([
+                'charge_ids' => [__('errors.invoices.rectify_no_eligible_credits')],
+            ]);
+        }
+
+        $rectificative = DB::transaction(function () use ($invoice, $eligible, $validated, $request) {
+            return InvoiceIssuer::issueRectificative(
+                $invoice,
+                $eligible,
+                $validated['reason'],
+                $request->user()?->id,
+            );
+        });
+
+        return $this->created(
+            InvoiceResource::make($rectificative->load([
+                'contact',
+                'contract',
+                'lines',
+                'rectifiesInvoice',
+                'rectificatives',
+            ])),
+            'Rectificative invoice issued successfully.'
+        );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Charge>
+     */
+    private function eligibleCreditsForInvoice(Invoice $invoice, Contract $contract): \Illuminate\Support\Collection
+    {
+        return Charge::query()
+            ->where('contract_id', $contract->id)
+            ->whereNull('invoice_id')
+            ->where('charge_type', 'adjustment')
+            ->where('amount', '<', 0)
+            ->get()
+            ->filter(fn (Charge $c) => InvoiceIssuer::resolveOriginalInvoiceId($c) === (int) $invoice->id)
+            ->values();
     }
 }

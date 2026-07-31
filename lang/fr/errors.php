@@ -57,6 +57,10 @@ return [
         'missing_site' => 'Le contrat n’a pas de site d’unité pour résoudre l’entité émettrice.',
         'missing_contact' => 'Le contrat n’a pas de contact pour le destinataire de la facture.',
         'immutable' => 'Les factures émises ne peuvent pas être modifiées ni supprimées.',
+        'rectify_original_not_issued' => 'Seules les factures émises peuvent être rectifiées.',
+        'rectify_invalid_reason' => 'Le motif de rectification n’est pas valide.',
+        'rectify_missing_contract' => 'La facture n’a pas de contrat associé pour la rectification.',
+        'rectify_no_eligible_credits' => 'Aucun crédit éligible non facturé pour cette facture (ajustements négatifs du même contrat, non encore marqués).',
     ],
 ];
 

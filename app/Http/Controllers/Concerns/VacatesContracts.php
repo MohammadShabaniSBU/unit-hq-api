@@ -114,6 +114,7 @@ trait VacatesContracts
     {
         $validated = $this->validateVacateBody($request);
         $plan = $this->buildVacatePlan($contract, $validated);
+        $plan['invoices_to_issue'] = $this->previewVacateInvoices($plan);
 
         return $this->success($plan, 'Vacate preview computed successfully.');
     }
@@ -205,9 +206,15 @@ trait VacatesContracts
                 ->whereNotIn('id', $chargeIdsBefore)
                 ->get();
 
-            // Gap debits only — credits/refunds wait for rectificatives (S03-04).
             $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
-            InvoiceIssuer::issue($contract, $newCharges, null, auth()->id());
+            $split = InvoiceIssuer::splitSettlementCharges($contract, $newCharges);
+            InvoiceIssuer::issueCreditsForContract(
+                $contract,
+                $split['credits'],
+                InvoiceIssuer::REASON_VACATE_SETTLEMENT,
+                auth()->id(),
+            );
+            InvoiceIssuer::issue($contract, $split['debits'], null, auth()->id());
 
             $this->maybeCreateTurnoverHold($contract, $moveOutOn);
 
@@ -312,7 +319,7 @@ trait VacatesContracts
                 'description' => $line['adjusts_charge_id'] !== null
                     ? $line['description'].' #'.$line['adjusts_charge_id']
                     : $line['description'],
-                'reversal_of_charge_id' => null,
+                'reversal_of_charge_id' => $line['adjusts_charge_id'],
             ]);
         }
 
@@ -438,6 +445,25 @@ trait VacatesContracts
                 ])],
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return list<array{kind: string, rectifies_full_number: string|null, gross_total: string, net_total: string, tax_total: string}>
+     */
+    private function previewVacateInvoices(array $plan): array
+    {
+        $creditLines = [];
+        $debitLines = [];
+        foreach ($plan['item_lines'] as $line) {
+            if (bccomp((string) $line['gross'], '0', 2) < 0) {
+                $creditLines[] = $line;
+            } elseif (bccomp((string) $line['gross'], '0', 2) > 0) {
+                $debitLines[] = $line;
+            }
+        }
+
+        return InvoiceIssuer::previewInvoicesToIssue($creditLines, $debitLines);
     }
 
     private function openOccupancy(Contract $contract): UnitOccupancy

@@ -51,6 +51,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contract|null            $contract
  * @property-read Contact                  $contact
  * @property-read Invoice|null             $rectifiesInvoice
+ * @property-read Collection<int, Invoice> $rectificatives
  * @property-read Collection<int, InvoiceLine> $lines
  * @property-read Collection<int, Charge>  $charges
  * @property-read Employee|null            $creator
@@ -131,6 +132,12 @@ class Invoice extends Model
     public function rectifiesInvoice(): BelongsTo
     {
         return $this->belongsTo(self::class, 'rectifies_invoice_id');
+    }
+
+    /** @return HasMany<Invoice, $this> */
+    public function rectificatives(): HasMany
+    {
+        return $this->hasMany(self::class, 'rectifies_invoice_id');
     }
 
     /** @return HasMany<InvoiceLine, $this> */

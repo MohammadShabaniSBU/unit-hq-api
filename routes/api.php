@@ -194,6 +194,7 @@ Route::apiResource('contracts', Controllers\ContractController::class);
 Route::get('invoices', [Controllers\InvoiceController::class, 'index']);
 Route::get('invoices/{invoice}', [Controllers\InvoiceController::class, 'show']);
 Route::get('invoices/{invoice}/pdf', [Controllers\InvoiceController::class, 'pdf']);
+Route::post('invoices/{invoice}/rectify', [Controllers\InvoiceController::class, 'rectify']);
 
 Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);
 Route::get('unit-class-occupancy-matrix', [Facility\UnitClassOccupancyMatrixController::class, 'index']);

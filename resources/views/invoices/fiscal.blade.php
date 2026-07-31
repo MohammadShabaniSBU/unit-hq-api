@@ -28,6 +28,7 @@
         .totals { width: 280px; margin-left: auto; }
         .totals td { padding: 4px; }
         .totals .grand { font-weight: bold; font-size: 14px; }
+        .negative { color: #b91c1c; }
         .qr { margin-top: 28px; width: 96px; height: 96px; border: 1px dashed #999; text-align: center; font-size: 9px; color: #777; padding-top: 36px; }
     </style>
 </head>
@@ -36,6 +37,9 @@
         <h1>{{ $invoice['kind_label'] ?? '' }}</h1>
         <div><strong>{{ $labels['number'] ?? 'Number' }}:</strong> {{ $invoice['full_number'] ?? '' }}</div>
         <div><strong>{{ $labels['issue_date'] ?? 'Date' }}:</strong> {{ $invoice['issue_date'] ?? '' }}</div>
+        @if (!empty($invoice['rectifies_full_number']))
+            <div><strong>{{ $labels['rectifies'] ?? 'Rectifies' }}:</strong> {{ $invoice['rectifies_full_number'] }}</div>
+        @endif
     </div>
 
     <table class="cols">
@@ -87,6 +91,9 @@
         </thead>
         <tbody>
             @foreach (($invoice['lines'] ?? []) as $line)
+                @php
+                    $lineNegative = isset($line['gross_amount']) && bccomp((string) $line['gross_amount'], '0', 2) < 0;
+                @endphp
                 <tr>
                     <td>{{ $line['description'] ?? '' }}</td>
                     <td>
@@ -94,28 +101,31 @@
                             {{ $line['period_start'] }} – {{ $line['period_end'] }}
                         @endif
                     </td>
-                    <td class="num">{{ $line['net_amount'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
-                    <td class="num">{{ $line['tax_amount'] ?? '' }} ({{ $line['tax_rate_snapshot'] ?? '0' }}%)</td>
-                    <td class="num">{{ $line['gross_amount'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
+                    <td class="num {{ $lineNegative ? 'negative' : '' }}">{{ $line['net_amount'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
+                    <td class="num {{ $lineNegative ? 'negative' : '' }}">{{ $line['tax_amount'] ?? '' }} ({{ $line['tax_rate_snapshot'] ?? '0' }}%)</td>
+                    <td class="num {{ $lineNegative ? 'negative' : '' }}">{{ $line['gross_amount'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
+    @php
+        $totalsNegative = isset($invoice['gross_total']) && bccomp((string) $invoice['gross_total'], '0', 2) < 0;
+    @endphp
     <table class="totals">
         <tr>
             <td>{{ $labels['net'] ?? 'Net' }}</td>
-            <td class="num">{{ $invoice['net_total'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
+            <td class="num {{ $totalsNegative ? 'negative' : '' }}">{{ $invoice['net_total'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
         </tr>
         @foreach (($invoice['tax_breakdown'] ?? []) as $tax)
             <tr>
                 <td>{{ $labels['tax'] ?? 'Tax' }} {{ $tax['rate'] ?? '' }}%</td>
-                <td class="num">{{ $tax['tax'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
+                <td class="num {{ $totalsNegative ? 'negative' : '' }}">{{ $tax['tax'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
             </tr>
         @endforeach
         <tr class="grand">
             <td>{{ $labels['total'] ?? 'Total' }}</td>
-            <td class="num">{{ $invoice['gross_total'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
+            <td class="num {{ $totalsNegative ? 'negative' : '' }}">{{ $invoice['gross_total'] ?? '' }} {{ $invoice['currency'] ?? '' }}</td>
         </tr>
     </table>
 

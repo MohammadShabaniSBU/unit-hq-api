@@ -27,5 +27,6 @@ return [
         'period' => 'Period',
         'description' => 'Description',
         'qr_placeholder' => 'QR reserved for Verifactu',
+        'rectifies' => 'Rectifies',
     ],
 ];

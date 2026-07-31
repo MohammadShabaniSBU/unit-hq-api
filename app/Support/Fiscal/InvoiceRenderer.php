@@ -21,7 +21,7 @@ final class InvoiceRenderer
      */
     public static function payloadFromInvoice(Invoice $invoice): array
     {
-        $invoice->loadMissing('lines');
+        $invoice->loadMissing(['lines', 'rectifiesInvoice']);
 
         $kind = $invoice->kind?->value ?? (string) $invoice->kind;
         $locale = self::localeFromIssuerCountry(
@@ -45,6 +45,7 @@ final class InvoiceRenderer
             'issue_date' => $invoice->issue_date?->toDateString(),
             'currency' => $invoice->currency,
             'locale' => $locale,
+            'rectifies_full_number' => $invoice->rectifiesInvoice?->full_number,
             'labels' => [
                 'net' => trans('invoices.labels.net', [], $locale),
                 'tax' => trans('invoices.labels.tax', [], $locale),
@@ -56,6 +57,7 @@ final class InvoiceRenderer
                 'period' => trans('invoices.labels.period', [], $locale),
                 'description' => trans('invoices.labels.description', [], $locale),
                 'qr_placeholder' => trans('invoices.labels.qr_placeholder', [], $locale),
+                'rectifies' => trans('invoices.labels.rectifies', [], $locale),
             ],
             'issuer' => [
                 'name' => $invoice->issuer_name,
