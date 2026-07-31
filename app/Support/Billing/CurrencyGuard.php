@@ -6,6 +6,7 @@ namespace App\Support\Billing;
 
 use App\Models\Charge;
 use App\Models\Contract;
+use App\Models\ContractItem;
 use App\Models\Payment;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -115,6 +116,13 @@ final class CurrencyGuard
     {
         if (is_array($item)) {
             $value = $item['currency'] ?? null;
+
+            return is_string($value) ? $value : null;
+        }
+
+        if ($item instanceof ContractItem) {
+            $item->loadMissing('price');
+            $value = $item->price?->currency;
 
             return is_string($value) ? $value : null;
         }

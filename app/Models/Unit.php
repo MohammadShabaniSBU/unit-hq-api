@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-use App\Enums\ContractStatus;
 use App\Enums\LogChannel;
-use App\Enums\ReservationStatus;
+use App\Enums\UnitState;
 use App\Enums\UnitStatus;
 use App\Models\Concerns\LogsDirtyActivity;
+use App\Support\Occupancy\Availability;
+use App\Support\Time\SiteClock;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,8 +26,8 @@ use Illuminate\Database\Eloquent\Model;
  * actual_* overrides are only populated when a unit physically differs from
  * its class. Billing and listings use class dimensions; surveys use actuals.
  *
- * is_available is always derived — never stored as a column.
- * Derived: absence of active contracts + non-expired reservations for this unit.
+ * Availability is always derived from unit_occupancies / unit_holds —
+ * never stored as a column (invariants 5 / 36).
  *
  * @property int        $id
  * @property int        $site_id
@@ -45,6 +47,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Collection<int, ContractItem>    $contractItems
  * @property-read Collection<int, UnitOccupancy>   $occupancies
  * @property-read UnitOccupancy|null               $currentOccupancy
+ * @property-read Collection<int, UnitHold>        $holds
  */
 class Unit extends Model
 {
@@ -112,103 +115,95 @@ class Unit extends Model
         return $this->hasOne(UnitOccupancy::class)->whereNull('ended_on');
     }
 
-    /** @param Builder<Unit> $query */
-    public function scopeWithMapStatus(Builder $query): Builder
+    /** @return HasMany<UnitHold, Unit> */
+    public function holds(): HasMany
     {
-        $itemType = $this->getMorphClass();
-
-        return $query->withExists([
-            'contractItems as has_active_contract' => function (Builder $contractItemsQuery) use ($itemType): void {
-                $contractItemsQuery
-                    ->where('item_type', $itemType)
-                    ->whereHas('contract', function (Builder $contractQuery): void {
-                        $contractQuery->where('status', ContractStatus::Active->value);
-                    });
-            },
-            'reservations as has_active_reservation' => function (Builder $reservationQuery): void {
-                $reservationQuery
-                    ->whereIn('status', [
-                        ReservationStatus::Pending->value,
-                        ReservationStatus::Confirmed->value,
-                    ])
-                    ->where('expires_at', '>', now());
-            },
-        ]);
+        return $this->hasMany(UnitHold::class);
     }
 
-    public function deriveStatus(): UnitStatus
+    /**
+     * Units available on the given civil date (fact tables only).
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeAvailableOn(Builder $query, CarbonInterface $on): Builder
+    {
+        return Availability::scopeAvailableOn($query, $on);
+    }
+
+    /**
+     * Units available for the half-open range [from, to).
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeAvailableBetween(
+        Builder $query,
+        CarbonInterface $from,
+        ?CarbonInterface $to,
+    ): Builder {
+        return Availability::scopeAvailableBetween($query, $from, $to);
+    }
+
+    /**
+     * @deprecated Use availableOn($on) — kept as an alias for call-site migration.
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeReservable(Builder $query, CarbonInterface $on): Builder
+    {
+        return Availability::scopeAvailableOn($query, $on);
+    }
+
+    public function stateOn(CarbonInterface $on): UnitState
+    {
+        return Availability::stateOn($this->id, $on);
+    }
+
+    public function isAvailableOn(CarbonInterface $on): bool
+    {
+        return Availability::isAvailable($this->id, $on);
+    }
+
+    /**
+     * Bridge to legacy UnitStatus for clients still reading `status`.
+     * Full inventory state is on `state` (UnitState).
+     */
+    public function deriveStatus(?CarbonInterface $on = null): UnitStatus
     {
         if (! $this->enabled) {
             return UnitStatus::Archived;
         }
 
-        if ($this->has_active_contract ?? $this->hasActiveContract()) {
-            return UnitStatus::Occupied;
+        if ($on === null) {
+            $this->loadMissing('site');
+            $on = SiteClock::today($this->site);
         }
 
-        if ($this->has_active_reservation ?? $this->hasActiveReservation()) {
-            return UnitStatus::Reserved;
-        }
-
-        return UnitStatus::Free;
-    }
-
-    public function hasActiveContract(): bool
-    {
-        return $this->contractItems()
-            ->where('item_type', $this->getMorphClass())
-            ->whereHas('contract', function (Builder $contractQuery): void {
-                $contractQuery->where('status', ContractStatus::Active->value);
-            })
-            ->exists();
-    }
-
-    public function hasActiveReservation(): bool
-    {
-        return $this->reservations()
-            ->whereIn('status', [
-                ReservationStatus::Pending->value,
-                ReservationStatus::Confirmed->value,
-            ])
-            ->where('expires_at', '>', now())
-            ->exists();
-    }
-
-    /** @param Builder<Unit> $query */
-    public function scopeReservable(Builder $query): Builder
-    {
-        $itemType = (new static)->getMorphClass();
-
-        return $query
-            ->whereDoesntHave('contractItems', function (Builder $contractItemsQuery) use ($itemType): void {
-                $contractItemsQuery
-                    ->where('item_type', $itemType)
-                    ->whereHas('contract', function (Builder $contractQuery): void {
-                        $contractQuery->where('status', ContractStatus::Active->value);
-                    });
-            })
-            ->whereDoesntHave('reservations', function (Builder $reservationQuery): void {
-                $reservationQuery
-                    ->whereIn('status', [
-                        ReservationStatus::Pending->value,
-                        ReservationStatus::Confirmed->value,
-                    ])
-                    ->where('expires_at', '>', now());
-            });
+        return match ($this->stateOn($on)) {
+            UnitState::Occupied => UnitStatus::Occupied,
+            UnitState::Reserved => UnitStatus::Reserved,
+            default => UnitStatus::Free,
+        };
     }
 
     public static function resolveUnitIdForRate(int $unitClassRateId): ?int
     {
-        $rate = UnitClassRate::query()->find($unitClassRateId);
+        $rate = UnitClassRate::query()->with('site')->find($unitClassRateId);
 
-        if ($rate === null) {
+        if ($rate === null || $rate->site === null) {
             return null;
         }
 
+        $on = SiteClock::today($rate->site);
+
         return static::query()
-            ->reservable()
+            ->availableOn($on)
             ->where('unit_class_id', $rate->unit_class_id)
             ->where('site_id', $rate->site_id)
+            ->where('enabled', true)
             ->inRandomOrder()
             ->value('id');
     }

@@ -11,7 +11,8 @@ Before writing code, consult the doc that matches the task:
 | Sites / units / unit classes | `02-facility.md` |
 | Prices / rates / tax rates / insurance / discounts | `03-pricing.md` |
 | Contacts / deals / offers / reservations / contracts | `04-crm-pipeline.md` |
-| Contract billing (cadence / anchor / tax / deposit), charges / payments / invoices / Stripe | `05-billing-ledger.md` |
+| Contract billing (cadence / anchor / tax / deposit), charges / payments / billing periods | `05-billing-ledger.md` |
+| Payments, fiscal identity, invoice issuance (authoritative) | `roadmap/architecture-payments-and-fiscal.md` |
 | Messaging / timeline / offer sends | `06-communications.md` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
@@ -24,7 +25,8 @@ Before writing code, consult the doc that matches the task:
 - Never update prices, tax rates, or ledger rows in place — new rows / reversals only.
 - Never store derived state (availability, balances, overdue) as columns (`billed_through` cursor is the deliberate exception — a date, not money).
 - Money is `NUMERIC(10,2)`, never floats; PHP money math via `BillingMath` (bcmath).
-- Payments confirmed only via Stripe webhooks + idempotency keys.
+- Payment confirmation is rail-specific (Stripe webhook / SEPA at settlement / manual with causer) — never optimistic from the client (invariant 11).
+- Payment credentials and fiscal regime scope to `legal_entities`, never to sites, and `legal_entity_id` never scopes a query (invariant 34).
 - Entity is `Contract` in code, not Lease.
 - Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card.
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.

@@ -9,18 +9,18 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Country;
 use App\Models\Employee;
-use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
-use App\Models\UnitClassRate;
 use App\Models\UnitOccupancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 class UnitOccupancyTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use RefreshDatabase;
 
     private static bool $failChargeCreate = false;
@@ -51,20 +51,17 @@ class UnitOccupancyTest extends TestCase
             'timezone' => 'Europe/Madrid',
         ]);
         $unitClass = UnitClass::factory()->create();
-        $price = Price::query()->create([
-            'amount' => '196.72',
-            'currency' => 'EUR',
-            'billing_period' => 'monthly',
-            'effective_from' => '2026-01-01',
-            'effective_to' => null,
-            'created_by' => $this->employee->id,
-        ]);
+        [, $price] = $this->createUnitClassCataloguePrice(
+            $unitClass->id,
+            $this->site->id,
+            $this->employee->id,
+            [
+                'amount' => '196.72',
+                'currency' => 'EUR',
+                'effective_from' => '2026-01-01',
+            ],
+        );
         $unitClass->update(['current_price_id' => $price->id]);
-        UnitClassRate::query()->create([
-            'unit_class_id' => $unitClass->id,
-            'site_id' => $this->site->id,
-            'price_id' => $price->id,
-        ]);
         $this->unit = Unit::factory()->create([
             'site_id' => $this->site->id,
             'unit_class_id' => $unitClass->id,

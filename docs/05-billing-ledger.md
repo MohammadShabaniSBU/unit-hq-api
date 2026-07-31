@@ -157,24 +157,28 @@ Beyond type / due date / gross `amount`:
 `charge_type` is the `ChargeType` enum (see D3 table above). First-period writers use
 `rent` / `insurance` / `deposit`.
 
-## Stripe (per-site direct charges)
+## Payments (credentials & confirmation)
 
-- Each **site** holds its own Stripe publishable + secret keys (`site_stripe_settings`, 1:1 with `sites`). The **site is the merchant of record** — direct charges into that site's Stripe account. No Stripe Connect; no platform application fees; **no `mode` column** (test vs. live is just a different key pair, not a stored toggle).
-- The platform **never collects funds into its own account** — doing so would make it a money transmitter requiring PSD2 authorization (Ireland).
-- **The ledger is the system of record.** Stripe events are *inputs* reconciled against it.
-- Payments are confirmed **from webhooks with idempotency keys** (`stripe_webhook_events` table) — **never optimistically from the client**.
-- Webhook signature verification is **site-scoped**: inbound URL carries a per-site `webhook_route_token`; the signing secret stored on that site's settings verifies `Stripe-Signature`. New `stripe_webhook_events` rows always set `site_id` (legacy rows may be null).
+Payment credentials, webhook routing, and merchant-of-record status belong to the
+**legal entity**, not to sites. Per-account webhook route tokens follow the `offers.token`
+pattern (crypto-random, never the PK). Full model — Stripe, SEPA bank-file, Verifactu,
+invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authoritative).
 
-### Connect flow
+`site_stripe_settings` exists in the codebase today and is replaced in S06 by
+`payment_provider_accounts` scoped to `legal_entity_id`. Credential handling rules
+(create/rotate/remove logging, masking, blank-unchanged) stay shared with
+`communication_accounts` — see `06-communications.md` and `App\Support\Credentials`.
 
-1. **Paste keys** (`PUT /api/sites/{site}/stripe-settings`, `publishable_key` + `secret_key`) → the API calls `GET /v1/balance` via `stripe/stripe-php` to verify the secret key → `status = connected` on success, `status = error` + `last_error` on failure. The key is still stored either way (`encrypted` cast) so operators can see and fix it; blank `secret_key` on submit = unchanged, never wipe.
-2. **Create webhook** (`POST /api/sites/{site}/stripe-settings/webhook`) → `App\Support\Http\PublicUrlGuard::assertPublic()` first (refuses `localhost`/private/missing public URL — same guard `06-communications.md` uses for Brevo), then `POST /v1/webhook_endpoints` with that site's secret key and a URL built from `webhook_route_token`. The returned endpoint id + signing secret are stored (`webhook_endpoint_id`, `webhook_secret`).
-3. **Inbound** `POST /api/webhooks/stripe/{webhook_route_token}` (public route, no Sanctum) resolves the site by token, ignores the event if the site `isArchived()`, verifies `Stripe-Signature` against that site's `webhook_secret` (`\Stripe\Webhook::constructEvent`), inserts a `stripe_webhook_events` row (idempotent on `stripe_event_id`) with `site_id` set, dispatches `ProcessStripeWebhookEvent` (queued stub — ledger reconciliation is follow-up work), and acks fast.
-4. `GET /api/sites/{site}/stripe/public-key` — public, unauthenticated (the publishable key is not a secret; needed client-side for Stripe Elements on payment pages that aren't behind auth).
-5. **Disconnect** deletes the Stripe-side webhook endpoint first (`DELETE /v1/webhook_endpoints/{id}`, best-effort) then drops the `site_stripe_settings` row. **Rotating** `secret_key` alone does **not** recreate the webhook endpoint — a rotated secret key does not invalidate a webhook signing secret.
-6. A `DecryptException` reading `secret_key` / `webhook_secret` (e.g. after an `APP_KEY` rotation) degrades to `credentials_unreadable: true` in the resource rather than a 500 — the panel prompts to re-enter keys.
+**Invariant 11 — Payment confirmation is rail-specific, and never optimistic from the client.**
 
-Credential handling rules (create/rotate/remove logging, masking, blank-unchanged) are shared with `communication_accounts` — see `06-communications.md` and `App\Support\Credentials`.
+- **Stripe:** payments are written only on receipt of a verified webhook, with per-account
+  idempotency keys. Never from a client-side success callback.
+- **Bank SEPA DD:** generating a direct-debit collection file is **not** a payment. A
+  payment is written on the run's settlement date. A return writes a reversal payment via
+  `reversal_of_payment_id` — never an edit or delete.
+- **Manual (cash, transfer):** written by an authenticated employee with a recorded causer.
+
+In all cases the ledger is the system of record; provider events are reconciled inputs.
 
 ## Out of scope (current billing slice)
 

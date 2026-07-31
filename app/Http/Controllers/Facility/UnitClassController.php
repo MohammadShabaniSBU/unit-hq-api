@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Facility;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UnitClassResource;
+use App\Models\Site;
 use App\Models\UnitClass;
+use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -27,12 +29,15 @@ class UnitClassController extends Controller
 
         $query = UnitClass::query()->orderBy('label');
 
-        if (!empty($validated['site_id'])) {
-            $query->whereHas('units', function ($unitsQuery) use ($validated): void {
+        if (! empty($validated['site_id'])) {
+            $site = Site::query()->findOrFail($validated['site_id']);
+            $on = SiteClock::today($site);
+
+            $query->whereHas('units', function ($unitsQuery) use ($validated, $on): void {
                 $unitsQuery
                     ->where('site_id', $validated['site_id'])
                     ->where('enabled', true)
-                    ->reservable();
+                    ->availableOn($on);
             });
         }
 

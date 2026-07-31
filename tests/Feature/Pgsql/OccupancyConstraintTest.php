@@ -8,15 +8,14 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Country;
 use App\Models\Employee;
-use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
-use App\Models\UnitClassRate;
 use App\Models\UnitOccupancy;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 /**
@@ -25,6 +24,7 @@ use Tests\TestCase;
  */
 class OccupancyConstraintTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -45,19 +45,16 @@ class OccupancyConstraintTest extends TestCase
             'currency' => 'EUR',
         ]);
         $unitClass = UnitClass::factory()->create();
-        $price = Price::query()->create([
-            'amount' => '100.00',
-            'currency' => 'EUR',
-            'billing_period' => 'monthly',
-            'effective_from' => '2026-01-01',
-            'effective_to' => null,
-            'created_by' => $employee->id,
-        ]);
-        UnitClassRate::query()->create([
-            'unit_class_id' => $unitClass->id,
-            'site_id' => $site->id,
-            'price_id' => $price->id,
-        ]);
+        $this->createUnitClassCataloguePrice(
+            $unitClass->id,
+            $site->id,
+            $employee->id,
+            [
+                'amount' => '100.00',
+                'currency' => 'EUR',
+                'effective_from' => '2026-01-01',
+            ],
+        );
         $unit = Unit::factory()->create([
             'site_id' => $site->id,
             'unit_class_id' => $unitClass->id,

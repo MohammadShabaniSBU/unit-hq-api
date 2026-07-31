@@ -12,4 +12,22 @@ return [
     'occupancy' => [
         'unit_occupied' => 'Esta unidad ya está ocupada en las fechas seleccionadas.',
     ],
+    'holds' => [
+        'unit_held' => 'Esta unidad ya tiene una retención en las fechas seleccionadas.',
+        'reservation_not_manageable' => 'Las retenciones de reserva se gestionan con el ciclo de vida de la reserva y no se pueden crear ni liberar aquí.',
+        'reason_required' => 'Se requiere un motivo para este tipo de retención.',
+    ],
+    'contracts' => [
+        'transition_not_allowed' => 'No se puede cambiar el contrato de :from a :to.',
+        'cancel_with_payments' => 'No se puede anular un contrato que ha recibido pagos. Finalícelo en su lugar.',
+        'notice_withdraw_conflict' => 'No se puede retirar el preaviso: la reserva #:reservation_id retiene la unidad :unit desde :starts_on.',
+        'deposit_exceeds' => 'Las deducciones de la fianza no pueden superar el importe de la fianza.',
+        'deposit_reason_required' => 'Se requiere un motivo para este resultado de fianza.',
+        'no_open_occupancy' => 'El contrato no tiene una ocupación abierta que actualizar.',
+        'transfer_not_allowed' => 'No se puede trasladar un contrato en estado :status.',
+        'transfer_same_unit' => 'La unidad de destino debe ser distinta de la unidad actual.',
+        'transfer_no_unit_item' => 'El contrato no tiene un concepto de unidad abierto para trasladar.',
+        'transfer_no_catalogue_price' => 'La unidad de destino no tiene un precio de catálogo vigente.',
+    ],
 ];
+

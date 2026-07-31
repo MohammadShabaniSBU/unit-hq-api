@@ -1,8 +1,10 @@
 # Architecture — Payments & Fiscal Identity
 
-> Cross-cutting decision record. Implemented across S03–S07.
-> Supersedes the Stripe Connect section of `05-billing-ledger.md`.
-> **Read before writing any invoice, payment or tax code.**
+> **Status: authoritative.** This document is the single source for payments, fiscal identity
+> and invoice issuance. Where `05-billing-ledger.md`, `10-open-decisions.md` or the roadmap
+> README disagree, this document wins. Last reconciled: 2026-07-31, S01-05.
+>
+> Implemented across S03–S07. **Read before writing any invoice, payment or tax code.**
 
 ---
 
@@ -10,9 +12,11 @@
 
 ### Why it exists
 
-Stripe Connect was dropped because no site can act as a platform distributing money to
-other sites. The underlying reason is that sites may be **separate legal entities** with
-separate tax IDs. That fact propagates well beyond payments:
+Stripe Connect was dropped because there is no platform distributing money to connected
+accounts — sites are not platforms, and the operator is not a money transmitter. Dropping
+Connect removes the PSD2 money-transmitter question outright rather than mitigating it.
+The underlying reason sites cannot share one Stripe account is that they may be **separate
+legal entities** with separate tax IDs. That fact propagates well beyond payments:
 
 | Concern | Scoped to |
 |---|---|
@@ -142,7 +146,8 @@ to the bank. There is no processor and no webhook.
    this notice, and the contract must record the agreed notice period. **This sets the floor
    on how far ahead the recurring job runs.**
 3. **Run.** Instructions are batched into a `direct_debit_run` and exported as
-   Cuaderno 19-14 / `pain.008.001.02`. **No payment rows are written.**
+   Cuaderno 19-14 / `pain.008.001.02`. Generating a direct-debit collection file is **not**
+   a payment — **no payment rows are written.**
 4. **Settlement.** On the settlement date the run is marked collected and payment rows are
    written against the ledger.
 5. **Return.** Days later, a returns file (Cuaderno 19-44 / `pain.002`) is imported. Each
@@ -203,17 +208,15 @@ CREATE TABLE direct_debit_instructions (
 Runs and instructions are append-only in spirit: status advances, rows are never deleted.
 A cancelled run is marked, not removed.
 
-### Invariant 11 is superseded
-
-The current rule — payments confirmed only from Stripe webhooks, never optimistically —
-cannot survive a rail with no webhook. Replace it with:
+### Invariant 11 (rail-specific)
 
 > **11. Payment confirmation is rail-specific, and never optimistic from the client.**
 > - **Stripe:** payments are written only on receipt of a verified webhook, with per-account
 >   idempotency keys. Never from a client-side success callback.
-> - **Bank SEPA DD:** no payment row is written at file generation. A payment is written on
->   the run's settlement date. A return, imported from the bank's returns file, writes a
->   reversal payment via `reversal_of_payment_id` — never an edit or delete.
+> - **Bank SEPA DD:** generating a direct-debit collection file is **not** a payment. A
+>   payment is written on the run's settlement date. A return, imported from the bank's
+>   returns file, writes a reversal payment via `reversal_of_payment_id` — never an edit or
+>   delete.
 > - **Manual (cash, transfer):** written by an authenticated employee with a recorded causer.
 >
 > In all cases the ledger is the system of record; provider events are reconciled inputs.

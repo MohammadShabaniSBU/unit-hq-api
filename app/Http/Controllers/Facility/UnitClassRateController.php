@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Facility;
 
 use App\Http\Controllers\Controller;
@@ -17,7 +19,7 @@ class UnitClassRateController extends Controller
             'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
         ]);
 
-        $query = UnitClassRate::query();
+        $query = UnitClassRate::query()->with('price');
 
         if (isset($validated['site_id'])) {
             $query->where('site_id', $validated['site_id']);
@@ -38,13 +40,12 @@ class UnitClassRateController extends Controller
         $validated = $request->validate([
             'unit_class_id' => ['required', 'integer', 'exists:unit_classes,id'],
             'site_id'       => ['required', 'integer', 'exists:sites,id'],
-            'price_id'      => ['required', 'integer', 'exists:prices,id'],
         ]);
 
-        $unitClassRate = UnitClassRate::query()->create($validated);
+        $unitClassRate = UnitClassRate::query()->firstOrCreate($validated);
 
         return $this->created(
-            UnitClassRateResource::make($unitClassRate),
+            UnitClassRateResource::make($unitClassRate->load('price')),
             'Unit class rate created successfully.'
         );
     }

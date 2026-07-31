@@ -15,8 +15,8 @@ use Illuminate\Support\Carbon;
  * Inventory hold record. Always references a specific unit — never a class.
  * Created in a single transaction with OfferOption.selected_at and Offer.status.
  *
- * Unit availability is derived from active contracts + non-expired reservations.
- * is_available is never stored as a column on Unit.
+ * Unit availability is derived from unit_occupancies / unit_holds (invariant 36).
+ * Reservation create writes a reservation hold; is_available is never stored.
  *
  * @property int                $id
  * @property int                $unit_id
@@ -35,6 +35,7 @@ use Illuminate\Support\Carbon;
  * @property-read Deal|null         $deal
  * @property-read OfferOption|null  $offerOption
  * @property-read Contract|null     $contract
+ * @property-read UnitHold|null     $hold
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Note> $notes
  */
 class Reservation extends Model
@@ -168,5 +169,11 @@ class Reservation extends Model
     public function contract(): HasOne
     {
         return $this->hasOne(Contract::class);
+    }
+
+    /** @return HasOne<UnitHold, Reservation> */
+    public function hold(): HasOne
+    {
+        return $this->hasOne(UnitHold::class);
     }
 }

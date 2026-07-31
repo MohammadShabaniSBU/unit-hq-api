@@ -37,7 +37,7 @@ class BillingSeeder extends Seeder
         $this->createdPayments = collect();
 
         Contract::query()
-            ->with('items')
+            ->with(['items' => fn ($q) => $q->whereNull('effective_to')->with('price')])
             ->where('status', ContractStatus::Active)
             ->each(function (Contract $contract): void {
                 $unitItem = $contract->items->firstWhere('item_type', 'unit');
@@ -171,15 +171,17 @@ class BillingSeeder extends Seeder
         $charges = collect();
         $createdAt = $period['start']->copy();
 
+        // WithoutModelEvents disables Charge::creating currency fill — set explicitly.
         $rentCharge = Charge::query()->create([
             'contract_id'           => $contract->id,
             'contract_item_id'      => $unitItem->id,
-            'billing_period_id'            => $billingPeriod->id,
+            'billing_period_id'     => $billingPeriod->id,
             'charge_type'           => ChargeType::Rent,
             'period_start'          => $period['start']->toDateString(),
             'period_end'            => $period['end']->toDateString(),
-            'net_amount'            => $unitItem->amount,
-            'amount'                => $unitItem->amount,
+            'net_amount'            => $unitItem->price->amount,
+            'amount'                => $unitItem->price->amount,
+            'currency'              => $contract->currency,
             'due_date'              => $period['due_date']->toDateString(),
             'description'           => 'Monthly rent',
             'reversal_of_charge_id' => null,
@@ -193,12 +195,13 @@ class BillingSeeder extends Seeder
             $insuranceCharge = Charge::query()->create([
                 'contract_id'           => $contract->id,
                 'contract_item_id'      => $insuranceItem->id,
-                'billing_period_id'            => $billingPeriod->id,
+                'billing_period_id'     => $billingPeriod->id,
                 'charge_type'           => ChargeType::Insurance,
                 'period_start'          => $period['start']->toDateString(),
                 'period_end'            => $period['end']->toDateString(),
-                'net_amount'            => $insuranceItem->amount,
-                'amount'                => $insuranceItem->amount,
+                'net_amount'            => $insuranceItem->price->amount,
+                'amount'                => $insuranceItem->price->amount,
+                'currency'              => $contract->currency,
                 'due_date'              => $period['due_date']->toDateString(),
                 'description'           => 'Monthly insurance',
                 'reversal_of_charge_id' => null,
@@ -279,11 +282,12 @@ class BillingSeeder extends Seeder
     private function createPaymentWithAllocations(Contract $contract, float $amount, Carbon $paidAt): void
     {
         $payment = Payment::query()->create([
-            'contract_id'            => $contract->id,
-            'amount'                 => $amount,
+            'contract_id'              => $contract->id,
+            'amount'                   => $amount,
+            'currency'                 => $contract->currency,
             'stripe_payment_intent_id' => 'pi_' . Str::random(24),
-            'idempotency_key'        => (string) Str::uuid(),
-            'reversal_of_payment_id' => null,
+            'idempotency_key'          => (string) Str::uuid(),
+            'reversal_of_payment_id'   => null,
         ]);
         $payment->forceFill(['created_at' => $paidAt])->save();
         $this->createdPayments->push($payment);
@@ -323,9 +327,10 @@ class BillingSeeder extends Seeder
 
             $reversal = Charge::query()->create([
                 'contract_id'           => $original->contract_id,
-                'billing_period_id'            => $original->billing_period_id,
+                'billing_period_id'     => $original->billing_period_id,
                 'charge_type'           => $original->charge_type,
                 'amount'                => bcmul((string) $original->amount, '-1', 2),
+                'currency'              => $original->currency,
                 'due_date'              => $original->due_date,
                 'description'           => 'Reversal of charge #' . $original->id,
                 'reversal_of_charge_id' => $original->id,
@@ -343,11 +348,12 @@ class BillingSeeder extends Seeder
         $createdAt = Carbon::parse($original->created_at)->addDays(fake()->numberBetween(1, 5));
 
         $reversal = Payment::query()->create([
-            'contract_id'            => $original->contract_id,
-            'amount'                 => bcmul((string) $original->amount, '-1', 2),
+            'contract_id'              => $original->contract_id,
+            'amount'                   => bcmul((string) $original->amount, '-1', 2),
+            'currency'                 => $original->currency,
             'stripe_payment_intent_id' => null,
-            'idempotency_key'        => (string) Str::uuid(),
-            'reversal_of_payment_id' => $original->id,
+            'idempotency_key'          => (string) Str::uuid(),
+            'reversal_of_payment_id'   => $original->id,
         ]);
         $reversal->forceFill(['created_at' => $createdAt])->save();
     }

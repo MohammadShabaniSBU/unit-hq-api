@@ -1,24 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
-use App\Enums\ContractStatus;
 use App\Models\Contact;
-use App\Models\Contract;
-use App\Models\ContractItem;
 use App\Models\Country;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Price;
-use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\User;
-use App\Support\Billing\ContractBilling;
-use Carbon\CarbonImmutable;
+use App\Support\Billing\CurrencyGuard;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -28,6 +25,10 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $rngSeed = (int) (env('SEED_RNG', 424242));
+        mt_srand($rngSeed);
+        fake()->seed($rngSeed);
+
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -39,8 +40,25 @@ class DatabaseSeeder extends Seeder
         Employee::factory()->manager()->create();
         Employee::factory()->staff()->count(4)->create();
 
+        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
+
         $spain = Country::query()->where('code', 'ES')->firstOrFail();
-        $sites = Site::factory()->count(5)->create(['country_id' => $spain->id]);
+        $uk = Country::query()->where('code', 'GB')->firstOrFail();
+        $france = Country::query()->where('code', 'FR')->firstOrFail();
+
+        // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris
+        $siteDefs = [
+            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
+            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
+            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
+            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP'],
+            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR'],
+        ];
+
+        $sites = collect();
+        foreach ($siteDefs as $def) {
+            $sites->push(Site::factory()->create($def));
+        }
 
         $unitClasses = collect();
         foreach (range(1, 10) as $n) {
@@ -56,28 +74,52 @@ class DatabaseSeeder extends Seeder
             ]));
         }
 
-        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
-
-        $priceByUnitClass = [];
+        // Static junction per site × class; catalogue price timeline on prices.
+        $seededHistorical = false;
         foreach ($unitClasses as $unitClass) {
-            $price = Price::create([
-                'amount'         => fake()->randomFloat(2, 50, 300),
-                'currency'       => 'EUR',
-                'billing_period' => 'monthly',
-                'effective_from' => now()->subMonths(6)->toDateString(),
-                'effective_to'   => null,
-                'created_by'     => $manager->id,
-            ]);
-            $unitClass->update(['current_price_id' => $price->id]);
-            $priceByUnitClass[$unitClass->id] = $price;
+            $cataloguePrice = null;
 
             foreach ($sites as $site) {
-                UnitClassRate::create([
+                $rate = UnitClassRate::query()->create([
                     'unit_class_id' => $unitClass->id,
                     'site_id'       => $site->id,
-                    'price_id'      => $price->id,
                 ]);
+
+                $from = now()->subMonths(6)->toDateString();
+                $amount = fake()->randomFloat(2, 50, 300);
+
+                // At least one pairing carries a closed historical catalogue price.
+                if (! $seededHistorical) {
+                    Price::query()->create([
+                        'priceable_type' => 'unit_class_rate',
+                        'priceable_id'   => $rate->id,
+                        'scope'          => Price::SCOPE_CATALOGUE,
+                        'amount'         => round($amount * 0.9, 2),
+                        'currency'       => $site->currency,
+                        'effective_from' => now()->subYear()->toDateString(),
+                        'effective_to'   => $from,
+                        'created_by'     => $manager->id,
+                    ]);
+                    $seededHistorical = true;
+                }
+
+                $price = Price::query()->create([
+                    'priceable_type' => 'unit_class_rate',
+                    'priceable_id'   => $rate->id,
+                    'scope'          => Price::SCOPE_CATALOGUE,
+                    'amount'         => $amount,
+                    'currency'       => $site->currency,
+                    'effective_from' => $from,
+                    'effective_to'   => null,
+                    'created_by'     => $manager->id,
+                ]);
+
+                CurrencyGuard::assertRateJunction($site->currency, $price->currency);
+
+                $cataloguePrice ??= $price;
             }
+
+            $unitClass->update(['current_price_id' => $cataloguePrice->id]);
         }
 
         $insurances = [
@@ -86,96 +128,55 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($insurances as $insuranceData) {
-            $insurance = Insurance::create([
+            $insurance = Insurance::query()->create([
                 'name'     => $insuranceData['name'],
                 'coverage' => $insuranceData['coverage'],
                 'currency' => 'EUR',
             ]);
 
-            $price = Price::create([
-                'amount'         => $insuranceData['amount'],
-                'currency'       => 'EUR',
-                'billing_period' => 'monthly',
-                'effective_from' => now()->subMonths(6)->toDateString(),
-                'effective_to'   => null,
-                'created_by'     => $manager->id,
-            ]);
-
             foreach ($sites as $site) {
-                InsuranceRate::create([
+                $rate = InsuranceRate::query()->create([
                     'insurance_id' => $insurance->id,
                     'site_id'      => $site->id,
-                    'price_id'     => $price->id,
                 ]);
+
+                $price = Price::query()->create([
+                    'priceable_type' => 'insurance_rate',
+                    'priceable_id'   => $rate->id,
+                    'scope'          => Price::SCOPE_CATALOGUE,
+                    'amount'         => $insuranceData['amount'],
+                    'currency'       => $site->currency,
+                    'effective_from' => now()->subMonths(6)->toDateString(),
+                    'effective_to'   => null,
+                    'created_by'     => $manager->id,
+                ]);
+
+                CurrencyGuard::assertRateJunction($site->currency, $price->currency);
             }
         }
 
-        $units = collect();
+        // 20 classes × 5 sites × 5 units = 500; even distribution for pool draws.
         foreach ($unitClasses as $unitClass) {
-            foreach (range(1, 25) as $n) {
-                $units->push(Unit::factory()->create([
-                    'site_id'        => $sites->random()->id,
-                    'unit_class_id'  => $unitClass->id,
-                    'unit_number'    => sprintf('%s-%02d', $unitClass->code, $n),
-                    'actual_width'   => fake()->randomFloat(2, 1.5, 5.0),
-                    'actual_depth'   => fake()->randomFloat(2, 2.0, 6.0),
-                    'actual_height'  => fake()->randomFloat(2, 2.0, 3.5),
-                ]));
+            foreach ($sites as $site) {
+                foreach (range(1, 5) as $n) {
+                    Unit::factory()->create([
+                        'site_id'       => $site->id,
+                        'unit_class_id' => $unitClass->id,
+                        'unit_number'   => sprintf('%s-%s-%02d', $site->code, $unitClass->code, $n),
+                        'actual_width'  => fake()->randomFloat(2, 1.5, 5.0),
+                        'actual_depth'  => fake()->randomFloat(2, 2.0, 6.0),
+                        'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
+                    ]);
+                }
             }
         }
 
         Contact::factory()->count(50)->create();
 
         $this->call(DealSeeder::class);
-
-        $contacts = Contact::all();
-        $occupiedUnits = $units->shuffle()->take((int) ($units->count() * 0.40));
-        $billing = Setting::billing();
-
-        foreach ($occupiedUnits as $unit) {
-            $contact   = $contacts->random();
-            $price     = $priceByUnitClass[$unit->unit_class_id];
-            $startDate = now()->subDays(fake()->numberBetween(30, 365));
-            $moveIn    = CarbonImmutable::parse($startDate->toDateString())->startOfDay();
-
-            // Same path ContractController::store uses, so seeded contracts
-            // carry the same billing_anchor_date / billed_through invariants
-            // as real ones — no separate ad-hoc seed logic.
-            $plan = ContractBilling::planFirstPeriod(
-                $moveIn,
-                $billing->billingAnchorModel,
-                $billing->defaultBillingInterval,
-                $billing->defaultBillingIntervalCount,
-                $billing->billingAnchorDay,
-            );
-
-            $contract = Contract::create([
-                'contact_id'             => $contact->id,
-                'start_date'             => $startDate->toDateString(),
-                'end_date'               => null,
-                'status'                 => ContractStatus::Active,
-                'signed_at'              => $startDate,
-                'billing_interval'       => $billing->defaultBillingInterval,
-                'billing_interval_count' => $billing->defaultBillingIntervalCount,
-                'billing_anchor_model'   => $billing->billingAnchorModel,
-                'billing_anchor_date'    => $plan->anchorDate->toDateString(),
-                'billed_through'         => $plan->billedThrough->toDateString(),
-                'proration_method'       => $billing->prorationMethod,
-                'move_in_date'           => $moveIn->toDateString(),
-                'deposit_amount'         => $billing->defaultDepositAmount,
-                'currency'               => $price->currency,
-            ]);
-
-            ContractItem::create([
-                'contract_id' => $contract->id,
-                'item_type'   => 'unit',
-                'item_id'     => $unit->id,
-                'amount'      => $price->amount,
-                'currency'    => $price->currency,
-                'price_id'    => $price->id,
-            ]);
-        }
-
+        $this->call(OccupancySeeder::class);
         $this->call(BillingSeeder::class);
+
+        $this->command?->info("RNG seed: {$rngSeed}");
     }
 }

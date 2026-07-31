@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ReservationStatus;
+use App\Http\Controllers\Concerns\WritesReservationHolds;
 use App\Http\Resources\OfferOptionResource;
 use App\Http\Resources\OfferResource;
 use App\Models\Offer;
@@ -12,6 +13,7 @@ use App\Models\Setting;
 use App\Models\SystemEvent;
 use App\Models\Unit;
 use App\Support\RecordsActivity;
+use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,8 @@ use Illuminate\Validation\ValidationException;
 
 class OfferOptionController extends Controller
 {
+    use WritesReservationHolds;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -108,8 +112,8 @@ class OfferOptionController extends Controller
 
             $unitId = $offerOption->unit_id;
             if ($unitId !== null) {
-                $unitAvailable = Unit::query()->reservable()->whereKey($unitId)->lockForUpdate()->exists();
-                if (! $unitAvailable) {
+                $candidate = Unit::query()->with('site')->whereKey($unitId)->lockForUpdate()->first();
+                if ($candidate === null || ! $candidate->isAvailableOn(SiteClock::today($candidate->site))) {
                     $unitId = null;
                 }
             }
@@ -127,15 +131,27 @@ class OfferOptionController extends Controller
                 'accepted_at' => $now,
             ]);
 
-            Reservation::query()->create([
+            $offerOption->loadMissing('unitClassRate.price');
+
+            $cataloguePriceId = $offerOption->unitClassRate?->price?->id;
+            if ($cataloguePriceId === null) {
+                throw ValidationException::withMessages([
+                    'unit_class_rate_id' => ['No current catalogue price for the selected option.'],
+                ]);
+            }
+
+            $reservation = Reservation::query()->create([
                 'unit_id'         => $unitId,
                 'contact_id'      => $offer->contact_id,
                 'deal_id'         => $offer->deal_id,
-                'price_id'        => $offerOption->unitClassRate->price_id,
+                'price_id'        => $cataloguePriceId,
                 'offer_option_id' => $offerOption->id,
                 'status'          => ReservationStatus::Pending,
                 'expires_at'      => $this->reservationExpiresAt(),
             ]);
+
+            $unit = Unit::query()->with('site')->findOrFail($unitId);
+            $this->writeReservationHold($reservation, $unit);
 
             SystemEvent::record('offer.accept.committed', $offer, [
                 'offer_option_id' => $offerOption->id,

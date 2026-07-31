@@ -6,11 +6,13 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Insurance;
+use App\Models\InsuranceRate;
 use App\Models\Note;
 use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Task;
 use App\Models\Unit;
+use App\Models\UnitClassRate;
 use App\Events\ModelCreated;
 use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
@@ -43,15 +45,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Relation::morphMap([
-            'contact'     => Contact::class,
-            'deal'        => Deal::class,
-            'offer'       => Offer::class,
-            'reservation' => Reservation::class,
-            'unit'        => Unit::class,
-            'contract'    => Contract::class,
-            'insurance'   => Insurance::class,
-            'task'        => Task::class,
-            'note'        => Note::class,
+            'contact'          => Contact::class,
+            'deal'             => Deal::class,
+            'offer'            => Offer::class,
+            'reservation'      => Reservation::class,
+            'unit'             => Unit::class,
+            'contract'         => Contract::class,
+            'insurance'        => Insurance::class,
+            'unit_class_rate'  => UnitClassRate::class,
+            'insurance_rate'   => InsuranceRate::class,
+            'task'             => Task::class,
+            'note'             => Note::class,
         ]);
 
         Session::extend('database', function ($app) {

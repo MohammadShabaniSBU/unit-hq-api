@@ -3,11 +3,17 @@
 namespace App\Http\Controllers\Facility;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\UnitState;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UnitResource;
+use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Occupancy\Availability;
+use App\Support\Time\SiteClock;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,28 +25,57 @@ class UnitController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'site_id'  => ['nullable', 'integer', 'exists:sites,id'],
-            'for_map'  => ['nullable', 'boolean'],
+            'site_id'      => ['nullable', 'integer', 'exists:sites,id'],
+            'for_map'      => ['nullable', 'boolean'],
+            'available'    => ['nullable', 'boolean'],
+            'available_on' => ['nullable', 'date'],
+            'state'        => ['nullable', Rule::enum(UnitState::class)],
+            'state_group'  => ['nullable', 'in:out_of_service'],
         ]);
 
         $query = Unit::query()
             ->with(['site', 'unitClass'])
-            ->withMapStatus()
             ->latest();
 
         if (! empty($validated['site_id'])) {
             $query->where('site_id', $validated['site_id']);
         }
 
-        if ($request->boolean('for_map') && ! empty($validated['site_id'])) {
-            $units = $query->get()->map(fn (Unit $unit) => UnitResource::make($unit));
+        $explicitOn = ! empty($validated['available_on'])
+            ? CarbonImmutable::parse($validated['available_on'])->startOfDay()
+            : null;
 
-            return $this->success($units, 'Units retrieved successfully.');
+        if ($request->boolean('available') || $explicitOn !== null) {
+            if ($explicitOn !== null) {
+                Availability::scopeAvailableOn($query, $explicitOn);
+            } else {
+                Availability::scopeAvailableTodayPerSite($query);
+            }
         }
 
+        $this->applyStateFilter($query, $validated, $explicitOn);
+
+        $hydrateOn = $explicitOn;
+
+        if ($request->boolean('for_map') && ! empty($validated['site_id'])) {
+            $units = $query->get();
+            Availability::hydrateState($units, $hydrateOn);
+
+            return $this->success(
+                $units->map(fn (Unit $unit) => UnitResource::make($unit)),
+                'Units retrieved successfully.',
+            );
+        }
+
+        $paginator = $query->paginate($this->perPage());
+        Availability::hydrateState(
+            collect($paginator->items()),
+            $hydrateOn,
+        );
+
         return $this->paginated(
-            $query->paginate($this->perPage())->through(fn (Unit $unit) => UnitResource::make($unit)),
-            'Units retrieved successfully.'
+            $paginator->through(fn (Unit $unit) => UnitResource::make($unit)),
+            'Units retrieved successfully.',
         );
     }
 
@@ -54,15 +89,58 @@ class UnitController extends Controller
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Unit,
-            Unit::query()->with(['site', 'unitClass'])->withMapStatus(),
-            fn (Unit $unit) => UnitResource::make($unit),
+            Unit::query()->with(['site', 'unitClass']),
+            function (Unit $unit) {
+                return UnitResource::make($unit);
+            },
             'Units retrieved successfully.',
             function ($query, Request $request): void {
                 if ($request->filled('site_id')) {
                     $query->where('site_id', $request->integer('site_id'));
                 }
+
+                $stateValidated = $request->validate([
+                    'state' => ['nullable', Rule::enum(UnitState::class)],
+                    'state_group' => ['nullable', 'in:out_of_service'],
+                ]);
+
+                $this->applyStateFilter($query, $stateValidated, null);
+            },
+            function ($units): void {
+                Availability::hydrateState(collect($units));
             },
         );
+    }
+
+    /**
+     * @param  Builder<Unit>  $query
+     * @param  array{state?: mixed, state_group?: string|null}  $validated
+     */
+    private function applyStateFilter(Builder $query, array $validated, ?CarbonImmutable $explicitOn): void
+    {
+        if (! empty($validated['state_group'])) {
+            if ($explicitOn !== null) {
+                Availability::scopeStateGroupOn($query, (string) $validated['state_group'], $explicitOn);
+            } else {
+                Availability::scopeStateGroupTodayPerSite($query, (string) $validated['state_group']);
+            }
+
+            return;
+        }
+
+        if (empty($validated['state'])) {
+            return;
+        }
+
+        $state = $validated['state'] instanceof UnitState
+            ? $validated['state']
+            : UnitState::from((string) $validated['state']);
+
+        if ($explicitOn !== null) {
+            Availability::scopeStateOn($query, $state, $explicitOn);
+        } else {
+            Availability::scopeStateTodayPerSite($query, $state);
+        }
     }
 
     public function store(Request $request): JsonResponse
@@ -93,7 +171,8 @@ class UnitController extends Controller
 
     public function show(Unit $unit): JsonResponse
     {
-        $unit->load('currentOccupancy');
+        $unit->load(['site', 'unitClass', 'currentOccupancy.contract.contact', 'currentOccupancy.contract.items']);
+        Availability::hydrateState(collect([$unit]));
 
         return $this->success(
             UnitResource::make($unit),
@@ -127,7 +206,7 @@ class UnitController extends Controller
         $unit->update($validated);
 
         return $this->success(
-            UnitResource::make($unit->fresh()),
+            UnitResource::make($unit->fresh(['site', 'unitClass'])),
             'Unit updated successfully.'
         );
     }
@@ -149,11 +228,14 @@ class UnitController extends Controller
         $query = Unit::query()
             ->with(['site', 'unitClass'])
             ->where('enabled', true)
-            ->reservable()
             ->limit(100);
 
         if (! empty($validated['site_id'])) {
-            $query->where('site_id', $validated['site_id']);
+            $site = Site::query()->findOrFail($validated['site_id']);
+            $query->where('site_id', $site->id)
+                ->availableOn(SiteClock::today($site));
+        } else {
+            Availability::scopeAvailableTodayPerSite($query);
         }
 
         if (! empty($validated['unit_class_id'])) {
@@ -188,18 +270,12 @@ class UnitController extends Controller
             return [];
         }
 
-        $latestRateIds = UnitClassRate::query()
-            ->selectRaw('MAX(id) as id')
-            ->whereIn('unit_class_id', $units->pluck('unit_class_id')->unique())
-            ->whereIn('site_id', $units->pluck('site_id')->unique())
-            ->groupBy('unit_class_id', 'site_id')
-            ->pluck('id');
-
         $rateMap = [];
 
         UnitClassRate::query()
             ->with('price')
-            ->whereIn('id', $latestRateIds)
+            ->whereIn('unit_class_id', $units->pluck('unit_class_id')->unique())
+            ->whereIn('site_id', $units->pluck('site_id')->unique())
             ->get()
             ->each(function (UnitClassRate $rate) use (&$rateMap): void {
                 if ($rate->price === null) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Facility;
 
 use App\Http\Controllers\Controller;
@@ -16,14 +18,8 @@ class UnitClassPriceMatrixController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $latestRateIds = UnitClassRate::query()
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('unit_class_id', 'site_id')
-            ->pluck('id');
-
         $rates = UnitClassRate::query()
             ->with('price')
-            ->whereIn('id', $latestRateIds)
             ->get();
 
         $rateMap = [];
@@ -34,9 +30,8 @@ class UnitClassPriceMatrixController extends Controller
             }
 
             $rateMap[$rate->unit_class_id][$rate->site_id] = [
-                'amount'         => $rate->price->amount,
-                'currency'       => $rate->price->currency,
-                'billing_period' => $rate->price->billing_period,
+                'amount'   => $rate->price->amount,
+                'currency' => $rate->price->currency,
             ];
         }
 

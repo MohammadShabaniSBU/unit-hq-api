@@ -67,6 +67,9 @@ class SettingController extends Controller
             'billing_anchor_day'             => ['sometimes', 'required', 'integer', 'min:1', 'max:28'],
             'proration_method'               => ['sometimes', 'required', 'string', Rule::in(['daily', 'full_period', 'none'])],
             'default_deposit_amount'         => ['sometimes', 'required', 'numeric', 'min:0'],
+            'move_out_settlement'            => ['sometimes', 'required', 'string', Rule::in(['none', 'daily', 'notice_based'])],
+            'turnover_hold_days'             => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
+            'transfer_billing'               => ['sometimes', 'required', 'string', Rule::in(['prorate_immediately', 'next_period'])],
         ]);
 
         $anchorModel = $validated['billing_anchor_model'] ?? Setting::billing()->billingAnchorModel;
@@ -101,6 +104,9 @@ class SettingController extends Controller
                 defaultDepositAmount: isset($validated['default_deposit_amount'])
                     ? number_format((float) $validated['default_deposit_amount'], 2, '.', '')
                     : null,
+                moveOutSettlement: $validated['move_out_settlement'] ?? null,
+                turnoverHoldDays: $validated['turnover_hold_days'] ?? null,
+                transferBilling: $validated['transfer_billing'] ?? null,
             )
         );
 
@@ -125,6 +131,7 @@ class SettingController extends Controller
             'default_offer_expiration_unit'        => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
             'default_reservation_expiration_value' => ['sometimes', 'required', 'integer', 'min:1'],
             'default_reservation_expiration_unit'  => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
+            'default_notice_period_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
         ]);
 
         Setting::setLeasing(
@@ -133,6 +140,7 @@ class SettingController extends Controller
                 defaultOfferExpirationUnit: $validated['default_offer_expiration_unit'] ?? null,
                 defaultReservationExpirationValue: $validated['default_reservation_expiration_value'] ?? null,
                 defaultReservationExpirationUnit: $validated['default_reservation_expiration_unit'] ?? null,
+                defaultNoticePeriodDays: $validated['default_notice_period_days'] ?? null,
             )
         );
 

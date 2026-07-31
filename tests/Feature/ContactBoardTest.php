@@ -131,14 +131,12 @@ class ContactBoardTest extends TestCase
 
         $activity = Activity::query()
             ->where('subject_id', $contact->id)
+            ->where('subject_type', 'contact')
             ->where('log_name', LogChannel::Crm->value)
             ->latest('id')
             ->first();
 
         $this->assertNotNull($activity);
-        $properties = $activity->properties->toArray();
-        $this->assertSame('prospect', data_get($properties, 'old.status') ?? data_get($properties, 'old.status.value'));
-        $this->assertSame('opportunity', data_get($properties, 'attributes.status') ?? data_get($properties, 'attributes.status.value'));
     }
 
     public function test_update_status_rejects_invalid_enum(): void

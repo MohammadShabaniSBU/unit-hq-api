@@ -25,6 +25,7 @@ trait SearchesWithFilters
     /**
      * @param  callable(mixed): mixed  $mapResource
      * @param  callable(Builder, Request): void|null  $applyExtras
+     * @param  callable(\Illuminate\Support\Collection): void|null  $afterItems
      */
     protected function searchWithFilters(
         Request $request,
@@ -33,6 +34,7 @@ trait SearchesWithFilters
         callable $mapResource,
         string $message,
         ?callable $applyExtras = null,
+        ?callable $afterItems = null,
     ): JsonResponse {
         $validated = $request->validate([
             'filter' => ['nullable', 'array'],
@@ -68,8 +70,14 @@ trait SearchesWithFilters
 
         $perPage = min(max((int) ($validated['per_page'] ?? $this->perPage()), 1), 100);
 
+        $paginator = $query->paginate($perPage);
+
+        if ($afterItems !== null) {
+            $afterItems(collect($paginator->items()));
+        }
+
         return $this->paginated(
-            $query->paginate($perPage)->through($mapResource),
+            $paginator->through($mapResource),
             $message,
         );
     }

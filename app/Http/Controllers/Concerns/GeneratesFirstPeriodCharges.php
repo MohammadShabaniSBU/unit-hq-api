@@ -46,7 +46,8 @@ trait GeneratesFirstPeriodCharges
 
         if (! $skipFirstPeriodCharges) {
             foreach ($contractItems as $item) {
-                $net = ContractBilling::firstPeriodNetForItem($plan, (string) $item->amount, $method);
+                $item->loadMissing('price');
+                $net = ContractBilling::firstPeriodNetForItem($plan, (string) $item->price->amount, $method);
                 $rate = $item->tax_rate_snapshot !== null ? (string) $item->tax_rate_snapshot : null;
                 $breakdown = BillingMath::applyTax($net, $rate);
 

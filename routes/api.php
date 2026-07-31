@@ -100,6 +100,10 @@ Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destro
 Route::get('units/filters/schema', [Facility\UnitController::class, 'filterSchema']);
 Route::post('units/search', [Facility\UnitController::class, 'search']);
 Route::apiResource('units', Facility\UnitController::class);
+Route::get('units/{unit}/holds', [Facility\UnitHoldController::class, 'index']);
+Route::post('units/{unit}/holds', [Facility\UnitHoldController::class, 'store']);
+Route::delete('units/{unit}/holds/{hold}', [Facility\UnitHoldController::class, 'destroy']);
+Route::get('units/{unit}/occupancies', [Facility\UnitOccupancyController::class, 'index']);
 
 Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
 Route::get('contacts/filters/schema', [Controllers\ContactController::class, 'filterSchema']);
@@ -168,7 +172,12 @@ Route::get('contracts/filters/schema', [Controllers\ContractController::class, '
 Route::post('contracts/search', [Controllers\ContractController::class, 'search']);
 Route::get('contracts/board', [Controllers\ContractBoardController::class, 'index']);
 Route::get('contracts/board/columns/{status}', [Controllers\ContractBoardController::class, 'column']);
-Route::patch('contracts/{contract}/status', [Controllers\ContractController::class, 'updateStatus']);
+Route::post('contracts/{contract}/notice', [Controllers\ContractController::class, 'notice']);
+Route::post('contracts/{contract}/notice-withdraw', [Controllers\ContractController::class, 'noticeWithdraw']);
+Route::post('contracts/{contract}/vacate-preview', [Controllers\ContractController::class, 'vacatePreview']);
+Route::post('contracts/{contract}/vacate', [Controllers\ContractController::class, 'vacate']);
+Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
+Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
 Route::get('unit-class-price-matrix', [Facility\UnitClassPriceMatrixController::class, 'index']);

@@ -1,0 +1,51 @@
+services:
+  test:
+    image: webdevops/php-nginx:8.4-alpine
+    container_name: unit-hq-test
+    working_dir: /app
+    user: application
+    environment:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: test-db
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      COMPOSER_HOME: /tmp/composer
+    volumes:
+      - .:/app
+    depends_on:
+      test-db:
+        condition: service_healthy
+    entrypoint: ["sh", "/app/.docker/test.sh"]
+    networks:
+      - test-network
+
+  test-db:
+    image: postgres:16-alpine
+    container_name: unit-hq-test-db
+    environment:
+      POSTGRES_DB: testing
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laravel -d testing"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      - test-network
+
+networks:
+  test-network:

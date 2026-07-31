@@ -4,8 +4,11 @@ namespace App\Models;
 
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
+use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
+use App\Enums\MoveOutSettlement;
 use App\Enums\ProrationMethod;
+use App\Enums\TransferBilling;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -48,10 +52,17 @@ use Illuminate\Support\Carbon;
  * @property string|null         $move_in_date             Y-m-d
  * @property string              $deposit_amount           NUMERIC(10,2)
  * @property string              $currency                 ISO 4217 snapshot at signing (invariant 35)
- * @property ContractStatus      $status                   active|moved_out|terminated|expired
- * @property Carbon              $signed_at
- * @property Carbon              $created_at
- * @property Carbon              $updated_at
+ * @property ContractStatus           $status                   pending|active|notice_given|ended|cancelled
+ * @property string|null              $notice_given_on          Y-m-d
+ * @property int|null                 $notice_period_days       snapshot at signing (invariant 18)
+ * @property string|null              $scheduled_move_out_on    Y-m-d — set at notice
+ * @property MoveOutSettlement|null   $move_out_settlement      snapshot at signing (invariant 18)
+ * @property TransferBilling          $transfer_billing         snapshot at signing (invariant 18)
+ * @property string|null              $move_out_on              Y-m-d — actual, set at ended
+ * @property ContractEndedReason|null $ended_reason
+ * @property Carbon                   $signed_at
+ * @property Carbon                   $created_at
+ * @property Carbon                   $updated_at
  *
  * @property-read Contact                          $contact
  * @property-read Reservation|null                 $reservation
@@ -63,6 +74,8 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
  * @property-read Collection<int, UnitOccupancy>   $occupancies
+ * @property-read Collection<int, ContractTransfer> $transfers
+ * @property-read DepositSettlement|null           $depositSettlement
  * @property-read Collection<int, Note>              $notes
  */
 class Contract extends Model
@@ -85,6 +98,13 @@ class Contract extends Model
         'deposit_amount',
         'currency',
         'status',
+        'notice_given_on',
+        'notice_period_days',
+        'scheduled_move_out_on',
+        'move_out_settlement',
+        'transfer_billing',
+        'move_out_on',
+        'ended_reason',
         'signed_at',
     ];
 
@@ -92,6 +112,13 @@ class Contract extends Model
     {
         return [
             'status'                 => ContractStatus::class,
+            'notice_given_on'        => 'date',
+            'notice_period_days'     => 'integer',
+            'scheduled_move_out_on'  => 'date',
+            'move_out_settlement'    => MoveOutSettlement::class,
+            'transfer_billing'       => TransferBilling::class,
+            'move_out_on'            => 'date',
+            'ended_reason'           => ContractEndedReason::class,
             'billing_interval'       => BillingInterval::class,
             'billing_interval_count' => 'integer',
             'billing_anchor_model'   => BillingAnchorModel::class,
@@ -181,6 +208,7 @@ class Contract extends Model
             ->when($search, fn (Builder $q) => $q->search($search))
             ->with([
                 'contact',
+                'unitItem.price',
                 'unitItem.item' => function (MorphTo $morphTo): void {
                     $morphTo->morphWith([
                         Unit::class => ['site'],
@@ -215,16 +243,35 @@ class Contract extends Model
         return $this->hasMany(ContractItem::class);
     }
 
+    /**
+     * Item versions effective on $date — exactly one per subject when
+     * non-overlap holds.
+     *
+     * @return Collection<int, ContractItem>
+     */
+    public function itemsOn(CarbonInterface $date): Collection
+    {
+        return $this->items()
+            ->with('price')
+            ->effectiveOn($date)
+            ->orderBy('id')
+            ->get();
+    }
+
     /** @return HasOne<ContractItem, Contract> */
     public function unitItem(): HasOne
     {
-        return $this->hasOne(ContractItem::class)->where('item_type', 'unit');
+        return $this->hasOne(ContractItem::class)
+            ->where('item_type', 'unit')
+            ->whereNull('effective_to');
     }
 
     /** @return HasOne<ContractItem, Contract> */
     public function insuranceItem(): HasOne
     {
-        return $this->hasOne(ContractItem::class)->where('item_type', 'insurance');
+        return $this->hasOne(ContractItem::class)
+            ->where('item_type', 'insurance')
+            ->whereNull('effective_to');
     }
 
     /** @return HasMany<BillingPeriod, Contract> */
@@ -249,6 +296,18 @@ class Contract extends Model
     public function occupancies(): HasMany
     {
         return $this->hasMany(UnitOccupancy::class);
+    }
+
+    /** @return HasMany<ContractTransfer, Contract> */
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(ContractTransfer::class);
+    }
+
+    /** @return HasOne<DepositSettlement, Contract> */
+    public function depositSettlement(): HasOne
+    {
+        return $this->hasOne(DepositSettlement::class);
     }
 
     /**

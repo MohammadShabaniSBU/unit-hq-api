@@ -12,6 +12,9 @@ readonly class BillingSettings implements SettingsPayload
         public int $billingAnchorDay,
         public string $prorationMethod,
         public string $defaultDepositAmount,
+        public string $moveOutSettlement = 'none',
+        public int $turnoverHoldDays = 0,
+        public string $transferBilling = 'prorate_immediately',
     ) {}
 
     public static function default(): static
@@ -24,6 +27,9 @@ readonly class BillingSettings implements SettingsPayload
             billingAnchorDay: 1,
             prorationMethod: 'daily',
             defaultDepositAmount: '0.00',
+            moveOutSettlement: 'none',
+            turnoverHoldDays: 0,
+            transferBilling: 'prorate_immediately',
         );
     }
 
@@ -39,6 +45,9 @@ readonly class BillingSettings implements SettingsPayload
             billingAnchorDay: (int) ($data['billing_anchor_day'] ?? 1),
             prorationMethod: $data['proration_method'] ?? 'daily',
             defaultDepositAmount: $data['default_deposit_amount'] ?? '0.00',
+            moveOutSettlement: $data['move_out_settlement'] ?? 'none',
+            turnoverHoldDays: (int) ($data['turnover_hold_days'] ?? 0),
+            transferBilling: $data['transfer_billing'] ?? 'prorate_immediately',
         );
     }
 
@@ -52,6 +61,9 @@ readonly class BillingSettings implements SettingsPayload
             'billing_anchor_day'             => $this->billingAnchorDay,
             'proration_method'               => $this->prorationMethod,
             'default_deposit_amount'         => $this->defaultDepositAmount,
+            'move_out_settlement'            => $this->moveOutSettlement,
+            'turnover_hold_days'             => $this->turnoverHoldDays,
+            'transfer_billing'               => $this->transferBilling,
         ];
     }
 
@@ -63,6 +75,9 @@ readonly class BillingSettings implements SettingsPayload
         ?int $billingAnchorDay = null,
         ?string $prorationMethod = null,
         ?string $defaultDepositAmount = null,
+        ?string $moveOutSettlement = null,
+        ?int $turnoverHoldDays = null,
+        ?string $transferBilling = null,
     ): static {
         return new self(
             defaultCurrency: $defaultCurrency ?? $this->defaultCurrency,
@@ -72,6 +87,9 @@ readonly class BillingSettings implements SettingsPayload
             billingAnchorDay: $billingAnchorDay ?? $this->billingAnchorDay,
             prorationMethod: $prorationMethod ?? $this->prorationMethod,
             defaultDepositAmount: $defaultDepositAmount ?? $this->defaultDepositAmount,
+            moveOutSettlement: $moveOutSettlement ?? $this->moveOutSettlement,
+            turnoverHoldDays: $turnoverHoldDays ?? $this->turnoverHoldDays,
+            transferBilling: $transferBilling ?? $this->transferBilling,
         );
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Facility;
 
 use App\Http\Controllers\Controller;
@@ -35,12 +37,6 @@ class InsuranceRateController extends Controller
         ]);
 
         $billing = Setting::billing();
-        $billingPeriod = match ($billing->defaultBillingInterval) {
-            'week' => 'weekly',
-            'day' => 'daily',
-            default => 'monthly',
-        };
-
         $site = Site::query()->findOrFail($validated['site_id']);
         $currency = SupportedCurrencies::normalize(
             (string) ($validated['currency']
@@ -71,34 +67,32 @@ class InsuranceRateController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $siteRate = DB::transaction(function () use ($insurance, $validated, $billingPeriod, $createdBy, $today, $site, $currency) {
-            $existingRate = InsuranceRate::query()
-                ->with('price')
-                ->where('insurance_id', $insurance->id)
-                ->where('site_id', $validated['site_id'])
-                ->latest('id')
-                ->first();
+        $siteRate = DB::transaction(function () use ($insurance, $validated, $createdBy, $today, $site, $currency) {
+            $rate = InsuranceRate::query()->firstOrCreate(
+                [
+                    'insurance_id' => $insurance->id,
+                    'site_id'      => $validated['site_id'],
+                ],
+            );
 
-            if ($existingRate?->price) {
-                $existingRate->price->update(['effective_to' => $today]);
+            $current = $rate->price()->first();
+
+            if ($current !== null) {
+                $current->update(['effective_to' => $today]);
             }
 
             $price = Price::query()->create([
+                'priceable_type' => 'insurance_rate',
+                'priceable_id'   => $rate->id,
+                'scope'          => Price::SCOPE_CATALOGUE,
                 'amount'         => $validated['amount'],
                 'currency'       => $currency,
-                'billing_period' => $billingPeriod,
                 'effective_from' => $today,
                 'effective_to'   => null,
                 'created_by'     => $createdBy,
             ]);
 
-            InsuranceRate::query()->create([
-                'insurance_id' => $insurance->id,
-                'site_id'      => $validated['site_id'],
-                'price_id'     => $price->id,
-            ]);
-
-            return $this->formatSiteRate($site, null, $price);
+            return $this->formatSiteRate($site, $rate->fresh(), $price);
         });
 
         return $this->created(
@@ -119,7 +113,6 @@ class InsuranceRateController extends Controller
             'price_id'          => $price?->id,
             'amount'            => $price?->amount,
             'currency'          => $price?->currency,
-            'billing_period'    => $price?->billing_period,
         ];
     }
 }

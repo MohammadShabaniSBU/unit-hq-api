@@ -1,39 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Enums\DealStatus;
-use App\Enums\ReservationStatus;
 use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Offer;
 use App\Models\OfferOption;
-use App\Models\Reservation;
-use App\Models\Unit;
 use App\Models\UnitClassRate;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
+/**
+ * CRM pipeline seed (deals / offers / options).
+ * Reservation holds and occupancy facts are owned by OccupancySeeder —
+ * this seeder must not create reservations that bypass the guards.
+ */
 class DealSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     public function run(): void
     {
-        $latestRateIds = UnitClassRate::query()
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('unit_class_id')
-            ->pluck('id');
+        $rates = UnitClassRate::query()
+            ->with(['unitClass', 'price', 'site'])
+            ->get();
 
-        $ratesByUnitClass = UnitClassRate::query()
-            ->with(['unitClass', 'price'])
-            ->whereIn('id', $latestRateIds)
-            ->get()
-            ->keyBy('unit_class_id');
-
-        Contact::query()->each(function (Contact $contact) use ($ratesByUnitClass) {
+        Contact::query()->each(function (Contact $contact) use ($rates): void {
             $deals = Deal::factory()
                 ->count(fake()->numberBetween(1, 2))
                 ->create([
@@ -48,7 +45,7 @@ class DealSeeder extends Seeder
 
                 $offerStatus = $this->offerStatusForDeal($deal->status);
 
-                $offer = Offer::create([
+                $offer = Offer::query()->create([
                     'deal_id'         => $deal->id,
                     'contact_id'      => $contact->id,
                     'token'           => Str::random(32),
@@ -59,44 +56,19 @@ class DealSeeder extends Seeder
                     'accepted_at'     => $this->acceptedAt($offerStatus),
                 ]);
 
-                $availableRates = $ratesByUnitClass->values()->shuffle();
+                $availableRates = $rates->values()->shuffle();
                 $optionCount = fake()->numberBetween(1, min(3, $availableRates->count()));
                 $selectedRates = $availableRates->take($optionCount);
-                $selectedOption = null;
 
                 foreach ($selectedRates->values() as $index => $rate) {
-                    $isFirst = $index === 0;
-
-                    $unit = Unit::query()
-                        ->reservable()
-                        ->where('unit_class_id', $rate->unit_class_id)
-                        ->where('site_id', $rate->site_id)
-                        ->inRandomOrder()
-                        ->first();
-
-                    $option = OfferOption::create([
+                    OfferOption::query()->create([
                         'offer_id'           => $offer->id,
                         'unit_class_rate_id' => $rate->id,
-                        'unit_id'            => $unit?->id,
+                        'unit_id'            => null,
                         'label'              => $rate->unitClass->label,
                         'description'        => fake()->optional(0.5)->sentence(),
                         'display_order'      => $index,
-                        'selected_at'        => ($offerStatus === 'accepted' && $isFirst) ? now() : null,
-                    ]);
-
-                    if ($offerStatus === 'accepted' && $isFirst) {
-                        $selectedOption = $option;
-                    }
-                }
-
-                if ($offerStatus === 'accepted' && $selectedOption !== null && $selectedOption->unit_id !== null) {
-                    Reservation::create([
-                        'unit_id'         => $selectedOption->unit_id,
-                        'contact_id'      => $contact->id,
-                        'deal_id'         => $deal->id,
-                        'offer_option_id' => $selectedOption->id,
-                        'status'          => ReservationStatus::Confirmed,
-                        'expires_at'      => now()->addDays(14),
+                        'selected_at'        => ($offerStatus === 'accepted' && $index === 0) ? now() : null,
                     ]);
                 }
             }
@@ -106,17 +78,17 @@ class DealSeeder extends Seeder
     private function offerStatusForDeal(DealStatus $dealStatus): string
     {
         return match ($dealStatus) {
-            DealStatus::OfferSent                        => 'sent',
+            DealStatus::OfferSent => 'sent',
             DealStatus::OfferViewed, DealStatus::Negotiating => 'viewed',
-            DealStatus::ClosedWon                        => 'accepted',
+            DealStatus::ClosedWon => 'accepted',
             DealStatus::ClosedLost, DealStatus::Unresponsive => fake()->randomElement(['sent', 'viewed']),
-            default                                      => 'draft',
+            default => 'draft',
         };
     }
 
     private function sentAt(string $offerStatus): ?\DateTimeInterface
     {
-        if (in_array($offerStatus, ['sent', 'viewed', 'accepted'])) {
+        if (in_array($offerStatus, ['sent', 'viewed', 'accepted'], true)) {
             return now()->subDays(fake()->numberBetween(5, 20));
         }
 
@@ -125,7 +97,7 @@ class DealSeeder extends Seeder
 
     private function firstViewedAt(string $offerStatus): ?\DateTimeInterface
     {
-        if (in_array($offerStatus, ['viewed', 'accepted'])) {
+        if (in_array($offerStatus, ['viewed', 'accepted'], true)) {
             return now()->subDays(fake()->numberBetween(3, 4));
         }
 

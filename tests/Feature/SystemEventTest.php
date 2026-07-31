@@ -63,6 +63,10 @@ class SystemEventTest extends TestCase
 
     public function test_maintain_command_deletes_old_rows_on_sqlite(): void
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Partitioned system_events retention is SQLite-only in this test.');
+        }
+
         SystemEvent::query()->create([
             'event' => 'old.event',
             'created_at' => now()->subDays(120),

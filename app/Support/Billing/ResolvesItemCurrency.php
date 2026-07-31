@@ -46,7 +46,6 @@ final class ResolvesItemCurrency
         $ratePriceCurrency = UnitClassRate::query()
             ->where('unit_class_id', $unit->unit_class_id)
             ->where('site_id', $resolvedSiteId)
-            ->latest('id')
             ->with('price')
             ->first()
             ?->price
@@ -73,7 +72,6 @@ final class ResolvesItemCurrency
             $ratePriceCurrency = InsuranceRate::query()
                 ->where('insurance_id', $insuranceId)
                 ->where('site_id', $siteId)
-                ->latest('id')
                 ->with('price')
                 ->first()
                 ?->price

@@ -16,7 +16,7 @@ The physical storage facility (also called "Center").
 - **`timezone` is per-site and authoritative** for date-boundary interpretation (due dates, late fees, occupancy/holds “today”). Resolve civil dates through `App\Support\Time\SiteClock` — never bare `Carbon::today()` / `->toDateString()` on a timestamp. Org billing settings (currency prefill, cadence / anchor / proration / deposit, late-fee rules, tax rates) remain **singleton / catalogue rows** — mono-tenant, no company scoping. Do **not** add an org-level timezone: any future org display timezone (reports / schedule UI) is **display-only**, never authoritative for billing.
 - **`sites.currency`** (D1 form prefill) is **not** present yet — lands in S01-00b with site→org prefill readers. Until then, price forms prefill from org `BillingSettings.default_currency` only. Neither is read at transaction time; `prices.currency` is authoritative.
 - Sites are **archive-only** (`archived_at`) — never hard-deleted. List/options use an explicit `active()` scope; archived sites stay resolvable by id for historical contracts. Archive is refused while the site has active contracts or non-expired reservations.
-- Integration surfaces (per-site): floor maps, sender identities, Stripe keys — see later phases / `05` / `06`.
+- Sites belong to a **legal entity**, which holds payment credentials and fiscal regime (see `roadmap/architecture-payments-and-fiscal.md`). Integration surfaces that remain per-site: floor maps and sender identities — see later phases / `05` / `06`.
 
 ## Site maps (`site_maps`)
 
@@ -37,13 +37,13 @@ The **commercial product definition**, not the physical box.
 
 - References its `UnitClass` and its `Site`.
 - Optional `actual_*` dimension overrides exist **only** when a surveyed physical unit differs from its class nominal dimensions.
-- **Availability is always derived** — there is **no `is_available` column**. A unit is available when it has no active contract and no non-expired reservation. Never store availability as a flag.
+- **Availability is always derived** — there is **no `is_available` column**. A unit is available on date D when it has no covering `unit_occupancies` row and no unreleased blocking `unit_holds` row (half-open ranges; see invariant 36). Resolve “today” through `SiteClock` per site. Never store availability as a flag.
 
 ## UnitClassRate — pricing junction
 
-- Junction between `UnitClass` and `Site`, holding a `price_id`.
-- Rates can differ per **site × class** combination.
-- A rate change means: **insert a new `Price` row + new `unit_class_rates` row, close the old one via `effective_to`**. Never update a price in place. (See `03-pricing.md`.)
+- Static junction between `UnitClass` and `Site` — created **once** per pairing; never versioned.
+- Catalogue prices (`prices.scope = catalogue`) morph-own the junction (`priceable` → `unit_class_rate`) and carry `effective_from` / `effective_to`.
+- A rate change means: **close the current catalogue price via `effective_to`, insert a successor price owned by the same junction**. Never update a price amount in place; never insert a second junction row. (See `03-pricing.md` and `roadmap/sprint-02-pricing-model/architecture-pricing.md`.)
 
 ## Related tables
 
@@ -54,6 +54,6 @@ The **commercial product definition**, not the physical box.
 | `units` | Physical boxes |
 | `site_maps` | Visual facility maps (SVG; id ↔ `unit_number`) |
 | `unit_class_rates` | Site × class → price junction |
-| `site_stripe_settings` | Per-site Stripe keys + webhook routing |
+| `site_stripe_settings` | Current Stripe keys + webhook routing (replaced by per-entity `payment_provider_accounts` in S06) |
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |

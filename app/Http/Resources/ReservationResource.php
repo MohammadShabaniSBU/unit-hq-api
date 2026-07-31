@@ -39,9 +39,9 @@ class ReservationResource extends BaseResource
                 'name' => trim($this->contact->first_name . ' ' . $this->contact->last_name),
             ]),
             'price'           => $this->whenLoaded('price', fn () => $this->price ? [
-                'amount'         => $this->price->amount,
-                'currency'       => $this->price->currency,
-                'billing_period' => $this->price->billing_period,
+                'amount'   => $this->price->amount,
+                'currency' => $this->price->currency,
+                'scope'    => $this->price->scope,
             ] : null),
             'notes'           => NoteResource::collection($this->whenLoaded('notes')),
             'contract'        => ContractResource::make($this->whenLoaded('contract')),

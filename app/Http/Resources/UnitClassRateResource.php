@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -13,7 +15,7 @@ class UnitClassRateResource extends BaseResource
             'id'            => $this->id,
             'unit_class_id' => $this->unit_class_id,
             'site_id'       => $this->site_id,
-            'price_id'      => $this->price_id,
+            'price_id'      => $this->whenLoaded('price', fn () => $this->price?->id),
             'created_at'    => $this->datetime($this->created_at),
             'unit_class'    => UnitClassResource::make($this->whenLoaded('unitClass')),
             'site'          => SiteResource::make($this->whenLoaded('site')),

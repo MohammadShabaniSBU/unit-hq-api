@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Facility;
 
 use App\Http\Controllers\Controller;
@@ -16,14 +18,8 @@ class InsurancePriceMatrixController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $latestRateIds = InsuranceRate::query()
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('insurance_id', 'site_id')
-            ->pluck('id');
-
         $rates = InsuranceRate::query()
             ->with('price')
-            ->whereIn('id', $latestRateIds)
             ->get();
 
         $rateMap = [];
@@ -34,9 +30,8 @@ class InsurancePriceMatrixController extends Controller
             }
 
             $rateMap[$rate->insurance_id][$rate->site_id] = [
-                'amount'         => $rate->price->amount,
-                'currency'       => $rate->price->currency,
-                'billing_period' => $rate->price->billing_period,
+                'amount'   => $rate->price->amount,
+                'currency' => $rate->price->currency,
             ];
         }
 

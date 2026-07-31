@@ -37,8 +37,8 @@ class ContractCardResource extends BaseResource
                 return [
                     'id' => $item->id,
                     'unit_number' => $item->unit_number,
-                    'amount' => $this->unitItem?->amount,
-                    'currency' => $this->unitItem?->currency ?? $this->currency,
+                    'amount' => $this->unitItem?->price?->amount,
+                    'currency' => $this->unitItem?->price?->currency ?? $this->currency,
                     'site' => $item->relationLoaded('site') && $item->site !== null
                         ? [
                             'id' => $item->site->id,

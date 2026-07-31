@@ -17,12 +17,14 @@ use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
-use App\Models\UnitClassRate;
+use App\Support\Time\SiteClock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 class ContractCurrencyTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use RefreshDatabase;
 
     private Employee $employee;
@@ -40,24 +42,26 @@ class ContractCurrencyTest extends TestCase
         $country = Country::factory()->create(['code' => 'ES']);
         $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
         $unitClass = UnitClass::factory()->create();
-        $this->price = Price::query()->create([
-            'amount' => '196.72',
-            'currency' => 'EUR',
-            'billing_period' => 'monthly',
-            'effective_from' => now()->subMonth()->toDateString(),
-            'effective_to' => null,
-            'created_by' => $this->employee->id,
-        ]);
+        [, $this->price] = $this->createUnitClassCataloguePrice(
+            $unitClass->id,
+            $site->id,
+            $this->employee->id,
+            [
+                'amount' => '196.72',
+                'currency' => 'EUR',
+            ],
+        );
         $unitClass->update(['current_price_id' => $this->price->id]);
-        UnitClassRate::query()->create([
-            'unit_class_id' => $unitClass->id,
-            'site_id' => $site->id,
-            'price_id' => $this->price->id,
-        ]);
         $this->unit = Unit::factory()->create([
             'site_id' => $site->id,
             'unit_class_id' => $unitClass->id,
         ]);
+        $this->unit->setRelation('site', $site);
+    }
+
+    private function siteToday(): string
+    {
+        return SiteClock::today($this->unit->site)->toDateString();
     }
 
     public function test_currency_snapshotted_from_items_at_signing(): void
@@ -66,7 +70,7 @@ class ContractCurrencyTest extends TestCase
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'items' => [
                 [
                     'item_type' => 'unit',
@@ -85,10 +89,11 @@ class ContractCurrencyTest extends TestCase
         ]);
         $this->assertDatabaseHas('contract_items', [
             'contract_id' => $contractId,
-            'currency' => 'EUR',
-            'amount' => '196.72',
+            'price_id' => $this->price->id,
         ]);
         $this->assertSame('EUR', $response->json('data.currency'));
+        $this->assertSame('EUR', $response->json('data.items.0.currency'));
+        $this->assertSame('196.72', $response->json('data.items.0.amount'));
     }
 
     public function test_mixed_currency_items_rejected(): void
@@ -99,13 +104,19 @@ class ContractCurrencyTest extends TestCase
             'coverage' => '5000.00',
             'currency' => 'GBP',
         ]);
+        $this->createInsuranceCataloguePrice(
+            $insurance->id,
+            $this->unit->site_id,
+            $this->employee->id,
+            ['amount' => '5.00', 'currency' => 'GBP'],
+        );
 
         $beforeContracts = Contract::query()->count();
         $beforeCharges = Charge::query()->count();
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'items' => [
                 [
                     'item_type' => 'unit',
@@ -131,7 +142,7 @@ class ContractCurrencyTest extends TestCase
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'items' => [
                 [
                     'item_type' => 'unit',
@@ -145,18 +156,20 @@ class ContractCurrencyTest extends TestCase
         $itemId = $response->json('data.items.0.id');
 
         $this->price->update(['effective_to' => now()->toDateString()]);
-        Price::query()->create([
-            'amount' => '250.00',
-            'currency' => 'GBP',
-            'billing_period' => 'monthly',
-            'effective_from' => now()->toDateString(),
-            'effective_to' => null,
-            'created_by' => $this->employee->id,
-        ]);
+        $this->createUnitClassCataloguePrice(
+            $this->unit->unit_class_id,
+            $this->unit->site_id,
+            $this->employee->id,
+            [
+                'amount' => '250.00',
+                'currency' => 'GBP',
+                'effective_from' => now()->toDateString(),
+            ],
+        );
 
-        $item = ContractItem::query()->findOrFail($itemId);
-        $this->assertSame('EUR', $item->currency);
-        $this->assertSame('196.72', (string) $item->amount);
+        $item = ContractItem::query()->with('price')->findOrFail($itemId);
+        $this->assertSame('EUR', $item->price->currency);
+        $this->assertSame('196.72', (string) $item->price->amount);
     }
 
     public function test_deposit_charge_carries_contract_currency(): void
@@ -165,7 +178,7 @@ class ContractCurrencyTest extends TestCase
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'deposit_amount' => '100.00',
             'items' => [
                 [
@@ -195,7 +208,7 @@ class ContractCurrencyTest extends TestCase
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'items' => [
                 [
                     'item_type' => 'unit',
@@ -224,7 +237,7 @@ class ContractCurrencyTest extends TestCase
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,
-            'start_date' => now()->toDateString(),
+            'start_date' => $this->siteToday(),
             'items' => [
                 [
                     'item_type' => 'unit',
@@ -238,24 +251,21 @@ class ContractCurrencyTest extends TestCase
         $contractId = $response->json('data.id');
 
         $this->price->update(['effective_to' => now()->toDateString()]);
-        $newPrice = Price::query()->create([
-            'amount' => '999.00',
-            'currency' => 'GBP',
-            'billing_period' => 'monthly',
-            'effective_from' => now()->toDateString(),
-            'effective_to' => null,
-            'created_by' => $this->employee->id,
-        ]);
-        UnitClassRate::query()->create([
-            'unit_class_id' => $this->unit->unit_class_id,
-            'site_id' => $this->unit->site_id,
-            'price_id' => $newPrice->id,
-        ]);
+        $this->createUnitClassCataloguePrice(
+            $this->unit->unit_class_id,
+            $this->unit->site_id,
+            $this->employee->id,
+            [
+                'amount' => '999.00',
+                'currency' => 'GBP',
+                'effective_from' => now()->toDateString(),
+            ],
+        );
 
-        $contract = Contract::query()->with('items')->findOrFail($contractId);
+        $contract = Contract::query()->with('items.price')->findOrFail($contractId);
         $this->assertSame('EUR', $contract->currency);
-        $this->assertSame('EUR', $contract->items->first()->currency);
-        $this->assertSame('196.72', (string) $contract->items->first()->amount);
+        $this->assertSame('EUR', $contract->items->first()->price->currency);
+        $this->assertSame('196.72', (string) $contract->items->first()->price->amount);
         $this->assertSame(ContractStatus::Active, $contract->status);
     }
 }

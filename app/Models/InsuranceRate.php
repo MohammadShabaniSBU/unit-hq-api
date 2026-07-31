@@ -1,22 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * @property int    $id
+ * Static junction: an insurance product priced at a site. Created once per
+ * pairing; catalogue timing lives on prices (scope=catalogue).
+ *
+ * @property int         $id
  * @property int         $insurance_id
  * @property int|null    $site_id
- * @property int         $price_id
  * @property Carbon      $created_at
  *
  * @property-read Insurance $insurance
- * @property-read Site      $site
- * @property-read Price     $price
+ * @property-read Site|null $site
+ * @property-read Price|null $price  current catalogue price
  */
 class InsuranceRate extends Model
 {
@@ -27,7 +33,6 @@ class InsuranceRate extends Model
     protected $fillable = [
         'insurance_id',
         'site_id',
-        'price_id',
     ];
 
     /** @return BelongsTo<Insurance, InsuranceRate> */
@@ -42,9 +47,21 @@ class InsuranceRate extends Model
         return $this->belongsTo(Site::class);
     }
 
-    /** @return BelongsTo<Price, InsuranceRate> */
-    public function price(): BelongsTo
+    /** @return MorphMany<Price, InsuranceRate> */
+    public function prices(): MorphMany
     {
-        return $this->belongsTo(Price::class);
+        return $this->morphMany(Price::class, 'priceable');
+    }
+
+    /**
+     * Current catalogue price for this pairing.
+     *
+     * @return MorphOne<Price, InsuranceRate>
+     */
+    public function price(): MorphOne
+    {
+        return $this->morphOne(Price::class, 'priceable')
+            ->where('scope', Price::SCOPE_CATALOGUE)
+            ->whereNull('effective_to');
     }
 }

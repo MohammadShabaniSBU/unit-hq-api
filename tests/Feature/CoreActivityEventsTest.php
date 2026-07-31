@@ -37,7 +37,7 @@ class CoreActivityEventsTest extends TestCase
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame(Deal::class, $activity->subject_type);
+        $this->assertSame('deal', $activity->subject_type);
         $this->assertSame($requestId, $activity->properties->get('request_id'));
     }
 

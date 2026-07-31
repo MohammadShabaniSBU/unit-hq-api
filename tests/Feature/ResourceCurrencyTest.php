@@ -21,13 +21,14 @@ use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
-use App\Models\UnitClassRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 class ResourceCurrencyTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use RefreshDatabase;
 
     public function test_every_money_field_has_a_currency(): void
@@ -36,19 +37,15 @@ class ResourceCurrencyTest extends TestCase
         $country = Country::factory()->create(['code' => 'ES']);
         $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
         $unitClass = UnitClass::factory()->create();
-        $price = Price::query()->create([
-            'amount' => '100.00',
-            'currency' => 'EUR',
-            'billing_period' => 'monthly',
-            'effective_from' => now()->subMonth()->toDateString(),
-            'effective_to' => null,
-            'created_by' => $employee->id,
-        ]);
-        UnitClassRate::query()->create([
-            'unit_class_id' => $unitClass->id,
-            'site_id' => $site->id,
-            'price_id' => $price->id,
-        ]);
+        [, $price] = $this->createUnitClassCataloguePrice(
+            $unitClass->id,
+            $site->id,
+            $employee->id,
+            [
+                'amount' => '100.00',
+                'currency' => 'EUR',
+            ],
+        );
         $unit = Unit::factory()->create([
             'site_id' => $site->id,
             'unit_class_id' => $unitClass->id,
@@ -63,10 +60,10 @@ class ResourceCurrencyTest extends TestCase
             'contract_id' => $contract->id,
             'item_type' => 'unit',
             'item_id' => $unit->id,
-            'amount' => '100.00',
-            'currency' => 'EUR',
             'price_id' => $price->id,
             'base_rate' => '100.00',
+            'effective_from' => now()->toDateString(),
+            'effective_to' => null,
         ]);
         $period = BillingPeriod::query()->create([
             'contract_id' => $contract->id,

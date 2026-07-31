@@ -6,6 +6,8 @@ use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Time\SiteClock;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,16 +23,23 @@ class OfferOptionFactory extends Factory
     public function definition(): array
     {
         $rate = UnitClassRate::query()
-            ->with('unitClass')
+            ->with(['unitClass', 'site'])
             ->inRandomOrder()
             ->first();
 
-        $unit = $rate ? Unit::query()
-            ->reservable()
-            ->where('unit_class_id', $rate->unit_class_id)
-            ->where('site_id', $rate->site_id)
-            ->inRandomOrder()
-            ->first() : null;
+        $unit = null;
+        if ($rate !== null) {
+            $on = $rate->site !== null
+                ? SiteClock::today($rate->site)
+                : CarbonImmutable::parse('1970-01-01');
+
+            $unit = Unit::query()
+                ->availableOn($on)
+                ->where('unit_class_id', $rate->unit_class_id)
+                ->where('site_id', $rate->site_id)
+                ->inRandomOrder()
+                ->first();
+        }
 
         return [
             'offer_id'           => Offer::factory(),

@@ -7,7 +7,9 @@ namespace Database\Factories;
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
 use App\Enums\ContractStatus;
+use App\Enums\MoveOutSettlement;
 use App\Enums\ProrationMethod;
+use App\Enums\TransferBilling;
 use App\Models\Contact;
 use App\Models\Contract;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -40,6 +42,9 @@ class ContractFactory extends Factory
             'deposit_amount'         => '0.00',
             'currency'               => 'EUR',
             'status'                 => ContractStatus::Active,
+            'notice_period_days'     => 14,
+            'move_out_settlement'    => MoveOutSettlement::None,
+            'transfer_billing'       => TransferBilling::ProrateImmediately,
             'signed_at'              => $start,
         ];
     }

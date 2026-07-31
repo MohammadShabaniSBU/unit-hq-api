@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Insurance;
@@ -17,15 +19,9 @@ class InsuranceController extends Controller
 
         $siteId = $validated['site_id'];
 
-        $latestRateIds = InsuranceRate::query()
-            ->selectRaw('MAX(id) as id')
-            ->where('site_id', $siteId)
-            ->groupBy('insurance_id')
-            ->pluck('id');
-
         $ratesByInsurance = InsuranceRate::query()
             ->with('price')
-            ->whereIn('id', $latestRateIds)
+            ->where('site_id', $siteId)
             ->get()
             ->keyBy('insurance_id');
 

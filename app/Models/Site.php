@@ -109,7 +109,11 @@ class Site extends Model
         }
 
         $activeContracts = Contract::query()
-            ->where('status', ContractStatus::Active->value)
+            ->whereIn('status', [
+                ContractStatus::Pending->value,
+                ContractStatus::Active->value,
+                ContractStatus::NoticeGiven->value,
+            ])
             ->whereHas('items', function (Builder $query) use ($unitIds): void {
                 $query
                     ->where('item_type', (new Unit)->getMorphClass())

@@ -167,7 +167,11 @@ class Contact extends Model
      */
     public function deriveLifecycleStatus(): ContactLifecycleStatus
     {
-        if ($this->contracts()->where('status', ContractStatus::Active->value)->exists()) {
+        if ($this->contracts()->whereIn('status', [
+            ContractStatus::Pending->value,
+            ContractStatus::Active->value,
+            ContractStatus::NoticeGiven->value,
+        ])->exists()) {
             return ContactLifecycleStatus::Tenant;
         }
 
@@ -182,7 +186,7 @@ class Contact extends Model
             return ContactLifecycleStatus::Lead;
         }
 
-        if ($this->contracts()->where('status', ContractStatus::MovedOut->value)->exists()) {
+        if ($this->contracts()->where('status', ContractStatus::Ended->value)->exists()) {
             return ContactLifecycleStatus::PastTenant;
         }
 
@@ -193,7 +197,11 @@ class Contact extends Model
                 ReservationStatus::Pending->value,
                 ReservationStatus::Confirmed->value,
             ])->exists()
-            && ! $this->contracts()->where('status', ContractStatus::Active->value)->exists()
+            && ! $this->contracts()->whereIn('status', [
+                ContractStatus::Pending->value,
+                ContractStatus::Active->value,
+                ContractStatus::NoticeGiven->value,
+            ])->exists()
         ) {
             return ContactLifecycleStatus::Lost;
         }

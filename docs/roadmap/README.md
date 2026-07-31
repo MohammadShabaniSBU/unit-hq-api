@@ -33,7 +33,7 @@ Everything in this roadmap closes one of those gaps, in dependency order.
 | **Tenant portal: out of scope** | Contacts still do not log in. Revisit after S17. |
 | **E-sign: third-party, multi-vendor** | Adapter interface; Signable is adapter #1 |
 | **Access control: third-party, multi-vendor** | Adapter interface; Sensorberg is adapter #1 |
-| **Stripe Connect dropped** — one Stripe account **per legal entity** | No platform account, no money transmission. Credentials are per-entity config. Supersedes `05-billing-ledger.md` §Stripe Connect. |
+| **Stripe Connect dropped** — one Stripe account **per legal entity** | No platform account, no money transmission. Credentials are per-entity config. See `architecture-payments-and-fiscal.md`. |
 | **SEPA Direct Debit is the primary rail in ES/FR** | Bank-file based (Cuaderno 19-14 / `pain.008`), not processor-based. Collection ≠ payment. |
 | **Verifactu is a toggle** | Per-entity `fiscal_regime`, off by default. Enabling starts a chain; disabling never breaks one. |
 | **`legal_entities` is a new first-class concept** | The invoice issuer. Sites belong to one. Verifactu chains, invoice series, VAT registration and payment credentials are all scoped to it — **never used to scope queries.** See `architecture-payments-and-fiscal.md`. |
@@ -81,8 +81,8 @@ Each phase leaves the product materially more sellable than the last.
 
 | Sprint | Theme | Exit criterion |
 |---|---|---|
-| **S05** | Verifactu | Under a `verifactu` site, every issued invoice produces a chained, hashed registro with QR; AEAT test submission works; integrity alarm implemented; regime toggles per site without breaking existing chains |
-| **S06** | Payment methods & per-site Stripe | Each site holds its own Stripe credentials; cards on file; webhooks routed and signature-verified per site |
+| **S05** | Verifactu | Under a `verifactu` legal entity, every issued invoice produces a chained, hashed registro with QR; AEAT test submission works; integrity alarm implemented; regime toggles per entity without breaking existing chains |
+| **S06** | Payment methods & Stripe | Each legal entity holds its own Stripe credentials; cards on file; webhooks routed and signature-verified per payment-provider account |
 | **S07** | SEPA Direct Debit | Mandates, pre-notification, Cuaderno 19-14 / `pain.008` batch export, returns import; collection state is strictly separate from payment |
 
 ### Phase C — Money recovery (S08–S10)
@@ -132,20 +132,25 @@ These get more expensive every sprint. Resolve them in the S01 kickoff, record t
 
 ### D6 — Payments architecture (supersedes Stripe Connect)
 
-**~~Stripe Connect is dropped.~~** Credentials and fiscal identity scope to **`legal_entities`**,
-not sites — **superseded by S01-00 D6/D7.** See `architecture-payments-and-fiscal.md` and
-`10-open-decisions.md`. Task `05` does the full doc surgery.
+> **Superseded by S01-00 D6/D7 and `architecture-payments-and-fiscal.md`.** Credentials and
+> fiscal regime scope to `legal_entities`, not to sites. Retained for context; do not
+> implement.
+
+Stripe Connect is dropped because there is no platform distributing money — that removes
+the PSD2 money-transmitter question outright. Credentials and fiscal identity scope to
+**`legal_entities`**, not sites. See `architecture-payments-and-fiscal.md` and
+`10-open-decisions.md`.
 
 ~~- Each **site** holds its own payment provider credentials (`payment_provider_accounts`,
   encrypted at rest, `site_id` scoped).~~
 - Each **legal entity** holds payment provider credentials (S03 schema). Sites belong to one
   legal entity.
-- Stripe handles **cards**. Webhooks are routed and signature-verified per entity (today still
-  per-site until S03 migrates).
+- Stripe handles **cards**. Webhooks are routed and signature-verified per entity
+  (`site_stripe_settings` is the current implementation and is replaced in S06).
 - **SEPA Direct Debit is bank-file based**, not processor based: Cuaderno 19-14 / `pain.008`
   export handed to the operator's bank, returns imported days later.
 
-**Invariant 11 is rewritten** (see D7 note below). The critical rule:
+**Invariant 11 is rewritten** (rail-specific; see architecture doc). The critical rule:
 
 > Generating a direct-debit collection file is **not** a payment. It creates a `collection`
 > in `submitted` state. A `payments` row is written only when provider-authoritative evidence
@@ -156,10 +161,14 @@ dunning against real debtors.
 
 ### D7 — Fiscal regime is per-site and toggleable
 
+> **Superseded by S01-00 D6/D7 and `architecture-payments-and-fiscal.md`.** Credentials and
+> fiscal regime scope to `legal_entities`, not to sites. Retained for context; do not
+> implement.
+
 ~~`sites.fiscal_regime` — `none` (default) | `verifactu`. Plus `fiscal_regime_enabled_from`.~~
 
-**Superseded by S01-00 D6/D7:** `fiscal_regime` scopes to **`legal_entities`**, not sites.
-See `architecture-payments-and-fiscal.md`.
+`fiscal_regime` scopes to **`legal_entities`**, not sites. See
+`architecture-payments-and-fiscal.md`.
 
 Enabling begins a hash chain. **Disabling stops new registros but never breaks, edits, or
 deletes an existing chain** — chain integrity is precisely what is being attested. The switch

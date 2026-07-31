@@ -8,6 +8,7 @@ use App\Enums\ProrationMethod;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
+use App\Http\Controllers\Concerns\WritesReservationHolds;
 use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
@@ -19,6 +20,7 @@ use App\Models\Discount;
 use App\Models\Insurance;
 use App\Models\Reservation;
 use App\Models\Setting;
+use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
@@ -26,9 +28,11 @@ use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\FirstPeriodPlan;
+use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\RecordsActivity;
+use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +45,7 @@ class ReservationController extends Controller
 {
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
+    use WritesReservationHolds;
     use WritesUnitOccupancies;
 
     public function index(Request $request): JsonResponse
@@ -129,27 +134,39 @@ class ReservationController extends Controller
             }
 
             $latestRate = UnitClassRate::query()
+                ->with('price')
                 ->where('site_id', $validated['site_id'])
                 ->where('unit_class_id', $validated['unit_class_id'])
-                ->latest('id')
                 ->first();
 
-            if (! $latestRate) {
+            if ($latestRate === null || $latestRate->price === null) {
                 throw ValidationException::withMessages([
                     'unit_class_id' => ['No active price configured for this unit class at the selected site.'],
                 ]);
             }
 
-            $unitQuery = Unit::query()
-                ->where('site_id', $validated['site_id'])
-                ->where('unit_class_id', $validated['unit_class_id'])
-                ->where('enabled', true)
-                ->reservable()
-                ->lockForUpdate();
-
-            $selectedUnit = ! empty($validated['unit_id'])
-                ? $unitQuery->whereKey($validated['unit_id'])->first()
-                : $unitQuery->inRandomOrder()->first();
+            // Explicit unit_id: lock without availability scope so occupied/held
+            // units surface OccupancyGuard / HoldGuard 422s. Auto-pick uses
+            // Availability + site-local today (D8).
+            if (! empty($validated['unit_id'])) {
+                $selectedUnit = Unit::query()
+                    ->where('site_id', $validated['site_id'])
+                    ->where('unit_class_id', $validated['unit_class_id'])
+                    ->where('enabled', true)
+                    ->whereKey($validated['unit_id'])
+                    ->lockForUpdate()
+                    ->first();
+            } else {
+                $site = Site::query()->findOrFail($validated['site_id']);
+                $selectedUnit = Unit::query()
+                    ->where('site_id', $validated['site_id'])
+                    ->where('unit_class_id', $validated['unit_class_id'])
+                    ->where('enabled', true)
+                    ->availableOn(SiteClock::today($site))
+                    ->lockForUpdate()
+                    ->inRandomOrder()
+                    ->first();
+            }
 
             if (! $selectedUnit) {
                 throw ValidationException::withMessages([
@@ -157,13 +174,17 @@ class ReservationController extends Controller
                 ]);
             }
 
+            $selectedUnit->load('site');
+
             $reservationData = $validated;
             unset($reservationData['site_id'], $reservationData['unit_class_id'], $reservationData['unit_id']);
 
             $reservationData['unit_id'] = $selectedUnit->id;
-            $reservationData['price_id'] = $latestRate->price_id;
+            $reservationData['price_id'] = $latestRate->price->id;
 
             $reservation = Reservation::query()->create($reservationData);
+
+            $this->writeReservationHold($reservation, $selectedUnit);
 
             RecordsActivity::core('reservation.created', $reservation, [
                 'unit_id' => $reservation->unit_id,
@@ -400,6 +421,7 @@ class ReservationController extends Controller
             ]);
 
             $billing = Setting::billing();
+            $leasing = Setting::leasing();
             $startDate = Carbon::parse($validated['start_date'])->startOfDay();
             $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
             $endedOn = isset($validated['end_date'])
@@ -413,13 +435,24 @@ class ReservationController extends Controller
             $unitCurrency = $unitPrice?->currency
                 ?? ResolvesItemCurrency::forItem('unit', $reservation->unit_id, $reservation->price_id, $reservation->unit?->site_id);
 
+            $site = $reservation->unit?->site;
+            $today = $site !== null
+                ? SiteClock::today($site)
+                : CarbonImmutable::today()->startOfDay();
+            $status = $moveIn->toDateString() > $today->toDateString()
+                ? ContractStatus::Pending
+                : ContractStatus::Active;
+
             $contract = Contract::query()->create([
                 'contact_id'             => $reservation->contact_id,
                 'reservation_id'         => $reservation->id,
                 'deal_id'                => $reservation->deal_id,
                 'start_date'             => $validated['start_date'],
                 'end_date'               => $validated['end_date'] ?? null,
-                'status'                 => ContractStatus::Active->value,
+                'status'                 => $status->value,
+                'notice_period_days'     => $leasing->defaultNoticePeriodDays,
+                'move_out_settlement'    => $billing->moveOutSettlement,
+                'transfer_billing'       => $billing->transferBilling,
                 'signed_at'              => $validated['signed_at'] ?? now(),
                 'billing_interval'       => $billing->defaultBillingInterval,
                 'billing_interval_count' => $billing->defaultBillingIntervalCount,
@@ -438,12 +471,22 @@ class ReservationController extends Controller
                 $moveIn,
             );
 
+            $resolvedUnitPrice = ResolvesContractItemPrice::forSigning(
+                'unit',
+                $reservation->unit_id,
+                (string) $unitRate,
+                $reservation->unit?->site_id,
+                $request->user()?->id,
+                $unitPrice,
+            );
+
             $unitItemData = [
                 'item_type'         => 'unit',
                 'item_id'           => $reservation->unit_id,
-                'amount'            => $unitRate,
-                'currency'          => $unitCurrency,
-                'price_id'          => $unitPrice?->id ?? $reservation->price_id,
+                'price_id'          => $resolvedUnitPrice->id,
+                'effective_from'    => $moveIn->toDateString(),
+                'effective_to'      => null,
+                'change_reason'     => null,
                 'tax_rate_id'       => $unitTaxRate?->id,
                 'tax_rate_snapshot' => $unitTaxRate?->rate,
             ];
@@ -464,25 +507,34 @@ class ReservationController extends Controller
                     $moveIn,
                 );
 
-                $insuranceCurrency = ResolvesItemCurrency::forItem(
+                $insuranceAmount = round((float) $validated['insurance_rate'], 2);
+                $resolvedInsurancePrice = ResolvesContractItemPrice::forSigning(
                     'insurance',
                     (int) $validated['insurance_id'],
-                    null,
+                    (string) $insuranceAmount,
                     $reservation->unit?->site_id,
+                    $request->user()?->id,
                 );
 
                 $contractItems->push($contract->items()->create([
                     'item_type'         => 'insurance',
                     'item_id'           => $validated['insurance_id'],
-                    'amount'            => round((float) $validated['insurance_rate'], 2),
-                    'currency'          => $insuranceCurrency,
+                    'price_id'          => $resolvedInsurancePrice->id,
+                    'effective_from'    => $moveIn->toDateString(),
+                    'effective_to'      => null,
+                    'change_reason'     => null,
                     'tax_rate_id'       => $insuranceTaxRate?->id,
                     'tax_rate_snapshot' => $insuranceTaxRate?->rate,
                 ]));
             }
 
+            $contractItems->each->load('price');
             $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
             $contract->forceFill(['currency' => $agreedCurrency])->save();
+
+            // Release reservation hold before opening occupancy — same TX; half-open
+            // ranges allow occupancy to start on the release day.
+            $this->releaseReservationHold($reservation);
 
             $this->writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $request->user()?->id);
 
@@ -509,7 +561,7 @@ class ReservationController extends Controller
         });
 
         return $this->created(
-            ContractResource::make($contract->load(['items.item', 'contact', 'reservation', 'occupancies'])),
+            ContractResource::make($contract->load(['items.price', 'items.item', 'contact', 'reservation', 'occupancies'])),
             'Reservation converted to contract successfully.'
         );
     }

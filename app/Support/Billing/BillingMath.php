@@ -235,7 +235,8 @@ final class BillingMath
         }
     }
 
-    private static function daysBetween(CarbonImmutable $earlier, CarbonImmutable $later): int
+    /** Inclusive-exclusive calendar day count between two civil dates. */
+    public static function daysBetween(CarbonImmutable $earlier, CarbonImmutable $later): int
     {
         return (int) round(self::midnight($earlier)->diffInDays(self::midnight($later)));
     }

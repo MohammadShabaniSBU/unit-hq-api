@@ -2,7 +2,7 @@
 
 ## Price — the shared reusable model
 
-Any entity that needs pricing references a `price_id`. Current consumers: `UnitClassRate`, `InsuranceRate` (a.k.a. InsurancePlanRate). Future: anything sellable.
+Every amount expressing what something costs lives in `prices` and is referenced by `price_id`. Currency lives on the price row. Full model: `roadmap/sprint-02-pricing-model/architecture-pricing.md`.
 
 **Fields:**
 
@@ -10,20 +10,21 @@ Any entity that needs pricing references a `price_id`. Current consumers: `UnitC
 |---|---|
 | `amount` | `NUMERIC(10,2)` — **floats are never used for money** |
 | `currency` | **Sole authority** for denomination (ISO 4217 allowlist, uppercase). Site and org currency are form prefill defaults only — never read at transaction time, in a resource, or in a rollup (D1 / invariant 29). |
-| `billing_period` | Legacy label on the price row (e.g. monthly). **Contract cadence** comes from org `BillingSettings` (`default_billing_interval` + count), snapshotted onto the contract — not from this column. |
-| `effective_from` | start of validity |
-| `effective_to` | `NULL` when current |
+| `scope` | `catalogue` (class/insurance rate timeline) or `contract` (negotiated one-off; no windows) |
+| `priceable_type` / `priceable_id` | Owner morph — `unit_class_rate` or `insurance_rate` |
+| `effective_from` / `effective_to` | Catalogue windows only (`[)` exclusive end). Contract-scoped prices must leave both NULL. |
 | `created_by` | audit reference |
+
+**Dropped:** `billing_period` — contract cadence comes from org `BillingSettings`, snapshotted onto the contract.
 
 ## Immutability rule (hard invariant)
 
-**Never `UPDATE` a price amount.** A rate change is always:
+**Never `UPDATE` a price amount** (or currency / scope / ownership). A catalogue rate change is always:
 
-1. Insert a new `prices` row.
-2. Insert a new junction row (`unit_class_rates` / `insurance_rates`) pointing at it.
-3. Close the old price by setting `effective_to`.
+1. Close the current catalogue price by setting `effective_to` (once).
+2. Insert a successor `prices` row owned by the **same** static junction.
 
-History is preserved by construction. This applies to every priced entity.
+Junctions (`unit_class_rates` / `insurance_rates`) are created once per pairing and are never versioned. Contract timing for signed rates lives on `contract_items` versions (S02-00), not on price windows.
 
 ## TaxRate — exclusive tax catalogue
 
@@ -70,7 +71,7 @@ See `05-billing-ledger.md` for charge generation.
 
 ## Insurance
 
-- `Insurance` (plan) follows the **same pattern as UnitClass pricing**: an `InsuranceRate` junction at the **Site (Center) level** carries the `price_id`.
+- `Insurance` (plan) follows the **same pattern as UnitClass pricing**: a static `InsuranceRate` junction at the **Site (Center) level**; catalogue prices morph-own that junction.
 - Insurance is **facility-scoped**, not per-building (there is no building layer).
 - Optional `tax_rate_code` default for IPT / similar.
 - Sold on contracts as a `ContractItem` line (polymorphic — see `04-crm-pipeline.md` / `05-billing-ledger.md`).
