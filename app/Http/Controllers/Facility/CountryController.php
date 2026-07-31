@@ -10,8 +10,12 @@ class CountryController extends Controller
 {
     public function options(): JsonResponse
     {
-        $options = Country::query()->orderBy('name')->get(['id', 'name'])
-            ->map(fn (Country $country) => ['value' => $country->id, 'title' => $country->name]);
+        $options = Country::query()->orderBy('name')->get(['id', 'code', 'name'])
+            ->map(fn (Country $country) => [
+                'value' => $country->id,
+                'code' => $country->code,
+                'title' => $country->name,
+            ]);
 
         return $this->success($options, 'Country options retrieved successfully.');
     }

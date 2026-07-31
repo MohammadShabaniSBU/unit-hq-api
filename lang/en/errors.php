@@ -40,6 +40,9 @@ return [
     'contacts' => [
         'invalid_tax_id' => 'The tax ID is invalid for the selected type.',
     ],
+    'tax' => [
+        'unresolvable_for_jurisdiction' => 'No active tax rate for code ":code" matches jurisdiction :jurisdiction (and no universal fallback exists).',
+    ],
     'invoice_series' => [
         'next_number_immutable' => 'next_number cannot be edited after creation. Set starting_number only when creating a series.',
         'identity_frozen' => 'Series code and legal entity cannot change after invoices have been issued under this series.',

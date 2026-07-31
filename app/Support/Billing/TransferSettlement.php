@@ -14,6 +14,7 @@ use App\Models\ContractItem;
 use App\Models\Setting;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Fiscal\TaxResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -61,7 +62,7 @@ final class TransferSettlement
         ContractItem $originItem,
     ): array {
         $contract->loadMissing(['items.price', 'charges']);
-        $destination->loadMissing(['unitClass', 'site']);
+        $destination->loadMissing(['unitClass', 'site.country']);
 
         $originItem->loadMissing('price');
 
@@ -152,8 +153,18 @@ final class TransferSettlement
             ]);
         }
 
-        $taxRate = ContractBilling::resolveTaxRate(
+        $destination->loadMissing(['unitClass', 'site.country']);
+
+        if ($destination->site === null) {
+            throw ValidationException::withMessages([
+                'to_unit_id' => [__('errors.invoices.missing_site')],
+            ]);
+        }
+
+        $taxRate = TaxResolver::resolve(
+            null,
             $destination->unitClass?->tax_rate_code,
+            $destination->site,
             $transferDate,
         );
 

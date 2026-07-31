@@ -7,7 +7,6 @@ namespace App\Support\Billing;
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
 use App\Enums\ProrationMethod;
-use App\Models\TaxRate;
 use App\Settings\BillingSettings;
 use Carbon\CarbonImmutable;
 
@@ -75,26 +74,6 @@ final class ContractBilling
         }
 
         return BillingMath::prorate($itemAmount, $plan->daysOccupied, $plan->daysInPeriod);
-    }
-
-    /**
-     * Resolution order at item creation: product's tax_rate_code -> active
-     * version at $at -> org default -> null (0% — request may still override
-     * with an explicit tax_rate_id upstream).
-     */
-    public static function resolveTaxRate(?string $productTaxRateCode, CarbonImmutable $at): ?TaxRate
-    {
-        if ($productTaxRateCode !== null) {
-            $rate = TaxRate::query()
-                ->activeForCode($productTaxRateCode, $at->toDateString())
-                ->first();
-
-            if ($rate !== null) {
-                return $rate;
-            }
-        }
-
-        return TaxRate::query()->current()->where('is_default', true)->first();
     }
 
     public static function billingSettingsSnapshot(BillingSettings $settings): array

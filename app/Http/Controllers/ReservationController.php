@@ -33,6 +33,7 @@ use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\Fiscal\InvoiceIssuer;
+use App\Support\Fiscal\TaxResolver;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -299,7 +300,7 @@ class ReservationController extends Controller
         ]);
 
         $reservation->load([
-            'unit.site',
+            'unit.site.country',
             'unit.unitClass',
             'contact',
             'price',
@@ -328,9 +329,26 @@ class ReservationController extends Controller
 
         $depositAmount = $validated['deposit_amount'] ?? $billing->defaultDepositAmount;
 
-        $unitTaxRate = ContractBilling::resolveTaxRate($reservation->unit->unitClass?->tax_rate_code, $moveIn);
+        $site = $reservation->unit?->site;
+        if ($site === null) {
+            throw ValidationException::withMessages([
+                'tax_rate' => [__('errors.invoices.missing_site')],
+            ]);
+        }
+
+        $unitTaxRate = TaxResolver::resolve(
+            null,
+            $reservation->unit->unitClass?->tax_rate_code,
+            $site,
+            $moveIn,
+        );
         $insuranceTaxRate = ! empty($validated['insurance_id'])
-            ? ContractBilling::resolveTaxRate(Insurance::query()->find($validated['insurance_id'])?->tax_rate_code, $moveIn)
+            ? TaxResolver::resolve(
+                null,
+                Insurance::query()->find($validated['insurance_id'])?->tax_rate_code,
+                $site,
+                $moveIn,
+            )
             : null;
 
         $plan = ContractBilling::planFirstPeriod(
@@ -483,11 +501,19 @@ class ReservationController extends Controller
                 'currency'               => $unitCurrency,
             ]);
 
+            $site = $reservation->unit?->site;
+            if ($site === null) {
+                throw ValidationException::withMessages([
+                    'tax_rate' => [__('errors.invoices.missing_site')],
+                ]);
+            }
+
             $unitTaxRate = $this->resolveContractItemTaxRate(
                 'unit',
                 $reservation->unit_id,
                 $validated['unit_tax_rate_id'] ?? null,
                 $moveIn,
+                $site,
             );
 
             $resolvedUnitPrice = ResolvesContractItemPrice::forSigning(
@@ -524,6 +550,7 @@ class ReservationController extends Controller
                     $validated['insurance_id'],
                     $validated['insurance_tax_rate_id'] ?? null,
                     $moveIn,
+                    $site,
                 );
 
                 $insuranceAmount = round((float) $validated['insurance_rate'], 2);

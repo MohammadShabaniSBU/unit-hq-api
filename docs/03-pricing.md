@@ -44,16 +44,20 @@ Effective-dated and immutable, **mirroring prices**.
 ### Product defaults
 
 - `unit_classes.tax_rate_code` and `insurances.tax_rate_code` (nullable strings) point at a tax code.
-- At contract item create, resolution order (**jurisdiction-aware — *implemented in S03***;
-  until then the live code still uses the non-jurisdiction path):
-  1. Explicit `tax_rate_id` override from the request (if any)
-  2. Else product `tax_rate_code` → active version whose `jurisdiction` matches the site's
-     subdivision, else its country (`country_id` → `countries.code`), else the
-     `NULL`-jurisdiction version
-  3. Else org default tax rate, same jurisdiction filter
-  4. Else no tax (`0%`)
+- At contract item create / transfer re-snapshot, resolution is centralised in
+  `App\Support\Fiscal\TaxResolver` (S03-05 / D2):
+  1. Explicit `tax_rate_id` override from the request (if any) — no jurisdiction
+     filtering; the operator's choice is logged
+  2. Else product `tax_rate_code` → among active versions of that code, prefer
+     `jurisdiction` equal to the site's country (`country_id` → `countries.code`),
+     else the `NULL`-jurisdiction (universal) version, else **fail loudly**
+     (`tax_unresolvable_for_jurisdiction`, 422) — never a wrong country's rate
+  3. Else org default rate (`is_default`), same preference chain on that code
+  4. Else no tax (`0%`) — only when neither product nor default names a code
 
-Snapshots land on `contract_items.tax_rate_id` + `tax_rate_snapshot`, and on each first-period charge.
+Matching is exact country-code equality; no region / subdivision hierarchy until a
+real case demands it. Snapshots land on `contract_items.tax_rate_id` +
+`tax_rate_snapshot`, and on each first-period charge.
 
 ### Tax basis (exclusive)
 

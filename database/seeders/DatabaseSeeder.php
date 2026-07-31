@@ -15,6 +15,7 @@ use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\Price;
 use App\Models\Site;
+use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
@@ -85,17 +86,40 @@ class DatabaseSeeder extends Seeder
             $sites->push(Site::factory()->create($def));
         }
 
+        // Per-country VAT — no NULL-jurisdiction fallback (mis-countried sites fail loudly).
+        $vatFrom = now()->subYear()->toDateString();
+        foreach (
+            [
+                ['jurisdiction' => 'ES', 'rate' => '21.00', 'is_default' => true],
+                ['jurisdiction' => 'FR', 'rate' => '20.00', 'is_default' => false],
+                ['jurisdiction' => 'GB', 'rate' => '20.00', 'is_default' => false],
+            ] as $vat
+        ) {
+            TaxRate::query()->create([
+                'name' => 'VAT ('.$vat['jurisdiction'].')',
+                'code' => 'vat',
+                'rate' => $vat['rate'],
+                'jurisdiction' => $vat['jurisdiction'],
+                'is_default' => $vat['is_default'],
+                'effective_from' => $vatFrom,
+                'effective_to' => null,
+                'created_by' => $manager->id,
+            ]);
+        }
+
         $unitClasses = collect();
         foreach (range(1, 10) as $n) {
             $unitClasses->push(UnitClass::factory()->create([
                 'code' => "SS{$n}",
                 'label' => "SS Unit {$n}",
                 'size' => 5.00 + ($n - 1),
+                'tax_rate_code' => 'vat',
             ]));
             $unitClasses->push(UnitClass::factory()->create([
                 'code' => "AL{$n}",
                 'label' => "AL Unit {$n}",
                 'size' => 10.00 + ($n - 1) * 2,
+                'tax_rate_code' => 'vat',
             ]));
         }
 
@@ -154,9 +178,10 @@ class DatabaseSeeder extends Seeder
 
         foreach ($insurances as $insuranceData) {
             $insurance = Insurance::query()->create([
-                'name'     => $insuranceData['name'],
+                'name' => $insuranceData['name'],
                 'coverage' => $insuranceData['coverage'],
                 'currency' => 'EUR',
+                'tax_rate_code' => 'vat',
             ]);
 
             foreach ($sites as $site) {

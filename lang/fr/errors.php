@@ -40,6 +40,9 @@ return [
     'contacts' => [
         'invalid_tax_id' => 'Le numéro fiscal n’est pas valide pour le type sélectionné.',
     ],
+    'tax' => [
+        'unresolvable_for_jurisdiction' => 'Aucun taux de taxe actif pour le code « :code » ne correspond à la juridiction :jurisdiction (et aucun taux universel n’existe).',
+    ],
     'invoice_series' => [
         'next_number_immutable' => 'next_number ne peut pas être modifié après la création. Utilisez starting_number uniquement à la création.',
         'identity_frozen' => 'Le code de série et l’entité juridique ne peuvent pas changer après l’émission de factures sous cette série.',

@@ -172,12 +172,17 @@ class ContractController extends Controller
             ]);
 
             $createdBy = $request->user()?->id;
-            $contractItems = collect($validated['items'])->map(function (array $itemData) use ($contract, $moveIn, $siteId, $createdBy) {
+            $resolvedSite = $siteId !== null
+                ? Site::query()->with('country')->find($siteId)
+                : null;
+
+            $contractItems = collect($validated['items'])->map(function (array $itemData) use ($contract, $moveIn, $siteId, $createdBy, $resolvedSite) {
                 $taxRate = $this->resolveContractItemTaxRate(
                     $itemData['item_type'],
                     $itemData['item_id'],
                     $itemData['tax_rate_id'] ?? null,
                     $moveIn,
+                    $resolvedSite,
                 );
 
                 $itemSiteId = $itemData['item_type'] === 'unit'

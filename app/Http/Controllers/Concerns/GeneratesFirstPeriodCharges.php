@@ -10,13 +10,16 @@ use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\Insurance;
+use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\FirstPeriodPlan;
+use App\Support\Fiscal\TaxResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Shared by ContractController::store and ReservationController::convert —
@@ -117,25 +120,38 @@ trait GeneratesFirstPeriodCharges
     }
 
     /**
-     * Resolution order: explicit override -> product's tax_rate_code active
-     * version at $moveIn -> org default -> null (0%).
+     * Jurisdiction-aware resolution via TaxResolver (override → product code →
+     * org default → null / 0%).
      */
     protected function resolveContractItemTaxRate(
         string $itemType,
         int $itemId,
         ?int $explicitTaxRateId,
         CarbonImmutable $moveIn,
+        ?Site $site = null,
     ): ?TaxRate {
-        if ($explicitTaxRateId !== null) {
-            return TaxRate::query()->find($explicitTaxRateId);
-        }
-
         $productTaxRateCode = match ($itemType) {
-            'unit'      => Unit::query()->with('unitClass')->find($itemId)?->unitClass?->tax_rate_code,
+            'unit' => Unit::query()->with(['unitClass', 'site.country'])->find($itemId)?->unitClass?->tax_rate_code,
             'insurance' => Insurance::query()->find($itemId)?->tax_rate_code,
-            default     => null,
+            default => null,
         };
 
-        return ContractBilling::resolveTaxRate($productTaxRateCode, $moveIn);
+        $resolvedSite = $site ?? $this->siteForTaxResolution($itemType, $itemId);
+
+        return TaxResolver::resolve($explicitTaxRateId, $productTaxRateCode, $resolvedSite, $moveIn);
+    }
+
+    private function siteForTaxResolution(string $itemType, int $itemId): Site
+    {
+        if ($itemType === 'unit') {
+            $unit = Unit::query()->with('site.country')->find($itemId);
+            if ($unit?->site !== null) {
+                return $unit->site;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'tax_rate' => [__('errors.invoices.missing_site')],
+        ]);
     }
 }

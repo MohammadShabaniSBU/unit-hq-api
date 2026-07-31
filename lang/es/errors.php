@@ -40,6 +40,9 @@ return [
     'contacts' => [
         'invalid_tax_id' => 'El NIF/NIE no es válido para el tipo seleccionado.',
     ],
+    'tax' => [
+        'unresolvable_for_jurisdiction' => 'No hay un tipo impositivo activo para el código ":code" que coincida con la jurisdicción :jurisdiction (y no existe un tipo universal).',
+    ],
     'invoice_series' => [
         'next_number_immutable' => 'next_number no se puede editar después de la creación. Use starting_number solo al crear la serie.',
         'identity_frozen' => 'El código de serie y la entidad jurídica no pueden cambiar después de emitir facturas bajo esta serie.',
