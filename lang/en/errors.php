@@ -48,5 +48,15 @@ return [
         'code_in_use' => 'An active series with this code already exists for the legal entity.',
         'kind_mismatch' => 'Invoice series kind is :expected but the invoice requires :given.',
     ],
+    'invoices' => [
+        'simplified_limit_exceeded' => 'Simplified invoice gross (:gross) exceeds the :limit limit. Complete the contact fiscal data to issue an ordinary invoice.',
+        'charges_already_invoiced' => 'One or more charges are already on an invoice.',
+        'charge_not_invoicable' => 'One or more charges cannot be invoiced (wrong contract, deposit, refund, or negative adjustment).',
+        'missing_default_series' => 'No default :kind invoice series exists for this legal entity.',
+        'missing_legal_entity' => 'The contract site has no legal entity assigned.',
+        'missing_site' => 'The contract has no unit site to resolve the issuing legal entity.',
+        'missing_contact' => 'The contract has no contact for the buyer snapshot.',
+        'immutable' => 'Issued invoices cannot be modified or deleted.',
+    ],
 ];
 

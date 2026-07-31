@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Gapless invoice number series scoped to a legal entity.
@@ -30,7 +30,8 @@ use Illuminate\Support\Facades\Schema;
  * @property Carbon            $created_at
  * @property Carbon            $updated_at
  *
- * @property-read LegalEntity $legalEntity
+ * @property-read LegalEntity                   $legalEntity
+ * @property-read Collection<int, Invoice>      $invoices
  */
 class InvoiceSeries extends Model
 {
@@ -80,19 +81,16 @@ class InvoiceSeries extends Model
         return $this->belongsTo(LegalEntity::class);
     }
 
-    /**
-     * True once any fiscal invoice has been issued under this series.
-     * Ready for S03-03; returns false until the invoices table exists.
-     */
+    /** @return HasMany<Invoice, $this> */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /** True once any fiscal invoice has been issued under this series. */
     public function hasIssuedInvoices(): bool
     {
-        if (! Schema::hasTable('invoices')) {
-            return false;
-        }
-
-        return DB::table('invoices')
-            ->where('invoice_series_id', $this->id)
-            ->exists();
+        return $this->invoices()->exists();
     }
 
     /**

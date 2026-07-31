@@ -286,6 +286,12 @@ class Contract extends Model
         return $this->hasMany(Charge::class);
     }
 
+    /** @return HasMany<Invoice, Contract> */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
     /** @return HasMany<Payment, Contract> */
     public function payments(): HasMany
     {

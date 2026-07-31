@@ -16,16 +16,17 @@ class BillingPeriodRenameTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_legacy_invoice_routes_and_table_are_gone(): void
+    public function test_display_grouping_is_billing_periods_alongside_fiscal_invoices(): void
     {
         Employee::factory()->manager()->create();
 
-        $this->assertFalse(Schema::hasTable('invoices'));
+        // S01 renamed display grouping; S03 reclaimed `invoices` for fiscal documents.
         $this->assertTrue(Schema::hasTable('billing_periods'));
+        $this->assertTrue(Schema::hasTable('invoices'));
         $this->assertTrue(Schema::hasColumn('charges', 'billing_period_id'));
-        $this->assertFalse(Schema::hasColumn('charges', 'invoice_id'));
+        $this->assertTrue(Schema::hasColumn('charges', 'invoice_id'));
 
-        $this->getJson('/api/invoices')->assertNotFound();
+        $this->getJson('/api/invoices')->assertOk();
 
         $contact = Contact::factory()->create();
         $contract = Contract::factory()->create(['contact_id' => $contact->id, 'currency' => 'EUR']);

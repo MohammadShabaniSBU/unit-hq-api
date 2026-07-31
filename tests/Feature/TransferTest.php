@@ -562,7 +562,9 @@ class TransferTest extends TestCase
             transferBilling: TransferBilling::ProrateImmediately->value,
         ));
 
-        $contact = Contact::factory()->create();
+        // Fiscal-complete so signing can issue an ordinary invoice when amounts
+        // exceed the simplified gross limit.
+        $contact = Contact::factory()->fiscalComplete()->create();
 
         $response = $this->postJson('/api/contracts', [
             'contact_id' => $contact->id,

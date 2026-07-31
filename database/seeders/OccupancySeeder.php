@@ -30,12 +30,15 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Enums\TaxIdType;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
+use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
 use App\Support\Time\SiteClock;
+use Illuminate\Support\Facades\DB;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -696,7 +699,58 @@ class OccupancySeeder extends Seeder
             'created_by'       => $manager->id,
         ]);
 
+        $this->seedFirstPeriodInvoice($contract, $item, $price, $plan, $moveIn, $manager);
+
         return $contract;
+    }
+
+    /**
+     * First-period rent charge + fiscal invoice so the panel has content.
+     */
+    private function seedFirstPeriodInvoice(
+        Contract $contract,
+        ContractItem $item,
+        Price $price,
+        object $plan,
+        CarbonImmutable $moveIn,
+        Employee $manager,
+    ): void {
+        $net = (string) $price->amount;
+        $breakdown = BillingMath::applyTax($net, null);
+
+        Charge::query()->create([
+            'contract_id' => $contract->id,
+            'contract_item_id' => $item->id,
+            'charge_type' => ChargeType::Rent,
+            'period_start' => $plan->windowStart->toDateString(),
+            'period_end' => $plan->windowEnd->toDateString(),
+            'net_amount' => $breakdown->net,
+            'tax_rate_snapshot' => null,
+            'tax_amount' => $breakdown->tax,
+            'amount' => $breakdown->gross,
+            'currency' => $contract->currency,
+            'due_date' => $moveIn->toDateString(),
+            'description' => 'Rent',
+        ]);
+
+        $contact = $contract->contact;
+        if ($contact !== null && ! $contact->fiscalComplete()) {
+            // Prefer ordinary invoices in seed data (amounts often exceed the simplified limit).
+            $contact->forceFill([
+                'tax_id' => '12345678Z',
+                'tax_id_type' => TaxIdType::Nif,
+                'billing_address_line1' => 'Calle Mayor 1',
+                'billing_city' => 'Madrid',
+                'billing_postal_code' => '28013',
+                'billing_country_code' => 'ES',
+            ])->save();
+        }
+
+        DB::transaction(function () use ($contract, $manager): void {
+            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
+            $charges = Charge::query()->where('contract_id', $contract->id)->get();
+            InvoiceIssuer::issue($contract, $charges, null, $manager->id);
+        });
     }
 
     private function seedTransferredContract(

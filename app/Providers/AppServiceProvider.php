@@ -7,6 +7,7 @@ use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
+use App\Models\Invoice;
 use App\Models\Note;
 use App\Models\Offer;
 use App\Models\Reservation;
@@ -56,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
             'insurance_rate'   => InsuranceRate::class,
             'task'             => Task::class,
             'note'             => Note::class,
+            'invoice'          => Invoice::class,
         ]);
 
         Session::extend('database', function ($app) {

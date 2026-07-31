@@ -10,6 +10,7 @@ use App\Http\Controllers\Concerns\TransfersContracts;
 use App\Http\Controllers\Concerns\VacatesContracts;
 use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractResource;
+use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Setting;
 use App\Models\Site;
@@ -17,6 +18,7 @@ use App\Models\Unit;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\ResolvesContractItemPrice;
+use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\Carbon;
@@ -220,6 +222,10 @@ class ContractController extends Controller
             );
 
             $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
+
+            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
+            $charges = Charge::query()->where('contract_id', $contract->id)->get();
+            InvoiceIssuer::issue($contract, $charges, null, $request->user()?->id);
 
             $signedProps = ['reservation_id' => $contract->reservation_id];
             RecordsActivity::core('contract.signed', $contract, $signedProps);

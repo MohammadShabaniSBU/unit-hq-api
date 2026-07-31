@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property int         $contract_id
  * @property int|null    $contract_item_id
  * @property int|null    $billing_period_id
+ * @property int|null    $invoice_id
  * @property ChargeType  $charge_type
  * @property string|null $period_start Y-m-d
  * @property string|null $period_end   Y-m-d
@@ -44,6 +45,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contract                     $contract
  * @property-read ContractItem|null            $contractItem
  * @property-read BillingPeriod|null           $billingPeriod
+ * @property-read Invoice|null                 $invoice
  * @property-read Charge|null                  $reversalOf
  * @property-read Collection<int, Allocation>  $allocations
  */
@@ -74,6 +76,7 @@ class Charge extends Model
         'contract_id',
         'contract_item_id',
         'billing_period_id',
+        'invoice_id',
         'charge_type',
         'period_start',
         'period_end',
@@ -117,6 +120,12 @@ class Charge extends Model
     public function billingPeriod(): BelongsTo
     {
         return $this->belongsTo(BillingPeriod::class);
+    }
+
+    /** @return BelongsTo<Invoice, Charge> */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     /** @return BelongsTo<Charge, Charge> */

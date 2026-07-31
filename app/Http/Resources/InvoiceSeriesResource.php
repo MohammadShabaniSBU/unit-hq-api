@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 
 class InvoiceSeriesResource extends BaseResource
 {
@@ -28,14 +27,10 @@ class InvoiceSeriesResource extends BaseResource
 
     private function issuedCount(): int
     {
-        if (! Schema::hasTable('invoices')) {
-            return 0;
-        }
-
         if (isset($this->resource->invoices_count)) {
             return (int) $this->resource->invoices_count;
         }
 
-        return (int) ($this->resource->issued_count ?? 0);
+        return (int) $this->resource->invoices()->count();
     }
 }

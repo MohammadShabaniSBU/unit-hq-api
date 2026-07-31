@@ -48,5 +48,15 @@ return [
         'code_in_use' => 'Une série active avec ce code existe déjà pour l’entité juridique.',
         'kind_mismatch' => 'Le type de la série est :expected mais la facture exige :given.',
     ],
+    'invoices' => [
+        'simplified_limit_exceeded' => 'Le total de la facture simplifiée (:gross) dépasse la limite de :limit. Complétez les données fiscales du contact pour émettre une facture ordinaire.',
+        'charges_already_invoiced' => 'Un ou plusieurs frais figurent déjà sur une facture.',
+        'charge_not_invoicable' => 'Un ou plusieurs frais ne peuvent pas être facturés (mauvais contrat, dépôt, remboursement ou ajustement négatif).',
+        'missing_default_series' => 'Aucune série de facturation par défaut de type :kind n’existe pour cette entité juridique.',
+        'missing_legal_entity' => 'Le site du contrat n’a pas d’entité juridique assignée.',
+        'missing_site' => 'Le contrat n’a pas de site d’unité pour résoudre l’entité émettrice.',
+        'missing_contact' => 'Le contrat n’a pas de contact pour le destinataire de la facture.',
+        'immutable' => 'Les factures émises ne peuvent pas être modifiées ni supprimées.',
+    ],
 ];
 

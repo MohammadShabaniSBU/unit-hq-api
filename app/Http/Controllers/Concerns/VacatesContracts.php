@@ -20,6 +20,7 @@ use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Support\Billing\VacateSettlement;
 use App\Support\Contracts\ContractTransition;
+use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
 use App\Support\RecordsActivity;
@@ -193,7 +194,20 @@ trait VacatesContracts
                 ->whereNull('effective_to')
                 ->update(['effective_to' => $moveOutOn->toDateString()]);
 
+            $chargeIdsBefore = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->pluck('id');
+
             $this->persistVacatePlan($contract, $plan, $moveOutOn);
+
+            $newCharges = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->whereNotIn('id', $chargeIdsBefore)
+                ->get();
+
+            // Gap debits only — credits/refunds wait for rectificatives (S03-04).
+            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
+            InvoiceIssuer::issue($contract, $newCharges, null, auth()->id());
 
             $this->maybeCreateTurnoverHold($contract, $moveOutOn);
 

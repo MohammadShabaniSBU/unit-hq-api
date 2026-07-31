@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Enums\FiscalRegime;
 use App\Enums\TaxIdType;
+use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -34,5 +35,12 @@ class LegalEntityFactory extends Factory
             'sepa_creditor_id' => null,
             'archived_at' => null,
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (LegalEntity $entity): void {
+            InvoiceSeries::ensureDefaultsFor($entity);
+        });
     }
 }

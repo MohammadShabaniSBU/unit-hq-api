@@ -16,6 +16,7 @@ class ChargeResource extends BaseResource
             'contract_id'           => $this->contract_id,
             'contract_item_id'      => $this->contract_item_id,
             'billing_period_id'     => $this->billing_period_id,
+            'invoice_id'            => $this->invoice_id,
             'charge_type'           => $this->charge_type instanceof \App\Enums\ChargeType
                 ? $this->charge_type->value
                 : $this->charge_type,

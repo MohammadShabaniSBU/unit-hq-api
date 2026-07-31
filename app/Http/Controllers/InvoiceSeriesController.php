@@ -24,6 +24,7 @@ class InvoiceSeriesController extends Controller
 
         $query = InvoiceSeries::query()
             ->where('legal_entity_id', $legalEntity->id)
+            ->withCount('invoices')
             ->orderBy('kind')
             ->orderBy('code');
 

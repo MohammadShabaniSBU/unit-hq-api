@@ -9,7 +9,6 @@ use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Support\Fiscal\InvoiceNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -140,16 +139,26 @@ class InvoiceSeriesTest extends TestCase
         );
     }
 
-    public function test_code_frozen_helper_ready_for_invoices(): void
+    public function test_code_frozen_after_first_invoice(): void
     {
         $entity = LegalEntity::factory()->create();
-        $series = InvoiceSeries::factory()->create([
+        $series = InvoiceSeries::query()
+            ->where('legal_entity_id', $entity->id)
+            ->where('kind', InvoiceSeriesKind::Ordinary)
+            ->where('is_default', true)
+            ->firstOrFail();
+
+        $this->assertFalse($series->hasIssuedInvoices());
+
+        \App\Models\Invoice::factory()->create([
             'legal_entity_id' => $entity->id,
-            'is_default' => false,
+            'invoice_series_id' => $series->id,
+            'number' => 1,
+            'full_number' => $series->code.'-000001',
+            'kind' => 'ordinary',
         ]);
 
-        $this->assertFalse(Schema::hasTable('invoices'));
-        $this->assertFalse($series->hasIssuedInvoices());
+        $this->assertTrue($series->fresh()->hasIssuedInvoices());
 
         $this->patchJson("/api/invoice-series/{$series->id}", [
             'code' => 'CHANGED',

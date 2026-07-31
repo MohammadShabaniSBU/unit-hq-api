@@ -48,5 +48,15 @@ return [
         'code_in_use' => 'Ya existe una serie activa con este código para la entidad jurídica.',
         'kind_mismatch' => 'El tipo de la serie es :expected pero la factura requiere :given.',
     ],
+    'invoices' => [
+        'simplified_limit_exceeded' => 'El total de la factura simplificada (:gross) supera el límite de :limit. Complete los datos fiscales del contacto para emitir una factura ordinaria.',
+        'charges_already_invoiced' => 'Uno o más cargos ya están en una factura.',
+        'charge_not_invoicable' => 'Uno o más cargos no se pueden facturar (contrato incorrecto, fianza, reembolso o ajuste negativo).',
+        'missing_default_series' => 'No existe una serie de facturación predeterminada de tipo :kind para esta entidad jurídica.',
+        'missing_legal_entity' => 'La sede del contrato no tiene entidad jurídica asignada.',
+        'missing_site' => 'El contrato no tiene sede de unidad para resolver la entidad emisora.',
+        'missing_contact' => 'El contrato no tiene contacto para el destinatario de la factura.',
+        'immutable' => 'Las facturas emitidas no se pueden modificar ni eliminar.',
+    ],
 ];
 

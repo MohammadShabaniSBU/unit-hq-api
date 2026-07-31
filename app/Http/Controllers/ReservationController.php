@@ -14,6 +14,7 @@ use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
 use App\Http\Resources\ReservationResource;
+use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Discount;
@@ -31,6 +32,7 @@ use App\Support\Billing\FirstPeriodPlan;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
+use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -351,6 +353,22 @@ class ReservationController extends Controller
         $rateOverridden = $pricing['discount'] !== null
             && abs($unitRate - $suggestedUnitRate) > 0.001;
 
+        $invoicePreview = InvoiceIssuer::previewForContact(
+            $reservation->contact,
+            (string) $firstPeriod['total_gross'],
+            (string) $firstPeriod['total_net'],
+            (string) $firstPeriod['total_tax'],
+        );
+
+        if ($invoicePreview['invoice_blocker'] === 'simplified_limit_exceeded') {
+            throw ValidationException::withMessages([
+                'invoice' => [__('errors.invoices.simplified_limit_exceeded', [
+                    'limit' => (string) config('fiscal.simplified_gross_limit', '400.00'),
+                    'gross' => (string) $firstPeriod['total_gross'],
+                ])],
+            ]);
+        }
+
         return $this->success([
             'contact' => [
                 'id'   => $reservation->contact->id,
@@ -388,6 +406,7 @@ class ReservationController extends Controller
             'discount_ends_at'    => $pricing['discount_ends_at'],
             'rate_overridden'     => $rateOverridden,
             'first_period'        => $firstPeriod,
+            ...$invoicePreview,
         ], 'Convert preview retrieved successfully.');
     }
 
@@ -547,6 +566,10 @@ class ReservationController extends Controller
             );
 
             $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
+
+            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
+            $charges = Charge::query()->where('contract_id', $contract->id)->get();
+            InvoiceIssuer::issue($contract, $charges, null, $request->user()?->id);
 
             $reservation->update(['status' => ReservationStatus::Confirmed->value]);
 

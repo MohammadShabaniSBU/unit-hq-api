@@ -12,8 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Fiscal issuer of invoices and holder of payment credentials.
@@ -40,6 +38,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * @property-read Collection<int, Site>          $sites
  * @property-read Collection<int, InvoiceSeries> $invoiceSeries
+ * @property-read Collection<int, Invoice>       $invoices
  * @property-read int|null                       $sites_count
  */
 class LegalEntity extends Model
@@ -100,19 +99,16 @@ class LegalEntity extends Model
         return $this->hasMany(InvoiceSeries::class);
     }
 
-    /**
-     * True once any fiscal invoice has been issued under this entity.
-     * Ready for S03-03; returns false until the invoices table exists.
-     */
+    /** @return HasMany<Invoice, $this> */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /** True once any fiscal invoice has been issued under this entity. */
     public function hasIssuedInvoices(): bool
     {
-        if (! Schema::hasTable('invoices')) {
-            return false;
-        }
-
-        return DB::table('invoices')
-            ->where('legal_entity_id', $this->id)
-            ->exists();
+        return $this->invoices()->exists();
     }
 
     public function activeSitesCount(): int
