@@ -13,6 +13,11 @@
 34b. **Issued fiscal identity is immutable.** Once any invoice exists for a legal entity,
     `legal_entities.tax_id` and `country_code` are frozen. Contact-style fields may still
     change; identity changes require a new entity.
+34c. **Invoice numbers are gapless per series.** Numbers are allocated by row-locking the
+    series (`SELECT … FOR UPDATE`) inside the issuing transaction via
+    `App\Support\Fiscal\InvoiceNumbering::allocate`. Numbers are never reserved, reused,
+    edited, or back-filled; a rolled-back issuance consumes nothing. Series `code` and
+    `legal_entity_id` freeze once any invoice references the series.
 2. **Price immutability** — `prices.amount`, `currency`, `scope`, `priceable_type` and `priceable_id` are never updated. The only permitted write to an existing price row is `effective_to`: NULL → a date, exactly once, in the same transaction that inserts the successor catalogue row. Nothing is ever deleted. Catalogue history lives on price windows; junctions (`unit_class_rates` / `insurance_rates`) are static.
 2b. **Contract item immutability** — item versions are superseded, never updated for amount or subject. A price or subject change closes the current version via `effective_to` and inserts a successor linked by `supersedes_id`. Every version carries a required `price_id` (amount/currency read through the price). Charges keep referencing the version that produced them via `charges.contract_item_id`.
 3. **Ledger immutability** — charges/payments are append-only; corrections are opposing rows via `reversal_of_*_id`.

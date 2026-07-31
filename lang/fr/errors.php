@@ -37,5 +37,16 @@ return [
         'fiscal_regime_unimplemented' => 'Le régime fiscal « :regime » n’est pas implémenté.',
         'fiscal_regime_invalid' => 'Le régime fiscal « :regime » n’est pas une valeur valide.',
     ],
+    'contacts' => [
+        'invalid_tax_id' => 'Le numéro fiscal n’est pas valide pour le type sélectionné.',
+    ],
+    'invoice_series' => [
+        'next_number_immutable' => 'next_number ne peut pas être modifié après la création. Utilisez starting_number uniquement à la création.',
+        'identity_frozen' => 'Le code de série et l’entité juridique ne peuvent pas changer après l’émission de factures sous cette série.',
+        'identity_immutable' => 'Le code, le type et l’entité juridique de la série ne peuvent pas être modifiés après la création.',
+        'cannot_archive_sole_default' => 'Impossible d’archiver la série par défaut tant qu’aucune autre série active du même type n’existe.',
+        'code_in_use' => 'Une série active avec ce code existe déjà pour l’entité juridique.',
+        'kind_mismatch' => 'Le type de la série est :expected mais la facture exige :given.',
+    ],
 ];
 

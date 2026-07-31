@@ -11,6 +11,7 @@ use App\Models\Country;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
+use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\Price;
 use App\Models\Site;
@@ -68,6 +69,7 @@ class DatabaseSeeder extends Seeder
                 'archived_at' => null,
             ]
         );
+        InvoiceSeries::ensureDefaultsFor($legalEntity);
 
         // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris
         $siteDefs = [

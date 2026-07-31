@@ -91,6 +91,11 @@ Route::patch('attribute-values', [Controllers\AttributeValueController::class, '
 Route::apiResource('legal-entities', Controllers\LegalEntityController::class);
 Route::post('legal-entities/{legal_entity}/archive', [Controllers\LegalEntityController::class, 'archive']);
 Route::post('legal-entities/{legal_entity}/unarchive', [Controllers\LegalEntityController::class, 'unarchive']);
+Route::get('legal-entities/{legal_entity}/invoice-series', [Controllers\InvoiceSeriesController::class, 'index']);
+Route::post('legal-entities/{legal_entity}/invoice-series', [Controllers\InvoiceSeriesController::class, 'store']);
+Route::patch('invoice-series/{invoice_series}', [Controllers\InvoiceSeriesController::class, 'update']);
+Route::post('invoice-series/{invoice_series}/archive', [Controllers\InvoiceSeriesController::class, 'archive']);
+Route::post('invoice-series/{invoice_series}/unarchive', [Controllers\InvoiceSeriesController::class, 'unarchive']);
 
 Route::apiResource('sites', Facility\SiteController::class);
 Route::post('sites/{site}/archive', [Facility\SiteController::class, 'archive']);

@@ -37,5 +37,16 @@ return [
         'fiscal_regime_unimplemented' => 'Fiscal regime ":regime" is not implemented.',
         'fiscal_regime_invalid' => 'Fiscal regime ":regime" is not a valid value.',
     ],
+    'contacts' => [
+        'invalid_tax_id' => 'The tax ID is invalid for the selected type.',
+    ],
+    'invoice_series' => [
+        'next_number_immutable' => 'next_number cannot be edited after creation. Set starting_number only when creating a series.',
+        'identity_frozen' => 'Series code and legal entity cannot change after invoices have been issued under this series.',
+        'identity_immutable' => 'Series code, kind, and legal entity cannot be changed after creation.',
+        'cannot_archive_sole_default' => 'Cannot archive the default series while no other active series of the same kind exists.',
+        'code_in_use' => 'An active series with this code already exists for the legal entity.',
+        'kind_mismatch' => 'Invoice series kind is :expected but the invoice requires :given.',
+    ],
 ];
 

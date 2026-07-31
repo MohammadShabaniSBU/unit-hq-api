@@ -9,6 +9,7 @@ use App\Enums\ContractStatus;
 use App\Enums\DealStatus;
 use App\Enums\LogChannel;
 use App\Enums\ReservationStatus;
+use App\Enums\TaxIdType;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\LogsDirtyActivity;
@@ -31,6 +32,14 @@ use Illuminate\Database\Eloquent\Model;
  * @property string                    $last_name
  * @property string|null               $email
  * @property string|null               $company
+ * @property string|null               $billing_name
+ * @property string|null               $tax_id
+ * @property TaxIdType|null            $tax_id_type
+ * @property string|null               $billing_address_line1
+ * @property string|null               $billing_address_line2
+ * @property string|null               $billing_city
+ * @property string|null               $billing_postal_code
+ * @property string|null               $billing_country_code
  * @property ContactLifecycleStatus    $status
  * @property ContactRecordStatus       $contact_status
  * @property int|null                  $canonical_contact_id
@@ -70,6 +79,14 @@ class Contact extends Model
         'last_name',
         'email',
         'company',
+        'billing_name',
+        'tax_id',
+        'tax_id_type',
+        'billing_address_line1',
+        'billing_address_line2',
+        'billing_city',
+        'billing_postal_code',
+        'billing_country_code',
         'status',
         'contact_status',
         'canonical_contact_id',
@@ -85,8 +102,27 @@ class Contact extends Model
             'status'            => ContactLifecycleStatus::class,
             'contact_status'    => ContactRecordStatus::class,
             'source'            => ContactSource::class,
+            'tax_id_type'       => TaxIdType::class,
             'last_contacted_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether the contact has enough fiscal identity for an ordinary invoice buyer snapshot.
+     * billing_name may be omitted when first_name + last_name are present (defaults at issue).
+     */
+    public function fiscalComplete(): bool
+    {
+        $hasBillingName = filled($this->billing_name)
+            || (filled($this->first_name) && filled($this->last_name));
+
+        return $hasBillingName
+            && filled($this->tax_id)
+            && $this->tax_id_type !== null
+            && filled($this->billing_address_line1)
+            && filled($this->billing_city)
+            && filled($this->billing_postal_code)
+            && filled($this->billing_country_code);
     }
 
     protected static function booted(): void

@@ -12,6 +12,7 @@ use App\Enums\DealStatus;
 use App\Enums\ReservationStatus;
 use App\Enums\StayPeriod;
 use App\Enums\StorageReason;
+use App\Enums\TaxIdType;
 use App\Models\Offer;
 use BackedEnum;
 use InvalidArgumentException;
@@ -71,6 +72,12 @@ final class FilterableFields
             self::text('last_name', 'Last name'),
             self::field('email', 'Email', 'email'),
             self::text('company', 'Company'),
+            self::text('billing_name', 'Billing name'),
+            self::text('tax_id', 'Tax ID'),
+            self::select('tax_id_type', 'Tax ID type', self::enumOptions(TaxIdType::cases())),
+            self::text('billing_city', 'Billing city'),
+            self::text('billing_postal_code', 'Billing postal code'),
+            self::text('billing_country_code', 'Billing country'),
             self::select('status', 'Status', self::enumOptions(ContactLifecycleStatus::cases())),
             self::select('source', 'Source', self::enumOptions(ContactSource::cases())),
             self::date('created_at', 'Created'),

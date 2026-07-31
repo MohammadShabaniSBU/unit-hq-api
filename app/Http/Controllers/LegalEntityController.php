@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\FiscalRegime;
 use App\Enums\TaxIdType;
 use App\Http\Resources\LegalEntityResource;
+use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class LegalEntityController extends Controller
         $validated = $this->validatedPayload($request, creating: true);
 
         $entity = LegalEntity::query()->create($validated);
+        InvoiceSeries::ensureDefaultsFor($entity);
 
         return $this->created(
             LegalEntityResource::make($entity),

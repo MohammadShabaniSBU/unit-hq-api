@@ -37,5 +37,16 @@ return [
         'fiscal_regime_unimplemented' => 'El régimen fiscal ":regime" no está implementado.',
         'fiscal_regime_invalid' => 'El régimen fiscal ":regime" no es un valor válido.',
     ],
+    'contacts' => [
+        'invalid_tax_id' => 'El NIF/NIE no es válido para el tipo seleccionado.',
+    ],
+    'invoice_series' => [
+        'next_number_immutable' => 'next_number no se puede editar después de la creación. Use starting_number solo al crear la serie.',
+        'identity_frozen' => 'El código de serie y la entidad jurídica no pueden cambiar después de emitir facturas bajo esta serie.',
+        'identity_immutable' => 'El código, el tipo y la entidad jurídica de la serie no se pueden cambiar después de la creación.',
+        'cannot_archive_sole_default' => 'No se puede archivar la serie predeterminada mientras no exista otra serie activa del mismo tipo.',
+        'code_in_use' => 'Ya existe una serie activa con este código para la entidad jurídica.',
+        'kind_mismatch' => 'El tipo de la serie es :expected pero la factura requiere :given.',
+    ],
 ];
 

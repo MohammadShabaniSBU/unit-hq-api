@@ -38,8 +38,9 @@ use Illuminate\Support\Facades\Schema;
  * @property Carbon           $created_at
  * @property Carbon           $updated_at
  *
- * @property-read Collection<int, Site> $sites
- * @property-read int|null              $sites_count
+ * @property-read Collection<int, Site>          $sites
+ * @property-read Collection<int, InvoiceSeries> $invoiceSeries
+ * @property-read int|null                       $sites_count
  */
 class LegalEntity extends Model
 {
@@ -91,6 +92,12 @@ class LegalEntity extends Model
     public function sites(): HasMany
     {
         return $this->hasMany(Site::class);
+    }
+
+    /** @return HasMany<InvoiceSeries, $this> */
+    public function invoiceSeries(): HasMany
+    {
+        return $this->hasMany(InvoiceSeries::class);
     }
 
     /**
