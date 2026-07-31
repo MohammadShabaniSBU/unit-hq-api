@@ -29,5 +29,13 @@ return [
         'transfer_no_unit_item' => 'El contrato no tiene un concepto de unidad abierto para trasladar.',
         'transfer_no_catalogue_price' => 'La unidad de destino no tiene un precio de catálogo vigente.',
     ],
+    'legal_entities' => [
+        'archive_with_active_sites' => 'No se puede archivar la entidad jurídica con :count sede(s) activa(s). Reasigne o archive esas sedes primero.',
+        'archive_with_invoices' => 'No se puede archivar una entidad jurídica que ha emitido facturas.',
+        'identity_frozen' => 'El NIF (tax_id) y el country_code no pueden cambiar después de emitir facturas bajo esta entidad. Cree una entidad nueva.',
+        'fiscal_regime_s04' => 'El régimen fiscal ":regime" aún no está disponible — se habilita en el sprint S04 (Verifactu).',
+        'fiscal_regime_unimplemented' => 'El régimen fiscal ":regime" no está implementado.',
+        'fiscal_regime_invalid' => 'El régimen fiscal ":regime" no es un valor válido.',
+    ],
 ];
 

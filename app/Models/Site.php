@@ -34,11 +34,13 @@ use Illuminate\Support\Carbon;
  * @property int|null    $country_id
  * @property string      $timezone
  * @property string|null $currency   ISO 4217 form prefill only (D1) — not authoritative
+ * @property int         $legal_entity_id
  * @property Carbon|null $archived_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
  * @property-read Country|null                   $country
+ * @property-read LegalEntity                    $legalEntity
  * @property-read Collection<int, Unit>          $units
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  * @property-read Collection<int, SiteMap>       $siteMaps
@@ -64,6 +66,7 @@ class Site extends Model
         'country_id',
         'timezone',
         'currency',
+        'legal_entity_id',
         'archived_at',
     ];
 
@@ -140,6 +143,12 @@ class Site extends Model
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
+    }
+
+    /** @return BelongsTo<LegalEntity, $this> */
+    public function legalEntity(): BelongsTo
+    {
+        return $this->belongsTo(LegalEntity::class);
     }
 
     /** @return HasMany<Unit> */

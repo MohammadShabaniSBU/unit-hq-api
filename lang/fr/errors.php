@@ -29,5 +29,13 @@ return [
         'transfer_no_unit_item' => 'Le contrat n’a pas de ligne d’unité ouverte à transférer.',
         'transfer_no_catalogue_price' => 'L’unité de destination n’a pas de prix catalogue courant.',
     ],
+    'legal_entities' => [
+        'archive_with_active_sites' => 'Impossible d’archiver l’entité juridique avec :count site(s) actif(s). Réaffectez ou archivez ces sites d’abord.',
+        'archive_with_invoices' => 'Impossible d’archiver une entité juridique ayant émis des factures.',
+        'identity_frozen' => 'Le tax_id et le country_code ne peuvent pas changer après l’émission de factures sous cette entité. Créez une nouvelle entité.',
+        'fiscal_regime_s04' => 'Le régime fiscal « :regime » n’est pas encore disponible — activation prévue au sprint S04 (Verifactu).',
+        'fiscal_regime_unimplemented' => 'Le régime fiscal « :regime » n’est pas implémenté.',
+        'fiscal_regime_invalid' => 'Le régime fiscal « :regime » n’est pas une valeur valide.',
+    ],
 ];
 

@@ -50,7 +50,7 @@ class SiteController extends Controller
         $site = Site::query()->create($validated);
 
         return $this->created(
-            SiteResource::make($site->load('country')),
+            SiteResource::make($site->load(['country', 'legalEntity'])),
             'Site created successfully.'
         );
     }
@@ -58,7 +58,7 @@ class SiteController extends Controller
     public function show(Site $site): JsonResponse
     {
         return $this->success(
-            SiteResource::make($site->load('country')),
+            SiteResource::make($site->load(['country', 'legalEntity'])),
             'Site retrieved successfully.'
         );
     }
@@ -70,7 +70,7 @@ class SiteController extends Controller
         $site->update($validated);
 
         return $this->success(
-            SiteResource::make($site->fresh()->load('country')),
+            SiteResource::make($site->fresh()->load(['country', 'legalEntity'])),
             'Site updated successfully.'
         );
     }
@@ -79,7 +79,7 @@ class SiteController extends Controller
     {
         if ($site->isArchived()) {
             return $this->success(
-                SiteResource::make($site->load('country')),
+                SiteResource::make($site->load(['country', 'legalEntity'])),
                 'Site already archived.'
             );
         }
@@ -89,7 +89,7 @@ class SiteController extends Controller
         $site->update(['archived_at' => now()]);
 
         return $this->success(
-            SiteResource::make($site->fresh()->load('country')),
+            SiteResource::make($site->fresh()->load(['country', 'legalEntity'])),
             'Site archived successfully.'
         );
     }
@@ -98,7 +98,7 @@ class SiteController extends Controller
     {
         if (! $site->isArchived()) {
             return $this->success(
-                SiteResource::make($site->load('country')),
+                SiteResource::make($site->load(['country', 'legalEntity'])),
                 'Site already active.'
             );
         }
@@ -106,7 +106,7 @@ class SiteController extends Controller
         $site->update(['archived_at' => null]);
 
         return $this->success(
-            SiteResource::make($site->fresh()->load('country')),
+            SiteResource::make($site->fresh()->load(['country', 'legalEntity'])),
             'Site unarchived successfully.'
         );
     }
@@ -154,6 +154,12 @@ class SiteController extends Controller
             'country_id' => [$creating ? 'required' : 'sometimes', 'required', 'integer', Rule::exists('countries', 'id')],
             'timezone' => $timezoneRule,
             'currency' => SupportedCurrencies::rules(required: false),
+            'legal_entity_id' => [
+                $creating ? 'required' : 'sometimes',
+                'required',
+                'integer',
+                Rule::exists('legal_entities', 'id')->whereNull('archived_at'),
+            ],
         ]);
     }
 

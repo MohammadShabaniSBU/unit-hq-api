@@ -40,6 +40,7 @@
 - **D5 — Invoice vs Statement.** Fiscal **Invoice** (S03); **Statement** is a computed view. Current display-grouping table renamed to `billing_periods` (S01-00b).
 - **Rate junction currency mismatch (S01-00b).** Attaching a price whose currency differs from `sites.currency` (when set) hard-fails with 422 unless the request passes `allow_currency_mismatch=true`. Recorded so a wrong denomination cannot silently land on a rate.
 - **D6 / D7 — Payments and fiscal identity scope to `legal_entities`.** Not sites. Sites belong to one legal entity. `legal_entities` is fiscal, not a tenancy boundary (invariant 34). Supersedes roadmap README §4 D6/D7 site scoping. Schema in S03; doc surgery in S01-05.
+- **D-entry — S03 built answer-agnostic.** Schema, Settings UI, and issuance path support several legal entities; one is seeded (`PENDING-GESTOR`). The client's one-vs-several answer is go-live data entry, not a code blocker. See sprint-03 README.
 - **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
 
 ## Explicitly out of scope (for now)
@@ -59,11 +60,20 @@
 - **`action.create_object` for Contract / Reservation / Offer** — creation is not a plain insert (billing transaction, offer-acceptance atomicity, offer token/status flow). Needs dedicated nodes calling real transactional creation paths (`ContractBilling`, offer acceptance), not the generic handler.
 - **FK-shaped create/update field pickers** — later UI polish: TargetRecordPicker-style dropdown for FK fields that still stores a dynamic expression string underneath.
 
+## Gestor confirmations (needed before S04 ends, not before S03 starts)
+
+| # | Question | Affects |
+|---|---|---|
+| 1 | One entity or several? NIF(s), registered addresses, SEPA creditor IDs | Go-live data entry |
+| 2 | May self-storage rents be invoiced as **facturas simplificadas**, or do amounts/activity require ordinary invoices with tenant NIF? | Whether tenant tax IDs must be collected at signing (S03-01) |
+| 3 | Are **deposit** charges excluded from VAT invoices (guarantee, not supply)? Default here: excluded | S03-03 issuance filter |
+| 4 | Rectificative method to state on credit invoices (por diferencias assumed) | S03-04 wording |
+| 5 | Series numbering across the SpaceManager cutover — continue or fresh series at genesis? | Go-live series setup |
+
 ## Undecided
 
 | Topic | Options / notes |
 |---|---|
-| **Spanish client legal entities (blocks S03)** | One legal entity with several sites, or several entities? Owner: **Product**. Target: **before S03 kickoff**. If open at S03 start, S03 cannot begin — say so in the retro. See `architecture-payments-and-fiscal.md`. |
 | Revenue model | **Flat SaaS** (default direction). Application fees are off the table without Connect; do not reopen destination charges / platform fee collection. |
 | Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
 | Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |

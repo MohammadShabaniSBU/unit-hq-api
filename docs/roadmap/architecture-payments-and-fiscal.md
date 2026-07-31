@@ -80,12 +80,12 @@ Installs with a single entity are unaffected in practice.
 
 Review this invariant at every sprint retro. It is the one that will erode quietly.
 
-### Open question — blocking S03
+### Client question — go-live data, not a code blocker
 
 **Is the Spanish client one legal entity with several sites, or several entities?**
-If one, the table has a single row and costs nothing but future-proofing. If several,
-invoice series and Stripe credentials must hang off the entity from day one and the panel
-needs an entity management screen in Settings. Confirm before S03 begins.
+S03 builds for several and seeds one (`PENDING-GESTOR`). The answer determines go-live
+data entry (NIFs, addresses, SEPA creditor IDs), not schema or Settings UI. See
+`docs/10-open-decisions.md` gestor confirmations and D-entry.
 
 ---
 
@@ -316,11 +316,13 @@ Enabling a regime starts a chain. Disabling must never break one:
 | `payment_provider_accounts`, per-account webhook routing, cards | S06 |
 | `sepa_mandates`, runs, instructions, `pain.008` export, returns import | S07 |
 
-## 5. Confirmations needed before S03 starts
+## 5. Confirmations needed before go-live (not before S03 code)
 
-1. **One legal entity or several?** Blocks the S03 schema.
+1. **One legal entity or several?** Go-live data entry — S03 schema supports several; one is seeded.
 2. **Gestor sign-off on cutover** — genesis date, series continuity, SpaceManager status.
 3. **Contractual SDD pre-notification period** in the client's current tenancy terms —
    determines how many days ahead the recurring job must run.
 4. **Which bank, and which file format version** they accept (Cuaderno 19-14 is standard,
    but banks differ on optional fields and some still take 19-43/19-44 variants).
+
+Full gestor confirmation table: `docs/10-open-decisions.md` and sprint-03 README.

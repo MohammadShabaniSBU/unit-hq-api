@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\FiscalRegime;
+use App\Enums\TaxIdType;
 use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
+use App\Models\LegalEntity;
 use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
@@ -46,13 +49,33 @@ class DatabaseSeeder extends Seeder
         $uk = Country::query()->where('code', 'GB')->firstOrFail();
         $france = Country::query()->where('code', 'FR')->firstOrFail();
 
+        // One placeholder entity (migration may already have inserted it on upgrade).
+        // Address mirrors Madrid Centro — the first ES site.
+        $legalEntity = LegalEntity::query()->firstOrCreate(
+            ['tax_id' => 'PENDING-GESTOR'],
+            [
+                'legal_name' => 'PENDING GESTOR',
+                'trading_name' => null,
+                'tax_id_type' => TaxIdType::Nif,
+                'vat_number' => null,
+                'country_code' => 'ES',
+                'address_line1' => 'Calle Placeholder 1',
+                'address_line2' => null,
+                'city' => 'Madrid',
+                'postal_code' => '28001',
+                'fiscal_regime' => FiscalRegime::None,
+                'sepa_creditor_id' => null,
+                'archived_at' => null,
+            ]
+        );
+
         // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris
         $siteDefs = [
-            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
-            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
-            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR'],
-            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP'],
-            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR'],
+            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
+            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
+            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
+            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP', 'legal_entity_id' => $legalEntity->id],
+            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
         ];
 
         $sites = collect();

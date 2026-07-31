@@ -25,6 +25,14 @@ class SiteResource extends BaseResource
             'country_id' => $this->country_id,
             'timezone' => $this->timezone,
             'currency' => $this->currency,
+            'legal_entity_id' => $this->legal_entity_id,
+            'legal_entity' => $this->when(
+                $this->relationLoaded('legalEntity') && $this->legalEntity !== null,
+                fn () => [
+                    'id' => $this->legalEntity->id,
+                    'legal_name' => $this->legalEntity->legal_name,
+                ]
+            ),
             'archived_at' => $this->datetime($this->archived_at),
             'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),

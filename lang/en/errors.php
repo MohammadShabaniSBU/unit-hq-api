@@ -29,5 +29,13 @@ return [
         'transfer_no_unit_item' => 'Contract has no open unit item to transfer.',
         'transfer_no_catalogue_price' => 'Destination unit has no current catalogue price.',
     ],
+    'legal_entities' => [
+        'archive_with_active_sites' => 'Cannot archive legal entity with :count active site(s). Reassign or archive those sites first.',
+        'archive_with_invoices' => 'Cannot archive a legal entity that has issued invoices.',
+        'identity_frozen' => 'tax_id and country_code cannot change after invoices have been issued under this entity. Create a new entity instead.',
+        'fiscal_regime_s04' => 'Fiscal regime ":regime" is not available yet — enable it in sprint S04 (Verifactu).',
+        'fiscal_regime_unimplemented' => 'Fiscal regime ":regime" is not implemented.',
+        'fiscal_regime_invalid' => 'Fiscal regime ":regime" is not a valid value.',
+    ],
 ];
 

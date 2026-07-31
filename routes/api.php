@@ -50,6 +50,7 @@ Route::patch('settings/activity-log', [Facility\SettingController::class, 'updat
 Route::get('activities', [Controllers\ActivityController::class, 'index']);
 
 Route::get('countries/options', [Facility\CountryController::class, 'options']);
+Route::get('legal-entities/options', [Controllers\LegalEntityController::class, 'options']);
 Route::get('sites/options', [Facility\SiteController::class, 'options']);
 Route::get('unit-classes/options', [Facility\UnitClassController::class, 'options']);
 Route::get('units/options', [Facility\UnitController::class, 'options']);
@@ -86,6 +87,10 @@ Route::get('{entityType}/{entityId}/attribute-values', [Controllers\AttributeVal
     ->whereIn('entityType', ['contact', 'deal', 'offer', 'reservation', 'unit', 'contract'])
     ->whereNumber('entityId');
 Route::patch('attribute-values', [Controllers\AttributeValueController::class, 'upsert']);
+
+Route::apiResource('legal-entities', Controllers\LegalEntityController::class);
+Route::post('legal-entities/{legal_entity}/archive', [Controllers\LegalEntityController::class, 'archive']);
+Route::post('legal-entities/{legal_entity}/unarchive', [Controllers\LegalEntityController::class, 'unarchive']);
 
 Route::apiResource('sites', Facility\SiteController::class);
 Route::post('sites/{site}/archive', [Facility\SiteController::class, 'archive']);

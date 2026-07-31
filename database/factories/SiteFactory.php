@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Country;
+use App\Models\LegalEntity;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -34,6 +35,7 @@ class SiteFactory extends Factory
                 ?? Country::factory(),
             'timezone' => 'Europe/Madrid',
             'currency' => 'EUR',
+            'legal_entity_id' => LegalEntity::factory(),
             'archived_at' => null,
         ];
     }
