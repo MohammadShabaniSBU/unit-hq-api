@@ -7,12 +7,12 @@ use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\ContactSource;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
+use App\Http\Resources\BillingPeriodResource;
 use App\Http\Resources\ContactCardResource;
 use App\Http\Resources\ContactResource;
-use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\PaymentResource;
+use App\Models\BillingPeriod;
 use App\Models\Contact;
-use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -156,7 +156,7 @@ class ContactController extends Controller
     {
         $contractScope = fn ($query) => $query->where('contact_id', $contact->id);
 
-        $invoices = Invoice::query()
+        $billingPeriods = BillingPeriod::query()
             ->whereHas('contract', $contractScope)
             ->with(['charges', 'contract.items.item'])
             ->orderByDesc('billing_period_start')
@@ -169,7 +169,7 @@ class ContactController extends Controller
             ->get();
 
         return $this->success([
-            'invoices' => InvoiceResource::collection($invoices)->resolve(),
+            'billing_periods' => BillingPeriodResource::collection($billingPeriods)->resolve(),
             'payments' => PaymentResource::collection($payments)->resolve(),
         ], 'Contact transactions retrieved successfully.');
     }

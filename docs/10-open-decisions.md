@@ -35,9 +35,10 @@
 - **`action.create_object` v1:** allowlist = Contact, Deal, Task, Note. Field values reuse `ValueSource` (`static` / `dynamic`) matching `update_object` — not TargetRecord-style per-field modes. Created record emits `subject_id` for downstream `step_output` targeting. Task/Note use `relatedTo` (TargetRecord, default `trigger_subject`) for the parent morph; `created_by` / `employee_id` default from run causer or first employee.
 - **D1 — Currency lives on the price row.** `prices.currency` is sole authority. Site and org currency are form prefill only. Contract snapshots amount **and** currency. Supersedes roadmap README §4 item 1.
 - **D2 — Tax jurisdiction vocabulary.** `tax_rates.jurisdiction` is `NULL` or ISO 3166-1 alpha-2 with optional ISO 3166-2 subdivision. Site country is `country_id` → `countries.code` (no denormalised `country_code`). Jurisdiction-aware resolution *implemented in S03*.
-- **D3 — Charge types.** `adjustment`, `write_off`, `refund` added to `ChargeType` with `isRevenue()` excluding `deposit` / `write_off` / `refund`. Revenue grouped by currency (aggregate in S01-00b). A refund does not reverse revenue; credit notes are S03.
+- **D3 — Charge types.** `adjustment`, `write_off`, `refund` added to `ChargeType` with `isRevenue()` excluding `deposit` / `write_off` / `refund`. Revenue grouped by currency via `App\Support\Billing\RevenueByCurrency`. A refund does not reverse revenue; credit notes are S03.
 - **D4 — Panel locale `fr`.** Scaffolded alongside `en`/`es`. Locale never determines currency.
-- **D5 — Invoice vs Statement.** Fiscal **Invoice** (S03); **Statement** is a computed view. Rename current `invoices` → `billing_periods` in S01-00b.
+- **D5 — Invoice vs Statement.** Fiscal **Invoice** (S03); **Statement** is a computed view. Current display-grouping table renamed to `billing_periods` (S01-00b).
+- **Rate junction currency mismatch (S01-00b).** Attaching a price whose currency differs from `sites.currency` (when set) hard-fails with 422 unless the request passes `allow_currency_mismatch=true`. Recorded so a wrong denomination cannot silently land on a rate.
 - **D6 / D7 — Payments and fiscal identity scope to `legal_entities`.** Not sites. Sites belong to one legal entity. `legal_entities` is fiscal, not a tenancy boundary (invariant 34). Supersedes roadmap README §4 D6/D7 site scoping. Schema in S03; doc surgery in S01-05.
 - **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
 

@@ -15,7 +15,7 @@ class ChargeResource extends BaseResource
             'id'                    => $this->id,
             'contract_id'           => $this->contract_id,
             'contract_item_id'      => $this->contract_item_id,
-            'invoice_id'            => $this->invoice_id,
+            'billing_period_id'     => $this->billing_period_id,
             'charge_type'           => $this->charge_type instanceof \App\Enums\ChargeType
                 ? $this->charge_type->value
                 : $this->charge_type,
@@ -25,6 +25,7 @@ class ChargeResource extends BaseResource
             'tax_rate_snapshot'     => $this->tax_rate_snapshot,
             'tax_amount'            => $this->tax_amount,
             'amount'                => $this->amount,
+            'currency'              => $this->currency,
             'due_date'              => $this->date($this->due_date),
             'description'           => $this->description,
             'reversal_of_charge_id' => $this->reversal_of_charge_id,

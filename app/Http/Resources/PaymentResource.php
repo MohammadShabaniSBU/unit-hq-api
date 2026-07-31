@@ -17,6 +17,7 @@ class PaymentResource extends BaseResource
             'id'                       => $this->id,
             'contract_id'              => $this->contract_id,
             'amount'                   => $this->amount,
+            'currency'                 => $this->currency,
             'stripe_payment_intent_id' => $this->stripe_payment_intent_id,
             'reversal_of_payment_id'   => $this->reversal_of_payment_id,
             'created_at'               => $this->datetime($this->created_at),
@@ -45,6 +46,7 @@ class PaymentResource extends BaseResource
         return [
             'id'          => $this->contract->id,
             'status'      => $this->contract->status,
+            'currency'    => $this->contract->currency,
             'unit_number' => $unitNumber,
         ];
     }

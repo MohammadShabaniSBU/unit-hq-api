@@ -18,6 +18,7 @@ class ContractCardResource extends BaseResource
             'deal_id' => $this->deal_id,
             'reservation_id' => $this->reservation_id,
             'status' => $this->status instanceof \BackedEnum ? $this->status->value : $this->status,
+            'currency' => $this->currency,
             'start_date' => $this->date($this->start_date),
             'end_date' => $this->date($this->end_date),
             'signed_at' => $this->datetime($this->signed_at),
@@ -36,6 +37,8 @@ class ContractCardResource extends BaseResource
                 return [
                     'id' => $item->id,
                     'unit_number' => $item->unit_number,
+                    'amount' => $this->unitItem?->amount,
+                    'currency' => $this->unitItem?->currency ?? $this->currency,
                     'site' => $item->relationLoaded('site') && $item->site !== null
                         ? [
                             'id' => $item->site->id,

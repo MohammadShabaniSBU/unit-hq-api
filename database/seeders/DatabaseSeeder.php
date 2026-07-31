@@ -163,6 +163,7 @@ class DatabaseSeeder extends Seeder
                 'proration_method'       => $billing->prorationMethod,
                 'move_in_date'           => $moveIn->toDateString(),
                 'deposit_amount'         => $billing->defaultDepositAmount,
+                'currency'               => $price->currency,
             ]);
 
             ContractItem::create([
@@ -170,6 +171,7 @@ class DatabaseSeeder extends Seeder
                 'item_type'   => 'unit',
                 'item_id'     => $unit->id,
                 'amount'      => $price->amount,
+                'currency'    => $price->currency,
                 'price_id'    => $price->id,
             ]);
         }

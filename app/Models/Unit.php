@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -40,8 +41,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property-read Site                           $site
  * @property-read UnitClass                      $unitClass
- * @property-read Collection<int, Reservation>   $reservations
- * @property-read Collection<int, ContractItem>  $contractItems
+ * @property-read Collection<int, Reservation>     $reservations
+ * @property-read Collection<int, ContractItem>    $contractItems
+ * @property-read Collection<int, UnitOccupancy>   $occupancies
+ * @property-read UnitOccupancy|null               $currentOccupancy
  */
 class Unit extends Model
 {
@@ -95,6 +98,18 @@ class Unit extends Model
     public function contractItems(): MorphMany
     {
         return $this->morphMany(ContractItem::class, 'item');
+    }
+
+    /** @return HasMany<UnitOccupancy, Unit> */
+    public function occupancies(): HasMany
+    {
+        return $this->hasMany(UnitOccupancy::class);
+    }
+
+    /** @return HasOne<UnitOccupancy, Unit> */
+    public function currentOccupancy(): HasOne
+    {
+        return $this->hasOne(UnitOccupancy::class)->whereNull('ended_on');
     }
 
     /** @param Builder<Unit> $query */

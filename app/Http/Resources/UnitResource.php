@@ -23,6 +23,15 @@ class UnitResource extends BaseResource
             'status'        => $this->resource instanceof Unit
                 ? $this->resource->deriveStatus()->value
                 : null,
+            'current_occupancy' => $this->when(
+                $this->relationLoaded('currentOccupancy'),
+                fn () => $this->currentOccupancy !== null
+                    ? [
+                        'contract_id' => $this->currentOccupancy->contract_id,
+                        'started_on'  => $this->date($this->currentOccupancy->started_on),
+                    ]
+                    : null,
+            ),
             'created_at'    => $this->datetime($this->created_at),
             'updated_at'    => $this->datetime($this->updated_at),
             'site'          => SiteResource::make($this->whenLoaded('site')),

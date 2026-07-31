@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\BillingPeriod;
 use App\Models\Contract;
-use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Invoice>
+ * @extends Factory<BillingPeriod>
  */
-class InvoiceFactory extends Factory
+class BillingPeriodFactory extends Factory
 {
-    protected $model = Invoice::class;
+    protected $model = BillingPeriod::class;
 
-    /**
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         $periodStart = fake()->dateTimeBetween('-12 months', '-1 month');

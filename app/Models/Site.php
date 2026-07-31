@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $state_region
  * @property int|null    $country_id
  * @property string      $timezone
+ * @property string|null $currency   ISO 4217 form prefill only (D1) — not authoritative
  * @property Carbon|null $archived_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
@@ -62,6 +63,7 @@ class Site extends Model
         'state_region',
         'country_id',
         'timezone',
+        'currency',
         'archived_at',
     ];
 

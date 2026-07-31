@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\Billing\CurrencyGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only credit entry. Confirmed from Stripe webhooks using
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int         $id
  * @property int         $contract_id
  * @property string      $amount                NUMERIC(10,2)
+ * @property string      $currency              ISO 4217 snapshot from contract
  * @property string|null $stripe_payment_intent_id
  * @property string      $idempotency_key
  * @property int|null    $reversal_of_payment_id
@@ -36,9 +38,27 @@ class Payment extends Model
 
     const UPDATED_AT = null;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Payment $payment): void {
+            if ($payment->currency === null || $payment->currency === '') {
+                $payment->currency = $payment->contract()->value('currency') ?? 'EUR';
+            }
+
+            $contract = $payment->relationLoaded('contract')
+                ? $payment->contract
+                : Contract::query()->find($payment->contract_id);
+
+            if ($contract !== null) {
+                CurrencyGuard::assertMatchesContract($contract, (string) $payment->currency);
+            }
+        });
+    }
+
     protected $fillable = [
         'contract_id',
         'amount',
+        'currency',
         'stripe_payment_intent_id',
         'idempotency_key',
         'reversal_of_payment_id',

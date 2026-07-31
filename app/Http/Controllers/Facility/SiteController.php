@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Facility;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
+use App\Support\Billing\SupportedCurrencies;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -131,6 +132,12 @@ class SiteController extends Controller
         $routeSite = $request->route('site');
         $ignoreId = $routeSite instanceof Site ? $routeSite->id : $routeSite;
 
+        if ($request->filled('currency')) {
+            $request->merge([
+                'currency' => SupportedCurrencies::normalize((string) $request->input('currency')),
+            ]);
+        }
+
         return $request->validate([
             'name' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:255', Rule::unique('sites', 'code')->ignore($ignoreId)],
@@ -146,6 +153,7 @@ class SiteController extends Controller
             'state_region' => ['nullable', 'string', 'max:255'],
             'country_id' => [$creating ? 'required' : 'sometimes', 'required', 'integer', Rule::exists('countries', 'id')],
             'timezone' => $timezoneRule,
+            'currency' => SupportedCurrencies::rules(required: false),
         ]);
     }
 

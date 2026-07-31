@@ -47,6 +47,7 @@ use Illuminate\Support\Carbon;
  * @property ProrationMethod     $proration_method         daily|full_period|none
  * @property string|null         $move_in_date             Y-m-d
  * @property string              $deposit_amount           NUMERIC(10,2)
+ * @property string              $currency                 ISO 4217 snapshot at signing (invariant 35)
  * @property ContractStatus      $status                   active|moved_out|terminated|expired
  * @property Carbon              $signed_at
  * @property Carbon              $created_at
@@ -58,9 +59,10 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, ContractItem>    $items
  * @property-read ContractItem|null                $unitItem
  * @property-read ContractItem|null                $insuranceItem
- * @property-read Collection<int, Invoice>         $invoices
+ * @property-read Collection<int, BillingPeriod>   $billingPeriods
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
+ * @property-read Collection<int, UnitOccupancy>   $occupancies
  * @property-read Collection<int, Note>              $notes
  */
 class Contract extends Model
@@ -81,6 +83,7 @@ class Contract extends Model
         'proration_method',
         'move_in_date',
         'deposit_amount',
+        'currency',
         'status',
         'signed_at',
     ];
@@ -224,10 +227,10 @@ class Contract extends Model
         return $this->hasOne(ContractItem::class)->where('item_type', 'insurance');
     }
 
-    /** @return HasMany<Invoice, Contract> */
-    public function invoices(): HasMany
+    /** @return HasMany<BillingPeriod, Contract> */
+    public function billingPeriods(): HasMany
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(BillingPeriod::class);
     }
 
     /** @return HasMany<Charge, Contract> */
@@ -240,6 +243,12 @@ class Contract extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /** @return HasMany<UnitOccupancy, Contract> */
+    public function occupancies(): HasMany
+    {
+        return $this->hasMany(UnitOccupancy::class);
     }
 
     /**
@@ -303,7 +312,15 @@ class Contract extends Model
         return number_format($overdue, 2, '.', '');
     }
 
-    /** @return array{billed_through: string|null, balance_owed: string, unallocated_credit: string, overdue_amount: string} */
+    /**
+     * @return array{
+     *     billed_through: string|null,
+     *     balance_owed: string,
+     *     unallocated_credit: string,
+     *     overdue_amount: string,
+     *     currency: string
+     * }
+     */
     public function billingSummary(): array
     {
         return [
@@ -311,6 +328,7 @@ class Contract extends Model
             'balance_owed'       => $this->balanceOwed(),
             'unallocated_credit' => $this->unallocatedCredit(),
             'overdue_amount'     => $this->overdueAmount(),
+            'currency'           => (string) $this->currency,
         ];
     }
 }

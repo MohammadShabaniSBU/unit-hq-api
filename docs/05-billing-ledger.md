@@ -5,7 +5,7 @@
 | Layer | Tables | Role |
 |---|---|---|
 | Charges / Payments | `charges`, `payments` | Atomic debit / credit — **append-only** |
-| Billing periods | `invoices` today → rename to `billing_periods` in S01-00b | Group charges by period — **display grouping, not source of truth** (name freed for S03 fiscal **Invoice**) |
+| Billing periods | `billing_periods` | Group charges by period — **display grouping, not source of truth** (name freed for S03 fiscal **Invoice**) |
 | Allocations | `allocations` | Map payment money onto specific charges |
 
 The design evolved from a single generic ledger-entries table to explicit `Charge` and `Payment` models, but the ledger principles are unchanged.
@@ -16,8 +16,8 @@ The design evolved from a single generic ledger-entries table to explicit `Charg
   S03 onward this is the source of truth for what was billed.
 - **Statement** — a computed view of what a contact owes right now across contracts. Never a
   stored row. Never numbered.
-- The current `invoices` table is neither; rename to **`billing_periods`** in S01-00b so the
-  name `invoices` is free for the fiscal document.
+- The display-grouping table is **`billing_periods`** (renamed in S01-00b) so the name
+  `invoices` is free for the fiscal document.
 
 ## Hard invariants
 
@@ -28,8 +28,11 @@ The design evolved from a single generic ledger-entries table to explicit `Charg
 - Charges carry a **type** and a **due date** so late-fee assessment and lien eligibility can be automated. Jurisdiction-specific rules are configurable.
 - The ledger attaches to the **Contract** — every charge, payment, and allocation references one.
 - **`deposit` charges are not revenue** — exclude them from revenue rollups / analytics.
-- **Revenue is grouped by currency, never summed across it** (invariant 30). Aggregate helper
-  `revenueByCurrency()` lands in S01-00b after `charges.currency` exists.
+- **Revenue is grouped by currency, never summed across it** (invariant 30). Use
+  `App\Support\Billing\RevenueByCurrency::group()`.
+- **One contract, one currency** (invariant 35). `contracts.currency` is snapshotted at
+  signing; every charge and payment carries the same currency. Assert via
+  `App\Support\Billing\CurrencyGuard`.
 
 ### Charge types (D3)
 

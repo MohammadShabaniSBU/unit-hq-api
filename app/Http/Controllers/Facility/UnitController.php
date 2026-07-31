@@ -93,6 +93,8 @@ class UnitController extends Controller
 
     public function show(Unit $unit): JsonResponse
     {
+        $unit->load('currentOccupancy');
+
         return $this->success(
             UnitResource::make($unit),
             'Unit retrieved successfully.'

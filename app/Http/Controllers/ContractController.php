@@ -6,12 +6,15 @@ use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
+use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractCardResource;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\Setting;
 use App\Models\Unit;
 use App\Support\Billing\ContractBilling;
+use App\Support\Billing\CurrencyGuard;
+use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\RecordsActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -24,6 +27,7 @@ class ContractController extends Controller
 {
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
+    use WritesUnitOccupancies;
 
     public function index(Request $request): JsonResponse
     {
@@ -107,9 +111,12 @@ class ContractController extends Controller
             'items.*.description'           => ['nullable', 'string'],
         ]);
 
-        $contract = DB::transaction(function () use ($validated) {
+        $contract = DB::transaction(function () use ($validated, $request) {
             $billing = Setting::billing();
             $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
+            $endedOn = isset($validated['end_date'])
+                ? CarbonImmutable::parse($validated['end_date'])->startOfDay()
+                : null;
 
             $contract = Contract::query()->create([
                 'contact_id'             => $validated['contact_id'],
@@ -125,9 +132,19 @@ class ContractController extends Controller
                 'proration_method'       => $billing->prorationMethod,
                 'move_in_date'           => $moveIn->toDateString(),
                 'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
+                // Placeholder until items agree — overwritten before charges.
+                'currency'               => $billing->defaultCurrency ?: 'EUR',
             ]);
 
-            $contractItems = collect($validated['items'])->map(function (array $itemData) use ($contract, $moveIn) {
+            $siteId = null;
+            foreach ($validated['items'] as $itemData) {
+                if ($itemData['item_type'] === 'unit') {
+                    $siteId = Unit::query()->whereKey($itemData['item_id'])->value('site_id');
+                    break;
+                }
+            }
+
+            $contractItems = collect($validated['items'])->map(function (array $itemData) use ($contract, $moveIn, $siteId) {
                 $taxRate = $this->resolveContractItemTaxRate(
                     $itemData['item_type'],
                     $itemData['item_id'],
@@ -135,16 +152,33 @@ class ContractController extends Controller
                     $moveIn,
                 );
 
+                $itemSiteId = $itemData['item_type'] === 'unit'
+                    ? Unit::query()->whereKey($itemData['item_id'])->value('site_id')
+                    : $siteId;
+
+                $currency = ResolvesItemCurrency::forItem(
+                    $itemData['item_type'],
+                    $itemData['item_id'],
+                    null,
+                    $itemSiteId !== null ? (int) $itemSiteId : null,
+                );
+
                 return $contract->items()->create([
                     'item_type'             => $itemData['item_type'],
                     'item_id'               => $itemData['item_id'],
                     'amount'                => $itemData['amount'],
+                    'currency'              => $currency,
                     'tax_rate_id'           => $taxRate?->id,
                     'tax_rate_snapshot'     => $taxRate?->rate,
                     'declared_goods_value'  => $itemData['declared_goods_value'] ?? null,
                     'description'           => $itemData['description'] ?? null,
                 ]);
             });
+
+            $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
+            $contract->forceFill(['currency' => $agreedCurrency])->save();
+
+            $this->writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $request->user()?->id);
 
             $plan = ContractBilling::planFirstPeriod(
                 $moveIn,
@@ -167,7 +201,7 @@ class ContractController extends Controller
         });
 
         return $this->created(
-            ContractResource::make($contract->load(['items.item', 'contact', 'reservation'])),
+            ContractResource::make($contract->load(['items.item', 'contact', 'reservation', 'occupancies'])),
             'Contract created successfully.'
         );
     }
@@ -271,7 +305,8 @@ class ContractController extends Controller
             'notes.employee',
             'items.discount',
             'items.taxRate',
-            'invoices' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
+            'occupancies',
+            'billingPeriods' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
             'payments' => fn ($query) => $query->orderByDesc('created_at')->with('allocations'),
             'charges'  => fn ($query) => $query->orderByDesc('due_date'),
             'items.item' => function (MorphTo $morphTo): void {

@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
+use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\SupportedCurrencies;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
@@ -54,13 +55,34 @@ class UnitClassPriceController extends Controller
         }
 
         $validated = $request->validate([
-            'site_id'  => ['required', 'integer', 'exists:sites,id'],
-            'amount'   => ['required', 'numeric', 'min:0'],
-            'currency' => SupportedCurrencies::rules(required: true),
+            'site_id'                  => ['required', 'integer', 'exists:sites,id'],
+            'amount'                   => ['required', 'numeric', 'min:0'],
+            'currency'                 => SupportedCurrencies::rules(required: false),
+            'allow_currency_mismatch'  => ['sometimes', 'boolean'],
         ]);
 
         $billing = Setting::billing();
         $billingPeriod = $this->legacyBillingPeriodLabel($billing->defaultBillingInterval);
+        $site = Site::query()->findOrFail($validated['site_id']);
+
+        $currency = SupportedCurrencies::normalize(
+            (string) ($validated['currency']
+                ?? $site->currency
+                ?? $billing->defaultCurrency
+                ?: 'EUR')
+        );
+
+        if (! SupportedCurrencies::isAllowed($currency)) {
+            throw ValidationException::withMessages([
+                'currency' => ['The selected currency is invalid.'],
+            ]);
+        }
+
+        CurrencyGuard::assertRateJunction(
+            $site->currency,
+            $currency,
+            (bool) ($validated['allow_currency_mismatch'] ?? false),
+        );
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
 
@@ -72,7 +94,7 @@ class UnitClassPriceController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $sitePrice = DB::transaction(function () use ($unitClass, $validated, $billingPeriod, $createdBy, $today) {
+        $sitePrice = DB::transaction(function () use ($unitClass, $validated, $billingPeriod, $createdBy, $today, $site, $currency) {
             $existingRate = UnitClassRate::query()
                 ->with('price')
                 ->where('unit_class_id', $unitClass->id)
@@ -86,7 +108,7 @@ class UnitClassPriceController extends Controller
 
             $price = Price::query()->create([
                 'amount'         => $validated['amount'],
-                'currency'       => $validated['currency'],
+                'currency'       => $currency,
                 'billing_period' => $billingPeriod,
                 'effective_from' => $today,
                 'effective_to'   => null,
@@ -107,8 +129,6 @@ class UnitClassPriceController extends Controller
                 'amount' => (string) $price->amount,
                 'currency' => $price->currency,
             ]);
-
-            $site = Site::query()->findOrFail($validated['site_id']);
 
             return $this->formatSitePrice($site, null, $price);
         });

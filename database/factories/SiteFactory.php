@@ -33,6 +33,7 @@ class SiteFactory extends Factory
             'country_id' => Country::query()->inRandomOrder()->value('id')
                 ?? Country::factory(),
             'timezone' => 'Europe/Madrid',
+            'currency' => 'EUR',
             'archived_at' => null,
         ];
     }

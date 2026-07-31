@@ -10,7 +10,7 @@ use App\Enums\ChargeType;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
-use App\Models\Invoice;
+use App\Models\BillingPeriod;
 use App\Models\Payment;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -61,10 +61,10 @@ class BillingSeeder extends Seeder
                 foreach ($periods as $index => $period) {
                     $isRecentPeriod = $unpaidTailSize > 0 && $index >= count($periods) - $unpaidTailSize;
 
-                    $invoice = $this->createInvoice($contract, $period);
+                    $billingPeriod = $this->createBillingPeriod($contract, $period);
                     $periodCharges = $this->createPeriodCharges(
                         $contract,
-                        $invoice,
+                        $billingPeriod,
                         $unitItem,
                         $insuranceItem,
                         $period
@@ -140,11 +140,11 @@ class BillingSeeder extends Seeder
     /**
      * @param array{start: Carbon, end: Carbon, due_date: Carbon} $period
      */
-    private function createInvoice(Contract $contract, array $period): Invoice
+    private function createBillingPeriod(Contract $contract, array $period): BillingPeriod
     {
         $issuedAt = $period['start']->copy();
 
-        $invoice = Invoice::query()->create([
+        $billingPeriod = BillingPeriod::query()->create([
             'contract_id'          => $contract->id,
             'billing_period_start' => $period['start']->toDateString(),
             'billing_period_end'   => $period['end']->toDateString(),
@@ -152,9 +152,9 @@ class BillingSeeder extends Seeder
             'issued_at'            => $issuedAt,
         ]);
 
-        $invoice->forceFill(['created_at' => $issuedAt])->save();
+        $billingPeriod->forceFill(['created_at' => $issuedAt])->save();
 
-        return $invoice;
+        return $billingPeriod;
     }
 
     /**
@@ -163,7 +163,7 @@ class BillingSeeder extends Seeder
      */
     private function createPeriodCharges(
         Contract $contract,
-        Invoice $invoice,
+        BillingPeriod $billingPeriod,
         ContractItem $unitItem,
         ?ContractItem $insuranceItem,
         array $period
@@ -174,7 +174,7 @@ class BillingSeeder extends Seeder
         $rentCharge = Charge::query()->create([
             'contract_id'           => $contract->id,
             'contract_item_id'      => $unitItem->id,
-            'invoice_id'            => $invoice->id,
+            'billing_period_id'            => $billingPeriod->id,
             'charge_type'           => ChargeType::Rent,
             'period_start'          => $period['start']->toDateString(),
             'period_end'            => $period['end']->toDateString(),
@@ -193,7 +193,7 @@ class BillingSeeder extends Seeder
             $insuranceCharge = Charge::query()->create([
                 'contract_id'           => $contract->id,
                 'contract_item_id'      => $insuranceItem->id,
-                'invoice_id'            => $invoice->id,
+                'billing_period_id'            => $billingPeriod->id,
                 'charge_type'           => ChargeType::Insurance,
                 'period_start'          => $period['start']->toDateString(),
                 'period_end'            => $period['end']->toDateString(),
@@ -323,7 +323,7 @@ class BillingSeeder extends Seeder
 
             $reversal = Charge::query()->create([
                 'contract_id'           => $original->contract_id,
-                'invoice_id'            => $original->invoice_id,
+                'billing_period_id'            => $original->billing_period_id,
                 'charge_type'           => $original->charge_type,
                 'amount'                => bcmul((string) $original->amount, '-1', 2),
                 'due_date'              => $original->due_date,

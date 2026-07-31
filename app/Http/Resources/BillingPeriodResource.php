@@ -8,11 +8,19 @@ use App\Models\ContractItem;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 
-class InvoiceResource extends BaseResource
+class BillingPeriodResource extends BaseResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        $currency = null;
+
+        if ($this->relationLoaded('contract') && $this->contract !== null) {
+            $currency = $this->contract->currency;
+        } elseif ($this->relationLoaded('charges')) {
+            $currency = $this->charges->first()?->currency;
+        }
+
         return [
             'id'                   => $this->id,
             'contract_id'          => $this->contract_id,
@@ -21,6 +29,7 @@ class InvoiceResource extends BaseResource
             'status'               => $this->status,
             'issued_at'            => $this->datetime($this->issued_at),
             'created_at'           => $this->datetime($this->created_at),
+            'currency'             => $currency,
             'total'                => $this->whenLoaded(
                 'charges',
                 fn () => number_format((float) $this->charges->sum('amount'), 2, '.', '')
@@ -47,6 +56,7 @@ class InvoiceResource extends BaseResource
         return [
             'id'          => $this->contract->id,
             'status'      => $this->contract->status,
+            'currency'    => $this->contract->currency,
             'unit_number' => $unitNumber,
         ];
     }

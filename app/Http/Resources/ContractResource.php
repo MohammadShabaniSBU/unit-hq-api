@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use App\Models\ContractItem;
 use App\Models\Discount;
 use App\Models\Insurance;
 use App\Models\Unit;
+use App\Models\UnitOccupancy;
 use Illuminate\Http\Request;
 
 class ContractResource extends BaseResource
@@ -28,12 +31,20 @@ class ContractResource extends BaseResource
             'proration_method'       => $this->enumValue($this->proration_method),
             'move_in_date'           => $this->date($this->move_in_date),
             'deposit_amount'         => $this->deposit_amount,
+            'currency'               => $this->currency,
             'status'          => $this->enumValue($this->status),
             'signed_at'       => $this->datetime($this->signed_at),
             'created_at'      => $this->datetime($this->created_at),
             'updated_at'      => $this->datetime($this->updated_at),
             'items'           => $this->whenLoaded('items', fn () =>
                 $this->items->map(fn (ContractItem $item) => $this->formatItem($item))
+            ),
+            'occupancies'     => $this->whenLoaded('occupancies', fn () =>
+                $this->occupancies->map(fn (UnitOccupancy $occupancy) => [
+                    'unit_id'    => $occupancy->unit_id,
+                    'started_on' => $this->date($occupancy->started_on),
+                    'ended_on'   => $this->date($occupancy->ended_on),
+                ])->values()->all()
             ),
             'contact'         => $this->whenLoaded('contact', fn () => [
                 'id'   => $this->contact->id,
@@ -52,8 +63,8 @@ class ContractResource extends BaseResource
                 ] : null
             ),
             'notes'           => NoteResource::collection($this->whenLoaded('notes')),
-            'invoices'        => $this->whenLoaded('invoices', fn () =>
-                InvoiceResource::collection($this->invoices)->resolve()
+            'billing_periods' => $this->whenLoaded('billingPeriods', fn () =>
+                BillingPeriodResource::collection($this->billingPeriods)->resolve()
             ),
             'payments'        => $this->whenLoaded('payments', fn () =>
                 PaymentResource::collection($this->payments)->resolve()
@@ -62,7 +73,7 @@ class ContractResource extends BaseResource
                 ChargeResource::collection($this->charges)->resolve()
             ),
             'billing_summary' => $this->when(
-                $this->relationLoaded('invoices') && $this->relationLoaded('payments'),
+                $this->relationLoaded('billingPeriods') && $this->relationLoaded('payments'),
                 fn () => $this->billingSummary()
             ),
         ];
@@ -76,6 +87,7 @@ class ContractResource extends BaseResource
             'item_type'             => $contractItem->item_type,
             'item_id'               => $contractItem->item_id,
             'amount'                => $contractItem->amount,
+            'currency'              => $contractItem->currency,
             'price_id'              => $contractItem->price_id,
             'discount_id'           => $contractItem->discount_id,
             'base_rate'             => $contractItem->base_rate,

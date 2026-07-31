@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string      $item_type   morph alias: 'unit' | 'insurance'
  * @property int         $item_id
  * @property string      $amount      NUMERIC(10,2)
+ * @property string      $currency    ISO 4217 snapshot from price at signing
  * @property int|null    $price_id
  * @property int|null    $discount_id
  * @property string|null $base_rate   NUMERIC(10,2)
@@ -55,6 +56,7 @@ class ContractItem extends Model
         'item_type',
         'item_id',
         'amount',
+        'currency',
         'price_id',
         'discount_id',
         'base_rate',

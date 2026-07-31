@@ -24,6 +24,7 @@ class SiteResource extends BaseResource
             'country' => $this->country,
             'country_id' => $this->country_id,
             'timezone' => $this->timezone,
+            'currency' => $this->currency,
             'archived_at' => $this->datetime($this->archived_at),
             'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),

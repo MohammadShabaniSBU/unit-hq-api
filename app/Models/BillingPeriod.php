@@ -1,18 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
- * Groups charges for a billing period. Invoices are a view over charges —
- * not the atomic unit of money. The true paid/unpaid state is derived from
- * allocations, not from the status column here.
+ * Groups charges for a billing period. Display grouping over charges —
+ * not the atomic unit of money, and not a fiscal invoice (S03).
  *
  * @property int         $id
  * @property int         $contract_id
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Contract                 $contract
  * @property-read Collection<int, Charge>  $charges
  */
-class Invoice extends Model
+class BillingPeriod extends Model
 {
     use HasFactory;
 
@@ -48,13 +49,13 @@ class Invoice extends Model
         ];
     }
 
-    /** @return BelongsTo<Contract, Invoice> */
+    /** @return BelongsTo<Contract, BillingPeriod> */
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
     }
 
-    /** @return HasMany<Charge, Invoice> */
+    /** @return HasMany<Charge, BillingPeriod> */
     public function charges(): HasMany
     {
         return $this->hasMany(Charge::class);

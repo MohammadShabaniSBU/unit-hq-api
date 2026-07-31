@@ -9,10 +9,11 @@
 3. **Ledger immutability** — charges/payments are append-only; corrections are opposing rows via `reversal_of_*_id`.
 4. **Notes are append-only.**
 5. **Derived state only** — never store `is_available`, balance owed, overdue flags, or unallocated credit as columns. Always compute:
-   - Availability = no active contract + no non-expired reservation
+   - Availability = no covering `unit_occupancies` / `unit_holds` row (S01). Until S01-03 lands, the live computation still scans active contracts + non-expired reservations; both are derived reads, never cached booleans.
    - Balance = Σ charges − Σ payments
    - Overdue = per-charge, by due date
    - Exception: `contracts.billed_through` is a **stored billing cursor** (date), not cached money — the recurring job advances it; balances stay computed.
+   - Clarification: `unit_occupancies` and `unit_holds` are **fact tables** (who occupies / holds a unit over a date range). They are not cached derived state. Availability remains computed from those facts.
 6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.
 7. **One selected option per offer** — enforced by partial unique index on `offer_id WHERE selected_at IS NOT NULL`.
 8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
@@ -56,6 +57,11 @@
     global scope, a middleware-applied filter, a queue payload context, or a default query
     constraint. Filtering an invoice *series* by entity is correct; filtering *contacts* by
     entity is a defect.
+35. **One contract, one currency.** `contracts.currency` is resolved from the contract's items
+    at signing and is immutable thereafter. Every `charge`, `payment`, and `allocation`
+    attached to that contract carries or matches it. `balance = Σ charges − Σ payments` is
+    only ever computed within a single currency. Amounts are never converted between
+    currencies — anywhere, for any reason.
 
 ## Code conventions
 

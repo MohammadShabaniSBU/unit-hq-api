@@ -60,6 +60,7 @@ trait GeneratesFirstPeriodCharges
                     'tax_rate_snapshot'  => $item->tax_rate_snapshot,
                     'tax_amount'         => $breakdown->tax,
                     'amount'             => $breakdown->gross,
+                    'currency'           => $contract->currency,
                     'due_date'           => $moveIn->toDateString(),
                     'description'        => $this->chargeDescriptionForItem($item->item_type),
                 ]);
@@ -90,6 +91,7 @@ trait GeneratesFirstPeriodCharges
             'tax_rate_snapshot' => null,
             'tax_amount'        => '0.00',
             'amount'            => $contract->deposit_amount,
+            'currency'          => $contract->currency,
             'due_date'          => $moveIn->toDateString(),
             'description'       => 'Refundable deposit',
         ]);

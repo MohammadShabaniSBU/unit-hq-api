@@ -8,6 +8,7 @@ use App\Enums\ProrationMethod;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
+use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
@@ -23,7 +24,9 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
+use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\FirstPeriodPlan;
+use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\RecordsActivity;
 use Carbon\CarbonImmutable;
@@ -38,6 +41,7 @@ class ReservationController extends Controller
 {
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
+    use WritesUnitOccupancies;
 
     public function index(Request $request): JsonResponse
     {
@@ -388,7 +392,7 @@ class ReservationController extends Controller
             'deposit_amount'        => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $contract = DB::transaction(function () use ($reservation, $validated) {
+        $contract = DB::transaction(function () use ($reservation, $validated, $request) {
             $reservation->load([
                 'unit.unitClass',
                 'offerOption.discount',
@@ -398,8 +402,16 @@ class ReservationController extends Controller
             $billing = Setting::billing();
             $startDate = Carbon::parse($validated['start_date'])->startOfDay();
             $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
+            $endedOn = isset($validated['end_date'])
+                ? CarbonImmutable::parse($validated['end_date'])->startOfDay()
+                : null;
             $pricing = $this->resolveConvertPricing($reservation, $startDate);
             $unitRate = round((float) $validated['unit_rate'], 2);
+
+            $unitPrice = $reservation->price
+                ?? $reservation->offerOption?->unitClassRate?->price;
+            $unitCurrency = $unitPrice?->currency
+                ?? ResolvesItemCurrency::forItem('unit', $reservation->unit_id, $reservation->price_id, $reservation->unit?->site_id);
 
             $contract = Contract::query()->create([
                 'contact_id'             => $reservation->contact_id,
@@ -415,6 +427,8 @@ class ReservationController extends Controller
                 'proration_method'       => $billing->prorationMethod,
                 'move_in_date'           => $moveIn->toDateString(),
                 'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
+                // Placeholder until items agree — overwritten before charges.
+                'currency'               => $unitCurrency,
             ]);
 
             $unitTaxRate = $this->resolveContractItemTaxRate(
@@ -428,6 +442,8 @@ class ReservationController extends Controller
                 'item_type'         => 'unit',
                 'item_id'           => $reservation->unit_id,
                 'amount'            => $unitRate,
+                'currency'          => $unitCurrency,
+                'price_id'          => $unitPrice?->id ?? $reservation->price_id,
                 'tax_rate_id'       => $unitTaxRate?->id,
                 'tax_rate_snapshot' => $unitTaxRate?->rate,
             ];
@@ -448,14 +464,27 @@ class ReservationController extends Controller
                     $moveIn,
                 );
 
+                $insuranceCurrency = ResolvesItemCurrency::forItem(
+                    'insurance',
+                    (int) $validated['insurance_id'],
+                    null,
+                    $reservation->unit?->site_id,
+                );
+
                 $contractItems->push($contract->items()->create([
                     'item_type'         => 'insurance',
                     'item_id'           => $validated['insurance_id'],
                     'amount'            => round((float) $validated['insurance_rate'], 2),
+                    'currency'          => $insuranceCurrency,
                     'tax_rate_id'       => $insuranceTaxRate?->id,
                     'tax_rate_snapshot' => $insuranceTaxRate?->rate,
                 ]));
             }
+
+            $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
+            $contract->forceFill(['currency' => $agreedCurrency])->save();
+
+            $this->writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $request->user()?->id);
 
             $plan = ContractBilling::planFirstPeriod(
                 $moveIn,
@@ -480,7 +509,7 @@ class ReservationController extends Controller
         });
 
         return $this->created(
-            ContractResource::make($contract->load(['items.item', 'contact', 'reservation'])),
+            ContractResource::make($contract->load(['items.item', 'contact', 'reservation', 'occupancies'])),
             'Reservation converted to contract successfully.'
         );
     }

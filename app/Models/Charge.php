@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ChargeType;
+use App\Support\Billing\CurrencyGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only debit entry. Never updated or deleted.
@@ -26,12 +27,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property int         $id
  * @property int         $contract_id
  * @property int|null    $contract_item_id
- * @property int|null    $invoice_id
+ * @property int|null    $billing_period_id
  * @property ChargeType  $charge_type
  * @property string|null $period_start Y-m-d
  * @property string|null $period_end   Y-m-d
  * @property string|null $net_amount   NUMERIC(10,2) — pre-tax
  * @property string      $amount      NUMERIC(10,2) — gross recorded fact
+ * @property string      $currency    ISO 4217 snapshot from contract
  * @property string|null $tax_rate_snapshot NUMERIC(5,2)
  * @property string      $tax_amount  NUMERIC(10,2)
  * @property string      $due_date    Y-m-d
@@ -41,7 +43,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property-read Contract                     $contract
  * @property-read ContractItem|null            $contractItem
- * @property-read Invoice|null                 $invoice
+ * @property-read BillingPeriod|null           $billingPeriod
  * @property-read Charge|null                  $reversalOf
  * @property-read Collection<int, Allocation>  $allocations
  */
@@ -51,15 +53,33 @@ class Charge extends Model
 
     const UPDATED_AT = null;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Charge $charge): void {
+            if ($charge->currency === null || $charge->currency === '') {
+                $charge->currency = $charge->contract()->value('currency') ?? 'EUR';
+            }
+
+            $contract = $charge->relationLoaded('contract')
+                ? $charge->contract
+                : Contract::query()->find($charge->contract_id);
+
+            if ($contract !== null) {
+                CurrencyGuard::assertMatchesContract($contract, (string) $charge->currency);
+            }
+        });
+    }
+
     protected $fillable = [
         'contract_id',
         'contract_item_id',
-        'invoice_id',
+        'billing_period_id',
         'charge_type',
         'period_start',
         'period_end',
         'net_amount',
         'amount',
+        'currency',
         'tax_rate_snapshot',
         'tax_amount',
         'due_date',
@@ -93,10 +113,10 @@ class Charge extends Model
         return $this->belongsTo(ContractItem::class);
     }
 
-    /** @return BelongsTo<Invoice, Charge> */
-    public function invoice(): BelongsTo
+    /** @return BelongsTo<BillingPeriod, Charge> */
+    public function billingPeriod(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(BillingPeriod::class);
     }
 
     /** @return BelongsTo<Charge, Charge> */

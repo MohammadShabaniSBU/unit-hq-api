@@ -9,6 +9,7 @@ use App\Models\InsuranceRate;
 use App\Models\Price;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\SupportedCurrencies;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,9 +28,10 @@ class InsuranceRateController extends Controller
         }
 
         $validated = $request->validate([
-            'site_id'  => ['required', 'integer', 'exists:sites,id'],
-            'amount'   => ['required', 'numeric', 'min:0'],
-            'currency' => SupportedCurrencies::rules(required: true),
+            'site_id'                 => ['required', 'integer', 'exists:sites,id'],
+            'amount'                  => ['required', 'numeric', 'min:0'],
+            'currency'                => SupportedCurrencies::rules(required: false),
+            'allow_currency_mismatch' => ['sometimes', 'boolean'],
         ]);
 
         $billing = Setting::billing();
@@ -38,6 +40,26 @@ class InsuranceRateController extends Controller
             'day' => 'daily',
             default => 'monthly',
         };
+
+        $site = Site::query()->findOrFail($validated['site_id']);
+        $currency = SupportedCurrencies::normalize(
+            (string) ($validated['currency']
+                ?? $site->currency
+                ?? $billing->defaultCurrency
+                ?: 'EUR')
+        );
+
+        if (! SupportedCurrencies::isAllowed($currency)) {
+            throw ValidationException::withMessages([
+                'currency' => ['The selected currency is invalid.'],
+            ]);
+        }
+
+        CurrencyGuard::assertRateJunction(
+            $site->currency,
+            $currency,
+            (bool) ($validated['allow_currency_mismatch'] ?? false),
+        );
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
 
@@ -49,7 +71,7 @@ class InsuranceRateController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $siteRate = DB::transaction(function () use ($insurance, $validated, $billingPeriod, $createdBy, $today) {
+        $siteRate = DB::transaction(function () use ($insurance, $validated, $billingPeriod, $createdBy, $today, $site, $currency) {
             $existingRate = InsuranceRate::query()
                 ->with('price')
                 ->where('insurance_id', $insurance->id)
@@ -63,7 +85,7 @@ class InsuranceRateController extends Controller
 
             $price = Price::query()->create([
                 'amount'         => $validated['amount'],
-                'currency'       => $validated['currency'],
+                'currency'       => $currency,
                 'billing_period' => $billingPeriod,
                 'effective_from' => $today,
                 'effective_to'   => null,
@@ -75,8 +97,6 @@ class InsuranceRateController extends Controller
                 'site_id'      => $validated['site_id'],
                 'price_id'     => $price->id,
             ]);
-
-            $site = Site::query()->findOrFail($validated['site_id']);
 
             return $this->formatSiteRate($site, null, $price);
         });
