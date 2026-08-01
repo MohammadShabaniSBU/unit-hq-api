@@ -354,6 +354,12 @@ class Contract extends Model
         return $this->hasMany(PaymentRequest::class);
     }
 
+    /** @return HasMany<AutopayAttempt, $this> */
+    public function autopayAttempts(): HasMany
+    {
+        return $this->hasMany(AutopayAttempt::class);
+    }
+
     /** @return HasMany<UnitOccupancy, Contract> */
     public function occupancies(): HasMany
     {

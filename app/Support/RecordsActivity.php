@@ -22,6 +22,7 @@ final class RecordsActivity
         ?Model $subject = null,
         array $properties = [],
         ?Model $causer = null,
+        bool $anonymous = false,
     ): ?ActivityContract {
         $properties = array_merge($properties, [
             'request_id' => RequestId::get(),
@@ -35,7 +36,9 @@ final class RecordsActivity
             $logger->performedOn($subject);
         }
 
-        if ($causer !== null) {
+        if ($anonymous) {
+            $logger->causedByAnonymous();
+        } elseif ($causer !== null) {
             $logger->causedBy($causer);
         }
 
@@ -52,7 +55,8 @@ final class RecordsActivity
         ?Model $subject = null,
         array $properties = [],
         ?Model $causer = null,
+        bool $anonymous = false,
     ): ?ActivityContract {
-        return self::log(LogChannel::Core, $description, $subject, $properties, $causer);
+        return self::log(LogChannel::Core, $description, $subject, $properties, $causer, $anonymous);
     }
 }

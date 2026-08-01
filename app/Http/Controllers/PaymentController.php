@@ -26,7 +26,11 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0'],
-            'method' => ['required', Rule::enum(PaymentMethod::class)],
+            'method' => ['required', Rule::in([
+                PaymentMethod::Cash->value,
+                PaymentMethod::BankTransfer->value,
+                PaymentMethod::CardExternal->value,
+            ])],
             'received_on' => ['required', 'date', 'before_or_equal:today'],
             'reference' => ['nullable', 'string', 'max:255'],
             'allocations' => ['nullable', 'array'],

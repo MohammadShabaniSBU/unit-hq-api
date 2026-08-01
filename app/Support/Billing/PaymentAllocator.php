@@ -52,6 +52,124 @@ final class PaymentAllocator
     }
 
     /**
+     * Allocate to targeted charges first (capped at each charge's open amount
+     * at planning time), then surplus oldest-due-first. Remainder beyond all
+     * open charges stays unallocated credit.
+     *
+     * @param  list<int>  $chargeIds
+     * @return Collection<int, Allocation>
+     */
+    public static function allocateTargetedThenOldest(
+        Contract $contract,
+        Payment $payment,
+        array $chargeIds,
+    ): Collection {
+        $paymentAmount = BillingMath::round2((string) $payment->amount);
+
+        if (bccomp($paymentAmount, '0', 2) <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => [__('errors.payments.amount_must_be_positive')],
+            ]);
+        }
+
+        $plan = self::planTargetedThenOldest($contract, $paymentAmount, $chargeIds);
+        $created = collect();
+
+        foreach ($plan as $row) {
+            $created->push(Allocation::query()->create([
+                'payment_id' => $payment->id,
+                'charge_id' => $row['charge_id'],
+                'amount' => $row['amount'],
+            ]));
+        }
+
+        return $created;
+    }
+
+    /**
+     * @param  list<int>  $chargeIds
+     * @return list<array{charge_id: int, amount: string}>
+     */
+    public static function planTargetedThenOldest(
+        Contract $contract,
+        string $paymentAmount,
+        array $chargeIds,
+    ): array {
+        $remaining = BillingMath::round2($paymentAmount);
+        /** @var array<int, string> $byCharge */
+        $byCharge = [];
+
+        $ids = array_values(array_unique(array_map('intval', $chargeIds)));
+        $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+
+        if ($ids !== []) {
+            $targets = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->whereIn('id', $ids)
+                ->with('allocations')
+                ->orderBy('due_date')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($targets as $charge) {
+                if (bccomp($remaining, '0', 2) <= 0) {
+                    break;
+                }
+
+                $open = $charge->openAmount();
+                if (bccomp($open, '0', 2) <= 0) {
+                    continue;
+                }
+
+                $take = bccomp($open, $remaining, 2) <= 0 ? $open : $remaining;
+                $chargeId = (int) $charge->id;
+                $byCharge[$chargeId] = BillingMath::round2($take);
+                $remaining = bcsub($remaining, $take, 2);
+            }
+        }
+
+        if (bccomp($remaining, '0', 2) > 0) {
+            $charges = Charge::query()
+                ->where('contract_id', $contract->id)
+                ->with('allocations')
+                ->orderBy('due_date')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($charges as $charge) {
+                if (bccomp($remaining, '0', 2) <= 0) {
+                    break;
+                }
+
+                $chargeId = (int) $charge->id;
+                $open = $charge->openAmount();
+                $already = $byCharge[$chargeId] ?? '0.00';
+                $openLeft = bcsub($open, $already, 2);
+
+                if (bccomp($openLeft, '0', 2) <= 0) {
+                    continue;
+                }
+
+                $take = bccomp($openLeft, $remaining, 2) <= 0 ? $openLeft : $remaining;
+                $byCharge[$chargeId] = isset($byCharge[$chargeId])
+                    ? bcadd($byCharge[$chargeId], $take, 2)
+                    : BillingMath::round2($take);
+                $remaining = bcsub($remaining, $take, 2);
+            }
+        }
+
+        $plan = [];
+        foreach ($byCharge as $chargeId => $amount) {
+            $plan[] = [
+                'charge_id' => $chargeId,
+                'amount' => BillingMath::round2($amount),
+            ];
+        }
+
+        return $plan;
+    }
+
+    /**
      * @return list<array{charge_id: int, amount: string}>
      */
     public static function planOldestDueFirst(Contract $contract, string $paymentAmount): array
