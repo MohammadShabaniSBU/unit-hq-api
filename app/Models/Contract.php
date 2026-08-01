@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
+use App\Enums\BillingRunItemOutcome;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
 use App\Enums\MoveOutSettlement;
@@ -71,6 +72,7 @@ use Illuminate\Support\Carbon;
  * @property-read ContractItem|null                $unitItem
  * @property-read ContractItem|null                $insuranceItem
  * @property-read Collection<int, BillingPeriod>   $billingPeriods
+ * @property-read Collection<int, BillingRunItem>  $billingRunItems
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
  * @property-read Collection<int, UnitOccupancy>   $occupancies
@@ -280,6 +282,44 @@ class Contract extends Model
         return $this->hasMany(BillingPeriod::class);
     }
 
+    /** @return HasMany<BillingRunItem, Contract> */
+    public function billingRunItems(): HasMany
+    {
+        return $this->hasMany(BillingRunItem::class);
+    }
+
+    /**
+     * When the contract's most recent billing-run item failed, return attention
+     * payload for the panel banner; otherwise null (clears after a later success).
+     *
+     * @return array{billing_run_id: int, detail: string|null, error_message: string|null}|null
+     */
+    public function lastFailedBillingRun(): ?array
+    {
+        /** @var BillingRunItem|null $latest */
+        $latest = $this->billingRunItems()
+            ->orderByDesc('id')
+            ->first();
+
+        if ($latest === null) {
+            return null;
+        }
+
+        $outcome = $latest->outcome instanceof BillingRunItemOutcome
+            ? $latest->outcome
+            : BillingRunItemOutcome::tryFrom((string) $latest->outcome);
+
+        if ($outcome !== BillingRunItemOutcome::Failed) {
+            return null;
+        }
+
+        return [
+            'billing_run_id' => (int) $latest->billing_run_id,
+            'detail' => $latest->detail,
+            'error_message' => $latest->error_message,
+        ];
+    }
+
     /** @return HasMany<Charge, Contract> */
     public function charges(): HasMany
     {
@@ -383,7 +423,12 @@ class Contract extends Model
      *     balance_owed: string,
      *     unallocated_credit: string,
      *     overdue_amount: string,
-     *     currency: string
+     *     currency: string,
+     *     last_failed_billing_run: array{
+     *         billing_run_id: int,
+     *         detail: string|null,
+     *         error_message: string|null
+     *     }|null
      * }
      */
     public function billingSummary(): array
@@ -394,6 +439,7 @@ class Contract extends Model
             'unallocated_credit' => $this->unallocatedCredit(),
             'overdue_amount'     => $this->overdueAmount(),
             'currency'           => (string) $this->currency,
+            'last_failed_billing_run' => $this->lastFailedBillingRun(),
         ];
     }
 }

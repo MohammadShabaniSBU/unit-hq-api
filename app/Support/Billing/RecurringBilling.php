@@ -38,6 +38,67 @@ final class RecurringBilling
     }
 
     /**
+     * Next period window + estimated gross for panel display. Never writes.
+     * Returns null when the contract is not eligible for a next bill.
+     *
+     * @return array{
+     *     window: array{start: string, end: string},
+     *     amount: string,
+     *     currency: string
+     * }|null
+     */
+    public static function nextBillEstimate(Contract $contract): ?array
+    {
+        $status = $contract->status instanceof ContractStatus
+            ? $contract->status
+            : ContractStatus::tryFrom((string) $contract->status);
+
+        if ($status !== ContractStatus::Active && $status !== ContractStatus::NoticeGiven) {
+            return null;
+        }
+
+        $cursorYmd = $contract->billedThrough();
+        if ($cursorYmd === null || $contract->billing_anchor_date === null) {
+            return null;
+        }
+
+        // Civil Y-m-d via billedThrough() — same as BillingRunEngine::civilDate.
+        // Parsing the date-cast Carbon can shift the boundary across timezones.
+        $cursor = CarbonImmutable::parse($cursorYmd)->startOfDay();
+
+        if ($status === ContractStatus::NoticeGiven) {
+            $stop = self::stopDate($contract);
+            if ($stop !== null && $cursor->gte($stop)) {
+                return null;
+            }
+        }
+
+        try {
+            $window = BillingMath::nextPeriod($contract, $cursor);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($status === ContractStatus::NoticeGiven) {
+            $stop = self::stopDate($contract);
+            if ($stop !== null && $window['start']->gte($stop)) {
+                return null;
+            }
+        }
+
+        $amount = self::estimatePeriodGross($contract, $window);
+
+        return [
+            'window' => [
+                'start' => $window['start']->toDateString(),
+                'end' => $window['end']->toDateString(),
+            ],
+            'amount' => $amount,
+            'currency' => (string) $contract->currency,
+        ];
+    }
+
+    /**
      * Read-only gross estimate for dry-run. Never writes.
      *
      * @param  array{start: CarbonImmutable, end: CarbonImmutable}  $window

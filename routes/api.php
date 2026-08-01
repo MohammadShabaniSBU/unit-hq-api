@@ -33,7 +33,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
     Route::put('sites/{site}/sender-identities/{channel}', [Facility\SiteSenderIdentityController::class, 'update']);
 
-    // Manual billing run — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    // Billing runs — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    Route::get('billing-runs', [Controllers\BillingRunController::class, 'index']);
+    Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
 });
 
@@ -193,6 +195,7 @@ Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractContro
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::class, 'storeForContract']);
 Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
+Route::get('contracts/{contract}/next-bill', [Controllers\ContractController::class, 'nextBill']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
 Route::post('payments/{payment}/reverse', [Controllers\PaymentController::class, 'reverse']);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\BillingInterval;
+use App\Enums\BillingRunTrigger;
 use App\Enums\ChargeType;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractItemChangeReason;
@@ -34,6 +35,7 @@ use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Enums\TaxIdType;
 use App\Support\Billing\BillingMath;
+use App\Support\Billing\BillingRunEngine;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
@@ -111,6 +113,7 @@ class OccupancySeeder extends Seeder
 
         $this->seedSupersededItemVersion($manager);
         $this->rewindActiveCursorsForBillingDemo();
+        $this->seedDemoBillingRun();
         $this->printSummary($sites);
     }
 
@@ -1120,6 +1123,15 @@ class OccupancySeeder extends Seeder
             'reason'      => $reason,
             'created_by'  => $manager->id,
         ]);
+    }
+
+    /**
+     * Materialize one scheduled billing run so the panel has inspectable
+     * outcomes (billed + fiscal/currency failures) on a fresh seed (S05-04).
+     */
+    private function seedDemoBillingRun(): void
+    {
+        (new BillingRunEngine)->run(trigger: BillingRunTrigger::Scheduled);
     }
 
     /**

@@ -207,6 +207,14 @@ Per-contract failure isolation; cancelled-pending never activates.
 Manual trigger: authenticated `POST /api/billing-runs` `{ dry_run?: bool }` with
 `trigger=manual` and `created_by` = the employee (RBAC stopgap until S17).
 
+**Panel read APIs (S05-04):** authenticated `GET /api/billing-runs` (paginated list with
+per-currency billed totals), `GET /api/billing-runs/{id}` (detail + items; optional
+`?outcome=` filter), and `GET /api/contracts/{id}/next-bill` →
+`{ window: { start, end }, amount, currency } | null` computed via
+`BillingMath::nextPeriod` + `RecurringBilling::estimatePeriodGross` (never stored).
+Contract show `billing_summary.last_failed_billing_run` surfaces the latest item when
+that item's outcome is `failed` (clears after a later billed/skipped item).
+
 **Stop line (notice_given):**
 `stop = max(scheduled_move_out_on, notice_given_on + notice_period_days)` — the same
 later-of expression as vacate's final billing date. It is a **condition, never a cursor

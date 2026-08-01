@@ -17,6 +17,7 @@ use App\Models\Site;
 use App\Models\Unit;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
+use App\Support\Billing\RecurringBilling;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\RecordsActivity;
@@ -261,6 +262,14 @@ class ContractController extends Controller
         return $this->success(
             ContractResource::make($contract),
             'Contract retrieved successfully.'
+        );
+    }
+
+    public function nextBill(Contract $contract): JsonResponse
+    {
+        return $this->success(
+            RecurringBilling::nextBillEstimate($contract),
+            'Next bill estimate retrieved successfully.',
         );
     }
 
