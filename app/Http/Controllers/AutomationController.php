@@ -355,6 +355,7 @@ class AutomationController extends Controller
             ]),
             'causer',
             'triggerNode',
+            'cancelledBy',
         ]);
 
         return $this->success(

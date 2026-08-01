@@ -29,7 +29,7 @@ class AutomationRunResource extends BaseResource
             'guard' => $this->guard,
             'error' => $this->error,
             'cancel_cause' => $this->cancel_cause,
-            'cancelled_by' => $this->cancelled_by,
+            'cancelled_by' => $this->resolveCancelledBy(),
             'waiting_until' => $this->datetime($this->waiting_until),
             'current_node_id' => $this->current_node_id,
             'started_at' => $this->datetime($this->started_at),
@@ -98,6 +98,30 @@ class AutomationRunResource extends BaseResource
             'type' => $this->causer_type,
             'id' => $this->causer->id !== null ? (int) $this->causer->id : null,
             'name' => $name !== '' ? $name : null,
+        ];
+    }
+
+    /** @return array{id: int, name: string|null}|null */
+    private function resolveCancelledBy(): ?array
+    {
+        if ($this->cancelled_by === null) {
+            return null;
+        }
+
+        $id = (int) $this->cancelled_by;
+
+        if ($this->relationLoaded('cancelledBy') && $this->cancelledBy !== null) {
+            $name = trim((string) ($this->cancelledBy->name ?? ''));
+
+            return [
+                'id' => $id,
+                'name' => $name !== '' ? $name : null,
+            ];
+        }
+
+        return [
+            'id' => $id,
+            'name' => null,
         ];
     }
 
