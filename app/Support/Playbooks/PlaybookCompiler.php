@@ -226,17 +226,33 @@ final class PlaybookCompiler
      */
     private static function emailConfig(array $params): array
     {
-        if (isset($params['email_template_id'])) {
+        $hasTemplate = isset($params['email_template_id']);
+        $hasInline = isset($params['body']) || (isset($params['subject']) && ! $hasTemplate);
+
+        if ($hasTemplate && isset($params['body'])) {
+            throw ValidationException::withMessages([
+                'steps' => 'send_email params must be email_template_id XOR inline subject/body.',
+            ]);
+        }
+
+        if ($hasTemplate) {
             return [
-                'to' => $params['to'] ?? ['kind' => 'static', 'value' => ''],
-                'subject' => $params['subject'] ?? ['kind' => 'static', 'value' => ''],
+                'subject' => $params['subject'] ?? null,
                 'bodyType' => 'template',
                 'templateId' => $params['email_template_id'],
             ];
         }
 
+        if (! $hasInline) {
+            // Defaults for seed/reference playbooks without explicit params.
+            return [
+                'subject' => ['kind' => 'static', 'value' => 'Overdue balance'],
+                'bodyType' => 'custom',
+                'body' => ['kind' => 'static', 'value' => 'Please pay your balance.'],
+            ];
+        }
+
         return [
-            'to' => $params['to'] ?? ['kind' => 'static', 'value' => 'debt-notice@example.com'],
             'subject' => $params['subject'] ?? ['kind' => 'static', 'value' => 'Overdue balance'],
             'bodyType' => 'custom',
             'body' => $params['body'] ?? ['kind' => 'static', 'value' => 'Please pay your balance.'],

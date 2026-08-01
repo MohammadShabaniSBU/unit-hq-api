@@ -12,14 +12,20 @@ use App\Enums\ChargeType;
 use App\Enums\ContractStatus;
 use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyPolicyAction;
+use App\Enums\DelinquencyStepTrigger;
 use App\Models\AutopayAttempt;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractItem;
+use App\Models\ContractNotice;
 use App\Models\Country;
 use App\Models\DelinquencyPolicy;
 use App\Models\DelinquencyPolicyStep;
+use App\Models\DelinquencyStep;
+use App\Models\EmailBlock;
+use App\Models\EmailTemplate;
 use App\Models\Employee;
+use App\Models\Interaction;
 use App\Models\PaymentMethod;
 use App\Models\Site;
 use App\Models\Task;
@@ -28,21 +34,22 @@ use App\Models\UnitClass;
 use App\Support\Delinquency\DelinquencyLifecycle;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
 use Tests\Support\AutomationHarness;
 use Tests\Support\CreatesCataloguePrices;
+use Tests\Support\SeedsCommunicationAccounts;
 use Tests\TestCase;
 
 class HarnessLibraryTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use SeedsCommunicationAccounts;
 
     protected function setUp(): void
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00', 'UTC'));
-        Mail::fake();
+        $this->fakeCommunicationProviders();
         Employee::factory()->create();
     }
 
@@ -54,11 +61,13 @@ class HarnessLibraryTest extends TestCase
 
     public function test_linear_three_actions(): void
     {
+        $this->seedEmailAccount(Site::factory()->create());
         $contact = Contact::factory()->create([
             'first_name' => 'Start',
             'last_name' => 'Contact',
             'email' => 'linear-'.uniqid().'@example.com',
         ]);
+        $this->givePrimaryEmail($contact, (string) $contact->email);
 
         AutomationHarness::load('linear_three_actions')
             ->trigger('object_created', $contact)
@@ -73,6 +82,9 @@ class HarnessLibraryTest extends TestCase
         $contact->refresh();
         $this->assertSame('LinearOne', $contact->first_name);
         $this->assertSame('LinearTwo', $contact->last_name);
+        $this->assertTrue(
+            Interaction::query()->where('contact_id', $contact->id)->where('channel', 'email')->exists(),
+        );
     }
 
     public function test_branch_true_false_pair(): void
@@ -352,6 +364,115 @@ class HarnessLibraryTest extends TestCase
                 ->count(),
         );
         $this->assertSame($firstRunId, $harness->run()->fresh()->id);
+    }
+
+    public function test_sms_send_and_skip_no_channel(): void
+    {
+        $this->seedSmsAccount(Site::factory()->create());
+
+        $withPhone = Contact::factory()->create([
+            'first_name' => 'HasPhone',
+            'last_name' => 'Before',
+            'email' => 'sms-ok-'.uniqid().'@example.com',
+        ]);
+        $this->givePrimaryPhone($withPhone, '+15550001234');
+
+        AutomationHarness::load('sms_send_and_skip_no_channel')
+            ->trigger('object_created', $withPhone)
+            ->assertRunStatus(AutomationRunStatus::Succeeded)
+            ->assertStepSequence(['trigger', 'sms', 'after']);
+
+        $this->assertSame('SmsContinued', $withPhone->fresh()->last_name);
+        $this->assertTrue(
+            Interaction::query()->where('contact_id', $withPhone->id)->where('channel', 'sms')->exists(),
+        );
+
+        $noPhone = Contact::factory()->create([
+            'first_name' => 'NoPhone',
+            'last_name' => 'Before',
+            'email' => 'sms-skip-'.uniqid().'@example.com',
+        ]);
+
+        $harness = AutomationHarness::load('sms_send_and_skip_no_channel')
+            ->trigger('object_created', $noPhone)
+            ->assertRunStatus(AutomationRunStatus::Succeeded)
+            ->assertStepStatus('sms', AutomationRunStepStatus::Succeeded)
+            ->assertStepStatus('after', AutomationRunStepStatus::Succeeded);
+
+        $smsNodeId = $harness->automation()->nodes->firstWhere('node_key', 'sms')?->id;
+        $smsStep = $harness->run()->steps->firstWhere('node_id', $smsNodeId);
+        $this->assertSame('no_channel', $smsStep?->output['skipped_reason'] ?? null);
+        $this->assertSame('SmsContinued', $noPhone->fresh()->last_name);
+    }
+
+    public function test_email_template_reference(): void
+    {
+        $this->seedEmailAccount(Site::factory()->create());
+
+        $template = EmailTemplate::query()->create(['name' => 'Debt reminder']);
+        EmailBlock::query()->create([
+            'email_template_id' => $template->id,
+            'type' => 'text',
+            'props' => [
+                'content' => 'Hello {{trigger.attributes.first_name}}',
+                'align' => 'left',
+                'fontSize' => 16,
+                'color' => '#000000',
+            ],
+            'order' => 0,
+        ]);
+
+        $contact = Contact::factory()->create([
+            'first_name' => 'Templated',
+            'last_name' => 'Before',
+            'email' => 'tmpl-'.uniqid().'@example.com',
+        ]);
+        $this->givePrimaryEmail($contact, 'tmpl-primary@example.com');
+
+        $harness = AutomationHarness::load('email_template_reference');
+        $emailNode = $harness->automation()->nodes()->where('node_key', 'email')->first();
+        $this->assertNotNull($emailNode);
+        $config = $emailNode->config;
+        $config['templateId'] = $template->id;
+        $emailNode->update(['config' => $config]);
+
+        $harness->trigger('object_created', $contact)
+            ->assertRunStatus(AutomationRunStatus::Succeeded)
+            ->assertStepSequence(['trigger', 'email', 'after']);
+
+        $this->assertSame('TemplateSent', $contact->fresh()->last_name);
+
+        $interaction = Interaction::query()
+            ->where('contact_id', $contact->id)
+            ->where('channel', 'email')
+            ->first();
+        $this->assertNotNull($interaction);
+        $this->assertSame('Template subject', $interaction->summary);
+        $this->assertStringContainsString('Hello Templated', (string) $interaction->content);
+    }
+
+    public function test_record_notice_debt_chain(): void
+    {
+        [$contract] = $this->seedDelinquencyCatalogue();
+        $case = DelinquencyLifecycle::open($contract);
+        $this->assertNotNull($case);
+
+        AutomationHarness::load('record_notice_debt_chain')
+            ->trigger('object_created', $case)
+            ->assertRunStatus(AutomationRunStatus::Succeeded)
+            ->assertStepStatus('notice', AutomationRunStepStatus::Succeeded);
+
+        $notice = ContractNotice::query()->where('contract_id', $contract->id)->first();
+        $this->assertNotNull($notice);
+        $this->assertSame('payment_reminder', $notice->notice_type->value);
+
+        $this->assertTrue(
+            DelinquencyStep::query()
+                ->where('delinquency_id', $case->id)
+                ->where('trigger', DelinquencyStepTrigger::Playbook)
+                ->where('contract_notice_id', $notice->id)
+                ->exists(),
+        );
     }
 
     /** @return array{0: Contract, 1: Site} */

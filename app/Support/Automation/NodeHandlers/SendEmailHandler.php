@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Support\Automation\NodeHandlers;
 
-use App\Mail\AutomationEmail;
+use App\Enums\ContactChannelType;
 use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
-use App\Models\Contact;
+use App\Models\EmailTemplate;
 use App\Models\Interaction;
+use App\Models\Site;
 use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
+use App\Support\Automation\SubjectChain;
 use App\Support\Automation\TokenResolver;
-use Illuminate\Support\Facades\Mail;
+use App\Support\Communications\EmailTemplateRenderer;
+use App\Support\Communications\Messages\EmailAddress;
+use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\Senders\EmailSender;
 use RuntimeException;
 
 final class SendEmailHandler implements NodeHandler
@@ -25,64 +30,132 @@ final class SendEmailHandler implements NodeHandler
         RunContext $context,
     ): array {
         $config = $node->config ?? [];
+        $this->assertXor($config);
 
-        $to = TokenResolver::resolveValueSource($config['to'] ?? null, $context);
-        $to = is_string($to) ? trim($to) : '';
+        $contact = SubjectChain::contact($run);
+        if ($contact === null) {
+            throw new RuntimeException('send_email could not resolve contact from subject chain');
+        }
 
-        if ($to === '') {
-            throw new RuntimeException('send_email missing recipient');
+        $channel = SubjectChain::primaryChannel($contact, ContactChannelType::Email);
+        if ($channel === null || trim($channel->value) === '') {
+            [$subject, $bodyHtml, $bodyText] = $this->resolveContent($config, $context);
+
+            return [
+                'to' => null,
+                'subject' => $subject,
+                'body' => $bodyText !== '' ? $bodyText : $bodyHtml,
+                'channel' => 'email',
+                'provider_message_id' => null,
+                'communication_account_id' => null,
+                'interaction_id' => null,
+                'skipped_reason' => 'no_channel',
+            ];
+        }
+
+        [$subject, $bodyHtml, $bodyText] = $this->resolveContent($config, $context);
+
+        $site = SubjectChain::site($run);
+        if (! $site instanceof Site) {
+            throw new RuntimeException('send_email requires a site for provider resolution');
+        }
+
+        $result = app(EmailSender::class)->send(
+            new EmailMessage(
+                to: [new EmailAddress($channel->value)],
+                subject: $subject,
+                html: $bodyHtml,
+                text: $bodyText !== '' ? $bodyText : strip_tags($bodyHtml),
+            ),
+            $site,
+            $contact,
+        );
+
+        $interaction = Interaction::query()
+            ->where('contact_id', $contact->id)
+            ->where('provider_message_id', $result->providerMessageId)
+            ->latest('id')
+            ->first();
+
+        if ($interaction !== null) {
+            $metadata = $interaction->metadata ?? [];
+            $metadata['automation_id'] = $run->automation_id;
+            $metadata['automation_run_id'] = $run->id;
+            $metadata['source'] = 'automation';
+            if ($run->subject_type === 'deal') {
+                $interaction->deal_id = $run->subject_id;
+            }
+            $interaction->metadata = $metadata;
+            $interaction->save();
+        }
+
+        return [
+            'to' => $channel->value,
+            'subject' => $subject,
+            'body' => $bodyText !== '' ? $bodyText : $bodyHtml,
+            'channel' => 'email',
+            'provider_message_id' => $result->providerMessageId,
+            'communication_account_id' => $result->accountId,
+            'interaction_id' => $interaction?->id,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array{0: string, 1: string, 2: string} subject, html, text
+     */
+    private function resolveContent(array $config, RunContext $context): array
+    {
+        $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
+        $templateId = $config['templateId'] ?? $config['template_id'] ?? $config['email_template_id'] ?? null;
+
+        if ($bodyType === 'template' || $templateId !== null) {
+            if ($templateId === null) {
+                throw new RuntimeException('send_email template path requires templateId');
+            }
+
+            $template = EmailTemplate::query()->with('emailBlocks')->find($templateId);
+            if ($template === null) {
+                throw new RuntimeException("send_email email template [{$templateId}] not found");
+            }
+
+            $subjectOverride = null;
+            if (isset($config['subject'])) {
+                $resolved = TokenResolver::resolveValueSource($config['subject'], $context);
+                $subjectOverride = is_string($resolved) ? $resolved : (string) ($resolved ?? '');
+            }
+
+            $rendered = EmailTemplateRenderer::render($template, $context, $subjectOverride);
+
+            return [$rendered['subject'], $rendered['html'], $rendered['text']];
         }
 
         $subject = TokenResolver::resolveValueSource($config['subject'] ?? null, $context);
         $subject = is_string($subject) ? $subject : (string) ($subject ?? '');
 
-        $body = '';
+        $resolved = TokenResolver::resolveValueSource($config['body'] ?? null, $context);
+        $body = is_string($resolved) ? $resolved : '';
+
+        return [$subject, $body, $body];
+    }
+
+    /** @param  array<string, mixed>  $config */
+    private function assertXor(array $config): void
+    {
         $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
+        $templateId = $config['templateId'] ?? $config['template_id'] ?? $config['email_template_id'] ?? null;
+        $hasInlineBody = array_key_exists('body', $config) && $config['body'] !== null && $config['body'] !== '';
 
-        if ($bodyType === 'custom') {
-            $bodySource = $config['body'] ?? null;
-            $resolved = TokenResolver::resolveValueSource($bodySource, $context);
-            $body = is_string($resolved) ? $resolved : '';
-        } else {
-            // Template id path — render as placeholder body until email-builder merge ships.
-            $templateId = $config['templateId'] ?? $config['template_id'] ?? null;
-            $body = $templateId !== null
-                ? "(template #{$templateId})"
-                : '';
+        if ($templateId !== null && $bodyType === 'custom' && $hasInlineBody) {
+            throw new RuntimeException('send_email params must be email_template_id XOR inline subject/body');
         }
 
-        Mail::to($to)->send(new AutomationEmail($subject, $body));
-
-        $contactId = null;
-        if ($run->subject_type === 'contact' && $run->subject_id !== null) {
-            $contactId = (int) $run->subject_id;
-        } elseif (filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $contactId = Contact::query()->where('email', $to)->value('id');
+        if ($templateId !== null && $bodyType !== 'template' && $bodyType !== 'custom') {
+            throw new RuntimeException('send_email bodyType must be template or custom');
         }
 
-        $interactionId = null;
-        if ($contactId !== null) {
-            $interaction = Interaction::query()->create([
-                'contact_id' => $contactId,
-                'deal_id' => $run->subject_type === 'deal' ? $run->subject_id : null,
-                'channel' => 'email',
-                'direction' => 'outbound',
-                'occurred_at' => now(),
-                'content' => $body,
-                'summary' => $subject !== '' ? $subject : 'Automation email',
-                'metadata' => [
-                    'automation_id' => $run->automation_id,
-                    'automation_run_id' => $run->id,
-                    'source' => 'automation',
-                ],
-            ]);
-            $interactionId = $interaction->id;
+        if ($bodyType === 'template' && $templateId === null) {
+            throw new RuntimeException('send_email template path requires templateId');
         }
-
-        return [
-            'to' => $to,
-            'subject' => $subject,
-            'interaction_id' => $interactionId,
-        ];
     }
 }

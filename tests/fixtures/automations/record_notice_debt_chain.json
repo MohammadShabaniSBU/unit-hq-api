@@ -1,0 +1,35 @@
+{
+  "name": "record_notice_debt_chain",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Delinquency opened",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "delinquency" }
+    },
+    {
+      "node_key": "notice",
+      "kind": "action",
+      "type": "action.record_notice",
+      "label": "Record notice",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "notice_type": "payment_reminder"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "notice",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

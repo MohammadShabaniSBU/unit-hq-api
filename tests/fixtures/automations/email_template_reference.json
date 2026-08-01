@@ -1,0 +1,61 @@
+{
+  "name": "email_template_reference",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "email",
+      "kind": "action",
+      "type": "action.send_email",
+      "label": "Send templated email",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "bodyType": "template",
+        "templateId": 0,
+        "subject": { "kind": "static", "value": "Template subject" }
+      }
+    },
+    {
+      "node_key": "after",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Mark continued",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "TemplateSent" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "email",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "email",
+      "target_node_id": "after",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

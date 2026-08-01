@@ -9,6 +9,7 @@ enum DelinquencyStepTrigger: string
     case Ladder = 'ladder';
     case Manual = 'manual';
     case Cure = 'cure';
+    case Playbook = 'playbook';
 
     /** @return list<string> */
     public static function values(): array

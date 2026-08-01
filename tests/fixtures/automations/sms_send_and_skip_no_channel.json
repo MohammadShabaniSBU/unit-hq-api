@@ -1,0 +1,60 @@
+{
+  "name": "sms_send_and_skip_no_channel",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "sms",
+      "kind": "action",
+      "type": "action.send_sms",
+      "label": "Send SMS",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "body": "Hello {{trigger.attributes.first_name}}",
+        "tokens": true
+      }
+    },
+    {
+      "node_key": "after",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Mark continued",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "SmsContinued" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "sms",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "sms",
+      "target_node_id": "after",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

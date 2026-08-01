@@ -16,7 +16,9 @@ use App\Models\AutomationRunStep;
 use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\NodeHandlers\BranchHandler;
 use App\Support\Automation\NodeHandlers\CreateObjectHandler;
+use App\Support\Automation\NodeHandlers\RecordNoticeHandler;
 use App\Support\Automation\NodeHandlers\SendEmailHandler;
+use App\Support\Automation\NodeHandlers\SendSmsHandler;
 use App\Support\Automation\NodeHandlers\UpdateObjectHandler;
 use App\Support\Automation\NodeHandlers\WaitHandler;
 use Throwable;
@@ -33,6 +35,8 @@ final class AutomationExecutor
         'action.update_object' => UpdateObjectHandler::class,
         'action.create_object' => CreateObjectHandler::class,
         'action.send_email' => SendEmailHandler::class,
+        'action.send_sms' => SendSmsHandler::class,
+        'action.record_notice' => RecordNoticeHandler::class,
         'logic.branch' => BranchHandler::class,
         'logic.wait' => WaitHandler::class,
     ];
