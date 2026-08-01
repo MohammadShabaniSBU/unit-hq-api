@@ -63,7 +63,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Collection<int, Contract>    $contracts
  * @property-read Collection<int, Task>        $tasks
  * @property-read Collection<int, Note>        $notes
- * @property-read Collection<int, Interaction> $interactions
+ * @property-read Collection<int, Interaction>   $interactions
+ * @property-read Collection<int, MessageThread> $messageThreads
  */
 class Contact extends Model
 {
@@ -339,5 +340,11 @@ class Contact extends Model
     public function interactions(): HasMany
     {
         return $this->hasMany(Interaction::class);
+    }
+
+    /** @return HasMany<MessageThread> */
+    public function messageThreads(): HasMany
+    {
+        return $this->hasMany(MessageThread::class);
     }
 }

@@ -9,7 +9,6 @@ use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
 use App\Models\EmailTemplate;
-use App\Models\Interaction;
 use App\Models\Site;
 use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
@@ -18,6 +17,7 @@ use App\Support\Automation\TokenResolver;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use RuntimeException;
 
@@ -49,6 +49,7 @@ final class SendEmailHandler implements NodeHandler
                 'provider_message_id' => null,
                 'communication_account_id' => null,
                 'interaction_id' => null,
+                'message_id' => null,
                 'skipped_reason' => 'no_channel',
             ];
         }
@@ -60,6 +61,14 @@ final class SendEmailHandler implements NodeHandler
             throw new RuntimeException('send_email requires a site for provider resolution');
         }
 
+        $sendContext = SendContext::forRun($run, $step);
+        $metadata = [
+            'automation_id' => $run->automation_id,
+            'automation_run_id' => $run->id,
+            'source' => $sendContext->source->value,
+        ];
+        $dealId = $run->subject_type === 'deal' ? $run->subject_id : null;
+
         $result = app(EmailSender::class)->send(
             new EmailMessage(
                 to: [new EmailAddress($channel->value)],
@@ -69,25 +78,10 @@ final class SendEmailHandler implements NodeHandler
             ),
             $site,
             $contact,
+            $sendContext,
+            $dealId,
+            $metadata,
         );
-
-        $interaction = Interaction::query()
-            ->where('contact_id', $contact->id)
-            ->where('provider_message_id', $result->providerMessageId)
-            ->latest('id')
-            ->first();
-
-        if ($interaction !== null) {
-            $metadata = $interaction->metadata ?? [];
-            $metadata['automation_id'] = $run->automation_id;
-            $metadata['automation_run_id'] = $run->id;
-            $metadata['source'] = 'automation';
-            if ($run->subject_type === 'deal') {
-                $interaction->deal_id = $run->subject_id;
-            }
-            $interaction->metadata = $metadata;
-            $interaction->save();
-        }
 
         return [
             'to' => $channel->value,
@@ -96,7 +90,8 @@ final class SendEmailHandler implements NodeHandler
             'channel' => 'email',
             'provider_message_id' => $result->providerMessageId,
             'communication_account_id' => $result->accountId,
-            'interaction_id' => $interaction?->id,
+            'interaction_id' => $result->interactionId,
+            'message_id' => $result->messageId,
         ];
     }
 

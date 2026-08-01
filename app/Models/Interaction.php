@@ -24,12 +24,14 @@ use Illuminate\Support\Facades\DB;
  * @property array<string, mixed>|null $metadata
  * @property string|null $provider_message_id       provider-assigned message id (delivery reconciliation)
  * @property int|null    $communication_account_id  CommunicationAccount used to send this
+ * @property int|null    $message_id                FK to canonical messages row
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
  * @property-read Contact  $contact
  * @property-read Deal|null $deal
  * @property-read CommunicationAccount|null $communicationAccount
+ * @property-read Message|null $message
  */
 class Interaction extends Model
 {
@@ -57,6 +59,7 @@ class Interaction extends Model
         'metadata',
         'provider_message_id',
         'communication_account_id',
+        'message_id',
     ];
 
     protected function casts(): array
@@ -100,5 +103,11 @@ class Interaction extends Model
     public function communicationAccount(): BelongsTo
     {
         return $this->belongsTo(CommunicationAccount::class, 'communication_account_id');
+    }
+
+    /** @return BelongsTo<Message, Interaction> */
+    public function message(): BelongsTo
+    {
+        return $this->belongsTo(Message::class);
     }
 }

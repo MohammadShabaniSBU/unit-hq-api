@@ -16,6 +16,8 @@ final readonly class SendResult
         public Provider $provider,
         public int $accountId,
         public array $raw,
+        public ?int $messageId = null,
+        public ?int $interactionId = null,
     ) {}
 
     public function withAccountId(int $accountId): self
@@ -25,6 +27,20 @@ final readonly class SendResult
             provider: $this->provider,
             accountId: $accountId,
             raw: $this->raw,
+            messageId: $this->messageId,
+            interactionId: $this->interactionId,
+        );
+    }
+
+    public function withStoreIds(?int $messageId, ?int $interactionId): self
+    {
+        return new self(
+            providerMessageId: $this->providerMessageId,
+            provider: $this->provider,
+            accountId: $this->accountId,
+            raw: $this->raw,
+            messageId: $messageId,
+            interactionId: $interactionId,
         );
     }
 }

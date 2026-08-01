@@ -8,6 +8,7 @@ use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationRunStepStatus;
 use App\Models\Contact;
 use App\Models\Interaction;
+use App\Models\Message;
 use App\Models\Site;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -60,6 +61,8 @@ class SendFloorTest extends TestCase
         $this->assertSame($emailAccount->id, $emailInteraction->communication_account_id);
         $this->assertSame('brevo-test-1', $emailInteraction->provider_message_id);
         $this->assertSame('automation', $emailInteraction->metadata['source'] ?? null);
+        $this->assertNotNull($emailInteraction->message_id);
+        $this->assertTrue(Message::query()->whereKey($emailInteraction->message_id)->exists());
 
         // SMS happy path + sequence continues.
         $smsContact = Contact::factory()->create([
@@ -84,6 +87,8 @@ class SendFloorTest extends TestCase
         $this->assertNotNull($smsInteraction);
         $this->assertSame($smsAccount->id, $smsInteraction->communication_account_id);
         $this->assertSame('SM-test-1', $smsInteraction->provider_message_id);
+        $this->assertNotNull($smsInteraction->message_id);
+        $this->assertTrue(Message::query()->whereKey($smsInteraction->message_id)->exists());
 
         // Missing phone → skip-with-reason; sequence continues.
         $noPhone = Contact::factory()->create([

@@ -16,6 +16,8 @@ use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\Provider;
+use App\Models\Message;
+use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\Senders\SmsSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,10 +65,13 @@ class SenderTest extends TestCase
             ),
             $site,
             $contact,
+            SendContext::manual(),
         );
 
         $this->assertSame($account->id, $result->accountId);
         $this->assertSame('brevo-1', $result->providerMessageId);
+        $this->assertNotNull($result->messageId);
+        $this->assertNotNull($result->interactionId);
 
         Http::assertSent(function ($request) use ($site) {
             $data = $request->data();
@@ -81,6 +86,12 @@ class SenderTest extends TestCase
         $this->assertSame('brevo-1', $interaction->provider_message_id);
         $this->assertSame($account->id, $interaction->communication_account_id);
         $this->assertSame($contact->id, $interaction->contact_id);
+        $this->assertSame($result->messageId, $interaction->message_id);
+
+        $message = Message::query()->find($result->messageId);
+        $this->assertNotNull($message);
+        $this->assertSame('sent', $message->status->value);
+        $this->assertSame('manual', $message->source->value);
     }
 
     public function test_sms_sender_fills_from_number(): void
@@ -114,6 +125,8 @@ class SenderTest extends TestCase
         $result = app(SmsSender::class)->send(
             new SmsMessage('+15559999999', 'Hello'),
             $site,
+            null,
+            SendContext::manual(),
         );
 
         $this->assertSame($account->id, $result->accountId);

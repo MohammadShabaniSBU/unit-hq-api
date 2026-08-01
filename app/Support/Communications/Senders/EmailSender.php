@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Support\Communications\Senders;
 
 use App\Models\Contact;
-use App\Models\Interaction;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Contracts\SendsEmail;
+use App\Support\Communications\Exceptions\ProviderRequestFailed;
+use App\Support\Communications\MessageStatus;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\OutboundMessageRecorder;
 use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\Results\SendResult;
+use App\Support\Communications\SendContext;
 
 final class EmailSender
 {
@@ -21,8 +24,14 @@ final class EmailSender
         private readonly ProviderResolver $resolver,
     ) {}
 
-    public function send(EmailMessage $message, Site $site, ?Contact $contact = null): SendResult
-    {
+    public function send(
+        EmailMessage $message,
+        Site $site,
+        ?Contact $contact,
+        SendContext $context,
+        ?int $dealId = null,
+        ?array $interactionMetadata = null,
+    ): SendResult {
         $resolved = $this->resolver->resolve(Channel::Email, $site);
         $adapter = $resolved->require(SendsEmail::class, 'sending email');
 
@@ -53,19 +62,53 @@ final class EmailSender
             $message = $message->withTags($tags);
         }
 
-        $result = $adapter->sendEmail($message)->withAccountId($resolved->account->id);
+        $fromAddress = $message->from?->email ?? $identity?->from_email ?? '';
+        $toAddress = $message->to[0]->email ?? '';
+
+        try {
+            $result = $adapter->sendEmail($message)->withAccountId($resolved->account->id);
+        } catch (ProviderRequestFailed $exception) {
+            if ($contact !== null) {
+                OutboundMessageRecorder::record(
+                    contact: $contact,
+                    channel: Channel::Email,
+                    threadKey: $message->subject,
+                    status: MessageStatus::Failed,
+                    context: $context,
+                    fromAddress: $fromAddress,
+                    toAddress: $toAddress,
+                    bodyText: $message->text !== '' ? $message->text : null,
+                    bodyHtml: $message->html !== '' ? $message->html : null,
+                    provider: $resolved->account->provider,
+                    accountId: $resolved->account->id,
+                    providerMessageId: null,
+                    dealId: $dealId,
+                    interactionMetadata: $interactionMetadata,
+                );
+            }
+
+            throw $exception;
+        }
 
         if ($contact !== null) {
-            Interaction::query()->create([
-                'contact_id' => $contact->id,
-                'channel' => Channel::Email->value,
-                'direction' => 'outbound',
-                'occurred_at' => now(),
-                'content' => $message->text !== '' ? $message->text : $message->html,
-                'summary' => $message->subject,
-                'provider_message_id' => $result->providerMessageId,
-                'communication_account_id' => $result->accountId,
-            ]);
+            $recorded = OutboundMessageRecorder::record(
+                contact: $contact,
+                channel: Channel::Email,
+                threadKey: $message->subject,
+                status: MessageStatus::Sent,
+                context: $context,
+                fromAddress: $fromAddress,
+                toAddress: $toAddress,
+                bodyText: $message->text !== '' ? $message->text : null,
+                bodyHtml: $message->html !== '' ? $message->html : null,
+                provider: $result->provider,
+                accountId: $result->accountId,
+                providerMessageId: $result->providerMessageId,
+                dealId: $dealId,
+                interactionMetadata: $interactionMetadata,
+            );
+
+            return $result->withStoreIds($recorded['message']->id, $recorded['interaction']->id);
         }
 
         return $result;

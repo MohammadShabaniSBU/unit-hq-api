@@ -97,6 +97,12 @@
     and cursor advance commit atomically per contract per run; no secondary dedup state may
     be introduced. Run and run-item rows (`billing_runs` / `billing_run_items`) are append-only.
 
+38. **`messages` is the canonical communication record.** Every send and every receipt
+    creates exactly one message; `Interaction` is a linked timeline index, never the body
+    store. `(provider, provider_message_id)` is unique — it is the reconciliation key for
+    delivery events and the idempotency key for inbound receipt. Bodies are sanitized at
+    write; attachments live on the private disk.
+
 ## Code conventions
 
 ### API (Laravel)

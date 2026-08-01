@@ -22,10 +22,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string      $delivery_status  queued|sent|delivered|failed
  * @property string|null $provider_message_id       provider-assigned message id (delivery reconciliation)
  * @property int|null    $communication_account_id  CommunicationAccount used to send this
+ * @property int|null    $message_id                FK to canonical messages row
  * @property Carbon      $created_at
  *
  * @property-read Offer $offer
  * @property-read CommunicationAccount|null $communicationAccount
+ * @property-read Message|null $message
  */
 class OfferDelivery extends Model
 {
@@ -42,6 +44,7 @@ class OfferDelivery extends Model
         'delivery_status',
         'provider_message_id',
         'communication_account_id',
+        'message_id',
     ];
 
     protected function casts(): array
@@ -78,5 +81,11 @@ class OfferDelivery extends Model
     public function communicationAccount(): BelongsTo
     {
         return $this->belongsTo(CommunicationAccount::class, 'communication_account_id');
+    }
+
+    /** @return BelongsTo<Message, OfferDelivery> */
+    public function message(): BelongsTo
+    {
+        return $this->belongsTo(Message::class);
     }
 }

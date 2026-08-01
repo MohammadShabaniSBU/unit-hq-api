@@ -7,9 +7,23 @@ Multi-channel contact identity: email, phone, WhatsApp.
 - Fields: `contact_id`, `type`, `value`, `label`, `is_primary`.
 - Partial unique index: **one primary channel per type per contact**.
 
-## Interaction — the unified CRM timeline
+## Message store — canonical communication record
 
-Model name is `Interaction` (chosen over `CommunicationLog` / `Communication`). Logs all general contact activity — calls, emails, SMS, WhatsApp.
+Bodies, attachments, threading, and delivery state live on `message_threads` /
+`messages` / `message_attachments`. Every outbound send (and later every inbound
+receipt) creates exactly one `messages` row. See invariant 38 in `09`.
+
+| Piece | Role |
+|---|---|
+| `message_threads` | One conversation per contact+channel (email subject reuse; SMS/call by `channel_key`) |
+| `messages` | Direction, status, bodies (HTML sanitized at write), provider ids, `source` / `source_ref` |
+| `message_attachments` | Private-disk files linked to a message |
+| `Threading::forOutbound` | Subject-normalized email reuse; race-safe SMS find-or-create |
+| `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system`) into `EmailSender` / `SmsSender` |
+
+## Interaction — CRM timeline index
+
+Model name is `Interaction` (chosen over `CommunicationLog` / `Communication`). It remains the lightweight timeline the CRM UI reads. Sends still write an Interaction, but the body of truth is the linked `messages` row (`interactions.message_id`).
 
 | Field | Notes |
 |---|---|
@@ -18,14 +32,15 @@ Model name is `Interaction` (chosen over `CommunicationLog` / `Communication`). 
 | `channel` | email / sms / whatsapp / call / … |
 | `direction` | inbound / outbound |
 | `occurred_at` | timestamp |
-| `content` / `summary` | body or summary |
+| `content` / `summary` | denormalised preview for the timeline (canonical body on `messages`) |
 | `metadata` | JSONB for channel-specific data (e.g. call duration) |
 | `provider_message_id` | nullable; provider-assigned id for delivery reconciliation |
 | `communication_account_id` | nullable FK; which credential actually sent it |
+| `message_id` | nullable FK → `messages` (null only for pre-store / non-message timeline entries) |
 
 ## OfferDelivery vs Interaction
 
-`OfferDelivery` stays a **separate, specialised delivery-receipt table** (per-send status tracking). When an offer is sent, an **Interaction row is also written** so the CRM timeline stays unified. Do not merge these tables. Both carry `provider_message_id` + `communication_account_id` so a later provider switch does not break webhook reconciliation for old messages.
+`OfferDelivery` stays a **separate, specialised delivery-receipt table** (per-send status tracking). When an offer is sent, an **Interaction row is also written** so the CRM timeline stays unified, and both point at the same `messages` row via `message_id`. Do not merge these tables. Both also carry `provider_message_id` + `communication_account_id` so a later provider switch does not break webhook reconciliation for old messages.
 
 ## Channel × provider
 
