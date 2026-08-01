@@ -60,8 +60,12 @@ class UnitHoldController extends Controller
         $holdType = HoldType::from($validated['hold_type']);
 
         if (! $holdType->isManuallyManageable()) {
+            $message = $holdType === HoldType::Overlock
+                ? __('errors.holds.overlock_not_manageable')
+                : __('errors.holds.reservation_not_manageable');
+
             throw ValidationException::withMessages([
-                'hold_type' => [__('errors.holds.reservation_not_manageable')],
+                'hold_type' => [$message],
             ]);
         }
 
@@ -117,6 +121,12 @@ class UnitHoldController extends Controller
         if ($hold->hold_type === HoldType::Reservation) {
             throw ValidationException::withMessages([
                 'hold' => [__('errors.holds.reservation_not_manageable')],
+            ]);
+        }
+
+        if ($hold->hold_type === HoldType::Overlock) {
+            throw ValidationException::withMessages([
+                'hold' => [__('errors.holds.overlock_not_manageable')],
             ]);
         }
 

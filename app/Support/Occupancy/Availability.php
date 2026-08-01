@@ -423,7 +423,7 @@ final class Availability
      * Batch-attach covering occupancy/hold + derived state onto units.
      * When $on is null, resolves today per site timezone group (D8).
      *
-     * Sets: coveringOccupancy relation, coveringHold relation, derived_state attribute.
+     * Sets: coveringOccupancy, coveringHold, liveOverlock relations + derived_state.
      *
      * @param  Collection<int, Unit>  $units
      */
@@ -478,12 +478,28 @@ final class Availability
                 ->groupBy('unit_id')
                 ->map(fn (Collection $rows) => $rows->first());
 
+            $overlocks = UnitHold::query()
+                ->whereIn('unit_id', $unitIds)
+                ->whereNull('released_at')
+                ->where('hold_type', HoldType::Overlock->value)
+                ->where('starts_on', '<=', $onStr)
+                ->where(function (Builder $q) use ($onStr): void {
+                    $q->whereNull('ends_on')
+                        ->orWhere('ends_on', '>', $onStr);
+                })
+                ->orderBy('id')
+                ->get()
+                ->groupBy('unit_id')
+                ->map(fn (Collection $rows) => $rows->first());
+
             foreach ($group as $unit) {
                 $occupancy = $occupancies->get($unit->id);
                 $hold = $holds->get($unit->id);
+                $overlock = $overlocks->get($unit->id);
 
                 $unit->setRelation('coveringOccupancy', $occupancy);
                 $unit->setRelation('coveringHold', $hold);
+                $unit->setRelation('liveOverlock', $overlock);
 
                 if ($occupancy !== null) {
                     $unit->setAttribute('derived_state', UnitState::Occupied->value);

@@ -14,6 +14,7 @@ use App\Jobs\EvaluateDelinquency;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
+use App\Models\Delinquency;
 use App\Models\DepositSettlement;
 use App\Models\DepositSettlementLine;
 use App\Models\Setting;
@@ -22,6 +23,7 @@ use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Support\Billing\VacateSettlement;
 use App\Support\Contracts\ContractTransition;
+use App\Support\Delinquency\Overlock;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
@@ -162,6 +164,8 @@ trait VacatesContracts
             );
 
             ContractTransition::assert($contract, ContractStatus::Ended);
+
+            $this->assertOverlockAllowsVacate($contract);
 
             $billedThroughBefore = $contract->billedThrough();
 
@@ -406,6 +410,37 @@ trait VacatesContracts
             'reason' => 'post_move_out_turnover',
             'created_by' => auth()->id(),
         ]);
+    }
+
+    /**
+     * Never close a tenancy while an operator overlock is still live under
+     * auto_release_overlock=false. When the flag is true, release before occupancy ends.
+     */
+    private function assertOverlockAllowsVacate(Contract $contract): void
+    {
+        $open = Delinquency::query()
+            ->where('contract_id', $contract->id)
+            ->open()
+            ->with('policy')
+            ->first();
+
+        if ($open === null) {
+            return;
+        }
+
+        $live = Overlock::liveHolds($open);
+        if ($live->isEmpty()) {
+            return;
+        }
+
+        $autoRelease = $open->policy?->auto_release_overlock ?? true;
+        if (! $autoRelease) {
+            throw ValidationException::withMessages([
+                'contract' => [__('errors.contracts.overlock_pending_release')],
+            ]);
+        }
+
+        Overlock::release($open, 'cure');
     }
 
     private function assertNoticeWithdrawUnblocked(Contract $contract): void

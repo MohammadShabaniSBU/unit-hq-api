@@ -15,6 +15,7 @@ return [
     'holds' => [
         'unit_held' => 'Esta unidad ya tiene una retención en las fechas seleccionadas.',
         'reservation_not_manageable' => 'Las retenciones de reserva se gestionan con el ciclo de vida de la reserva y no se pueden crear ni liberar aquí.',
+        'overlock_not_manageable' => 'Las sobrecerraduras se gestionan desde el caso de impago y no se pueden crear ni liberar aquí.',
         'reason_required' => 'Se requiere un motivo para este tipo de retención.',
     ],
     'contracts' => [
@@ -24,6 +25,7 @@ return [
         'deposit_exceeds' => 'Las deducciones de la fianza no pueden superar el importe de la fianza.',
         'deposit_reason_required' => 'Se requiere un motivo para este resultado de fianza.',
         'no_open_occupancy' => 'El contrato no tiene una ocupación abierta que actualizar.',
+        'overlock_pending_release' => 'Libere la sobrecerradura antes de dar de baja este contrato.',
         'transfer_not_allowed' => 'No se puede trasladar un contrato en estado :status.',
         'transfer_same_unit' => 'La unidad de destino debe ser distinta de la unidad actual.',
         'transfer_no_unit_item' => 'El contrato no tiene un concepto de unidad abierto para trasladar.',

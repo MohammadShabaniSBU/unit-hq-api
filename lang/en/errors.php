@@ -15,6 +15,7 @@ return [
     'holds' => [
         'unit_held' => 'This unit is already held for the selected dates.',
         'reservation_not_manageable' => 'Reservation holds are managed by the reservation lifecycle and cannot be created or released here.',
+        'overlock_not_manageable' => 'Overlock holds are managed through the delinquency case and cannot be created or released here.',
         'reason_required' => 'A reason is required for this hold type.',
     ],
     'contracts' => [
@@ -24,6 +25,7 @@ return [
         'deposit_exceeds' => 'Deposit deductions may not exceed the deposit amount.',
         'deposit_reason_required' => 'A reason is required for this deposit outcome.',
         'no_open_occupancy' => 'Contract has no open occupancy to update.',
+        'overlock_pending_release' => 'Release the overlock first before vacating this contract.',
         'transfer_not_allowed' => 'Cannot transfer a contract in status :status.',
         'transfer_same_unit' => 'Destination unit must differ from the current unit.',
         'transfer_no_unit_item' => 'Contract has no open unit item to transfer.',

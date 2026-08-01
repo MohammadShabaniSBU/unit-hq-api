@@ -5,6 +5,8 @@ namespace App\Http\Resources;
 use App\Enums\UnitState;
 use App\Enums\UnitStatus;
 use App\Models\Unit;
+use App\Models\UnitHold;
+use App\Support\Delinquency\Overlock;
 use App\Support\Time\SiteClock;
 use Illuminate\Http\Request;
 
@@ -20,6 +22,9 @@ class UnitResource extends BaseResource
             : ($unit?->relationLoaded('currentOccupancy') ? $unit->currentOccupancy : null);
         $hold = $unit?->relationLoaded('coveringHold')
             ? $unit->getRelation('coveringHold')
+            : null;
+        $overlock = $unit?->relationLoaded('liveOverlock')
+            ? $unit->getRelation('liveOverlock')
             : null;
 
         $payload = [
@@ -60,6 +65,7 @@ class UnitResource extends BaseResource
                     'created_by' => $hold->created_by,
                 ],
             ),
+            'overlock' => $this->formatOverlock($overlock instanceof UnitHold ? $overlock : null),
             'created_at'    => $this->datetime($this->created_at),
             'updated_at'    => $this->datetime($this->updated_at),
             'site'          => SiteResource::make($this->whenLoaded('site')),
@@ -82,6 +88,23 @@ class UnitResource extends BaseResource
         }
 
         return $payload;
+    }
+
+    /** @return array{active: true, unit_hold_id: int, delinquency_id: int|null, starts_on: string|null}|null */
+    private function formatOverlock(?UnitHold $overlock): ?array
+    {
+        if ($overlock === null) {
+            return null;
+        }
+
+        return [
+            'active' => true,
+            'unit_hold_id' => (int) $overlock->id,
+            'delinquency_id' => Overlock::delinquencyIdFromReason(
+                is_string($overlock->reason) ? $overlock->reason : null
+            ),
+            'starts_on' => $this->date($overlock->starts_on),
+        ];
     }
 
     private function resolveState(?Unit $unit): ?UnitState

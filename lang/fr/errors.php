@@ -15,6 +15,7 @@ return [
     'holds' => [
         'unit_held' => 'Cette unité est déjà bloquée pour les dates sélectionnées.',
         'reservation_not_manageable' => 'Les blocages de réservation sont gérés par le cycle de vie de la réservation et ne peuvent pas être créés ou libérés ici.',
+        'overlock_not_manageable' => 'Les cadenas de délinquance sont gérés via le dossier d’impayé et ne peuvent pas être créés ou libérés ici.',
         'reason_required' => 'Un motif est requis pour ce type de blocage.',
     ],
     'contracts' => [
@@ -24,6 +25,7 @@ return [
         'deposit_exceeds' => 'Les retenues sur dépôt ne peuvent pas dépasser le montant du dépôt.',
         'deposit_reason_required' => 'Un motif est requis pour ce règlement de dépôt.',
         'no_open_occupancy' => 'Le contrat n’a pas d’occupation ouverte à mettre à jour.',
+        'overlock_pending_release' => 'Libérez le cadenas avant de résilier ce contrat.',
         'transfer_not_allowed' => 'Impossible de transférer un contrat au statut :status.',
         'transfer_same_unit' => 'L’unité de destination doit être différente de l’unité actuelle.',
         'transfer_no_unit_item' => 'Le contrat n’a pas de ligne d’unité ouverte à transférer.',

@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\HoldType;
 use App\Models\AutopayAttempt;
 use App\Models\Contract;
 use App\Models\ContractItem;
+use App\Models\Delinquency;
 use App\Models\Discount;
 use App\Models\Insurance;
 use App\Models\Unit;
+use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Support\Billing\RecurringBilling;
 use App\Support\Contracts\ContractTransition;
+use App\Support\Delinquency\Overlock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -41,6 +45,7 @@ class ContractResource extends BaseResource
             'autopay_enabled'        => (bool) $this->autopay_enabled,
             'autopay'                => $this->autopayBlock(),
             'status'          => $this->enumValue($this->status),
+            'overlock'        => $this->overlockBlock(),
             'allowed_transitions' => ContractTransition::allowed($this->contract()),
             'can_transfer'    => ContractTransition::canTransfer($this->contract()),
             'notice_given_on' => $this->date($this->notice_given_on),
@@ -198,6 +203,63 @@ class ContractResource extends BaseResource
         $contract = $this->resource;
 
         return $contract;
+    }
+
+    /**
+     * Derived decoration: live overlock holds for this contract's delinquencies.
+     *
+     * @return array{active: bool, pending_release: bool, delinquency_id: int|null}
+     */
+    private function overlockBlock(): array
+    {
+        $contract = $this->contract();
+
+        $cases = $contract->relationLoaded('delinquencies')
+            ? $contract->delinquencies
+            : Delinquency::query()->where('contract_id', $contract->id)->orderByDesc('id')->get();
+
+        if ($cases->isEmpty()) {
+            return [
+                'active' => false,
+                'pending_release' => false,
+                'delinquency_id' => null,
+            ];
+        }
+
+        $reasons = $cases->map(fn (Delinquency $case): string => Overlock::reasonFor($case))->all();
+
+        $live = UnitHold::query()
+            ->where('hold_type', HoldType::Overlock)
+            ->whereNull('released_at')
+            ->whereIn('reason', $reasons)
+            ->orderBy('id')
+            ->get();
+
+        if ($live->isEmpty()) {
+            return [
+                'active' => false,
+                'pending_release' => false,
+                'delinquency_id' => null,
+            ];
+        }
+
+        /** @var UnitHold $primary */
+        $primary = $live->first();
+        $delinquencyId = Overlock::delinquencyIdFromReason(
+            is_string($primary->reason) ? $primary->reason : null
+        );
+
+        $case = $delinquencyId !== null
+            ? $cases->firstWhere('id', $delinquencyId)
+            : null;
+
+        $pendingRelease = $case !== null && ! $case->isOpen();
+
+        return [
+            'active' => true,
+            'pending_release' => $pendingRelease,
+            'delinquency_id' => $delinquencyId,
+        ];
     }
 
     /** @return array<string, mixed> */

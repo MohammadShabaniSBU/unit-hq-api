@@ -10,6 +10,9 @@ use App\Enums\ChargeType;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractItemChangeReason;
 use App\Enums\ContractStatus;
+use App\Enums\DelinquencyPolicyAction;
+use App\Enums\DelinquencyStepAction;
+use App\Enums\DelinquencyStepTrigger;
 use App\Enums\DepositPayoutStatus;
 use App\Enums\DepositSettlementOutcome;
 use App\Enums\HoldType;
@@ -21,6 +24,9 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\ContractTransfer;
+use App\Models\Delinquency;
+use App\Models\DelinquencyPolicyStep;
+use App\Models\DelinquencyStep;
 use App\Models\DepositSettlement;
 use App\Models\DepositSettlementLine;
 use App\Models\Employee;
@@ -33,6 +39,7 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Delinquency\Overlock;
 use App\Enums\TaxIdType;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\BillingRunEngine;
@@ -557,21 +564,22 @@ class OccupancySeeder extends Seeder
             $this->stateCounts['available']++;
         }
 
-        // Overlocked occupied
+        // Overlocked occupied — case-linked (S07-03)
         if ($this->needsEdge('overlocked_occupied') && $pool->isNotEmpty()) {
             $unit = $pool->shift();
-            $this->createOpenOccupancy($unit, $contacts->random(), $billing, $manager, $today->subMonths(2));
-            UnitHold::query()->create([
-                'unit_id' => $unit->id,
-                'hold_type' => HoldType::Overlock,
-                'starts_on' => $today->subDays(3)->format('Y-m-d'),
-                'ends_on' => null,
-                'reason' => null,
-                'created_by' => $manager->id,
-            ]);
+            $contract = $this->createOpenOccupancy(
+                $unit,
+                $contacts->random(),
+                $billing,
+                $manager,
+                $today->subMonths(2),
+            );
+            $hold = $this->placeSeededOverlock($unit, $contract, $manager, $today->subDays(3));
             $this->edgeCases['overlocked_occupied'] = $unit->unit_number;
             $this->stateCounts['occupied']++;
-            $this->stateCounts['overlock']++;
+            if ($hold !== null) {
+                $this->stateCounts['overlock']++;
+            }
         }
 
         // Open-ended maintenance
@@ -683,15 +691,22 @@ class OccupancySeeder extends Seeder
         if ($occupiedUnits->isNotEmpty()) {
             $nOverlock = max(1, (int) floor($occupiedUnits->count() * self::SHARE_OVERLOCK_OF_OCCUPIED));
             foreach ($occupiedUnits->take($nOverlock) as $unit) {
-                UnitHold::query()->create([
-                    'unit_id' => $unit->id,
-                    'hold_type' => HoldType::Overlock,
-                    'starts_on' => $today->subDays(1)->format('Y-m-d'),
-                    'ends_on' => null,
-                    'reason' => null,
-                    'created_by' => $manager->id,
-                ]);
-                $this->stateCounts['overlock']++;
+                $occupancy = UnitOccupancy::query()
+                    ->where('unit_id', $unit->id)
+                    ->whereNull('ended_on')
+                    ->orderByDesc('id')
+                    ->first();
+                if ($occupancy === null) {
+                    continue;
+                }
+                $contract = Contract::query()->find($occupancy->contract_id);
+                if ($contract === null) {
+                    continue;
+                }
+                $hold = $this->placeSeededOverlock($unit, $contract, $manager, $today->subDays(1));
+                if ($hold !== null) {
+                    $this->stateCounts['overlock']++;
+                }
             }
         }
 
@@ -848,6 +863,86 @@ class OccupancySeeder extends Seeder
 
             return $contract;
         });
+    }
+
+    /**
+     * Place a case-linked overlock: open delinquency + place_overlock step + hold.
+     * Returns null when the site has no delinquency policy (e.g. Paris demo site).
+     */
+    private function placeSeededOverlock(
+        Unit $unit,
+        Contract $contract,
+        Employee $manager,
+        CarbonImmutable $startsOn,
+    ): ?UnitHold {
+        $unit->loadMissing('site');
+        $policyId = $unit->site->delinquency_policy_id;
+        if ($policyId === null) {
+            return null;
+        }
+
+        $anchorCharge = Charge::query()
+            ->where('contract_id', $contract->id)
+            ->where('charge_type', ChargeType::Rent)
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->first();
+
+        if ($anchorCharge === null) {
+            $net = '100.00';
+            $anchorCharge = Charge::query()->create([
+                'contract_id' => $contract->id,
+                'contract_item_id' => null,
+                'charge_type' => ChargeType::Rent,
+                'period_start' => $startsOn->subMonth()->toDateString(),
+                'period_end' => $startsOn->subDay()->toDateString(),
+                'net_amount' => $net,
+                'tax_rate_snapshot' => null,
+                'tax_amount' => '0.00',
+                'amount' => $net,
+                'currency' => $contract->currency,
+                'due_date' => $startsOn->subDays(14)->toDateString(),
+                'description' => 'Overdue rent (seed)',
+            ]);
+        }
+
+        $case = Delinquency::query()->create([
+            'contract_id' => $contract->id,
+            'delinquency_policy_id' => $policyId,
+            'anchor_due_date' => $anchorCharge->due_date instanceof CarbonImmutable
+                || $anchorCharge->due_date instanceof \Carbon\Carbon
+                ? $anchorCharge->due_date->toDateString()
+                : (string) $anchorCharge->due_date,
+            'opened_on' => $startsOn->toDateString(),
+        ]);
+
+        $hold = UnitHold::query()->create([
+            'unit_id' => $unit->id,
+            'hold_type' => HoldType::Overlock,
+            'starts_on' => $startsOn->format('Y-m-d'),
+            'ends_on' => null,
+            'reason' => Overlock::reasonFor($case),
+            'created_by' => $manager->id,
+        ]);
+
+        $policyStep = DelinquencyPolicyStep::query()
+            ->where('delinquency_policy_id', $policyId)
+            ->where('action', DelinquencyPolicyAction::PlaceOverlock)
+            ->orderBy('sort')
+            ->first();
+
+        DelinquencyStep::query()->create([
+            'delinquency_id' => $case->id,
+            'policy_step_id' => $policyStep?->id,
+            'action' => DelinquencyStepAction::PlaceOverlock,
+            'executed_on' => $startsOn->toDateString(),
+            'trigger' => DelinquencyStepTrigger::Ladder,
+            'unit_hold_id' => $hold->id,
+            'detail' => ['unit_hold_ids' => [$hold->id], 'seeded' => true],
+            'created_by' => $manager->id,
+        ]);
+
+        return $hold;
     }
 
     /**

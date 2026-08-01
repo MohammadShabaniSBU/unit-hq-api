@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Delinquency;
 
+use App\Enums\DelinquencyStepAction;
+use App\Enums\DelinquencyStepTrigger;
 use App\Enums\HoldType;
 use App\Models\Delinquency;
 use App\Models\Employee;
@@ -20,6 +22,17 @@ final class Overlock
     public static function reasonFor(Delinquency $case): string
     {
         return 'delinquency:'.$case->id;
+    }
+
+    public static function delinquencyIdFromReason(?string $reason): ?int
+    {
+        if ($reason === null || ! str_starts_with($reason, 'delinquency:')) {
+            return null;
+        }
+
+        $id = (int) substr($reason, strlen('delinquency:'));
+
+        return $id > 0 ? $id : null;
     }
 
     /**
@@ -102,6 +115,7 @@ final class Overlock
 
     /**
      * Release unreleased overlock holds for this case. Never deletes (S01).
+     * Appends a release_overlock timeline step when any holds were released.
      *
      * @return Collection<int, UnitHold>
      */
@@ -113,7 +127,12 @@ final class Overlock
             ->where('hold_type', HoldType::Overlock)
             ->whereNull('released_at')
             ->where('reason', $caseReason)
+            ->orderBy('id')
             ->get();
+
+        if ($holds->isEmpty()) {
+            return $holds;
+        }
 
         foreach ($holds as $hold) {
             $hold->forceFill([
@@ -121,6 +140,41 @@ final class Overlock
             ])->save();
         }
 
+        /** @var UnitHold $primary */
+        $primary = $holds->first();
+        $today = DelinquencyState::siteToday($case->contract)->toDateString();
+        $trigger = $reason === 'cure'
+            ? DelinquencyStepTrigger::Cure
+            : DelinquencyStepTrigger::Manual;
+
+        DelinquencyLifecycle::recordStep(
+            delinquency: $case,
+            action: DelinquencyStepAction::ReleaseOverlock,
+            trigger: $trigger,
+            executedOn: $today,
+            unitHold: $primary,
+            detail: [
+                'unit_hold_ids' => $holds->map(fn (UnitHold $h): int => (int) $h->id)->values()->all(),
+                'release_reason' => $reason,
+            ],
+            createdBy: $by,
+        );
+
         return $holds;
+    }
+
+    /**
+     * Live overlock holds linked to this case (reason = delinquency:{id}).
+     *
+     * @return Collection<int, UnitHold>
+     */
+    public static function liveHolds(Delinquency $case): Collection
+    {
+        return UnitHold::query()
+            ->where('hold_type', HoldType::Overlock)
+            ->whereNull('released_at')
+            ->where('reason', self::reasonFor($case))
+            ->orderBy('id')
+            ->get();
     }
 }

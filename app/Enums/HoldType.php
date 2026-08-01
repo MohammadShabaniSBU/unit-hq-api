@@ -29,6 +29,6 @@ enum HoldType: string
     /** Hold types operators may create/release via the units holds API. */
     public function isManuallyManageable(): bool
     {
-        return $this !== self::Reservation;
+        return $this !== self::Reservation && $this !== self::Overlock;
     }
 }

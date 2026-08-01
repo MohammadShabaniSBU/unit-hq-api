@@ -13,6 +13,8 @@ enum DelinquencyStepAction: string
     case RevokeAccess = 'revoke_access';
     /** Cure-trigger step row — not a policy ladder action. */
     case Cure = 'cure';
+    /** Release-overlock step — timeline only, not a policy ladder action. */
+    case ReleaseOverlock = 'release_overlock';
 
     public static function fromPolicyAction(DelinquencyPolicyAction $action): self
     {
