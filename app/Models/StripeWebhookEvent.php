@@ -1,24 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Raw Stripe webhook event stored for reconciliation.
  * The ledger is the system of record — events are inputs reconciled against it.
  *
- * Per-site direct charges (no Connect): each site holds its own Stripe keys
- * (`site_stripe_settings`). The inbound webhook URL carries a per-site
- * `webhook_route_token`; that site's `webhook_secret` verifies the
- * `Stripe-Signature` header. New rows always set site_id; legacy rows
- * (from before per-site routing) may be null.
+ * Idempotency is per payment_provider_account (two accounts may emit the same
+ * stripe_event_id). The inbound URL carries account_token; that account's
+ * webhook_secret verifies Stripe-Signature.
  *
  * @property int         $id
- * @property int|null    $site_id
+ * @property int|null    $payment_provider_account_id
  * @property string      $stripe_event_id
  * @property string      $event_type
  * @property array       $payload
@@ -27,8 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon      $received_at
  * @property Carbon|null $processed_at
  *
- * @property-read Site|null    $site
- * @property-read Payment|null $payment
+ * @property-read PaymentProviderAccount|null $paymentProviderAccount
+ * @property-read Payment|null                $payment
  */
 class StripeWebhookEvent extends Model
 {
@@ -37,7 +37,7 @@ class StripeWebhookEvent extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'site_id',
+        'payment_provider_account_id',
         'stripe_event_id',
         'event_type',
         'payload',
@@ -50,21 +50,21 @@ class StripeWebhookEvent extends Model
     protected function casts(): array
     {
         return [
-            'payload'      => 'array',
-            'received_at'  => 'datetime',
+            'payload' => 'array',
+            'received_at' => 'datetime',
             'processed_at' => 'datetime',
         ];
     }
 
-    /** @return BelongsTo<Payment, StripeWebhookEvent> */
+    /** @return BelongsTo<Payment, $this> */
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
     }
 
-    /** @return BelongsTo<Site, StripeWebhookEvent> */
-    public function site(): BelongsTo
+    /** @return BelongsTo<PaymentProviderAccount, $this> */
+    public function paymentProviderAccount(): BelongsTo
     {
-        return $this->belongsTo(Site::class);
+        return $this->belongsTo(PaymentProviderAccount::class);
     }
 }

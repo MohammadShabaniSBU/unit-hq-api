@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -46,7 +45,6 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, SiteMap>       $siteMaps
  * @property-read Collection<int, SiteSenderIdentity> $senderIdentities
  * @property-read Collection<int, CommunicationAccount> $communicationAccounts
- * @property-read SiteStripeSetting|null         $stripeSetting
  */
 class Site extends Model
 {
@@ -179,11 +177,5 @@ class Site extends Model
     public function communicationAccounts(): HasMany
     {
         return $this->hasMany(CommunicationAccount::class);
-    }
-
-    /** @return HasOne<SiteStripeSetting, $this> */
-    public function stripeSetting(): HasOne
-    {
-        return $this->hasOne(SiteStripeSetting::class);
     }
 }

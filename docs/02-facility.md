@@ -54,6 +54,6 @@ The **commercial product definition**, not the physical box.
 | `units` | Physical boxes |
 | `site_maps` | Visual facility maps (SVG; id ↔ `unit_number`) |
 | `unit_class_rates` | Site × class → price junction |
-| `site_stripe_settings` | Current Stripe keys + webhook routing (replaced by per-entity `payment_provider_accounts` in S06) |
+| `payment_provider_accounts` | Per-entity Stripe (and future debit) credentials + webhook routing — see `05-billing-ledger.md` |
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |

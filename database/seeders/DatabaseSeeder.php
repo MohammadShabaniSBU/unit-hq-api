@@ -12,7 +12,9 @@ use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\InvoiceSeries;
+use App\Enums\CredentialStatus;
 use App\Models\LegalEntity;
+use App\Models\PaymentProviderAccount;
 use App\Models\Price;
 use App\Models\Site;
 use App\Models\TaxRate;
@@ -71,6 +73,24 @@ class DatabaseSeeder extends Seeder
             ]
         );
         InvoiceSeries::ensureDefaultsFor($legalEntity);
+
+        // Connected Stripe account per entity for downstream S06 tasks (fake keys; no live Stripe).
+        PaymentProviderAccount::query()->firstOrCreate(
+            [
+                'legal_entity_id' => $legalEntity->id,
+                'provider' => 'stripe',
+                'is_active' => true,
+            ],
+            [
+                'display_name' => 'Stripe',
+                'publishable_key' => 'pk_test_seed_placeholder',
+                'secret_key' => 'sk_test_seed_placeholder',
+                'provider_account_id' => 'acct_test_seed',
+                'account_token' => 'seed_account_token_'.str_pad((string) $legalEntity->id, 24, '0'),
+                'status' => CredentialStatus::Connected,
+                'last_error' => null,
+            ]
+        );
 
         // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris
         $siteDefs = [

@@ -169,8 +169,10 @@ Payment credentials, webhook routing, and merchant-of-record status belong to th
 pattern (crypto-random, never the PK). Full model — Stripe, SEPA bank-file, Verifactu,
 invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authoritative).
 
-`site_stripe_settings` exists in the codebase today and is replaced in S06 by
-`payment_provider_accounts` scoped to `legal_entity_id`. Credential handling rules
+Credentials live on `payment_provider_accounts` scoped to `legal_entity_id`
+(Settings → Payments / entity detail). Inbound webhooks route by opaque
+`account_token` (`POST /api/webhooks/stripe/{account_token}`); idempotency on
+`stripe_webhook_events` is per account. Credential handling rules
 (create/rotate/remove logging, masking, blank-unchanged) stay shared with
 `communication_accounts` — see `06-communications.md` and `App\Support\Credentials`.
 

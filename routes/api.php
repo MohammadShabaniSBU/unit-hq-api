@@ -22,10 +22,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('settings/communications/{channel}/webhook', [Facility\CommunicationAccountController::class, 'deleteWebhook']);
     Route::delete('settings/communications/{channel}/{provider}', [Facility\CommunicationAccountController::class, 'destroy']);
 
-    Route::get('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'show']);
-    Route::put('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'update']);
-    Route::post('sites/{site}/stripe-settings/webhook', [Facility\SiteStripeSettingController::class, 'createWebhook']);
-    Route::delete('sites/{site}/stripe-settings', [Facility\SiteStripeSettingController::class, 'destroy']);
+    Route::get('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'show']);
+    Route::put('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'update']);
+    Route::post('legal-entities/{legal_entity}/stripe-settings/webhook', [Controllers\LegalEntityStripeController::class, 'createWebhook']);
+    Route::delete('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'destroy']);
 
     // Sender identities carry no secrets, but `update` authorizes via
     // SiteAccess::canManageSite($request->user(), ...) which needs an
@@ -40,7 +40,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 });
 
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
-Route::post('webhooks/stripe/{webhookRouteToken}', Webhooks\StripeWebhookController::class);
+Route::post('webhooks/stripe/{accountToken}', Webhooks\StripeWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
 
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
@@ -105,7 +105,7 @@ Route::post('invoice-series/{invoice_series}/unarchive', [Controllers\InvoiceSer
 Route::apiResource('sites', Facility\SiteController::class);
 Route::post('sites/{site}/archive', [Facility\SiteController::class, 'archive']);
 Route::post('sites/{site}/unarchive', [Facility\SiteController::class, 'unarchive']);
-Route::get('sites/{site}/stripe/public-key', [Facility\SiteStripePublicKeyController::class, 'show']);
+Route::get('legal-entities/{legal_entity}/stripe/public-key', [Controllers\LegalEntityStripeController::class, 'publicKey']);
 Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
 Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
 Route::post('sites/{site}/maps/validate', [Facility\SiteMapController::class, 'validateSvg']);

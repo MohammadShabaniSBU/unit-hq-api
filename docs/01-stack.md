@@ -30,7 +30,7 @@
 - **Facility** — units, unit classes, rates, discounts, insurance plans, access control
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
 - **Insights** — occupancy, conversion, revenue
-- **Settings** — general, billing settings, payments (legal-entity credentials; today's `site_stripe_settings` until S06), communications (company provider keys), late fees & liens, tax rates, leasing, custom attributes, object customization, **facility (sites)**, activity log
+- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), late fees & liens, tax rates, leasing, custom attributes, object customization, **facility (sites)**, activity log
 - **Inbox / Copilot** — messaging + AI conversations
 
 ## Quick start

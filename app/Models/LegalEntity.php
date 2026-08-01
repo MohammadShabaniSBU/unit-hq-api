@@ -36,10 +36,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon           $created_at
  * @property Carbon           $updated_at
  *
- * @property-read Collection<int, Site>          $sites
- * @property-read Collection<int, InvoiceSeries> $invoiceSeries
- * @property-read Collection<int, Invoice>       $invoices
- * @property-read int|null                       $sites_count
+ * @property-read Collection<int, Site>                    $sites
+ * @property-read Collection<int, InvoiceSeries>           $invoiceSeries
+ * @property-read Collection<int, Invoice>                 $invoices
+ * @property-read Collection<int, PaymentProviderAccount>  $paymentProviderAccounts
+ * @property-read int|null                                 $sites_count
  */
 class LegalEntity extends Model
 {
@@ -103,6 +104,12 @@ class LegalEntity extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /** @return HasMany<PaymentProviderAccount, $this> */
+    public function paymentProviderAccounts(): HasMany
+    {
+        return $this->hasMany(PaymentProviderAccount::class);
     }
 
     /** True once any fiscal invoice has been issued under this entity. */

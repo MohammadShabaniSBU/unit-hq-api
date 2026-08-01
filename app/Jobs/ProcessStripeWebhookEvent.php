@@ -29,7 +29,7 @@ class ProcessStripeWebhookEvent implements ShouldQueue
         }
 
         // TODO: map $event->event_type (payment_intent.succeeded, …) onto a
-        // Payment row for $event->site_id, then mark processed/failed.
+        // Payment row via payment_provider_account_id, then mark processed/failed.
         $event->update(['processed_at' => now()]);
     }
 }

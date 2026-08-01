@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Tier-3 audit logging shared by every credential lifecycle (create / rotate
- * / remove) — comms provider accounts and per-site Stripe settings.
+ * / remove) — comms provider accounts and payment provider accounts.
  * Properties are limited to identifiers, the masked last-4, and the result;
  * the secret itself is never logged. See 09-conventions-and-invariants.md #27.
  */

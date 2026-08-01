@@ -146,7 +146,7 @@ the PSD2 money-transmitter question outright. Credentials and fiscal identity sc
 - Each **legal entity** holds payment provider credentials (S03 schema). Sites belong to one
   legal entity.
 - Stripe handles **cards**. Webhooks are routed and signature-verified per entity
-  (`site_stripe_settings` is the current implementation and is replaced in S06).
+  via `payment_provider_accounts` (`account_token` + per-account signing secret).
 - **SEPA Direct Debit is bank-file based**, not processor based: Cuaderno 19-14 / `pain.008`
   export handed to the operator's bank, returns imported days later.
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Shared secret-masking rules for every credential surface (comms provider
- * API keys, per-site Stripe keys): secrets are never returned raw — only
+ * API keys, payment provider accounts): secrets are never returned raw — only
  * "••••••" + the last 4 characters. See 09-conventions-and-invariants.md #26.
  */
 final class CredentialMasker
