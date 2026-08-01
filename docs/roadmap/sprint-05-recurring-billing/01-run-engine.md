@@ -75,6 +75,13 @@ correctness first, the run is I/O-light):
 
 1. `SELECT … FOR UPDATE` the contract row. Re-check status + cursor after lock (a vacate
    may have raced the eligibility query).
+1b. **Stop-line pre-check** (`notice_given` only): compute
+   `stop = max(scheduled_move_out_on, notice_given_on + notice_period_days)` in PHP (not
+   SQL — portable, and the shell is per-contract anyway). If `billed_through >= stop`,
+   record `skipped/stop_line`, commit, next — **without calling `nextPeriod`**, so the
+   boundary assertion never evaluates a post-stop cursor and **no cursor write occurs**.
+   The recurring `skipped/stop_line` items until move-out are deliberate observability,
+   not noise: they answer "why isn't this contract billing".
 2. Resolve the contract's site-today via `SiteClock`; compute due periods via
    `BillingMath::periodsBetween(cursor, horizonForContract, cap)`.
 3. None due → record `skipped/not_due`, commit, next.
@@ -103,10 +110,12 @@ already exists reserved in `08` — this sprint starts using it); per-contract f
 
 Add to `09`:
 
-> **Recurring billing is cursor-serialised.** The only idempotency mechanism is the
-> row-locked read-and-advance of `contracts.billed_through`; charges, invoice and cursor
-> advance commit atomically per contract per run. No secondary dedup state may be
-> introduced. Run and run-item rows are append-only.
+> **Recurring billing is cursor-serialised, and the cursor has one writer.**
+> `contracts.billed_through` is written in exactly one circumstance: forward, to a billed
+> period's end, inside the per-contract billing transaction, under the row lock. It is
+> never written on a skip, at the stop line, or by any other code path. Charges, invoice
+> and cursor advance commit atomically per contract per run; no secondary dedup state may
+> be introduced. Run and run-item rows are append-only.
 
 ## Acceptance criteria
 

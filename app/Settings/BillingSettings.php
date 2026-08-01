@@ -15,6 +15,7 @@ readonly class BillingSettings implements SettingsPayload
         public string $moveOutSettlement = 'none',
         public int $turnoverHoldDays = 0,
         public string $transferBilling = 'prorate_immediately',
+        public int $billingHorizonDays = 0,
     ) {}
 
     public static function default(): static
@@ -30,6 +31,7 @@ readonly class BillingSettings implements SettingsPayload
             moveOutSettlement: 'none',
             turnoverHoldDays: 0,
             transferBilling: 'prorate_immediately',
+            billingHorizonDays: 0,
         );
     }
 
@@ -48,6 +50,7 @@ readonly class BillingSettings implements SettingsPayload
             moveOutSettlement: $data['move_out_settlement'] ?? 'none',
             turnoverHoldDays: (int) ($data['turnover_hold_days'] ?? 0),
             transferBilling: $data['transfer_billing'] ?? 'prorate_immediately',
+            billingHorizonDays: (int) ($data['billing_horizon_days'] ?? 0),
         );
     }
 
@@ -64,6 +67,7 @@ readonly class BillingSettings implements SettingsPayload
             'move_out_settlement'            => $this->moveOutSettlement,
             'turnover_hold_days'             => $this->turnoverHoldDays,
             'transfer_billing'               => $this->transferBilling,
+            'billing_horizon_days'           => $this->billingHorizonDays,
         ];
     }
 
@@ -78,6 +82,7 @@ readonly class BillingSettings implements SettingsPayload
         ?string $moveOutSettlement = null,
         ?int $turnoverHoldDays = null,
         ?string $transferBilling = null,
+        ?int $billingHorizonDays = null,
     ): static {
         return new self(
             defaultCurrency: $defaultCurrency ?? $this->defaultCurrency,
@@ -90,6 +95,7 @@ readonly class BillingSettings implements SettingsPayload
             moveOutSettlement: $moveOutSettlement ?? $this->moveOutSettlement,
             turnoverHoldDays: $turnoverHoldDays ?? $this->turnoverHoldDays,
             transferBilling: $transferBilling ?? $this->transferBilling,
+            billingHorizonDays: $billingHorizonDays ?? $this->billingHorizonDays,
         );
     }
 

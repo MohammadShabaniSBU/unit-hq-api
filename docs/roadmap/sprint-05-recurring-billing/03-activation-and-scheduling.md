@@ -55,13 +55,13 @@ noted in `10-open-decisions.md`'s stopgap entry.
 
 ## Acceptance criteria
 
-- [ ] `pending` with move-in today (site tz) activates; tomorrow's does not; a
+- [x] `pending` with move-in today (site tz) activates; tomorrow's does not; a
       cancelled-pending never does.
-- [ ] Timezone fixture: two sites 12h apart activate on their own local dates.
-- [ ] Horizon 0 vs 3: periods starting in 2 days bill only under the latter; amounts
+- [x] Timezone fixture: two sites 12h apart activate on their own local dates.
+- [x] Horizon 0 vs 3: periods starting in 2 days bill only under the latter; amounts
       identical (horizon-independence test).
-- [ ] Manual endpoint audited with causer; dry-run returns the table without a run row.
-- [ ] Scheduler entries exist with activation ≥ billing frequency (architecture test on
+- [x] Manual endpoint audited with causer; dry-run returns the table without a run row.
+- [x] Scheduler entries exist with activation ≥ billing frequency (architecture test on
       the schedule list).
 
 ## Tests required

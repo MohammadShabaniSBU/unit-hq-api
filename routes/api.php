@@ -32,6 +32,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // authenticated request to resolve — must live behind auth:sanctum too.
     Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
     Route::put('sites/{site}/sender-identities/{channel}', [Facility\SiteSenderIdentityController::class, 'update']);
+
+    // Manual billing run — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
 });
 
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.

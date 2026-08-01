@@ -31,6 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('system-events:maintain')->daily();
         $schedule->command('activitylog:prune-tiers')->daily();
         $schedule->command('automations:run-scheduled')->everyMinute();
+
+        // Activation must run at least as often as billing, and is registered
+        // first so same-tick hourly runs activate move-ins before billing
+        // evaluates eligibility (a reverse order loses a day of rent).
+        $schedule->command('contracts:activate')->hourly();
+        $schedule->command('billing:run --trigger=scheduled')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

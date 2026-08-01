@@ -32,7 +32,7 @@ overdue charges to chase and the whole recurring narrative works end to end.
       (per cadence) contract, in order, each with its own charges + invoice.
 - [ ] One contract failing (e.g. fiscal blocker) is recorded and skipped; the run completes;
       the contract retries next run.
-- [ ] `pending` contracts auto-activate on their move-in date; `notice_given` contracts stop
+- [x] `pending` contracts auto-activate on their move-in date; `notice_given` contracts stop
       being billed past the stop line; `ended` never bill.
 - [ ] Billing runs are inspectable in the panel down to per-contract outcomes.
 

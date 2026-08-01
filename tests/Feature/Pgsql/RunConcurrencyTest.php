@@ -19,6 +19,7 @@ use App\Models\UnitClass;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\Pool;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Tests\Support\CreatesCataloguePrices;
@@ -144,19 +145,21 @@ PHP);
                     "Worker {$key} failed: {$result->errorOutput()} {$result->output()}"
                 );
             }
+
+            $billedItems = BillingRunItem::query()
+                ->where('contract_id', $contractId)
+                ->where('outcome', BillingRunItemOutcome::Billed)
+                ->count();
+            $this->assertSame(1, $billedItems, 'Exactly one run may bill the contract');
+
+            $contract->refresh();
+            // Inclusive horizon: Jul→Aug and Aug→Sep in one bill under the lock.
+            $this->assertSame('2026-09-15', $contract->billedThrough());
         } finally {
             @unlink($scriptPath);
             Carbon::setTestNow();
+            // Committed outside RefreshDatabase — leave a clean DB for later tests.
+            Artisan::call('migrate:fresh', ['--force' => true]);
         }
-
-        $billedItems = BillingRunItem::query()
-            ->where('contract_id', $contractId)
-            ->where('outcome', BillingRunItemOutcome::Billed)
-            ->count();
-        $this->assertSame(1, $billedItems, 'Exactly one run may bill the contract');
-
-        $contract->refresh();
-        // Inclusive horizon: Jul→Aug and Aug→Sep in one bill under the lock.
-        $this->assertSame('2026-09-15', $contract->billedThrough());
     }
 }

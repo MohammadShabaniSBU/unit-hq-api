@@ -70,6 +70,7 @@ class SettingController extends Controller
             'move_out_settlement'            => ['sometimes', 'required', 'string', Rule::in(['none', 'daily', 'notice_based'])],
             'turnover_hold_days'             => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
             'transfer_billing'               => ['sometimes', 'required', 'string', Rule::in(['prorate_immediately', 'next_period'])],
+            'billing_horizon_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
         ]);
 
         $anchorModel = $validated['billing_anchor_model'] ?? Setting::billing()->billingAnchorModel;
@@ -107,6 +108,7 @@ class SettingController extends Controller
                 moveOutSettlement: $validated['move_out_settlement'] ?? null,
                 turnoverHoldDays: $validated['turnover_hold_days'] ?? null,
                 transferBilling: $validated['transfer_billing'] ?? null,
+                billingHorizonDays: $validated['billing_horizon_days'] ?? null,
             )
         );
 

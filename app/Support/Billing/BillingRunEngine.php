@@ -11,8 +11,11 @@ use App\Enums\LogChannel;
 use App\Models\BillingRun;
 use App\Models\BillingRunItem;
 use App\Models\Contract;
+use App\Models\Employee;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
+use App\Support\Billing\Exceptions\BillingRunFailure;
 use App\Support\Billing\Exceptions\CatchUpCapExceeded;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
@@ -55,7 +58,7 @@ final class BillingRunEngine
         bool $dryRun = false,
         ?int $createdBy = null,
     ): BillingRun|array {
-        $horizonDays = max(0, (int) config('billing.horizon_days', 0));
+        $horizonDays = max(0, Setting::billing()->billingHorizonDays);
         $catchUpCap = max(1, (int) config('billing.catch_up_cap', 12));
         $horizonDate = CarbonImmutable::today()->addDays($horizonDays)->startOfDay();
 
@@ -103,14 +106,24 @@ final class BillingRunEngine
             'contracts_failed' => $failed,
         ])->save();
 
-        RecordsActivity::log(LogChannel::Billing, 'billing.run.completed', $run, [
-            'trigger' => $trigger->value,
-            'horizon_date' => $horizonDate->toDateString(),
-            'contracts_considered' => count($eligibleIds),
-            'contracts_billed' => $billed,
-            'contracts_skipped' => $skipped,
-            'contracts_failed' => $failed,
-        ]);
+        $causer = $createdBy !== null
+            ? Employee::query()->find($createdBy)
+            : null;
+
+        RecordsActivity::log(
+            LogChannel::Billing,
+            'billing.run.completed',
+            $run,
+            [
+                'trigger' => $trigger->value,
+                'horizon_date' => $horizonDate->toDateString(),
+                'contracts_considered' => count($eligibleIds),
+                'contracts_billed' => $billed,
+                'contracts_skipped' => $skipped,
+                'contracts_failed' => $failed,
+            ],
+            $causer,
+        );
 
         return $run->refresh();
     }
@@ -166,6 +179,10 @@ final class BillingRunEngine
             );
             $cursor = $this->civilDate($contract->billedThrough());
 
+            if ($this->isPastStopLine($contract, $cursor)) {
+                continue;
+            }
+
             try {
                 $windows = BillingMath::periodsBetween($contract, $cursor, $siteHorizon, $catchUpCap);
             } catch (CatchUpCapExceeded) {
@@ -182,21 +199,32 @@ final class BillingRunEngine
                 continue;
             }
 
-            if ($windows === []) {
+            $stop = $contract->status === ContractStatus::NoticeGiven
+                ? RecurringBilling::stopDate($contract)
+                : null;
+
+            $billable = [];
+            foreach ($windows as $window) {
+                if ($stop !== null && $window['start']->gte($stop)) {
+                    break;
+                }
+                $billable[] = $window;
+            }
+
+            if ($billable === []) {
                 continue;
             }
 
             $est = '0.00';
-            foreach ($windows as $window) {
-                $result = $this->generate($contract, $window);
-                $est = bcadd($est, $result->amountTotal, 2);
+            foreach ($billable as $window) {
+                $est = bcadd($est, RecurringBilling::estimatePeriodGross($contract, $window), 2);
             }
 
             $rows[] = [
                 'contract_id' => $id,
-                'periods' => count($windows),
-                'window_start' => $windows[0]['start']->toDateString(),
-                'window_end' => $windows[array_key_last($windows)]['end']->toDateString(),
+                'periods' => count($billable),
+                'window_start' => $billable[0]['start']->toDateString(),
+                'window_end' => $billable[array_key_last($billable)]['end']->toDateString(),
                 'est_amount' => $est,
             ];
         }
@@ -212,9 +240,8 @@ final class BillingRunEngine
     ): BillingRunItemOutcome {
         try {
             /**
-             * CatchUpCapExceeded is returned as a marker (no writes yet). Generator
-             * throws propagate so the transaction rolls back — S05-02 may write
-             * charges before a later failure in the same period.
+             * CatchUpCapExceeded / BillingRunFailure are returned as markers so the
+             * per-contract transaction rolls back before the failure row is written.
              *
              * @var array{outcome: BillingRunItemOutcome}|array{fail: string, message: string} $result
              */
@@ -251,6 +278,13 @@ final class BillingRunEngine
                 );
                 $cursor = $this->civilDate($contract->billedThrough());
 
+                // 1b — stop-line pre-check: never call nextPeriod past stop; never write cursor.
+                if ($this->isPastStopLine($contract, $cursor)) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'stop_line');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
                 if ($cursor->gt($siteHorizon)) {
                     $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'not_due');
 
@@ -269,15 +303,42 @@ final class BillingRunEngine
                     return ['outcome' => BillingRunItemOutcome::Skipped];
                 }
 
+                $stop = $contract->status === ContractStatus::NoticeGiven
+                    ? RecurringBilling::stopDate($contract)
+                    : null;
+
                 $periodsBilled = 0;
                 $amountTotal = '0.00';
                 $currency = $contract->currency;
                 $invoiceIds = [];
+                $lastBilledEnd = null;
 
                 foreach ($windows as $window) {
+                    if ($stop !== null && $window['start']->gte($stop)) {
+                        if ($periodsBilled > 0) {
+                            break;
+                        }
+
+                        $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'stop_line');
+
+                        return ['outcome' => BillingRunItemOutcome::Skipped];
+                    }
+
+                    // BillingRunFailure must propagate so the transaction rolls back
+                    // (charges without an invoice must not commit).
                     $periodResult = $this->generate($contract, $window);
 
                     if ($periodResult->isSkip()) {
+                        if ($periodResult->skipDetail === 'stop_line') {
+                            if ($periodsBilled > 0) {
+                                break;
+                            }
+
+                            $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'stop_line');
+
+                            return ['outcome' => BillingRunItemOutcome::Skipped];
+                        }
+
                         $this->writeItem(
                             $run,
                             $contractId,
@@ -294,11 +355,17 @@ final class BillingRunEngine
                         $currency = $periodResult->currency;
                     }
                     $invoiceIds = array_merge($invoiceIds, $periodResult->invoiceIds);
+                    $lastBilledEnd = $window['end'];
                 }
 
-                $lastEnd = $windows[array_key_last($windows)]['end'];
+                if ($periodsBilled === 0 || $lastBilledEnd === null) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'not_due');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
                 $contract->forceFill([
-                    'billed_through' => $lastEnd->toDateString(),
+                    'billed_through' => $lastBilledEnd->toDateString(),
                 ])->save();
 
                 $this->writeItem(
@@ -313,6 +380,15 @@ final class BillingRunEngine
 
                 return ['outcome' => BillingRunItemOutcome::Billed];
             });
+        } catch (BillingRunFailure $e) {
+            $this->recordFailure(
+                $run,
+                $contractId,
+                detail: $e->detail,
+                message: $e->getMessage(),
+            );
+
+            return BillingRunItemOutcome::Failed;
         } catch (Throwable $e) {
             $this->recordFailure(
                 $run,
@@ -341,6 +417,17 @@ final class BillingRunEngine
     private function civilDate(string $ymd): CarbonImmutable
     {
         return CarbonImmutable::parse($ymd)->startOfDay();
+    }
+
+    private function isPastStopLine(Contract $contract, CarbonImmutable $cursor): bool
+    {
+        if ($contract->status !== ContractStatus::NoticeGiven) {
+            return false;
+        }
+
+        $stop = RecurringBilling::stopDate($contract);
+
+        return $stop !== null && $cursor->gte($stop);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\BillingInterval;
 use App\Enums\ChargeType;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractItemChangeReason;
@@ -22,6 +23,7 @@ use App\Models\ContractTransfer;
 use App\Models\DepositSettlement;
 use App\Models\DepositSettlementLine;
 use App\Models\Employee;
+use App\Models\Insurance;
 use App\Models\Price;
 use App\Models\Reservation;
 use App\Models\Setting;
@@ -34,6 +36,7 @@ use App\Enums\TaxIdType;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
+use App\Support\Billing\RecurringBilling;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
@@ -107,6 +110,7 @@ class OccupancySeeder extends Seeder
         }
 
         $this->seedSupersededItemVersion($manager);
+        $this->rewindActiveCursorsForBillingDemo();
         $this->printSummary($sites);
     }
 
@@ -154,6 +158,17 @@ class OccupancySeeder extends Seeder
             'tax_rate_id'    => $item->tax_rate_id,
             'tax_rate_snapshot' => $item->tax_rate_snapshot,
         ]);
+
+        // Rewind across the change so billing:run bills old then new amounts (S05-02).
+        $contract = $item->contract;
+        if ($contract !== null && $contract->status === ContractStatus::Active) {
+            $this->rewindContractCursor($contract->fresh(), 2);
+            $contract->loadMissing('unitItem.item');
+            $unitNumber = $contract->unitItem?->item instanceof Unit
+                ? $contract->unitItem->item->unit_number
+                : (string) $contract->id;
+            $this->edgeCases['billing_rate_change_straddle'] = $unitNumber.' (bills old then new)';
+        }
     }
 
     /**
@@ -206,8 +221,124 @@ class OccupancySeeder extends Seeder
                 ->where('contract_id', $contract->id)
                 ->whereNull('ended_on')
                 ->update(['ended_on' => $moveOut->toDateString()]);
+            // Before stop line — rewind so billing:run still has a due window.
+            $this->rewindContractCursor($contract, 1);
             $this->edgeCases['contract_status_notice_given'] = $unit->unit_number;
+            $this->edgeCases['billing_notice_before_stop'] = $unit->unit_number.' (bills; stop in future)';
             $this->stateCounts['occupied']++;
+        }
+
+        // S05-02: notice_given past stop — skip/stop_line, cursor untouched
+        if ($this->needsEdge('billing_notice_past_stop') && $pool->isNotEmpty()) {
+            $unit = $pool->shift();
+            $contract = $this->createOpenOccupancy(
+                $unit,
+                $contacts->random(),
+                $billing,
+                $manager,
+                $today->subMonths(4),
+            );
+            $stop = $today->subDays(10);
+            $noticeDays = (int) ($contract->notice_period_days ?? 14);
+            $contract->forceFill([
+                'status' => ContractStatus::NoticeGiven,
+                'notice_given_on' => $stop->subDays($noticeDays)->toDateString(),
+                'notice_period_days' => $noticeDays,
+                'scheduled_move_out_on' => $stop->toDateString(),
+            ])->save();
+
+            // Keep cursor on a period boundary at/after stop (never write cursor to stop).
+            $resolvedStop = RecurringBilling::stopDate($contract->fresh());
+            if ($resolvedStop !== null && $contract->billing_anchor_date !== null) {
+                $cursor = CarbonImmutable::parse($contract->billing_anchor_date)->startOfDay();
+                $guard = 0;
+                while ($cursor->lt($resolvedStop) && $guard < 120) {
+                    $cursor = BillingMath::nextPeriod($contract, $cursor)['end'];
+                    $guard++;
+                }
+                $contract->forceFill(['billed_through' => $cursor->toDateString()])->save();
+            }
+
+            UnitOccupancy::query()
+                ->where('contract_id', $contract->id)
+                ->whereNull('ended_on')
+                ->update(['ended_on' => $stop->toDateString()]);
+            $this->edgeCases['billing_notice_past_stop'] = $unit->unit_number.' (skipped/stop_line; cursor untouched)';
+            $this->stateCounts['occupied']++;
+        }
+
+        // S05-02: fiscal-incomplete tenant over simplified limit → failed/fiscal_blocker
+        if ($this->needsEdge('billing_fiscal_blocker') && $pool->isNotEmpty()) {
+            $unit = $pool->shift();
+            $contact = Contact::factory()->create();
+            $contract = $this->createOpenOccupancy($unit, $contact, $billing, $manager, $today->subMonths(3));
+            // createOpenOccupancy completes fiscal for invoicing — strip it back for the edge.
+            $contact->forceFill([
+                'tax_id' => null,
+                'tax_id_type' => null,
+                'billing_address_line1' => null,
+                'billing_city' => null,
+                'billing_postal_code' => null,
+                'billing_country_code' => null,
+                'billing_name' => null,
+            ])->save();
+            $item = $contract->items()->whereNull('effective_to')->firstOrFail();
+            $item->loadMissing('price');
+            $highPrice = Price::query()->create([
+                'priceable_type' => $item->price->priceable_type,
+                'priceable_id' => $item->price->priceable_id,
+                'scope' => Price::SCOPE_CONTRACT,
+                'amount' => '500.00',
+                'currency' => $item->price->currency,
+                'effective_from' => null,
+                'effective_to' => null,
+                'created_by' => $manager->id,
+            ]);
+            $item->forceFill(['price_id' => $highPrice->id])->save();
+            $this->rewindContractCursor($contract, 1);
+            $this->edgeCases['billing_fiscal_blocker'] = $unit->unit_number.' (fails fiscal_blocker)';
+            $this->stateCounts['occupied']++;
+        }
+
+        // S05-02: currency mismatch across items → failed/currency_mismatch
+        if ($this->needsEdge('billing_currency_mismatch') && $pool->isNotEmpty()) {
+            $insurance = Insurance::query()->first();
+            if ($insurance === null) {
+                // Catalogue must exist (DatabaseSeeder); skip edge if not.
+            } else {
+                $unit = $pool->shift();
+                $contract = $this->createOpenOccupancy(
+                    $unit,
+                    $contacts->random(),
+                    $billing,
+                    $manager,
+                    $today->subMonths(3),
+                );
+                $unitItem = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->firstOrFail();
+                $unitItem->loadMissing('price');
+                $otherCurrency = $unitItem->price->currency === 'GBP' ? 'EUR' : 'GBP';
+                $mismatchPrice = Price::query()->create([
+                    'priceable_type' => $unitItem->price->priceable_type,
+                    'priceable_id' => $unitItem->price->priceable_id,
+                    'scope' => Price::SCOPE_CONTRACT,
+                    'amount' => '12.00',
+                    'currency' => $otherCurrency,
+                    'effective_from' => null,
+                    'effective_to' => null,
+                    'created_by' => $manager->id,
+                ]);
+                ContractItem::query()->create([
+                    'contract_id' => $contract->id,
+                    'item_type' => 'insurance',
+                    'item_id' => $insurance->id,
+                    'price_id' => $mismatchPrice->id,
+                    'effective_from' => $contract->move_in_date?->toDateString() ?? $today->toDateString(),
+                    'effective_to' => null,
+                ]);
+                $this->rewindContractCursor($contract, 1);
+                $this->edgeCases['billing_currency_mismatch'] = $unit->unit_number.' (fails currency_mismatch)';
+                $this->stateCounts['occupied']++;
+            }
         }
 
         // Vacate settlement policies (S02-02)
@@ -657,51 +788,63 @@ class OccupancySeeder extends Seeder
 
         OccupancyGuard::assertVacant($unit->id, $moveIn, $endedOn);
 
-        $contract = Contract::query()->create([
-            'contact_id'             => $contact->id,
-            'start_date'             => $moveIn->format('Y-m-d'),
-            'end_date'               => $endedOn?->format('Y-m-d'),
-            'status'                 => $endedOn !== null ? ContractStatus::Ended : ContractStatus::Active,
-            'ended_reason'           => $endedOn !== null ? ContractEndedReason::Vacated : null,
-            'move_out_on'            => $endedOn?->format('Y-m-d'),
-            'notice_period_days'     => Setting::leasing()->defaultNoticePeriodDays,
-            'move_out_settlement'    => $billing->moveOutSettlement ?? MoveOutSettlement::None->value,
-            'transfer_billing'       => $billing->transferBilling ?? 'prorate_immediately',
-            'signed_at'              => $moveIn,
-            'billing_interval'       => $billing->defaultBillingInterval,
-            'billing_interval_count' => $billing->defaultBillingIntervalCount,
-            'billing_anchor_model'   => $billing->billingAnchorModel,
-            'billing_anchor_date'    => $plan->anchorDate->toDateString(),
-            'billed_through'         => $plan->billedThrough->toDateString(),
-            'proration_method'       => $billing->prorationMethod,
-            'move_in_date'           => $moveIn->format('Y-m-d'),
-            'deposit_amount'         => $billing->defaultDepositAmount,
-            'currency'               => $currency,
-        ]);
+        return DB::transaction(function () use (
+            $unit,
+            $contact,
+            $billing,
+            $manager,
+            $moveIn,
+            $endedOn,
+            $price,
+            $plan,
+            $currency,
+        ): Contract {
+            $contract = Contract::query()->create([
+                'contact_id'             => $contact->id,
+                'start_date'             => $moveIn->format('Y-m-d'),
+                'end_date'               => $endedOn?->format('Y-m-d'),
+                'status'                 => $endedOn !== null ? ContractStatus::Ended : ContractStatus::Active,
+                'ended_reason'           => $endedOn !== null ? ContractEndedReason::Vacated : null,
+                'move_out_on'            => $endedOn?->format('Y-m-d'),
+                'notice_period_days'     => Setting::leasing()->defaultNoticePeriodDays,
+                'move_out_settlement'    => $billing->moveOutSettlement ?? MoveOutSettlement::None->value,
+                'transfer_billing'       => $billing->transferBilling ?? 'prorate_immediately',
+                'signed_at'              => $moveIn,
+                'billing_interval'       => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'billing_anchor_model'   => $billing->billingAnchorModel,
+                'billing_anchor_date'    => $plan->anchorDate->toDateString(),
+                'billed_through'         => $plan->billedThrough->toDateString(),
+                'proration_method'       => $billing->prorationMethod,
+                'move_in_date'           => $moveIn->format('Y-m-d'),
+                'deposit_amount'         => $billing->defaultDepositAmount,
+                'currency'               => $currency,
+            ]);
 
-        $item = ContractItem::query()->create([
-            'contract_id'    => $contract->id,
-            'item_type'      => 'unit',
-            'item_id'        => $unit->id,
-            'price_id'       => $price->id,
-            'effective_from' => $moveIn->format('Y-m-d'),
-            'effective_to'   => $endedOn?->format('Y-m-d'),
-            'change_reason'  => null,
-        ]);
+            $item = ContractItem::query()->create([
+                'contract_id'    => $contract->id,
+                'item_type'      => 'unit',
+                'item_id'        => $unit->id,
+                'price_id'       => $price->id,
+                'effective_from' => $moveIn->format('Y-m-d'),
+                'effective_to'   => $endedOn?->format('Y-m-d'),
+                'change_reason'  => null,
+            ]);
 
-        UnitOccupancy::query()->create([
-            'unit_id'          => $unit->id,
-            'contract_id'      => $contract->id,
-            'contract_item_id' => $item->id,
-            'started_on'       => $moveIn->format('Y-m-d'),
-            'ended_on'         => $endedOn?->format('Y-m-d'),
-            'ended_reason'     => $endedOn !== null ? ContractEndedReason::Vacated->value : null,
-            'created_by'       => $manager->id,
-        ]);
+            UnitOccupancy::query()->create([
+                'unit_id'          => $unit->id,
+                'contract_id'      => $contract->id,
+                'contract_item_id' => $item->id,
+                'started_on'       => $moveIn->format('Y-m-d'),
+                'ended_on'         => $endedOn?->format('Y-m-d'),
+                'ended_reason'     => $endedOn !== null ? ContractEndedReason::Vacated->value : null,
+                'created_by'       => $manager->id,
+            ]);
 
-        $this->seedFirstPeriodInvoice($contract, $item, $price, $plan, $moveIn, $manager);
+            $this->seedFirstPeriodInvoice($contract, $item, $price, $plan, $moveIn, $manager);
 
-        return $contract;
+            return $contract;
+        });
     }
 
     /**
@@ -979,6 +1122,59 @@ class OccupancySeeder extends Seeder
         ]);
     }
 
+    /**
+     * Rewind billed_through on a majority of active contracts so `billing:run`
+     * on a fresh seed has visible work (S05-02).
+     */
+    private function rewindActiveCursorsForBillingDemo(): void
+    {
+        $contracts = Contract::query()
+            ->where('status', ContractStatus::Active)
+            ->whereNotNull('billed_through')
+            ->whereNotNull('billing_anchor_date')
+            ->orderBy('id')
+            ->get();
+
+        if ($contracts->isEmpty()) {
+            return;
+        }
+
+        $take = max(1, (int) ceil($contracts->count() * 0.65));
+        foreach ($contracts->shuffle()->take($take) as $contract) {
+            $this->rewindContractCursor($contract, fake()->numberBetween(1, 3));
+        }
+    }
+
+    private function rewindContractCursor(Contract $contract, int $periods): void
+    {
+        if ($periods < 1 || $contract->billed_through === null || $contract->billing_anchor_date === null) {
+            return;
+        }
+
+        $cursor = CarbonImmutable::parse($contract->billed_through)->startOfDay();
+        $anchor = CarbonImmutable::parse($contract->billing_anchor_date)->startOfDay();
+        $count = max(1, (int) $contract->billing_interval_count);
+        $interval = $contract->billing_interval instanceof BillingInterval
+            ? $contract->billing_interval
+            : BillingInterval::from((string) $contract->billing_interval);
+
+        for ($i = 0; $i < $periods; $i++) {
+            $candidate = match ($interval) {
+                BillingInterval::Day => $cursor->subDays($count),
+                BillingInterval::Week => $cursor->subWeeks($count),
+                BillingInterval::Month => $cursor->subMonthsNoOverflow($count),
+            };
+
+            if ($candidate->lt($anchor)) {
+                break;
+            }
+
+            $cursor = $candidate;
+        }
+
+        $contract->forceFill(['billed_through' => $cursor->toDateString()])->save();
+    }
+
     /** @param  Collection<int, Site>  $sites */
     private function printSummary(Collection $sites): void
     {
@@ -999,8 +1195,15 @@ class OccupancySeeder extends Seeder
         );
 
         $this->command?->table(
-            ['Edge case', 'Unit number'],
+            ['Edge case', 'Unit / note'],
             collect($this->edgeCases)->map(fn ($number, $key) => [$key, $number])->values()->all(),
         );
+
+        $pastDue = Contract::query()
+            ->whereIn('status', [ContractStatus::Active, ContractStatus::NoticeGiven])
+            ->whereNotNull('billed_through')
+            ->whereDate('billed_through', '<', now()->toDateString())
+            ->count();
+        $this->command?->info("Active/notice contracts with billed_through before today: {$pastDue} (billing:run fodder)");
     }
 }

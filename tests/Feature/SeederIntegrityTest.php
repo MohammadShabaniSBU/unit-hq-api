@@ -16,6 +16,7 @@ use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Support\Occupancy\Availability;
 use App\Support\Time\SiteClock;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -24,9 +25,34 @@ class SeederIntegrityTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Pgsql race tests disable transactions and commit fixtures. Re-migrate so
+     * this seed always starts from an empty schema.
+     *
+     * @var list<string|null>
+     */
+    protected $connectionsToTransact = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Prior tests may leave a frozen clock; SiteClock drives all seed dates.
+        Carbon::setTestNow();
+        $migrate = Artisan::call('migrate:fresh', ['--force' => true]);
+        $this->assertSame(0, $migrate, Artisan::output());
+    }
+
+    protected function tearDown(): void
+    {
+        // Leave an empty schema for subsequent RefreshDatabase tests.
+        Artisan::call('migrate:fresh', ['--force' => true]);
+        parent::tearDown();
+    }
+
     public function test_seeded_dataset_integrity(): void
     {
-        Artisan::call('db:seed', ['--force' => true]);
+        $exit = Artisan::call('db:seed', ['--force' => true]);
+        $this->assertSame(0, $exit, Artisan::output());
 
         $this->assertNoOverlappingOccupancies();
         $this->assertNoOverlappingBlockingHolds();
@@ -97,15 +123,29 @@ class SeederIntegrityTest extends TestCase
     private function assertEveryContractHasOccupancy(): void
     {
         // Cancelled contracts never commenced — no occupancy row by design (S02-01).
-        $contractCount = Contract::query()
+        $contractIds = Contract::query()
             ->where('status', '!=', ContractStatus::Cancelled->value)
-            ->count();
-        $occupancyContractCount = (int) UnitOccupancy::query()
-            ->selectRaw('COUNT(DISTINCT contract_id) as aggregate')
-            ->value('aggregate');
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $occupancyContractIds = UnitOccupancy::query()
+            ->distinct()
+            ->pluck('contract_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
 
-        $this->assertSame($contractCount, $occupancyContractCount);
-        $this->assertGreaterThan(0, $contractCount);
+        $missingOccupancy = $contractIds->diff($occupancyContractIds)->values();
+        $orphanOccupancy = $occupancyContractIds->diff($contractIds)->values();
+
+        $this->assertTrue(
+            $missingOccupancy->isEmpty(),
+            'Non-cancelled contracts without occupancy: '.$missingOccupancy->implode(', '),
+        );
+        $this->assertTrue(
+            $orphanOccupancy->isEmpty(),
+            'Occupancy rows for cancelled/missing contracts: '.$orphanOccupancy->implode(', '),
+        );
+        $this->assertGreaterThan(0, $contractIds->count());
         $this->assertTrue(
             Contract::query()->where('status', ContractStatus::Cancelled->value)->exists(),
             'Expected at least one cancelled contract in the seed',
@@ -125,19 +165,30 @@ class SeederIntegrityTest extends TestCase
             $this->assertArrayHasKey(
                 $state->value,
                 $states,
-                "Expected seeded unit state [{$state->value}] to be present",
+                "Expected at least one unit in state {$state->value}",
             );
         }
     }
 
     private function assertEveryContractIsSingleCurrency(): void
     {
-        Contract::query()->with('items.price')->each(function (Contract $contract): void {
+        // S05-02 seeds exactly one deliberate mixed-currency contract so
+        // billing:run surfaces failed/currency_mismatch.
+        $mixedCurrencyContracts = 0;
+
+        Contract::query()->with('items.price')->each(function (Contract $contract) use (&$mixedCurrencyContracts): void {
             $currencies = $contract->items
                 ->map(fn ($item) => $item->price?->currency)
                 ->unique()
                 ->filter()
                 ->values();
+
+            if ($currencies->count() > 1) {
+                $mixedCurrencyContracts++;
+
+                return;
+            }
+
             $this->assertCount(1, $currencies, "Contract {$contract->id} has mixed item currencies");
             $this->assertSame($contract->currency, $currencies->first());
 
@@ -149,6 +200,12 @@ class SeederIntegrityTest extends TestCase
                 $this->assertSame($contract->currency, $currency);
             }
         });
+
+        $this->assertSame(
+            1,
+            $mixedCurrencyContracts,
+            'Expected exactly one billing_currency_mismatch edge contract in the seed',
+        );
     }
 
     private function assertMultipleCurrenciesAndTimezonesPresent(): void

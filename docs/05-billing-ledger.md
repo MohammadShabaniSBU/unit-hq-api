@@ -70,6 +70,7 @@ Billing behaviour is configured at org level (`BillingSettings`) and **snapshott
 | `billing_anchor_day` | Day-of-month `1..28` when `calendar`; ISO weekday `1=Mon..7=Sun` when `calendar_week` |
 | `proration_method` | `daily` (default) \| `full_period` \| `none` |
 | `default_deposit_amount` | `NUMERIC(10,2)`, default `0.00` |
+| `billing_horizon_days` | Non-negative integer, default `0`. Bill periods whose start is within site-today + N days. **Operational only** — not snapshotted at signing; changing it never rewrites contract windows or amounts (invariant-18 exemption). |
 
 **Cadence locks:**
 
@@ -188,19 +189,41 @@ invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authorit
 
 In all cases the ledger is the system of record; provider events are reconciled inputs.
 
-## Recurring billing runs (S05-01)
+## Recurring billing runs (S05-01 / S05-02 / S05-03)
 
 `php artisan billing:run` drives `App\Support\Billing\BillingRunEngine`: eligibility for
 `active` / `notice_given` contracts with `billed_through <= horizon`, then one locked
-transaction per contract. Observability lives in append-only `billing_runs` /
-`billing_run_items`. Period arithmetic is `BillingMath::periodsBetween`; per-period
-charge + invoice generation is `RecurringBilling::generatePeriod` (stub until S05-02).
-Idempotency is the cursor lock only (invariant 37).
+transaction per contract. Horizon days come from `BillingSettings.billing_horizon_days`
+(resolved per contract via `SiteClock`). Observability lives in append-only `billing_runs`
+/ `billing_run_items`. Period arithmetic is `BillingMath::periodsBetween`; per-period
+charge + invoice generation is `RecurringBilling::generatePeriod`.
+
+**Activation:** `php artisan contracts:activate` flips `pending → active` when site-today
+`>= move_in_date` (`ContractTransition::assert` + core activity `contract.activated`).
+Per-contract failure isolation; cancelled-pending never activates.
+
+**Scheduler** (`bootstrap/app.php`): both commands run hourly; activation is registered
+**before** billing so same-tick runs activate move-ins before eligibility is evaluated.
+Manual trigger: authenticated `POST /api/billing-runs` `{ dry_run?: bool }` with
+`trigger=manual` and `created_by` = the employee (RBAC stopgap until S17).
+
+**Stop line (notice_given):**
+`stop = max(scheduled_move_out_on, notice_given_on + notice_period_days)` — the same
+later-of expression as vacate's final billing date. It is a **condition, never a cursor
+write**. The shell pre-checks `billed_through >= stop` → `skipped/stop_line` without
+calling `nextPeriod`. Catch-up stops when the next window's start `>= stop`; periods
+already billed in that transaction stand and the cursor advances only to the last billed
+period end. Periods straddling the stop line bill in full (vacate settlement credits the
+tail).
+
+**Per period:** `itemsOn(window.start)` → full price amount + item tax snapshot → charges
+(`rent` / `insurance`, `due_date = window.start`) → `InvoiceIssuer::issue`. Currency
+mismatch → `failed/currency_mismatch`; fiscal refusal → `failed/fiscal_blocker` (period
+rolls back, retries next run). Idempotency is the cursor lock only (invariant 37 — one
+writer: forward to a billed period end under the row lock).
 
 ## Out of scope (current billing slice)
 
-- Per-period charge/invoice generation body (S05-02 — stub in place).
-- Activation job, scheduler wiring, `billing_horizon_days` setting UI (S05-03).
 - Deposit refund / deduction lifecycle.
 - Per-contract cadence override.
 - Multi-week / multi-month epoch for `interval_count > 1` on calendar models (boundaries are still every month-day / every weekday).

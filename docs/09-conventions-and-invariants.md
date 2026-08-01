@@ -52,7 +52,7 @@
 15. **Activity / system_events are append-only** — no update/delete endpoints. Prune and GDPR redaction commands are the only writers that mutate history.
 16. **Manual activity rows go through `RecordsActivity`** with a `LogChannel` — never bare `activity()` without `log_name`.
 17. **TaxRate immutability** — never `UPDATE` `tax_rates.rate` in place. New version same `code` + close old `effective_to` (mirrors prices). Signed contracts keep tax via item/charge snapshots.
-18. **Contract billing snapshots** — cadence, anchor model/date, proration, deposit, and tax % are snapshotted at signing; later org settings changes never rewrite existing contracts.
+18. **Contract billing snapshots** — cadence, anchor model/date, proration, deposit, and tax % are snapshotted at signing; later org settings changes never rewrite existing contracts. Exception: `BillingSettings.billing_horizon_days` is operational (when a period is generated), never contractual — it is not snapshotted and may change freely without rewriting windows or amounts.
 19. **Deposit charges are not revenue** — `charge_type = deposit` is excluded from revenue semantics.
 20. **Contract create writes first-period charges in the same DB transaction** as the contract + items (store / convert). Preview must call the same `BillingMath` / `ContractBilling` path.
 21. **Attribute definitions are archive-only** — never hard-delete `attribute_definitions` (or their values). Operators set `archived_at`; archived definitions stay out of the add-field picker but may remain on existing layouts / values until removed.
@@ -87,10 +87,12 @@
     unreleased blocking `unit_holds` row covering D.** Ranges are half-open — `[started_on,
     ended_on)` and `[starts_on, ends_on)` — so an end date is the first day *not* covered. Never
     store availability as a column.
-37. **Recurring billing is cursor-serialised.** The only idempotency mechanism is the
-    row-locked read-and-advance of `contracts.billed_through`; charges, invoice and cursor
-    advance commit atomically per contract per run. No secondary dedup state may be
-    introduced. Run and run-item rows (`billing_runs` / `billing_run_items`) are append-only.
+37. **Recurring billing is cursor-serialised, and the cursor has one writer.**
+    `contracts.billed_through` is written in exactly one circumstance: forward, to a billed
+    period's end, inside the per-contract billing transaction, under the row lock. It is
+    never written on a skip, at the stop line, or by any other code path. Charges, invoice
+    and cursor advance commit atomically per contract per run; no secondary dedup state may
+    be introduced. Run and run-item rows (`billing_runs` / `billing_run_items`) are append-only.
 
 ## Code conventions
 

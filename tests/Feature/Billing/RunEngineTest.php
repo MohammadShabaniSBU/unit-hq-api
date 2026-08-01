@@ -16,6 +16,7 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Country;
 use App\Models\Employee;
+use App\Models\LegalEntity;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\Unit;
@@ -50,10 +51,12 @@ class RunEngineTest extends TestCase
 
         $this->employee = Employee::factory()->manager()->create();
         $country = Country::factory()->create(['code' => 'ES']);
+        $entity = LegalEntity::factory()->create();
         $this->site = Site::factory()->create([
             'country_id' => $country->id,
             'currency' => 'EUR',
             'timezone' => 'Europe/Madrid',
+            'legal_entity_id' => $entity->id,
         ]);
         $unitClass = UnitClass::factory()->create();
         [, $price] = $this->createUnitClassCataloguePrice(
@@ -236,6 +239,34 @@ class RunEngineTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame(BillingRunItemOutcome::Failed, $item->outcome);
         $this->assertSame('catch_up_cap', $item->detail);
+
+        $contract->refresh();
+        $this->assertSame($cursorBefore, $contract->billedThrough());
+    }
+
+    public function test_stop_line_precheck_skips_without_cursor_write(): void
+    {
+        $contract = $this->makeBillableContract(billedThrough: '2026-08-15');
+        $contract->forceFill([
+            'status' => ContractStatus::NoticeGiven,
+            'notice_given_on' => '2026-07-01',
+            'notice_period_days' => 14,
+            'scheduled_move_out_on' => '2026-07-20',
+        ])->save();
+        $cursorBefore = $contract->billedThrough();
+
+        // Inject stub so a missing generator body cannot mask the pre-check.
+        $run = (new BillingRunEngine(
+            generator: fn () => PeriodResult::empty(),
+        ))->run(BillingRunTrigger::Manual);
+
+        $this->assertSame(0, $run->contracts_billed);
+        $this->assertSame(1, $run->contracts_skipped);
+
+        $item = BillingRunItem::query()->where('billing_run_id', $run->id)->first();
+        $this->assertNotNull($item);
+        $this->assertSame(BillingRunItemOutcome::Skipped, $item->outcome);
+        $this->assertSame('stop_line', $item->detail);
 
         $contract->refresh();
         $this->assertSame($cursorBefore, $contract->billedThrough());
