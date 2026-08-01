@@ -81,6 +81,10 @@ return [
         'archive_in_use' => 'No se puede archivar la política de impagos asignada a :count sede(s). Reasigne esas sedes primero.',
         'offset_action_unique' => 'Cada par (offset_days, action) debe ser único dentro de una política.',
         'sort_unique' => 'Cada valor de orden (sort) debe ser único dentro de una política.',
+        'case_not_open' => 'Este caso de impago no está abierto.',
+        'already_paused' => 'Este caso de impago ya está en pausa.',
+        'action_failed' => 'No se pudo completar la acción de impago.',
+        'notice_already_sent' => 'Este aviso ya se ha marcado como enviado.',
     ],
 ];
 

@@ -122,6 +122,16 @@ final class DelinquencyLifecycle
             'paused_by' => $by->id,
         ])->save();
 
+        $today = DelinquencyState::siteToday($delinquency->contract)->toDateString();
+        self::recordStep(
+            delinquency: $delinquency,
+            action: DelinquencyStepAction::Pause,
+            trigger: DelinquencyStepTrigger::Manual,
+            executedOn: $today,
+            detail: ['reason' => $reason],
+            createdBy: $by,
+        );
+
         RecordsActivity::core('delinquency.paused', $delinquency, [
             'reason' => $reason,
             'contract_id' => $delinquency->contract_id,
@@ -151,6 +161,16 @@ final class DelinquencyLifecycle
             'paused_reason' => null,
             'paused_by' => null,
         ])->save();
+
+        $today = DelinquencyState::siteToday($delinquency->contract)->toDateString();
+        self::recordStep(
+            delinquency: $delinquency,
+            action: DelinquencyStepAction::Resume,
+            trigger: DelinquencyStepTrigger::Manual,
+            executedOn: $today,
+            detail: ['prior_reason' => $reason],
+            createdBy: $by,
+        );
 
         RecordsActivity::core('delinquency.resumed', $delinquency, [
             'prior_reason' => $reason,

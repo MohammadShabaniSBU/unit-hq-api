@@ -53,6 +53,26 @@ final class DelinquencyState
         $today = self::siteToday($contract)->toDateString();
         $triggerValues = array_map(fn (ChargeType $t): string => $t->value, self::TRIGGER_TYPES);
 
+        if ($contract->relationLoaded('charges')) {
+            return $contract->charges
+                ->filter(function (Charge $charge) use ($today, $triggerValues): bool {
+                    $due = $charge->due_date?->toDateString() ?? (string) $charge->due_date;
+                    $type = $charge->charge_type instanceof ChargeType
+                        ? $charge->charge_type->value
+                        : (string) $charge->charge_type;
+
+                    return $due < $today
+                        && in_array($type, $triggerValues, true)
+                        && bccomp($charge->openAmount(), '0.00', 2) > 0;
+                })
+                ->sortBy(fn (Charge $c): string => sprintf(
+                    '%s-%010d',
+                    $c->due_date?->toDateString() ?? (string) $c->due_date,
+                    $c->id,
+                ))
+                ->values();
+        }
+
         return $contract->charges()
             ->with('allocations')
             ->where('due_date', '<', $today)
@@ -66,7 +86,42 @@ final class DelinquencyState
 
     public static function isDelinquent(Contract $contract): bool
     {
-        return self::overdueCharges($contract)->isNotEmpty();
+        // Net open overdue across trigger types so a negative write_off can
+        // zero the balance and stop the case reopening on the next run.
+        return bccomp(self::netOverdueAmount($contract), '0.00', 2) > 0;
+    }
+
+    /**
+     * Σ open amounts of overdue trigger-type charges (can be reduced by write_offs).
+     */
+    public static function netOverdueAmount(Contract $contract): string
+    {
+        $today = self::siteToday($contract)->toDateString();
+        $triggerValues = array_map(fn (ChargeType $t): string => $t->value, self::TRIGGER_TYPES);
+
+        if ($contract->relationLoaded('charges')) {
+            $charges = $contract->charges->filter(function (Charge $charge) use ($today, $triggerValues): bool {
+                $due = $charge->due_date?->toDateString() ?? (string) $charge->due_date;
+                $type = $charge->charge_type instanceof ChargeType
+                    ? $charge->charge_type->value
+                    : (string) $charge->charge_type;
+
+                return $due < $today && in_array($type, $triggerValues, true);
+            });
+        } else {
+            $charges = $contract->charges()
+                ->with('allocations')
+                ->where('due_date', '<', $today)
+                ->whereIn('charge_type', $triggerValues)
+                ->get();
+        }
+
+        $sum = '0.00';
+        foreach ($charges as $charge) {
+            $sum = bcadd($sum, $charge->openAmount(), 2);
+        }
+
+        return BillingMath::round2($sum);
     }
 
     /**

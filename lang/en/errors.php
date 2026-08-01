@@ -81,6 +81,10 @@ return [
         'archive_in_use' => 'Cannot archive delinquency policy assigned to :count site(s). Reassign those sites first.',
         'offset_action_unique' => 'Each (offset_days, action) pair must be unique within a policy.',
         'sort_unique' => 'Each step sort value must be unique within a policy.',
+        'case_not_open' => 'This delinquency case is not open.',
+        'already_paused' => 'This delinquency case is already paused.',
+        'action_failed' => 'The delinquency action could not be completed.',
+        'notice_already_sent' => 'This notice has already been marked as sent.',
     ],
 ];
 

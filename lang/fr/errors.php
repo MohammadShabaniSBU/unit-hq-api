@@ -81,6 +81,10 @@ return [
         'archive_in_use' => 'Impossible d’archiver la politique d’impayés assignée à :count site(s). Réassignez ces sites d’abord.',
         'offset_action_unique' => 'Chaque paire (offset_days, action) doit être unique au sein d’une politique.',
         'sort_unique' => 'Chaque valeur de tri (sort) doit être unique au sein d’une politique.',
+        'case_not_open' => 'Ce dossier d’impayés n’est pas ouvert.',
+        'already_paused' => 'Ce dossier d’impayés est déjà en pause.',
+        'action_failed' => 'L’action d’impayés n’a pas pu être effectuée.',
+        'notice_already_sent' => 'Cet avis a déjà été marqué comme envoyé.',
     ],
 ];
 

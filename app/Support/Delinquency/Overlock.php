@@ -36,12 +36,12 @@ final class Overlock
     }
 
     /**
-     * Overlock each unit currently occupied by the contract.
+     * Overlock each unit currently occupied by the contract (or a single unit when $unitId set).
      * Idempotent: an unreleased overlock for that unit+case is returned as-is.
      *
      * @return UnitHold|list<UnitHold>
      */
-    public static function place(Delinquency $case, ?Employee $by = null): UnitHold|array
+    public static function place(Delinquency $case, ?Employee $by = null, ?int $unitId = null): UnitHold|array
     {
         $contract = $case->contract;
         $today = DelinquencyState::siteToday($contract)->toDateString();
@@ -60,10 +60,17 @@ final class Overlock
         if ($unitIds === []) {
             // Fall back to the contract's current unit item when occupancy is absent in tests.
             $contract->loadMissing(['unitItem']);
-            $unitId = $contract->unitItem?->item_id;
-            if ($unitId !== null) {
-                $unitIds = [(int) $unitId];
+            $fallbackId = $contract->unitItem?->item_id;
+            if ($fallbackId !== null) {
+                $unitIds = [(int) $fallbackId];
             }
+        }
+
+        if ($unitId !== null) {
+            if (! in_array($unitId, $unitIds, true)) {
+                throw new \InvalidArgumentException("Unit {$unitId} is not occupied by contract {$contract->id}.");
+            }
+            $unitIds = [$unitId];
         }
 
         $holds = [];
@@ -119,16 +126,21 @@ final class Overlock
      *
      * @return Collection<int, UnitHold>
      */
-    public static function release(Delinquency $case, string $reason, ?Employee $by = null): Collection
+    public static function release(Delinquency $case, string $reason, ?Employee $by = null, ?int $unitId = null): Collection
     {
         $caseReason = self::reasonFor($case);
 
-        $holds = UnitHold::query()
+        $query = UnitHold::query()
             ->where('hold_type', HoldType::Overlock)
             ->whereNull('released_at')
             ->where('reason', $caseReason)
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if ($unitId !== null) {
+            $query->where('unit_id', $unitId);
+        }
+
+        $holds = $query->get();
 
         if ($holds->isEmpty()) {
             return $holds;

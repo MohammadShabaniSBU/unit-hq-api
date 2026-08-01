@@ -15,6 +15,12 @@ enum DelinquencyStepAction: string
     case Cure = 'cure';
     /** Release-overlock step — timeline only, not a policy ladder action. */
     case ReleaseOverlock = 'release_overlock';
+    /** Manual pause — timeline audit. */
+    case Pause = 'pause';
+    /** Manual resume — timeline audit. */
+    case Resume = 'resume';
+    /** Manual write-off — timeline audit. */
+    case WriteOff = 'write_off';
 
     public static function fromPolicyAction(DelinquencyPolicyAction $action): self
     {

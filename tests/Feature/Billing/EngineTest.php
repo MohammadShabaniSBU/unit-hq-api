@@ -215,12 +215,16 @@ class EngineTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-08-10 12:00:00', 'Europe/Madrid'));
         (new DelinquencyEngine)->evaluateContract($contract->fresh());
-        $this->assertSame(0, $case->fresh()->steps()->count());
+        // Pause writes a timeline step; ladder must not fire while paused.
+        $this->assertSame(1, $case->fresh()->steps()->where('action', DelinquencyStepAction::Pause)->count());
+        $this->assertSame(0, $case->fresh()->steps()->where('action', DelinquencyStepAction::AssessLateFee)->count());
 
         DelinquencyLifecycle::resume($case->fresh(), $this->employee);
         (new DelinquencyEngine)->evaluateContract($contract->fresh(), afterPause: true);
 
-        $step = $case->fresh()->steps()->first();
+        $step = $case->fresh()->steps()
+            ->where('action', DelinquencyStepAction::AssessLateFee)
+            ->first();
         $this->assertNotNull($step);
         $this->assertTrue($step->detail['executed_after_pause'] ?? false);
         $this->assertSame(DelinquencyStepAction::AssessLateFee, $step->action);

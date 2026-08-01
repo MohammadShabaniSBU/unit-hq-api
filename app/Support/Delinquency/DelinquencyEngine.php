@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Delinquency;
 
-use App\Enums\ChargeType;
 use App\Enums\ContractNoticeType;
 use App\Enums\ContractStatus;
 use App\Enums\DelinquencyCureTrigger;
@@ -280,66 +279,15 @@ final class DelinquencyEngine
         Contract $contract,
         string $executedOn,
     ): void {
-        $params = $policyStep->params ?? [];
-        $base = DelinquencyState::overdueBase($contract);
-        $type = (string) ($params['type'] ?? 'flat');
+        $result = LateFeeAssessor::applyToStep(
+            $step,
+            $case,
+            $contract,
+            $policyStep->params ?? [],
+            $executedOn,
+        );
 
-        if ($type === 'percent') {
-            $percent = (string) ($params['percent'] ?? '0');
-            $raw = bcdiv(bcmul($base, $percent, 8), '100', 8);
-            $feeNet = BillingMath::round2($raw);
-        } else {
-            $feeNet = BillingMath::round2((string) ($params['amount'] ?? '0'));
-        }
-
-        if (isset($params['cap_per_case'])) {
-            $cap = BillingMath::round2((string) $params['cap_per_case']);
-            $prior = $this->priorFeeNets($case);
-            $remaining = bcsub($cap, $prior, 2);
-            if (bccomp($remaining, '0', 2) <= 0) {
-                $feeNet = '0.00';
-            } elseif (bccomp($feeNet, $remaining, 2) > 0) {
-                $feeNet = BillingMath::round2($remaining);
-            }
-        }
-
-        if (bccomp($feeNet, '0', 2) <= 0) {
-            $this->finishStep($step, [
-                'incomplete' => false,
-                'skipped_zero' => true,
-                'base' => $base,
-                'fee_net' => '0.00',
-            ]);
-
-            return;
-        }
-
-        $rate = (string) config('fiscal.late_fee_tax', '0.00');
-        $breakdown = BillingMath::applyTax($feeNet, $rate);
-
-        $charge = Charge::query()->create([
-            'contract_id' => $contract->id,
-            'contract_item_id' => null,
-            'billing_period_id' => null,
-            'charge_type' => ChargeType::LateFee,
-            'period_start' => null,
-            'period_end' => null,
-            'net_amount' => $breakdown->net,
-            'tax_rate_snapshot' => bccomp($rate, '0', 2) === 0 ? null : $rate,
-            'tax_amount' => $breakdown->tax,
-            'amount' => $breakdown->gross,
-            'currency' => $contract->currency,
-            'due_date' => $executedOn,
-            'description' => 'Late fee',
-        ]);
-
-        $this->finishStep($step, [
-            'incomplete' => false,
-            'base' => $base,
-            'fee_net' => $breakdown->net,
-            'fee_tax' => $breakdown->tax,
-            'fee_gross' => $breakdown->gross,
-        ], charge: $charge);
+        $this->finishStep($step, $result['detail'], charge: $result['charge']);
     }
 
     private function actRecordNotice(
@@ -453,26 +401,6 @@ final class DelinquencyEngine
             'task_id' => $task?->id ?? $step->task_id,
             'detail' => $merged,
         ])->save();
-    }
-
-    private function priorFeeNets(Delinquency $case): string
-    {
-        $steps = DelinquencyStep::query()
-            ->where('delinquency_id', $case->id)
-            ->where('action', DelinquencyStepAction::AssessLateFee)
-            ->whereNotNull('charge_id')
-            ->with('charge')
-            ->get();
-
-        $sum = '0.00';
-        foreach ($steps as $s) {
-            $net = $s->charge?->net_amount;
-            if ($net !== null) {
-                $sum = bcadd($sum, (string) $net, 2);
-            }
-        }
-
-        return BillingMath::round2($sum);
     }
 
     /**

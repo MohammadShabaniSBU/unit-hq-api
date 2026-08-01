@@ -190,7 +190,8 @@ class DelinquencyCaseTest extends TestCase
         );
 
         $this->assertTrue($step->detail['executed_after_pause'] ?? false);
-        $this->assertSame(1, DelinquencyStep::query()->where('delinquency_id', $case->id)->count());
+        // pause + resume timeline steps + the ladder step under test
+        $this->assertSame(3, DelinquencyStep::query()->where('delinquency_id', $case->id)->count());
     }
 
     public function test_vacate_and_write_off_cure(): void

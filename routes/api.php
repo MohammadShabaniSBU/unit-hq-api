@@ -38,6 +38,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
     Route::get('billing/overdue', [Controllers\BillingOverdueController::class, 'index']);
+
+    // Delinquency collections desk (S07-04)
+    Route::get('delinquencies', [Controllers\DelinquencyController::class, 'index']);
+    Route::get('delinquencies/{delinquency}', [Controllers\DelinquencyController::class, 'show']);
+    Route::post('delinquencies/{delinquency}/assess-fee', [Controllers\DelinquencyController::class, 'assessFee']);
+    Route::post('delinquencies/{delinquency}/overlock', [Controllers\DelinquencyController::class, 'overlock']);
+    Route::post('delinquencies/{delinquency}/release-overlock', [Controllers\DelinquencyController::class, 'releaseOverlock']);
+    Route::post('delinquencies/{delinquency}/notices', [Controllers\DelinquencyController::class, 'recordNotice']);
+    Route::post('delinquencies/{delinquency}/pause', [Controllers\DelinquencyController::class, 'pause']);
+    Route::post('delinquencies/{delinquency}/resume', [Controllers\DelinquencyController::class, 'resume']);
+    Route::post('delinquencies/{delinquency}/write-off', [Controllers\DelinquencyController::class, 'writeOff']);
+    Route::post('contract-notices/{contractNotice}/mark-sent', [Controllers\ContractNoticeController::class, 'markSent']);
 });
 
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
