@@ -30,6 +30,22 @@ final class Threading
     }
 
     /**
+     * Pin an outbound send to an existing thread (inbox reply). Never re-resolves.
+     *
+     * @return array{thread: MessageThread, evidence: array<string, mixed>}
+     */
+    public static function forExplicitThread(MessageThread $thread): array
+    {
+        return [
+            'thread' => $thread,
+            'evidence' => [
+                'strategy' => 'explicit',
+                'thread_id' => $thread->id,
+            ],
+        ];
+    }
+
+    /**
      * Inbound ladder: References/In-Reply-To → subject+contact → new (email);
      * SMS always (contact, number).
      *

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Communications\Senders;
 
 use App\Models\Contact;
+use App\Models\MessageThread;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
 use App\Support\Communications\Channel;
@@ -35,6 +36,7 @@ final class EmailSender
         SendContext $context,
         ?int $dealId = null,
         ?array $interactionMetadata = null,
+        ?MessageThread $thread = null,
     ): SendResult {
         $resolved = $this->resolver->resolve(Channel::Email, $site);
         $adapter = $resolved->require(SendsEmail::class, 'sending email');
@@ -82,6 +84,7 @@ final class EmailSender
                 $suppression->reason->value,
                 $dealId,
                 $interactionMetadata,
+                $thread,
             );
         }
 
@@ -112,6 +115,7 @@ final class EmailSender
                     providerMessageId: null,
                     dealId: $dealId,
                     interactionMetadata: $interactionMetadata,
+                    thread: $thread,
                 );
             }
 
@@ -134,6 +138,7 @@ final class EmailSender
                 providerMessageId: $result->providerMessageId,
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
+                thread: $thread,
             );
 
             return $result->withStoreIds($recorded['message']->id, $recorded['interaction']->id);
@@ -156,6 +161,7 @@ final class EmailSender
         string $suppressedReason,
         ?int $dealId,
         ?array $interactionMetadata,
+        ?MessageThread $thread,
     ): SendResult {
         $messageId = null;
         $interactionId = null;
@@ -177,6 +183,7 @@ final class EmailSender
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
                 detail: ['suppressed_reason' => $suppressedReason],
+                thread: $thread,
             );
             $messageId = $recorded['message']->id;
             $interactionId = $recorded['interaction']->id;

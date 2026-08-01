@@ -6,15 +6,63 @@ namespace App\Http\Controllers;
 
 use App\Models\MessageAttachment;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Authenticated private-disk stream for message attachments.
+ * Authenticated private-disk stream + staging upload for message attachments.
  * No public URLs — S10 invariant honoured at the route level.
  */
 class MessageAttachmentController extends Controller
 {
+    public function store(Request $request): JsonResponse
+    {
+        $maxBytes = (int) config('communications.inbound.max_attachment_bytes');
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:'.(int) ceil($maxBytes / 1024)],
+        ]);
+
+        $file = $request->file('file');
+        if ($file === null) {
+            return $this->error('File is required.', ['file' => ['File is required.']], 422);
+        }
+
+        if ($file->getSize() > $maxBytes) {
+            return $this->error(
+                'Attachment exceeds the maximum size.',
+                ['file' => ['Maximum size is '.$maxBytes.' bytes.']],
+                422,
+            );
+        }
+
+        $uuid = (string) Str::uuid();
+        $safeName = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+            ?: 'attachment';
+        $extension = $file->getClientOriginalExtension();
+        $filename = $extension !== '' ? $safeName.'.'.$extension : $safeName;
+        $path = 'message-attachments/staging/'.$uuid.'/'.$filename;
+
+        Storage::disk('local')->put($path, file_get_contents($file->getRealPath()) ?: '');
+
+        $attachment = MessageAttachment::query()->create([
+            'message_id' => null,
+            'filename' => $file->getClientOriginalName() !== ''
+                ? $file->getClientOriginalName()
+                : $filename,
+            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+            'size_bytes' => (int) $file->getSize(),
+            'oversize' => false,
+            'disk_path' => $path,
+        ]);
+
+        return $this->created([
+            'id' => $attachment->id,
+        ], 'Attachment staged.');
+    }
+
     public function download(MessageAttachment $messageAttachment): StreamedResponse|JsonResponse
     {
         $path = $messageAttachment->disk_path;

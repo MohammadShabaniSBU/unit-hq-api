@@ -41,6 +41,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Staged outbound attachment orphans
+    |--------------------------------------------------------------------------
+    |
+    | Uploads created via POST /api/inbox/attachments with message_id null.
+    | Linked on send; anything older than this TTL is swept daily.
+    |
+    */
+    'staging' => [
+        'orphan_ttl_hours' => (int) env('COMMS_STAGING_ORPHAN_TTL_HOURS', 24),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | SMS STOP keywords
     |--------------------------------------------------------------------------
     |

@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('autopay:collect --trigger=sweep')->hourly();
         // Idempotent ladder; daily is enough, hourly is safe if wanted.
         $schedule->command('delinquency:run')->daily();
+        $schedule->command('comms:sweep-orphan-attachments')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

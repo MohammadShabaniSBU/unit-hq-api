@@ -26,9 +26,12 @@ final readonly class SendContext
         public ?int $offerDeliveryId = null,
     ) {}
 
-    public static function manual(SendClass $class = SendClass::Transactional): self
+    /**
+     * @param  array<string, mixed>|null  $sourceRef
+     */
+    public static function manual(SendClass $class = SendClass::Transactional, ?array $sourceRef = null): self
     {
-        return new self(MessageSource::Manual, $class);
+        return new self(MessageSource::Manual, $class, $sourceRef);
     }
 
     public static function system(?array $sourceRef = null, SendClass $class = SendClass::Transactional): self

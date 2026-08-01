@@ -4,25 +4,45 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ContactChannelType;
 use App\Enums\LogChannel;
 use App\Models\CommsTriage;
+use App\Models\Contact;
+use App\Models\EmailTemplate;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageThread;
+use App\Support\Automation\RunContext;
+use App\Support\Automation\SubjectChain;
+use App\Support\Automation\SubjectTokenBag;
+use App\Support\Automation\TokenResolver;
 use App\Support\Communications\Channel;
+use App\Support\Communications\ComposerIdentity;
+use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\HtmlSanitizer;
 use App\Support\Communications\InboxThreadQuery;
+use App\Support\Communications\Messages\EmailAddress;
+use App\Support\Communications\Messages\EmailAttachment;
+use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\SendClass;
+use App\Support\Communications\SendContext;
+use App\Support\Communications\Senders\EmailSender;
+use App\Support\Communications\Senders\SmsSender;
+use App\Support\Communications\SuppressionWriter;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
- * Inbox read surface + small writes (mark-read, assign). Sending is S11-01.
+ * Inbox read surface + reply/compose writes (S11-00 / S11-01).
  *
- * Assign is any authenticated Employee until S17 RBAC (10-open-decisions.md).
+ * Auth: any authenticated Employee until S17 RBAC (10-open-decisions.md).
  */
 class InboxController extends Controller
 {
@@ -193,6 +213,452 @@ class InboxController extends Controller
         ], 'Thread assignment updated.');
     }
 
+    public function composeContext(MessageThread $messageThread): JsonResponse
+    {
+        $messageThread->load(['contact.channels']);
+
+        $channel = $messageThread->channel instanceof Channel
+            ? $messageThread->channel
+            : Channel::from((string) $messageThread->channel);
+
+        $resolved = ComposerIdentity::resolveForThread($messageThread);
+        $suppression = $this->suppressionPayload($messageThread);
+
+        $templates = [];
+        $tokens = [];
+        if ($channel === Channel::Email) {
+            $templates = EmailTemplate::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (EmailTemplate $t) => ['id' => $t->id, 'name' => $t->name])
+                ->values()
+                ->all();
+            $tokens = SubjectTokenBag::vocabulary();
+        }
+
+        return $this->success([
+            'from_identity' => $resolved['identity'],
+            'suppression' => $suppression,
+            'templates' => $templates,
+            'tokens' => $tokens,
+        ], 'Compose context retrieved successfully.');
+    }
+
+    public function reply(Request $request, MessageThread $messageThread): JsonResponse
+    {
+        $channel = $messageThread->channel instanceof Channel
+            ? $messageThread->channel
+            : Channel::from((string) $messageThread->channel);
+
+        if ($channel === Channel::Call) {
+            return $this->error(
+                'Call back — coming with phone integration.',
+                ['channel' => ['Call replies are not available yet.']],
+                422,
+            );
+        }
+
+        if ($channel === Channel::Email) {
+            $validated = $request->validate([
+                'body_text' => ['required', 'string'],
+                'body_html' => ['sometimes', 'nullable', 'string'],
+                'attachment_ids' => ['sometimes', 'array'],
+                'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
+                'email_template_id' => ['sometimes', 'nullable', 'integer', 'exists:email_templates,id'],
+            ]);
+        } elseif ($channel === Channel::Sms) {
+            $validated = $request->validate([
+                'body_text' => ['required', 'string'],
+                'attachment_ids' => ['prohibited'],
+                'email_template_id' => ['prohibited'],
+                'body_html' => ['prohibited'],
+            ]);
+        } else {
+            return $this->error('Unsupported channel for reply.', [], 422);
+        }
+
+        /** @var Employee $actor */
+        $actor = $request->user();
+        $messageThread->load(['contact.channels']);
+        $contact = $messageThread->contact;
+        if ($contact === null) {
+            return $this->error('Thread has no contact.', [], 422);
+        }
+
+        $resolved = ComposerIdentity::resolveForThread($messageThread);
+        if ($resolved['site'] === null || $resolved['identity'] === null) {
+            return $this->error(
+                'Configure a sender identity before replying.',
+                ['from_identity' => ['No sender identity resolved for this thread.']],
+                422,
+            );
+        }
+
+        $context = SendContext::manual(SendClass::Transactional, ['employee_id' => $actor->id]);
+        $tokenContext = new RunContext(subjectBag: SubjectTokenBag::forContact($contact));
+
+        if ($channel === Channel::Email) {
+            return $this->sendEmailReply(
+                $messageThread,
+                $contact,
+                $resolved['site'],
+                $validated,
+                $context,
+                $tokenContext,
+            );
+        }
+
+        return $this->sendSmsReply(
+            $messageThread,
+            $contact,
+            $resolved['site'],
+            $validated,
+            $context,
+            $tokenContext,
+        );
+    }
+
+    public function compose(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'channel' => ['required', Rule::in(['email', 'sms'])],
+            'subject' => ['required_if:channel,email', 'nullable', 'string', 'max:998'],
+            'body_text' => ['required', 'string'],
+            'body_html' => ['sometimes', 'nullable', 'string'],
+            'attachment_ids' => ['sometimes', 'array'],
+            'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
+            'email_template_id' => ['sometimes', 'nullable', 'integer', 'exists:email_templates,id'],
+        ]);
+
+        $channel = Channel::from($validated['channel']);
+        if ($channel === Channel::Sms) {
+            if (! empty($validated['attachment_ids']) || isset($validated['email_template_id']) || isset($validated['body_html'])) {
+                throw ValidationException::withMessages([
+                    'channel' => ['SMS compose does not support attachments, templates, or HTML.'],
+                ]);
+            }
+        }
+
+        /** @var Employee $actor */
+        $actor = $request->user();
+        $contact = Contact::query()->with('channels')->findOrFail($validated['contact_id']);
+
+        $resolved = ComposerIdentity::resolve($contact, $channel);
+        if ($resolved['site'] === null || $resolved['identity'] === null) {
+            return $this->error(
+                'Configure a sender identity before composing.',
+                ['from_identity' => ['No sender identity resolved for this contact.']],
+                422,
+            );
+        }
+
+        $context = SendContext::manual(SendClass::Transactional, ['employee_id' => $actor->id]);
+        $tokenContext = new RunContext(subjectBag: SubjectTokenBag::forContact($contact));
+
+        if ($channel === Channel::Email) {
+            $to = SubjectChain::primaryChannel($contact, ContactChannelType::Email)?->value
+                ?? $contact->email;
+            if ($to === null || $to === '') {
+                return $this->error('Contact has no email address.', [], 422);
+            }
+
+            [$bodyText, $bodyHtml] = $this->resolveEmailBodies($validated, $tokenContext);
+            $attachments = $this->loadStagedAttachments($validated['attachment_ids'] ?? []);
+            $emailAttachments = $this->toEmailAttachments($attachments);
+
+            $email = new EmailMessage(
+                to: [new EmailAddress($to)],
+                subject: (string) $validated['subject'],
+                html: $bodyHtml ?? '',
+                text: $bodyText,
+                attachments: $emailAttachments,
+            );
+
+            $result = app(EmailSender::class)->send(
+                $email,
+                $resolved['site'],
+                $contact,
+                $context,
+            );
+
+            if ($result->wasSuppressed()) {
+                return $this->suppressedResponse($contact, Channel::Email, $to, $result->suppressedReason);
+            }
+
+            $message = Message::query()->with('attachments')->findOrFail($result->messageId);
+            $this->linkAttachments($attachments, $message->id);
+
+            return $this->created([
+                'thread_id' => $message->message_thread_id,
+                'message' => $this->mapMessage($message->fresh('attachments') ?? $message),
+            ], 'Message sent.');
+        }
+
+        $to = SubjectChain::primaryChannel($contact, ContactChannelType::Phone)?->value;
+        if ($to === null || $to === '') {
+            return $this->error('Contact has no phone number.', [], 422);
+        }
+
+        $body = TokenResolver::resolve($validated['body_text'], $tokenContext);
+        $sms = new SmsMessage(to: $to, body: $body);
+        $result = app(SmsSender::class)->send(
+            $sms,
+            $resolved['site'],
+            $contact,
+            $context,
+        );
+
+        if ($result->wasSuppressed()) {
+            return $this->suppressedResponse($contact, Channel::Sms, $to, $result->suppressedReason);
+        }
+
+        $message = Message::query()->with('attachments')->findOrFail($result->messageId);
+
+        return $this->created([
+            'thread_id' => $message->message_thread_id,
+            'message' => $this->mapMessage($message),
+        ], 'Message sent.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function sendEmailReply(
+        MessageThread $thread,
+        Contact $contact,
+        \App\Models\Site $site,
+        array $validated,
+        SendContext $context,
+        RunContext $tokenContext,
+    ): JsonResponse {
+        $to = InboxThreadQuery::composerAddress($thread);
+        if ($to === null || $to === '') {
+            return $this->error('Contact has no email address.', [], 422);
+        }
+
+        [$bodyText, $bodyHtml] = $this->resolveEmailBodies($validated, $tokenContext);
+        $attachments = $this->loadStagedAttachments($validated['attachment_ids'] ?? []);
+        $emailAttachments = $this->toEmailAttachments($attachments);
+
+        $email = new EmailMessage(
+            to: [new EmailAddress($to)],
+            subject: ComposerIdentity::replySubject($thread),
+            html: $bodyHtml ?? '',
+            text: $bodyText,
+            attachments: $emailAttachments,
+            headers: ComposerIdentity::replyHeaders($thread),
+        );
+
+        $result = app(EmailSender::class)->send(
+            $email,
+            $site,
+            $contact,
+            $context,
+            thread: $thread,
+        );
+
+        if ($result->wasSuppressed()) {
+            return $this->suppressedResponse($contact, Channel::Email, $to, $result->suppressedReason);
+        }
+
+        $message = Message::query()->with('attachments')->findOrFail($result->messageId);
+        $this->linkAttachments($attachments, $message->id);
+
+        return $this->created([
+            'thread_id' => $thread->id,
+            'message' => $this->mapMessage($message->fresh('attachments') ?? $message),
+        ], 'Reply sent.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function sendSmsReply(
+        MessageThread $thread,
+        Contact $contact,
+        \App\Models\Site $site,
+        array $validated,
+        SendContext $context,
+        RunContext $tokenContext,
+    ): JsonResponse {
+        $to = $thread->channel_key
+            ?: SubjectChain::primaryChannel($contact, ContactChannelType::Phone)?->value;
+
+        if ($to === null || $to === '') {
+            return $this->error('Contact has no phone number.', [], 422);
+        }
+
+        $body = TokenResolver::resolve($validated['body_text'], $tokenContext);
+        $sms = new SmsMessage(to: $to, body: $body);
+
+        $result = app(SmsSender::class)->send(
+            $sms,
+            $site,
+            $contact,
+            $context,
+            thread: $thread,
+        );
+
+        if ($result->wasSuppressed()) {
+            return $this->suppressedResponse($contact, Channel::Sms, $to, $result->suppressedReason);
+        }
+
+        $message = Message::query()->with('attachments')->findOrFail($result->messageId);
+
+        return $this->created([
+            'thread_id' => $thread->id,
+            'message' => $this->mapMessage($message),
+        ], 'Reply sent.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{0: string, 1: string|null}
+     */
+    private function resolveEmailBodies(array $validated, RunContext $tokenContext): array
+    {
+        if (! empty($validated['email_template_id'])) {
+            $template = EmailTemplate::query()->findOrFail($validated['email_template_id']);
+            $rendered = EmailTemplateRenderer::render($template, $tokenContext);
+
+            return [$rendered['text'], $rendered['html']];
+        }
+
+        $bodyText = TokenResolver::resolve($validated['body_text'], $tokenContext);
+        $bodyHtml = isset($validated['body_html']) && is_string($validated['body_html'])
+            ? TokenResolver::resolve($validated['body_html'], $tokenContext)
+            : null;
+
+        return [$bodyText, $bodyHtml];
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return list<MessageAttachment>
+     */
+    private function loadStagedAttachments(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $attachments = MessageAttachment::query()
+            ->whereIn('id', $ids)
+            ->whereNull('message_id')
+            ->where('oversize', false)
+            ->get();
+
+        if ($attachments->count() !== count(array_unique($ids))) {
+            throw ValidationException::withMessages([
+                'attachment_ids' => ['One or more attachments are unavailable or already linked.'],
+            ]);
+        }
+
+        $total = (int) $attachments->sum('size_bytes');
+        $maxTotal = (int) config('communications.inbound.max_total_attachment_bytes');
+        if ($total > $maxTotal) {
+            throw ValidationException::withMessages([
+                'attachment_ids' => ['Total attachment size exceeds the limit.'],
+            ]);
+        }
+
+        return $attachments->all();
+    }
+
+    /**
+     * @param  list<MessageAttachment>  $attachments
+     * @return list<EmailAttachment>
+     */
+    private function toEmailAttachments(array $attachments): array
+    {
+        $disk = Storage::disk('local');
+        $out = [];
+
+        foreach ($attachments as $attachment) {
+            $path = $attachment->disk_path;
+            if ($path === null || ! $disk->exists($path)) {
+                throw ValidationException::withMessages([
+                    'attachment_ids' => ['Attachment file missing from storage.'],
+                ]);
+            }
+
+            $out[] = new EmailAttachment(
+                filename: $attachment->filename,
+                content: $disk->get($path),
+                contentType: $attachment->mime_type,
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<MessageAttachment>  $attachments
+     */
+    private function linkAttachments(array $attachments, int $messageId): void
+    {
+        foreach ($attachments as $attachment) {
+            $attachment->forceFill(['message_id' => $messageId])->save();
+        }
+    }
+
+    /**
+     * @return array{scope: string, reason: string, created_at: string|null}|null
+     */
+    private function suppressionPayload(MessageThread $thread): ?array
+    {
+        $address = InboxThreadQuery::composerAddress($thread);
+        if ($address === null || $address === '') {
+            return null;
+        }
+
+        $channel = $thread->channel instanceof Channel
+            ? $thread->channel
+            : Channel::from((string) $thread->channel);
+
+        $active = SuppressionWriter::activeFor($channel, $address);
+        if ($active === null) {
+            return null;
+        }
+
+        return [
+            'scope' => $active->scope instanceof \BackedEnum
+                ? $active->scope->value
+                : (string) $active->scope,
+            'reason' => $active->reason instanceof \BackedEnum
+                ? $active->reason->value
+                : (string) $active->reason,
+            'created_at' => $active->created_at?->toIso8601String(),
+        ];
+    }
+
+    private function suppressedResponse(
+        Contact $contact,
+        Channel $channel,
+        string $address,
+        ?string $reason,
+    ): JsonResponse {
+        $active = SuppressionWriter::activeFor($channel, $address);
+
+        return $this->error(
+            'Address is suppressed; message was not sent.',
+            [
+                'suppression' => [
+                    'scope' => $active?->scope instanceof \BackedEnum
+                        ? $active->scope->value
+                        : ($active?->scope !== null ? (string) $active->scope : 'all'),
+                    'reason' => $reason ?? ($active?->reason instanceof \BackedEnum
+                        ? $active->reason->value
+                        : (string) ($active?->reason ?? 'unknown')),
+                    'created_at' => $active?->created_at?->toIso8601String(),
+                ],
+                'contact_id' => $contact->id,
+            ],
+            422,
+        );
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -221,6 +687,7 @@ class InboxController extends Controller
                 ->values()
                 ->all(),
             'source' => $message->source?->value ?? (string) $message->source,
+            'source_ref' => $message->source_ref,
             'sent_at' => $message->sent_at?->toIso8601String(),
             'created_at' => $message->created_at?->toIso8601String(),
             'delivery_events' => $message->delivery_events,

@@ -7,6 +7,7 @@ namespace App\Support\Communications;
 use App\Models\Contact;
 use App\Models\Interaction;
 use App\Models\Message;
+use App\Models\MessageThread;
 use App\Models\OfferDelivery;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +39,7 @@ final class OutboundMessageRecorder
         ?int $dealId = null,
         ?array $interactionMetadata = null,
         ?array $detail = null,
+        ?MessageThread $thread = null,
     ): array {
         return DB::transaction(function () use (
             $contact,
@@ -55,8 +57,13 @@ final class OutboundMessageRecorder
             $dealId,
             $interactionMetadata,
             $detail,
+            $thread,
         ): array {
-            $resolved = Threading::forOutbound($contact, $channel, $threadKey);
+            if ($thread !== null) {
+                $resolved = Threading::forExplicitThread($thread);
+            } else {
+                $resolved = Threading::forOutbound($contact, $channel, $threadKey);
+            }
             $thread = $resolved['thread'];
             $evidence = $resolved['evidence'];
 

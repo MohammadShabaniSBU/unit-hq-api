@@ -10,9 +10,10 @@ use Illuminate\Support\Carbon;
 
 /**
  * File attached to a message; stored on the private disk.
+ * message_id is null while staged for outbound compose (linked on send).
  *
  * @property int         $id
- * @property int         $message_id
+ * @property int|null    $message_id
  * @property string      $filename
  * @property string      $mime_type
  * @property int         $size_bytes
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $disk_path
  * @property Carbon|null $created_at
  *
- * @property-read Message $message
+ * @property-read Message|null $message
  */
 class MessageAttachment extends Model
 {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Communications\Senders;
 
 use App\Models\Contact;
+use App\Models\MessageThread;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
 use App\Support\Communications\Channel;
@@ -32,6 +33,7 @@ final class SmsSender
         SendContext $context,
         ?int $dealId = null,
         ?array $interactionMetadata = null,
+        ?MessageThread $thread = null,
     ): SendResult {
         $resolved = $this->resolver->resolve(Channel::Sms, $site);
         $adapter = $resolved->require(SendsSms::class, 'sending SMS');
@@ -59,6 +61,7 @@ final class SmsSender
                 $suppression->reason->value,
                 $dealId,
                 $interactionMetadata,
+                $thread,
             );
         }
 
@@ -81,6 +84,7 @@ final class SmsSender
                     providerMessageId: null,
                     dealId: $dealId,
                     interactionMetadata: $interactionMetadata,
+                    thread: $thread,
                 );
             }
 
@@ -103,6 +107,7 @@ final class SmsSender
                 providerMessageId: $result->providerMessageId,
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
+                thread: $thread,
             );
 
             return $result->withStoreIds($recorded['message']->id, $recorded['interaction']->id);
@@ -124,6 +129,7 @@ final class SmsSender
         string $suppressedReason,
         ?int $dealId,
         ?array $interactionMetadata,
+        ?MessageThread $thread,
     ): SendResult {
         $messageId = null;
         $interactionId = null;
@@ -145,6 +151,7 @@ final class SmsSender
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
                 detail: ['suppressed_reason' => $suppressedReason],
+                thread: $thread,
             );
             $messageId = $recorded['message']->id;
             $interactionId = $recorded['interaction']->id;
