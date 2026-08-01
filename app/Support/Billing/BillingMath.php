@@ -6,6 +6,11 @@ namespace App\Support\Billing;
 
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
+use App\Models\Contract;
+use App\Support\Billing\Exceptions\CatchUpCapExceeded;
+use App\Support\Billing\Exceptions\MisalignedCursor;
+use App\Support\Billing\Exceptions\UnsupportedCadence;
+use Carbon\CarbonInterface;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
@@ -19,10 +24,16 @@ use InvalidArgumentException;
  * Money is always a decimal string, NUMERIC(10,2). bcmath truncates — it never
  * rounds — so every calculation multiplies before dividing at a high
  * intermediate scale and rounds exactly once via round2().
+ *
+ * Recurring windows: nextPeriod / periodsBetween advance full periods from the
+ * contract's billed_through cursor (end-exclusive, midnight-normalised).
  */
 final class BillingMath
 {
     private const SCALE = 8;
+
+    /** Safety bound when walking the anniversary lattice for a cursor. */
+    private const MAX_PERIOD_INDEX = 1200;
 
     /**
      * The contract's billing_anchor_date.
@@ -135,6 +146,149 @@ final class BillingMath
             BillingInterval::Week  => $from->addWeeks($intervalCount),
             BillingInterval::Month => $from->addMonthsNoOverflow($intervalCount),
         };
+    }
+
+    /**
+     * Next full period window starting at $cursor (a valid period boundary).
+     * End is exclusive. Anniversary ends are computed from the original anchor
+     * (addMonthsNoOverflow from anchor + N×count) so month-end windows never drift.
+     *
+     * @return array{start: CarbonImmutable, end: CarbonImmutable}
+     */
+    public static function nextPeriod(Contract $c, CarbonInterface $cursor): array
+    {
+        $model = self::anchorModel($c->billing_anchor_model);
+        $count = (int) $c->billing_interval_count;
+        $interval = self::interval($c->billing_interval);
+
+        if (
+            ($model === BillingAnchorModel::Calendar || $model === BillingAnchorModel::CalendarWeek)
+            && $count > 1
+        ) {
+            throw UnsupportedCadence::forCalendarIntervalCount($count);
+        }
+
+        $cursor = self::midnight(CarbonImmutable::instance($cursor));
+        $anchor = self::midnight(CarbonImmutable::parse((string) $c->billing_anchor_date));
+
+        return match ($model) {
+            BillingAnchorModel::Anniversary => self::nextAnniversaryPeriod($anchor, $cursor, $interval, $count),
+            BillingAnchorModel::Calendar => self::nextCalendarPeriod($anchor, $cursor),
+            BillingAnchorModel::CalendarWeek => self::nextCalendarWeekPeriod($anchor, $cursor, $count),
+        };
+    }
+
+    /**
+     * Ordered full-period windows with start <= $until (inclusive horizon).
+     * Empty when nothing is due. Exceeding $cap throws CatchUpCapExceeded.
+     *
+     * @return list<array{start: CarbonImmutable, end: CarbonImmutable}>
+     */
+    public static function periodsBetween(
+        Contract $c,
+        CarbonInterface $cursor,
+        CarbonInterface $until,
+        int $cap,
+    ): array {
+        if ($cap < 1) {
+            throw new InvalidArgumentException('Catch-up period cap must be at least 1.');
+        }
+
+        $until = self::midnight(CarbonImmutable::instance($until));
+        $cursor = self::midnight(CarbonImmutable::instance($cursor));
+        $windows = [];
+
+        while (true) {
+            $window = self::nextPeriod($c, $cursor);
+
+            if ($window['start']->gt($until)) {
+                return $windows;
+            }
+
+            if (count($windows) + 1 > $cap) {
+                throw new CatchUpCapExceeded(count($windows) + 1);
+            }
+
+            $windows[] = $window;
+            $cursor = $window['end'];
+        }
+    }
+
+    /**
+     * @return array{start: CarbonImmutable, end: CarbonImmutable}
+     */
+    private static function nextAnniversaryPeriod(
+        CarbonImmutable $anchor,
+        CarbonImmutable $cursor,
+        BillingInterval $interval,
+        int $count,
+    ): array {
+        $n = self::anniversaryPeriodIndex($anchor, $cursor, $interval, $count);
+        $start = self::advancePeriod($anchor, $interval, $n * $count);
+        $end = self::advancePeriod($anchor, $interval, ($n + 1) * $count);
+
+        return ['start' => $start, 'end' => $end];
+    }
+
+    /**
+     * @return array{start: CarbonImmutable, end: CarbonImmutable}
+     */
+    private static function nextCalendarPeriod(CarbonImmutable $anchor, CarbonImmutable $cursor): array
+    {
+        $day = $anchor->day;
+
+        if (! self::nextBoundaryAtOrAfter($cursor, $day)->equalTo($cursor)) {
+            throw MisalignedCursor::for($cursor->toDateString());
+        }
+
+        $end = self::nextBoundaryAtOrAfter($cursor->addDay(), $day);
+
+        return ['start' => $cursor, 'end' => $end];
+    }
+
+    /**
+     * @return array{start: CarbonImmutable, end: CarbonImmutable}
+     */
+    private static function nextCalendarWeekPeriod(
+        CarbonImmutable $anchor,
+        CarbonImmutable $cursor,
+        int $count,
+    ): array {
+        $weekday = $anchor->dayOfWeekIso;
+
+        if ($cursor->dayOfWeekIso !== $weekday) {
+            throw MisalignedCursor::for($cursor->toDateString());
+        }
+
+        return [
+            'start' => $cursor,
+            'end' => self::advancePeriod($cursor, BillingInterval::Week, $count),
+        ];
+    }
+
+    private static function anniversaryPeriodIndex(
+        CarbonImmutable $anchor,
+        CarbonImmutable $cursor,
+        BillingInterval $interval,
+        int $count,
+    ): int {
+        if ($cursor->lt($anchor)) {
+            throw MisalignedCursor::for($cursor->toDateString());
+        }
+
+        for ($n = 0; $n <= self::MAX_PERIOD_INDEX; $n++) {
+            $boundary = self::advancePeriod($anchor, $interval, $n * $count);
+
+            if ($boundary->equalTo($cursor)) {
+                return $n;
+            }
+
+            if ($boundary->gt($cursor)) {
+                throw MisalignedCursor::for($cursor->toDateString());
+            }
+        }
+
+        throw MisalignedCursor::for($cursor->toDateString());
     }
 
     /**

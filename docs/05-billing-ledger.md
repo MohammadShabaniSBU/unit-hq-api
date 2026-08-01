@@ -118,6 +118,10 @@ Support-tier helper (same tier as `RecordsActivity` — **not** `app/Services/`)
   - `daily` — prorate by days occupied / days in containing period
   - `full_period` — charge full period amount for the stub window
   - `none` — no first-period charges; `billed_through = anchor` (defer to recurring job)
+- Recurring windows (S05): `nextPeriod` / `periodsBetween` produce end-exclusive full-period
+  windows from the `billed_through` cursor. Anniversary ends are anchor-derived
+  (`addMonthsNoOverflow` from the original anchor, never from the cursor) so month-end
+  contracts never drift. Calendar* + `interval_count > 1` throws `UnsupportedCadence`.
 
 ### Exclusive tax
 
