@@ -101,7 +101,9 @@ class DealController extends Controller
         ]);
 
         return $this->success(
-            DealResource::make($deal),
+            DealResource::make($deal)->additional([
+                'include_playbook_enrolment' => true,
+            ]),
             'Deal retrieved successfully.'
         );
     }

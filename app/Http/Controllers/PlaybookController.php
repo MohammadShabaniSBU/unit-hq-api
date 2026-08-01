@@ -9,6 +9,7 @@ use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationStatus;
 use App\Enums\PlaybookKind;
 use App\Enums\PlaybookStepAction;
+use App\Http\Resources\PlaybookEnrolmentResource;
 use App\Http\Resources\PlaybookResource;
 use App\Models\Automation;
 use App\Models\AutomationRun;
@@ -17,6 +18,7 @@ use App\Models\PlaybookStep;
 use App\Support\Automation\RunLifecycle;
 use App\Support\Playbooks\DebtPlaybookOverlap;
 use App\Support\Playbooks\PlaybookCompiler;
+use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,9 +81,49 @@ class PlaybookController extends Controller
 
     public function show(Playbook $playbook): JsonResponse
     {
+        $activeCount = AutomationRun::query()
+            ->whereIn(
+                'automation_id',
+                Automation::query()->where('playbook_id', $playbook->id)->select('id'),
+            )
+            ->whereIn('status', PlaybookEnrolmentSummary::activeStatuses())
+            ->count();
+
         return $this->success(
-            PlaybookResource::make($playbook->load('steps')),
+            PlaybookResource::make($playbook->load('steps'))->additional([
+                'active_enrolment_count' => $activeCount,
+            ]),
             'Playbook retrieved successfully.',
+        );
+    }
+
+    public function enrolments(Request $request, Playbook $playbook): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['nullable', 'string', Rule::in(['active', 'exited'])],
+        ]);
+
+        $query = AutomationRun::query()
+            ->whereHas('automation', fn ($q) => $q->where('playbook_id', $playbook->id))
+            ->with(['automation.nodes', 'steps'])
+            ->latest('id');
+
+        if (($validated['status'] ?? null) === 'active') {
+            $query->whereIn('status', PlaybookEnrolmentSummary::activeStatuses());
+        } elseif (($validated['status'] ?? null) === 'exited') {
+            $query->whereIn('status', PlaybookEnrolmentSummary::exitedStatuses());
+        }
+
+        $paginator = $query->paginate($this->perPage());
+        $subjects = PlaybookEnrolmentSummary::loadSubjects($paginator->getCollection());
+
+        return $this->paginated(
+            $paginator->through(
+                fn (AutomationRun $run) => PlaybookEnrolmentResource::make($run)->additional([
+                    'enrolment_subjects' => $subjects,
+                ]),
+            ),
+            'Playbook enrolments retrieved successfully.',
         );
     }
 

@@ -302,7 +302,12 @@ final class AutomationExecutor
             $stepOutputs[$node->node_key] = $step->output ?? [];
         }
 
-        return new RunContext($run->trigger_payload ?? [], $stepOutputs, $run->subject_id);
+        return new RunContext(
+            $run->trigger_payload ?? [],
+            $stepOutputs,
+            $run->subject_id,
+            SubjectTokenBag::forRun($run),
+        );
     }
 
     private function hasWaitingStep(AutomationRun $run): bool

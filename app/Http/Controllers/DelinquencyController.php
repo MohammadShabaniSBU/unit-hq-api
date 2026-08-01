@@ -235,6 +235,7 @@ class DelinquencyController extends Controller
         return $this->success(
             DelinquencyResource::make($delinquency)->additional([
                 'include_timeline' => true,
+                'include_playbook_enrolment' => true,
                 'overlocked' => $liveIds !== [],
                 'live_overlock_unit_ids' => $liveIds,
                 'failed_autopay' => $failed,

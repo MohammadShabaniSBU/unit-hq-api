@@ -265,4 +265,5 @@ Route::apiResource('playbooks', Controllers\PlaybookController::class);
 Route::post('playbooks/{playbook}/activate', [Controllers\PlaybookController::class, 'activate']);
 Route::post('playbooks/{playbook}/deactivate', [Controllers\PlaybookController::class, 'deactivate']);
 Route::post('playbooks/{playbook}/exit-enrolments', [Controllers\PlaybookController::class, 'exitEnrolments']);
+Route::get('playbooks/{playbook}/enrolments', [Controllers\PlaybookController::class, 'enrolments']);
 

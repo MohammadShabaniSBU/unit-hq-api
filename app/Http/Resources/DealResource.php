@@ -2,10 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use Illuminate\Http\Request;
-use App\Http\Resources\OfferResource;
-use App\Http\Resources\ContractResource;
-use App\Http\Resources\ReservationResource;
 
 class DealResource extends BaseResource
 {
@@ -25,6 +23,9 @@ class DealResource extends BaseResource
             'desired_unit_class_id'  => $this->desired_unit_class_id,
             'created_at'             => $this->datetime($this->created_at),
             'updated_at'             => $this->datetime($this->updated_at),
+            'active_playbook_enrolment' => ($this->additional['include_playbook_enrolment'] ?? false)
+                ? PlaybookEnrolmentSummary::activeForSubject('deal', (int) $this->id)
+                : null,
             'desired_unit_class'     => UnitClassResource::make($this->whenLoaded('desiredUnitClass')),
             'site'                   => $this->whenLoaded('site', fn () => [
                 'id'   => $this->site->id,

@@ -12,6 +12,7 @@ use App\Support\Delinquency\DelinquencyPrediction;
 use App\Support\Delinquency\DelinquencyState;
 use App\Support\Delinquency\LateFeeAssessor;
 use App\Support\Delinquency\Overlock;
+use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use Illuminate\Http\Request;
 
 class DelinquencyResource extends BaseResource
@@ -110,6 +111,9 @@ class DelinquencyResource extends BaseResource
             'policy_steps' => $policySteps,
             'executed_policy_step_ids' => $executedPolicyStepIds,
             'next_step' => $this->isOpen() ? DelinquencyPrediction::nextStep($this->resource) : null,
+            'active_playbook_enrolment' => ($this->additional['include_playbook_enrolment'] ?? false) && $this->isOpen()
+                ? PlaybookEnrolmentSummary::activeForSubject('delinquency', (int) $this->id)
+                : null,
             'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),
         ];
