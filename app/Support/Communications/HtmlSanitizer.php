@@ -10,8 +10,9 @@ use DOMNode;
 use DOMXPath;
 
 /**
- * Strip scripts, event handlers, and javascript: URLs from HTML at write time.
- * Mirrors the site-map SVG discipline for untrusted / stored HTML bodies.
+ * Strip scripts, event handlers, javascript: URLs, and external http(s) refs
+ * from HTML at write time. Mirrors the site-map SVG discipline for untrusted
+ * / stored HTML bodies.
  */
 final class HtmlSanitizer
 {
@@ -60,10 +61,16 @@ final class HtmlSanitizer
                     continue;
                 }
 
-                if (in_array($name, ['href', 'src', 'xlink:href', 'action', 'formaction'], true)
-                    && preg_match('/^\s*javascript\s*:/i', $value) === 1
-                ) {
-                    $attrsToRemove[] = $attr->name;
+                if (in_array($name, ['href', 'src', 'xlink:href', 'action', 'formaction'], true)) {
+                    if (preg_match('/^\s*javascript\s*:/i', $value) === 1) {
+                        $attrsToRemove[] = $attr->name;
+                        continue;
+                    }
+
+                    // Strip absolute external http(s) references (keep cid:/mailto:/data:/#).
+                    if (preg_match('/^\s*https?:/i', $value) === 1) {
+                        $attrsToRemove[] = $attr->name;
+                    }
                 }
             }
 

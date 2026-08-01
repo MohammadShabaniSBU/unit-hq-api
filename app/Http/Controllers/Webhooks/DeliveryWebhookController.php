@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessDeliveryWebhookEvent;
+use App\Jobs\ProcessInboundWebhookEvent;
 use App\Models\CommsWebhookEvent;
 use App\Models\CommunicationAccount;
 use App\Models\SystemEvent;
+use App\Support\Communications\Contracts\ReceivesInbound;
 use App\Support\Communications\Contracts\ReportsDeliveryEvents;
 use App\Support\Communications\Provider;
 use App\Support\Communications\ProviderRegistry;
@@ -18,10 +20,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Public inbound delivery webhook receiver. Authenticated by the per-account
- * URL token. Persists each parsed DeliveryEvent under
- * (communication_account_id, provider_event_id) then dispatches processing —
- * Stripe-shaped idempotency.
+ * Public provider webhook receiver. Authenticated by the per-account URL token.
+ * Splits delivery-status callbacks vs inbound content by adapter parse results —
+ * Stripe-shaped idempotency on (communication_account_id, provider_event_id).
  */
 class DeliveryWebhookController extends Controller
 {
@@ -63,42 +64,69 @@ class DeliveryWebhookController extends Controller
 
         $adapter = $registry->make($account->channel, $account->provider, $credentials);
 
-        if (! $adapter instanceof ReportsDeliveryEvents) {
-            return response()->json(['message' => 'ok']);
-        }
-
         /** @var array<string, mixed> $payload */
         $payload = $request->all();
-        $events = $adapter->parseDeliveryEvents($payload);
 
-        foreach ($events as $event) {
-            $row = CommsWebhookEvent::query()
-                ->where('communication_account_id', $account->id)
-                ->where('provider_event_id', $event->providerEventId)
-                ->first();
-
-            if ($row === null) {
-                try {
-                    $row = CommsWebhookEvent::query()->create([
-                        'communication_account_id' => $account->id,
-                        'provider_event_id' => $event->providerEventId,
-                        'payload' => $payload,
-                        'processing_status' => 'pending',
-                        'received_at' => now(),
-                    ]);
-                } catch (UniqueConstraintViolationException) {
-                    $row = CommsWebhookEvent::query()
-                        ->where('communication_account_id', $account->id)
-                        ->where('provider_event_id', $event->providerEventId)
-                        ->first();
-                }
+        if ($adapter instanceof ReportsDeliveryEvents) {
+            foreach ($adapter->parseDeliveryEvents($payload) as $event) {
+                $this->persistAndDispatch(
+                    $account->id,
+                    $event->providerEventId,
+                    $payload,
+                    fn (int $id) => ProcessDeliveryWebhookEvent::dispatch($id),
+                );
             }
+        }
 
-            if ($row !== null && $row->processing_status === 'pending') {
-                ProcessDeliveryWebhookEvent::dispatch($row->id);
+        if ($adapter instanceof ReceivesInbound) {
+            $inbound = $adapter->parseInbound($payload);
+            if ($inbound !== null) {
+                $this->persistAndDispatch(
+                    $account->id,
+                    $inbound->providerEventId,
+                    $payload,
+                    fn (int $id) => ProcessInboundWebhookEvent::dispatch($id),
+                );
             }
         }
 
         return response()->json(['message' => 'ok']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  callable(int): void  $dispatch
+     */
+    private function persistAndDispatch(
+        int $accountId,
+        string $providerEventId,
+        array $payload,
+        callable $dispatch,
+    ): void {
+        $row = CommsWebhookEvent::query()
+            ->where('communication_account_id', $accountId)
+            ->where('provider_event_id', $providerEventId)
+            ->first();
+
+        if ($row === null) {
+            try {
+                $row = CommsWebhookEvent::query()->create([
+                    'communication_account_id' => $accountId,
+                    'provider_event_id' => $providerEventId,
+                    'payload' => $payload,
+                    'processing_status' => 'pending',
+                    'received_at' => now(),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                $row = CommsWebhookEvent::query()
+                    ->where('communication_account_id', $accountId)
+                    ->where('provider_event_id', $providerEventId)
+                    ->first();
+            }
+        }
+
+        if ($row !== null && $row->processing_status === 'pending') {
+            $dispatch($row->id);
+        }
     }
 }

@@ -24,4 +24,19 @@ return [
     |
     */
     'public_base_url' => env('COMMUNICATIONS_PUBLIC_BASE_URL', env('APP_URL')),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inbound attachment caps
+    |--------------------------------------------------------------------------
+    |
+    | Over-cap attachments are stored as stub rows (oversize = true) with
+    | content dropped — honest in the Inbox UI.
+    |
+    */
+    'inbound' => [
+        'max_attachment_bytes' => (int) env('COMMS_INBOUND_MAX_ATTACHMENT_BYTES', 10 * 1024 * 1024),
+        'max_total_attachment_bytes' => (int) env('COMMS_INBOUND_MAX_TOTAL_ATTACHMENT_BYTES', 25 * 1024 * 1024),
+    ],
 ];
+

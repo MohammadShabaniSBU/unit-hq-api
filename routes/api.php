@@ -15,6 +15,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
     Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
 
+    Route::post('comms-triage/{commsTriage}/attach', [Controllers\CommsTriageController::class, 'attach']);
+    Route::post('comms-triage/{commsTriage}/create-and-attach', [Controllers\CommsTriageController::class, 'createAndAttach']);
+    Route::post('comms-triage/{commsTriage}/discard', [Controllers\CommsTriageController::class, 'discard']);
+    Route::post('messages/{message}/move-thread', [Controllers\MessageController::class, 'moveThread']);
+
     // Credential-bearing routes — always behind auth (09-conventions-and-invariants.md #26/#27).
     Route::get('settings/communications', [Facility\CommunicationAccountController::class, 'index']);
     Route::put('settings/communications/{channel}', [Facility\CommunicationAccountController::class, 'update']);
@@ -55,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
 Route::post('webhooks/stripe/{accountToken}', Webhooks\StripeWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
+Route::post('webhooks/{provider}/{webhookUrlToken}/inbound', Webhooks\DeliveryWebhookController::class);
 
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);

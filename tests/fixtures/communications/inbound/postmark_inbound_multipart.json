@@ -1,0 +1,53 @@
+{
+  "From": "renter@example.com",
+  "FromName": "Renter Example",
+  "FromFull": {
+    "Email": "renter@example.com",
+    "Name": "Renter Example",
+    "MailboxHash": ""
+  },
+  "To": "inbox@example.com",
+  "ToFull": [
+    {
+      "Email": "inbox@example.com",
+      "Name": "",
+      "MailboxHash": ""
+    }
+  ],
+  "Cc": "",
+  "CcFull": [],
+  "Bcc": "",
+  "BccFull": [],
+  "OriginalRecipient": "inbox@example.com",
+  "Subject": "Re: Welcome to Unit HQ",
+  "MessageID": "00000000-0000-0000-0000-00000000in01",
+  "ReplyTo": "",
+  "MailboxHash": "",
+  "Date": "Sat, 2 Aug 2026 12:00:00 +0000",
+  "TextBody": "Sounds good, when can we visit?",
+  "HtmlBody": "<p>Sounds good, when can we visit?</p><script>alert(1)</script><img src=\"https://evil.example/track.png\" onload=\"steal()\"><a href=\"https://evil.example\">click</a>",
+  "StrippedTextReply": "Sounds good, when can we visit?",
+  "Tag": "",
+  "Headers": [
+    {
+      "Name": "Message-ID",
+      "Value": "<00000000-0000-0000-0000-00000000in01@mtasv.net>"
+    },
+    {
+      "Name": "In-Reply-To",
+      "Value": "<outbound-playbook-msg-001@unit-hq.test>"
+    },
+    {
+      "Name": "References",
+      "Value": "<outbound-playbook-msg-001@unit-hq.test>"
+    }
+  ],
+  "Attachments": [
+    {
+      "Name": "lease-notes.txt",
+      "Content": "SGVsbG8gVW5pdCBIUSAtIGF0dGFjaG1lbnQgYm9keQ==",
+      "ContentType": "text/plain",
+      "ContentLength": 29
+    }
+  ]
+}

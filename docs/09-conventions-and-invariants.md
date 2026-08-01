@@ -111,6 +111,13 @@
     `messages.delivery_events`. Bounce/spam emit `ChannelDeliveryFailed` facts;
     suppression is a separate concern (never inline in the delivery job).
 
+40. **Inbound receipt never creates contacts silently.** Unknown senders park on
+    `comms_triage`; contacts are created only via explicit triage resolve
+    (`create-and-attach`). Inbound HTML is sanitized at write (scripts, handlers,
+    external http(s) refs); attachments are size-capped with honest `oversize`
+    stubs on the private disk. Auto-Submitted / X-Autoreply messages are stored
+    with `auto_generated` and do not increment unread.
+
 ## Code conventions
 
 ### API (Laravel)

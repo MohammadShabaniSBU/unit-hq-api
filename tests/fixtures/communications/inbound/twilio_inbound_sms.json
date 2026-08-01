@@ -1,0 +1,21 @@
+{
+  "ToCountry": "US",
+  "ToState": "CA",
+  "SmsMessageSid": "SMinbound000000000000000000000001",
+  "NumMedia": "0",
+  "ToCity": "",
+  "FromZip": "",
+  "SmsSid": "SMinbound000000000000000000000001",
+  "FromState": "CA",
+  "SmsStatus": "received",
+  "FromCity": "LOS ANGELES",
+  "Body": "Yes, please call me tomorrow.",
+  "FromCountry": "US",
+  "To": "+15550001111",
+  "ToZip": "",
+  "NumSegments": "1",
+  "MessageSid": "SMinbound000000000000000000000001",
+  "AccountSid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "From": "+15551234567",
+  "ApiVersion": "2010-04-01"
+}

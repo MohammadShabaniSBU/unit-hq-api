@@ -10,16 +10,17 @@ Multi-channel contact identity: email, phone, WhatsApp.
 ## Message store — canonical communication record
 
 Bodies, attachments, threading, and delivery state live on `message_threads` /
-`messages` / `message_attachments`. Every outbound send (and later every inbound
-receipt) creates exactly one `messages` row. See invariant 38 in `09`.
+`messages` / `message_attachments`. Every outbound send and every inbound receipt
+creates exactly one `messages` row. See invariant 38 in `09`.
 
 | Piece | Role |
 |---|---|
 | `message_threads` | One conversation per contact+channel (email subject reuse; SMS/call by `channel_key`) |
 | `messages` | Direction, status, bodies (HTML sanitized at write), provider ids, `source` / `source_ref` |
 | `message_attachments` | Private-disk files linked to a message |
-| `Threading::forOutbound` | Subject-normalized email reuse; race-safe SMS find-or-create |
+| `Threading::forOutbound` / `forInbound` | Outbound subject/number reuse; inbound References → subject → new (email) or `(contact, number)` (SMS) |
 | `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system`) into `EmailSender` / `SmsSender` |
+| `comms_triage` | Unmatched inbound parking lot — attach / create-and-attach / discard; never silent Contact create |
 
 ## Interaction — CRM timeline index
 
@@ -63,7 +64,8 @@ Adapters do **not** expose a `capabilities()` boolean map. Capability is interfa
 | `ProviderAccount` | `make`, `verify`, `credentialFields`, `channels` |
 | `SendsEmail` / `SendsSms` | outbound send |
 | `AutoRegistersWebhooks` | create/delete endpoint resources over the vendor API |
-| `ReportsDeliveryEvents` | parse inbound status callbacks into normalised `DeliveryEvent`s |
+| `ReportsDeliveryEvents` | parse delivery status callbacks into normalised `DeliveryEvent`s |
+| `ReceivesInbound` | parse inbound content webhooks into normalised `InboundMessage`s (Postmark email, Twilio SMS; Brevo delivery-only) |
 
 The panel renders "Create webhook" only when `auto_registers_webhooks` is true (derived from `instanceof AutoRegistersWebhooks`). Postmark and Twilio show a pasteable URL instead.
 
@@ -102,9 +104,11 @@ Indexes (company path): unique `(scope, site_id, channel, provider)`; partial un
 
 ### Webhooks
 
-- `POST /api/webhooks/{provider}/{webhook_url_token}` — public route (no Sanctum), authenticated by the per-account URL token. Looks up the account, ignores archived site-scoped accounts, records a Tier-1 `webhook.{provider}.received` `SystemEvent`, parses via the account's `ReportsDeliveryEvents` adapter, persists each event on `comms_webhook_events` keyed by `(communication_account_id, provider_event_id)` (Stripe-shaped idempotency; adapters without stable ids derive `sha256(provider_message_id|raw_status|minute-bucket)`), then dispatches `ProcessDeliveryWebhookEvent` before acking fast. Replay of an already-processed event is a no-op.
-- The job reconciles onto `messages` by `(provider, provider_message_id)`: appends the full status history to `messages.delivery_events` (JSONB), advances `messages.status` **forward-only** via `DeliveryStatus::rank()` (opened/clicked never regress bounced; unsubscribed is history-only), touches the linked `Interaction`, back-fills playbook step `output` when `source = playbook`, and keeps the legacy `OfferDelivery` status update for pre-store rows. Unmatched events (no message row) are marked `unmatched` and counted via Tier-1 `comms.webhook.unmatched`.
-- Bounce/spam classification lands on `DeliveryEvent::$isPermanent`. Hard bounce / complaint emit `ChannelDeliveryFailed` (contact-channel + permanence) — suppression is S10-03's job; this pipeline only produces the fact.
+- `POST /api/webhooks/{provider}/{webhook_url_token}` — public route (no Sanctum), authenticated by the per-account URL token. Looks up the account, ignores archived site-scoped accounts, records a Tier-1 `webhook.{provider}.received` `SystemEvent`, then splits by event class: `ReportsDeliveryEvents` → `ProcessDeliveryWebhookEvent`; `ReceivesInbound` → `ProcessInboundWebhookEvent`. Both persist on `comms_webhook_events` keyed by `(communication_account_id, provider_event_id)` (Stripe-shaped idempotency). Replay of an already-processed event is a no-op.
+- `POST /api/webhooks/{provider}/{webhook_url_token}/inbound` — same controller; paste URL for Postmark inbound (separate from delivery webhooks). Twilio inbound MO shares the status-callback URL and is split by payload shape.
+- **Delivery job** reconciles onto `messages` by `(provider, provider_message_id)`: appends `messages.delivery_events`, advances status **forward-only** via `DeliveryStatus::rank()`, touches the linked `Interaction`, back-fills playbook step `output` when `source = playbook`, legacy `OfferDelivery` for pre-store rows. Unmatched → `unmatched` + Tier-1 `comms.webhook.unmatched`. Hard bounce / complaint emit `ChannelDeliveryFailed` (suppression is S10-03).
+- **Inbound job** matches sender against `contact_channels` (normalised email / E.164-ish phone). Match → sanitize HTML, store attachments (caps → `oversize` stubs), thread via `Threading::forInbound`, create `messages` (`direction=inbound`, `status=received`) + `Interaction`, bump `unread_count` / `last_inbound_at` (skipped when `auto_generated` from Auto-Submitted/X-Autoreply), fire `InboundMessageReceived`. No match → `comms_triage` row (never silent Contact create).
+- **Triage resolve (auth):** `POST /api/comms-triage/{id}/attach`, `…/create-and-attach`, `…/discard`. **Rethread (auth):** `POST /api/messages/{id}/move-thread` with audit (`message.rethreaded`).
 - **Webhook creation is refused** if the configured public base URL (`communications.public_base_url` / `APP_URL`) is missing, `localhost`, or a private/loopback address — `App\Support\Http\PublicUrlGuard`.
 - Removing a provider deletes the remote webhook endpoint first (when `AutoRegistersWebhooks`) via stored `webhook_endpoint_id`.
 

@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
  * @property string      $filename
  * @property string      $mime_type
  * @property int         $size_bytes
- * @property string      $disk_path
+ * @property bool        $oversize
+ * @property string|null $disk_path
  * @property Carbon|null $created_at
  *
  * @property-read Message $message
@@ -30,6 +31,7 @@ class MessageAttachment extends Model
         'filename',
         'mime_type',
         'size_bytes',
+        'oversize',
         'disk_path',
     ];
 
@@ -37,6 +39,7 @@ class MessageAttachment extends Model
     {
         return [
             'size_bytes' => 'integer',
+            'oversize' => 'boolean',
         ];
     }
 

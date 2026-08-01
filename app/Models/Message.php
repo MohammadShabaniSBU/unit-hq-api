@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property string      $source
  * @property array<string, mixed>|null $source_ref
  * @property array<int, array<string, mixed>>|null $delivery_events
+ * @property bool        $auto_generated
  * @property Carbon|null $sent_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
@@ -59,6 +60,7 @@ class Message extends Model
         'source',
         'source_ref',
         'delivery_events',
+        'auto_generated',
         'sent_at',
     ];
 
@@ -72,6 +74,7 @@ class Message extends Model
             'threading_evidence' => 'array',
             'source_ref' => 'array',
             'delivery_events' => 'array',
+            'auto_generated' => 'boolean',
             'sent_at' => 'datetime',
         ];
     }

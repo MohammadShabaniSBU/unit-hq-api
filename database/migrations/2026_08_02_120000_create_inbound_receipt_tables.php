@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Inbound receipt: auto-generated flag, attachment oversize stubs, triage queue.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('messages', function (Blueprint $table): void {
+            $table->boolean('auto_generated')->default(false)->after('delivery_events');
+        });
+
+        Schema::table('message_attachments', function (Blueprint $table): void {
+            $table->boolean('oversize')->default(false)->after('size_bytes');
+            $table->string('disk_path', 500)->nullable()->change();
+        });
+
+        Schema::create('comms_triage', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('communication_account_id')->constrained('communication_accounts')->cascadeOnDelete();
+            $table->string('provider', 32);
+            $table->string('provider_message_id', 255);
+            $table->string('channel', 16);
+            $table->string('sender_value', 255);
+            $table->json('preview');
+            $table->json('payload');
+            $table->string('status', 16)->default('pending');
+            $table->foreignId('resolved_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
+            $table->foreignId('resolved_message_id')->nullable()->constrained('messages')->nullOnDelete();
+            $table->timestampTz('resolved_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['provider', 'provider_message_id'], 'comms_triage_provider_message_unique');
+            $table->index(['status', 'created_at'], 'comms_triage_status_created_idx');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('comms_triage');
+
+        Schema::table('message_attachments', function (Blueprint $table): void {
+            $table->dropColumn('oversize');
+            $table->string('disk_path', 500)->nullable(false)->change();
+        });
+
+        Schema::table('messages', function (Blueprint $table): void {
+            $table->dropColumn('auto_generated');
+        });
+    }
+};
