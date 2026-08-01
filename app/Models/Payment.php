@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
 use App\Support\Billing\CurrencyGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,20 +15,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
- * Append-only credit entry. Confirmed from Stripe webhooks using
- * idempotency_key — never optimistically from the client.
+ * Append-only credit entry. Stripe rails write via webhook + idempotency_key;
+ * manual rails (cash / bank_transfer / card_external) via authenticated employee.
  *
  * Reversals are made by inserting a new payment with reversal_of_payment_id.
  * Unallocated amount (payment.amount - SUM allocations) is credit on the contract.
  *
- * @property int         $id
- * @property int         $contract_id
- * @property string      $amount                NUMERIC(10,2)
- * @property string      $currency              ISO 4217 snapshot from contract
- * @property string|null $stripe_payment_intent_id
- * @property string      $idempotency_key
- * @property int|null    $reversal_of_payment_id
- * @property Carbon      $created_at
+ * @property int                $id
+ * @property int                $contract_id
+ * @property string             $amount                NUMERIC(10,2)
+ * @property string             $currency              ISO 4217 snapshot from contract
+ * @property PaymentMethod|null $method
+ * @property Carbon|null        $received_on
+ * @property string|null        $reference
+ * @property string|null        $stripe_payment_intent_id
+ * @property string             $idempotency_key
+ * @property int|null           $reversal_of_payment_id
+ * @property Carbon             $created_at
  *
  * @property-read Contract                    $contract
  * @property-read Payment|null                $reversalOf
@@ -59,6 +65,9 @@ class Payment extends Model
         'contract_id',
         'amount',
         'currency',
+        'method',
+        'received_on',
+        'reference',
         'stripe_payment_intent_id',
         'idempotency_key',
         'reversal_of_payment_id',
@@ -68,6 +77,8 @@ class Payment extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'method' => PaymentMethod::class,
+            'received_on' => 'date',
         ];
     }
 

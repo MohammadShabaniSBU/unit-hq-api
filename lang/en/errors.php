@@ -65,5 +65,14 @@ return [
         'rectify_missing_contract' => 'The invoice has no contract to rectify against.',
         'rectify_no_eligible_credits' => 'No eligible uninvoiced credit charges for this invoice (must be negative adjustments on the same contract, not already stamped).',
     ],
+    'payments' => [
+        'amount_must_be_positive' => 'Payment amount must be greater than zero.',
+        'allocation_amount_invalid' => 'Each allocation amount must be greater than zero.',
+        'over_allocation_payment' => 'Allocations exceed the payment amount.',
+        'over_allocation_charge' => 'Allocation exceeds the charge open amount.',
+        'charge_not_on_contract' => 'One or more charges do not belong to this contract.',
+        'already_reversed' => 'This payment has already been reversed.',
+        'cannot_reverse_reversal' => 'Cannot reverse a reversal payment.',
+    ],
 ];
 

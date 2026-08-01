@@ -303,7 +303,7 @@ class ContractController extends Controller
             'depositSettlement.lines',
             'billingPeriods' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
             'payments' => fn ($query) => $query->orderByDesc('created_at')->with('allocations'),
-            'charges'  => fn ($query) => $query->orderByDesc('due_date'),
+            'charges' => fn ($query) => $query->orderBy('due_date')->orderBy('id')->with('allocations'),
         ]);
 
         $allItems = $contract->items()

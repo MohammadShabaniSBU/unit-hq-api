@@ -14,18 +14,21 @@ class PaymentResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
-            'id'                       => $this->id,
-            'contract_id'              => $this->contract_id,
-            'amount'                   => $this->amount,
-            'currency'                 => $this->currency,
+            'id' => $this->id,
+            'contract_id' => $this->contract_id,
+            'amount' => $this->amount,
+            'currency' => $this->currency,
+            'method' => $this->method?->value ?? $this->method,
+            'received_on' => $this->date($this->received_on),
+            'reference' => $this->reference,
             'stripe_payment_intent_id' => $this->stripe_payment_intent_id,
-            'reversal_of_payment_id'   => $this->reversal_of_payment_id,
-            'created_at'               => $this->datetime($this->created_at),
-            'allocated_amount'         => $this->whenLoaded(
+            'reversal_of_payment_id' => $this->reversal_of_payment_id,
+            'created_at' => $this->datetime($this->created_at),
+            'allocated_amount' => $this->whenLoaded(
                 'allocations',
                 fn () => number_format((float) $this->allocations->sum('amount'), 2, '.', '')
             ),
-            'contract'                 => $this->whenLoaded('contract', fn () => $this->formatContractSummary()),
+            'contract' => $this->whenLoaded('contract', fn () => $this->formatContractSummary()),
         ];
     }
 
@@ -44,9 +47,9 @@ class PaymentResource extends BaseResource
         }
 
         return [
-            'id'          => $this->contract->id,
-            'status'      => $this->contract->status,
-            'currency'    => $this->contract->currency,
+            'id' => $this->contract->id,
+            'status' => $this->contract->status,
+            'currency' => $this->contract->currency,
             'unit_number' => $unitNumber,
         ];
     }

@@ -65,5 +65,14 @@ return [
         'rectify_missing_contract' => 'La facture n’a pas de contrat associé pour la rectification.',
         'rectify_no_eligible_credits' => 'Aucun crédit éligible non facturé pour cette facture (ajustements négatifs du même contrat, non encore marqués).',
     ],
+    'payments' => [
+        'amount_must_be_positive' => 'Le montant du paiement doit être supérieur à zéro.',
+        'allocation_amount_invalid' => 'Chaque montant d’imputation doit être supérieur à zéro.',
+        'over_allocation_payment' => 'Les imputations dépassent le montant du paiement.',
+        'over_allocation_charge' => 'L’imputation dépasse le solde ouvert de la charge.',
+        'charge_not_on_contract' => 'Une ou plusieurs charges n’appartiennent pas à ce contrat.',
+        'already_reversed' => 'Ce paiement a déjà été annulé.',
+        'cannot_reverse_reversal' => 'Impossible d’annuler un paiement d’annulation.',
+    ],
 ];
 

@@ -61,14 +61,14 @@ Contract detail → Billing summary card gains **Record payment**: drawer with a
 
 ## Acceptance criteria
 
-- [ ] Cash payment records with causer, allocates oldest-first by default, and the
+- [x] Cash payment records with causer, allocates oldest-first by default, and the
       contract's computed overdue drops accordingly.
-- [ ] Explicit allocations validated: per-charge open amount and payment total capped.
-- [ ] Unallocated remainder shows as computed credit; nothing stored.
-- [ ] Reversal writes negative payment + opposing allocations; original untouched.
-- [ ] Invoice detail shows computed paid state; no schema change on invoices.
-- [ ] Activity rows carry method, reference, money-as-strings.
-- [ ] Seeder records at least one cash payment and one reversed mistake.
+- [x] Explicit allocations validated: per-charge open amount and payment total capped.
+- [x] Unallocated remainder shows as computed credit; nothing stored.
+- [x] Reversal writes negative payment + opposing allocations; original untouched.
+- [x] Invoice detail shows computed paid state; no schema change on invoices.
+- [x] Activity rows carry method, reference, money-as-strings.
+- [x] Seeder records at least one cash payment and one reversed mistake.
 
 ## Tests required
 

@@ -176,7 +176,11 @@ invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authorit
 - **Bank SEPA DD:** generating a direct-debit collection file is **not** a payment. A
   payment is written on the run's settlement date. A return writes a reversal payment via
   `reversal_of_payment_id` — never an edit or delete.
-- **Manual (cash, transfer):** written by an authenticated employee with a recorded causer.
+- **Manual (cash, transfer):** written by an authenticated employee with a recorded causer
+  via `POST /api/contracts/{id}/payments` (`method`: `cash` | `bank_transfer` |
+  `card_external`, plus `received_on` / optional `reference`). Mistakes are reversed with
+  `POST /api/payments/{id}/reverse` (opposing payment + allocations). Activity:
+  `payment.recorded` / `payment.reversed`.
 
 In all cases the ledger is the system of record; provider events are reconciled inputs.
 

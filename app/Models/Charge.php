@@ -139,4 +139,34 @@ class Charge extends Model
     {
         return $this->hasMany(Allocation::class);
     }
+
+    /**
+     * Remaining open amount: amount − Σ allocations. Query-time only.
+     */
+    public function openAmount(): string
+    {
+        if ($this->relationLoaded('allocations')) {
+            $allocated = (string) $this->allocations->sum('amount');
+        } else {
+            $allocated = (string) $this->allocations()->sum('amount');
+        }
+
+        $allocated = number_format((float) $allocated, 2, '.', '');
+
+        return bcsub((string) $this->amount, $allocated, 2);
+    }
+
+    /**
+     * Sum of allocations against this charge. Query-time only.
+     */
+    public function allocatedAmount(): string
+    {
+        if ($this->relationLoaded('allocations')) {
+            $allocated = (string) $this->allocations->sum('amount');
+        } else {
+            $allocated = (string) $this->allocations()->sum('amount');
+        }
+
+        return number_format((float) $allocated, 2, '.', '');
+    }
 }

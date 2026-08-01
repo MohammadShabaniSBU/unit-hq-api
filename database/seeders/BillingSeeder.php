@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Enums\ContractStatus;
-use App\Models\Allocation;
 use App\Enums\ChargeType;
+use App\Enums\ContractStatus;
+use App\Enums\PaymentMethod;
+use App\Models\Allocation;
+use App\Models\BillingPeriod;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
-use App\Models\BillingPeriod;
 use App\Models\Payment;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -95,6 +96,8 @@ class BillingSeeder extends Seeder
                     $this->maybeInsertReversal();
                 }
             });
+
+        $this->seedManualCashExamples();
     }
 
     private function assignPayerProfile(): string
@@ -345,16 +348,138 @@ class BillingSeeder extends Seeder
         }
 
         $original = $this->createdPayments->random();
+        $original->loadMissing('allocations');
         $createdAt = Carbon::parse($original->created_at)->addDays(fake()->numberBetween(1, 5));
 
         $reversal = Payment::query()->create([
-            'contract_id'              => $original->contract_id,
-            'amount'                   => bcmul((string) $original->amount, '-1', 2),
-            'currency'                 => $original->currency,
+            'contract_id' => $original->contract_id,
+            'amount' => bcmul((string) $original->amount, '-1', 2),
+            'currency' => $original->currency,
+            'method' => $original->method,
+            'received_on' => $original->received_on,
+            'reference' => $original->reference,
             'stripe_payment_intent_id' => null,
-            'idempotency_key'          => (string) Str::uuid(),
-            'reversal_of_payment_id'   => $original->id,
+            'idempotency_key' => (string) Str::uuid(),
+            'reversal_of_payment_id' => $original->id,
         ]);
         $reversal->forceFill(['created_at' => $createdAt])->save();
+
+        foreach ($original->allocations as $allocation) {
+            $opposing = Allocation::query()->create([
+                'payment_id' => $reversal->id,
+                'charge_id' => $allocation->charge_id,
+                'amount' => bcmul((string) $allocation->amount, '-1', 2),
+            ]);
+            $opposing->forceFill(['created_at' => $createdAt])->save();
+        }
+    }
+
+    /**
+     * Deterministic manual-rail examples: one cash payment and one reversed mistake.
+     */
+    private function seedManualCashExamples(): void
+    {
+        $contract = Contract::query()
+            ->where('status', ContractStatus::Active)
+            ->whereHas('charges')
+            ->with(['charges.allocations'])
+            ->first();
+
+        if ($contract === null) {
+            return;
+        }
+
+        $openCharge = $contract->charges->first(function (Charge $charge): bool {
+            return bccomp($charge->openAmount(), '0', 2) > 0;
+        });
+
+        if ($openCharge === null) {
+            $openCharge = Charge::factory()->create([
+                'contract_id' => $contract->id,
+                'charge_type' => ChargeType::Rent,
+                'amount' => '150.00',
+                'net_amount' => '150.00',
+                'tax_amount' => '0.00',
+                'currency' => $contract->currency,
+                'due_date' => Carbon::today()->subDays(10)->toDateString(),
+                'description' => 'Manual payment demo charge',
+            ]);
+        }
+
+        $cashAmount = bccomp($openCharge->openAmount(), '50.00', 2) >= 0
+            ? '50.00'
+            : $openCharge->openAmount();
+        $receivedOn = Carbon::today()->subDays(2);
+
+        $cash = Payment::query()->create([
+            'contract_id' => $contract->id,
+            'amount' => $cashAmount,
+            'currency' => $contract->currency,
+            'method' => PaymentMethod::Cash,
+            'received_on' => $receivedOn->toDateString(),
+            'reference' => 'SEED-CASH-1',
+            'stripe_payment_intent_id' => null,
+            'idempotency_key' => 'manual:'.Str::uuid(),
+            'reversal_of_payment_id' => null,
+        ]);
+        $cash->forceFill(['created_at' => $receivedOn])->save();
+
+        Allocation::query()->create([
+            'payment_id' => $cash->id,
+            'charge_id' => $openCharge->id,
+            'amount' => $cashAmount,
+        ])->forceFill(['created_at' => $receivedOn])->save();
+
+        // Intentional wrong cash entry, then reversed with opposing allocations.
+        $mistakeAmount = '25.00';
+        $mistakeAt = Carbon::today()->subDay();
+        $mistake = Payment::query()->create([
+            'contract_id' => $contract->id,
+            'amount' => $mistakeAmount,
+            'currency' => $contract->currency,
+            'method' => PaymentMethod::Cash,
+            'received_on' => $mistakeAt->toDateString(),
+            'reference' => 'SEED-CASH-MISTAKE',
+            'stripe_payment_intent_id' => null,
+            'idempotency_key' => 'manual:'.Str::uuid(),
+            'reversal_of_payment_id' => null,
+        ]);
+        $mistake->forceFill(['created_at' => $mistakeAt])->save();
+
+        // Leave unallocated (or allocate if open remains) — still a valid payment row.
+        $remainingOpen = $openCharge->fresh()->openAmount();
+        if (bccomp($remainingOpen, '0', 2) > 0) {
+            $allocAmount = bccomp($remainingOpen, $mistakeAmount, 2) >= 0
+                ? $mistakeAmount
+                : $remainingOpen;
+            Allocation::query()->create([
+                'payment_id' => $mistake->id,
+                'charge_id' => $openCharge->id,
+                'amount' => $allocAmount,
+            ])->forceFill(['created_at' => $mistakeAt])->save();
+        }
+
+        $mistake->load('allocations');
+        $reversalAt = $mistakeAt->copy()->addHours(2);
+        $reversal = Payment::query()->create([
+            'contract_id' => $contract->id,
+            'amount' => bcmul($mistakeAmount, '-1', 2),
+            'currency' => $contract->currency,
+            'method' => PaymentMethod::Cash,
+            'received_on' => $mistakeAt->toDateString(),
+            'reference' => 'SEED-CASH-MISTAKE',
+            'stripe_payment_intent_id' => null,
+            'idempotency_key' => 'manual:'.Str::uuid(),
+            'reversal_of_payment_id' => $mistake->id,
+        ]);
+        $reversal->forceFill(['created_at' => $reversalAt])->save();
+
+        foreach ($mistake->allocations as $allocation) {
+            Allocation::query()->create([
+                'payment_id' => $reversal->id,
+                'charge_id' => $allocation->charge_id,
+                'amount' => bcmul((string) $allocation->amount, '-1', 2),
+            ])->forceFill(['created_at' => $reversalAt])->save();
+        }
     }
 }

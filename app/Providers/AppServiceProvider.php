@@ -10,6 +10,7 @@ use App\Models\InsuranceRate;
 use App\Models\Invoice;
 use App\Models\Note;
 use App\Models\Offer;
+use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Task;
 use App\Models\Unit;
@@ -58,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
             'task'             => Task::class,
             'note'             => Note::class,
             'invoice'          => Invoice::class,
+            'payment'          => Payment::class,
         ]);
 
         Session::extend('database', function ($app) {

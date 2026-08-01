@@ -189,7 +189,10 @@ Route::post('contracts/{contract}/vacate', [Controllers\ContractController::clas
 Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::class, 'storeForContract']);
+Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
 Route::apiResource('contracts', Controllers\ContractController::class);
+
+Route::post('payments/{payment}/reverse', [Controllers\PaymentController::class, 'reverse']);
 
 Route::get('invoices', [Controllers\InvoiceController::class, 'index']);
 Route::get('invoices/{invoice}', [Controllers\InvoiceController::class, 'show']);

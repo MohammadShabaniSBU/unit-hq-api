@@ -31,6 +31,14 @@ class ChargeResource extends BaseResource
             'description'           => $this->description,
             'reversal_of_charge_id' => $this->reversal_of_charge_id,
             'created_at'            => $this->datetime($this->created_at),
+            'allocated_amount'      => $this->when(
+                $this->relationLoaded('allocations'),
+                fn () => $this->allocatedAmount()
+            ),
+            'open_amount'           => $this->when(
+                $this->relationLoaded('allocations'),
+                fn () => $this->openAmount()
+            ),
         ];
     }
 }
