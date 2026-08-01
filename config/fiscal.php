@@ -28,4 +28,26 @@ return [
     */
     'simplified_gross_limit' => env('FISCAL_SIMPLIFIED_GROSS_LIMIT', '400.00'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Late-fee tax rate
+    |--------------------------------------------------------------------------
+    |
+    | Percent tax applied when assessing late fees. Default 0% until the
+    | gestor confirms late fees are a taxable supply (gestor note, S07).
+    |
+    */
+    'late_fee_tax' => env('FISCAL_LATE_FEE_TAX', '0.00'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice late fees
+    |--------------------------------------------------------------------------
+    |
+    | When false, late-fee charges are excluded from VAT invoices (gestor
+    | default). Flip only after written confirmation.
+    |
+    */
+    'invoice_late_fees' => (bool) env('FISCAL_INVOICE_LATE_FEES', false),
+
 ];

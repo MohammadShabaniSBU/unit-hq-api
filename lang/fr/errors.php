@@ -74,5 +74,11 @@ return [
         'already_reversed' => 'Ce paiement a déjà été annulé.',
         'cannot_reverse_reversal' => 'Impossible d’annuler un paiement d’annulation.',
     ],
+    'delinquency' => [
+        'revoke_access_reserved' => 'L’action « revoke_access » nécessite l’intégration du contrôle d’accès (S16) et ne peut pas encore être configurée.',
+        'archive_in_use' => 'Impossible d’archiver la politique d’impayés assignée à :count site(s). Réassignez ces sites d’abord.',
+        'offset_action_unique' => 'Chaque paire (offset_days, action) doit être unique au sein d’une politique.',
+        'sort_unique' => 'Chaque valeur de tri (sort) doit être unique au sein d’une politique.',
+    ],
 ];
 

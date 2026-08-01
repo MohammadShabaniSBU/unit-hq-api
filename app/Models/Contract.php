@@ -58,6 +58,7 @@ use Illuminate\Support\Carbon;
  * @property ContractStatus           $status                   pending|active|notice_given|ended|cancelled
  * @property string|null              $notice_given_on          Y-m-d
  * @property int|null                 $notice_period_days       snapshot at signing (invariant 18)
+ * @property int|null                 $rate_change_notice_days  snapshot at signing (S02)
  * @property string|null              $scheduled_move_out_on    Y-m-d — set at notice
  * @property MoveOutSettlement|null   $move_out_settlement      snapshot at signing (invariant 18)
  * @property TransferBilling          $transfer_billing         snapshot at signing (invariant 18)
@@ -83,6 +84,8 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, UnitOccupancy>   $occupancies
  * @property-read Collection<int, ContractTransfer> $transfers
  * @property-read DepositSettlement|null           $depositSettlement
+ * @property-read Collection<int, Delinquency>     $delinquencies
+ * @property-read Collection<int, ContractNotice>  $notices
  * @property-read Collection<int, Note>              $notes
  */
 class Contract extends Model
@@ -109,6 +112,7 @@ class Contract extends Model
         'status',
         'notice_given_on',
         'notice_period_days',
+        'rate_change_notice_days',
         'scheduled_move_out_on',
         'move_out_settlement',
         'transfer_billing',
@@ -123,6 +127,7 @@ class Contract extends Model
             'status'                 => ContractStatus::class,
             'notice_given_on'        => 'date',
             'notice_period_days'     => 'integer',
+            'rate_change_notice_days' => 'integer',
             'scheduled_move_out_on'  => 'date',
             'move_out_settlement'    => MoveOutSettlement::class,
             'transfer_billing'       => TransferBilling::class,
@@ -338,6 +343,18 @@ class Contract extends Model
     public function charges(): HasMany
     {
         return $this->hasMany(Charge::class);
+    }
+
+    /** @return HasMany<Delinquency, Contract> */
+    public function delinquencies(): HasMany
+    {
+        return $this->hasMany(Delinquency::class);
+    }
+
+    /** @return HasMany<ContractNotice, Contract> */
+    public function notices(): HasMany
+    {
+        return $this->hasMany(ContractNotice::class);
     }
 
     /** @return HasMany<Invoice, Contract> */

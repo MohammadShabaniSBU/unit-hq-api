@@ -76,7 +76,10 @@
 |---|---|
 | Revenue model | **Flat SaaS** (default direction). Application fees are off the table without Connect; do not reopen destination charges / platform fee collection. |
 | Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
-| Jurisdiction rules | Late-fee / lien rules must be configurable per jurisdiction |
+| Jurisdiction rules | **Addressed (S07-00):** site-assigned `delinquency_policies` (ES/UK flavours seeded). Per-contract override deferred (site-level is v1). |
+| Delinquency per-contract override | Site-level policy assignment only in v1. Per-contract override deferred. |
+| Delinquency recurring steps | One-shot per case in v1; repeating/recurring ladder steps deferred. |
+| Late-fee fee-terms snapshot | Live-policy reading in v1 (see `09` invariant 18 exception). Snapshotting fee type/amount/percent onto contracts is the follow-up if a client pins exact fees in contract terms. |
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
 | Automation `waiting` run status | Real delayed `logic.wait` (`ExecuteAutomationRun` with `->delay()`) needs a status other than `running` while parked, or run-log UI shows idle waits as running. Stub WaitHandler does not add the enum yet. |

@@ -32,6 +32,7 @@
    - Overdue = per-charge, by due date
    - Exception: `contracts.billed_through` is a **stored billing cursor** (date), not cached money — the recurring job advances it; balances stay computed.
    - Clarification: `unit_occupancies` and `unit_holds` are **fact tables** (who occupies / holds a unit over a date range). They are not cached derived state. Availability remains computed from those facts.
+   - **Delinquency severity is computed; delinquency history is facts.** No stage/severity/amount column exists on cases. Cases and steps are append-only; ladder steps fire at most once per case (partial unique on `(delinquency_id, policy_step_id)`); every step references the artefact it produced.
 6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.
 7. **One selected option per offer** — enforced by partial unique index on `offer_id WHERE selected_at IS NOT NULL`.
 8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
@@ -53,6 +54,7 @@
 16. **Manual activity rows go through `RecordsActivity`** with a `LogChannel` — never bare `activity()` without `log_name`.
 17. **TaxRate immutability** — never `UPDATE` `tax_rates.rate` in place. New version same `code` + close old `effective_to` (mirrors prices). Signed contracts keep tax via item/charge snapshots.
 18. **Contract billing snapshots** — cadence, anchor model/date, proration, deposit, and tax % are snapshotted at signing; later org settings changes never rewrite existing contracts. Exception: `BillingSettings.billing_horizon_days` is operational (when a period is generated), never contractual — it is not snapshotted and may change freely without rewriting windows or amounts.
+    - **Scoped exception (S07 delinquency ladder):** `delinquency_policies` / steps are operational conduct, not contracted billing terms. No snapshot onto contracts — live-policy edits affect only *future* evaluation; already-executed case steps remain append-only history. Operators can soften escalation for everyone at once. Caveat: late-fee `type`/`amount`/`percent` are often contractual in practice; v1 accepts the live-policy reading — fee-terms snapshotting is the known follow-up in `10-open-decisions.md`.
 19. **Deposit charges are not revenue** — `charge_type = deposit` is excluded from revenue semantics.
 20. **Contract create writes first-period charges in the same DB transaction** as the contract + items (store / convert). Preview must call the same `BillingMath` / `ContractBilling` path.
 21. **Attribute definitions are archive-only** — never hard-delete `attribute_definitions` (or their values). Operators set `archived_at`; archived definitions stay out of the add-field picker but may remain on existing layouts / values until removed.

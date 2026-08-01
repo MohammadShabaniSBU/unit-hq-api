@@ -160,6 +160,12 @@ class SiteController extends Controller
                 'integer',
                 Rule::exists('legal_entities', 'id')->whereNull('archived_at'),
             ],
+            'delinquency_policy_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('delinquency_policies', 'id')->whereNull('archived_at'),
+            ],
         ]);
     }
 

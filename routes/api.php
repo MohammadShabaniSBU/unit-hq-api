@@ -79,6 +79,14 @@ Route::patch('attribute-definitions/{attributeDefinition}', [Controllers\Attribu
 Route::post('attribute-definitions/{attributeDefinition}/archive', [Controllers\AttributeDefinitionController::class, 'archive']);
 Route::post('attribute-definitions/{attributeDefinition}/unarchive', [Controllers\AttributeDefinitionController::class, 'unarchive']);
 
+Route::get('delinquency-policies/options', [Controllers\DelinquencyPolicyController::class, 'options']);
+Route::get('delinquency-policies', [Controllers\DelinquencyPolicyController::class, 'index']);
+Route::post('delinquency-policies', [Controllers\DelinquencyPolicyController::class, 'store']);
+Route::get('delinquency-policies/{delinquencyPolicy}', [Controllers\DelinquencyPolicyController::class, 'show']);
+Route::patch('delinquency-policies/{delinquencyPolicy}', [Controllers\DelinquencyPolicyController::class, 'update']);
+Route::post('delinquency-policies/{delinquencyPolicy}/archive', [Controllers\DelinquencyPolicyController::class, 'archive']);
+Route::post('delinquency-policies/{delinquencyPolicy}/unarchive', [Controllers\DelinquencyPolicyController::class, 'unarchive']);
+
 Route::get('settings/object-customization/{entityType}', [Controllers\ObjectCustomizationController::class, 'show']);
 Route::post('settings/object-customization/{entityType}/groups', [Controllers\ObjectCustomizationController::class, 'storeGroup']);
 Route::post('settings/object-customization/{entityType}/groups/reorder', [Controllers\ObjectCustomizationController::class, 'reorderGroups']);
@@ -201,6 +209,7 @@ Route::post('contracts/{contract}/vacate-preview', [Controllers\ContractControll
 Route::post('contracts/{contract}/vacate', [Controllers\ContractController::class, 'vacate']);
 Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
+Route::post('contracts/{contract}/rate-changes', [Controllers\ContractRateChangeController::class, 'store']);
 Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::class, 'storeForContract']);
 Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
 Route::get('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'index']);

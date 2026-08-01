@@ -34,12 +34,14 @@ use Illuminate\Support\Carbon;
  * @property string      $timezone
  * @property string|null $currency   ISO 4217 form prefill only (D1) — not authoritative
  * @property int         $legal_entity_id
+ * @property int|null    $delinquency_policy_id
  * @property Carbon|null $archived_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
  *
  * @property-read Country|null                   $country
  * @property-read LegalEntity                    $legalEntity
+ * @property-read DelinquencyPolicy|null         $delinquencyPolicy
  * @property-read Collection<int, Unit>          $units
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  * @property-read Collection<int, SiteMap>       $siteMaps
@@ -65,6 +67,7 @@ class Site extends Model
         'timezone',
         'currency',
         'legal_entity_id',
+        'delinquency_policy_id',
         'archived_at',
     ];
 
@@ -147,6 +150,12 @@ class Site extends Model
     public function legalEntity(): BelongsTo
     {
         return $this->belongsTo(LegalEntity::class);
+    }
+
+    /** @return BelongsTo<DelinquencyPolicy, $this> */
+    public function delinquencyPolicy(): BelongsTo
+    {
+        return $this->belongsTo(DelinquencyPolicy::class);
     }
 
     /** @return HasMany<Unit> */

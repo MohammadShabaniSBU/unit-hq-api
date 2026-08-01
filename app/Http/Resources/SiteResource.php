@@ -33,6 +33,7 @@ class SiteResource extends BaseResource
                     'legal_name' => $this->legalEntity->legal_name,
                 ]
             ),
+            'delinquency_policy_id' => $this->delinquency_policy_id,
             'archived_at' => $this->datetime($this->archived_at),
             'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),

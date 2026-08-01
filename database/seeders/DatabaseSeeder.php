@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\CredentialStatus;
+use App\Enums\DelinquencyPolicyAction;
 use App\Enums\FiscalRegime;
 use App\Enums\TaxIdType;
 use App\Models\Contact;
 use App\Models\Country;
+use App\Models\DelinquencyPolicy;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\InvoiceSeries;
-use App\Enums\CredentialStatus;
 use App\Models\LegalEntity;
 use App\Models\PaymentProviderAccount;
 use App\Models\Price;
@@ -92,13 +94,45 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris
+        $esPolicy = $this->seedDelinquencyPolicy('ES standard', [
+            ['offset_days' => 5, 'action' => DelinquencyPolicyAction::AssessLateFee, 'params' => [
+                'type' => 'percent', 'percent' => '10.00', 'cap_per_case' => '50.00',
+            ]],
+            ['offset_days' => 8, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
+                'notice_type' => 'overdue',
+            ]],
+            ['offset_days' => 12, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
+            ['offset_days' => 20, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
+                'notice_type' => 'final_demand',
+            ]],
+            ['offset_days' => 20, 'action' => DelinquencyPolicyAction::CreateTask, 'params' => [
+                'title_key' => 'delinquency.task.final_demand', 'urgent' => true,
+            ]],
+        ]);
+
+        $ukPolicy = $this->seedDelinquencyPolicy('UK standard', [
+            ['offset_days' => 7, 'action' => DelinquencyPolicyAction::AssessLateFee, 'params' => [
+                'type' => 'flat', 'amount' => '10.00',
+            ]],
+            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
+                'notice_type' => 'overdue',
+            ]],
+            ['offset_days' => 14, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
+            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
+                'notice_type' => 'final_demand',
+            ]],
+            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::CreateTask, 'params' => [
+                'title_key' => 'delinquency.task.final_demand', 'urgent' => true,
+            ]],
+        ]);
+
+        // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris (Paris unassigned = delinquency disabled)
         $siteDefs = [
-            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
-            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
-            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
-            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP', 'legal_entity_id' => $legalEntity->id],
-            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id],
+            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $ukPolicy->id],
+            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => null],
         ];
 
         $sites = collect();
@@ -248,5 +282,27 @@ class DatabaseSeeder extends Seeder
         $this->call(BillingSeeder::class);
 
         $this->command?->info("RNG seed: {$rngSeed}");
+    }
+
+    /**
+     * @param  list<array{offset_days: int, action: DelinquencyPolicyAction, params: array<string, mixed>}>  $steps
+     */
+    private function seedDelinquencyPolicy(string $name, array $steps): DelinquencyPolicy
+    {
+        $policy = DelinquencyPolicy::query()->create([
+            'name' => $name,
+            'auto_release_overlock' => true,
+        ]);
+
+        foreach (array_values($steps) as $sort => $step) {
+            $policy->steps()->create([
+                'offset_days' => $step['offset_days'],
+                'action' => $step['action'],
+                'params' => $step['params'],
+                'sort' => $sort,
+            ]);
+        }
+
+        return $policy;
     }
 }
