@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 final class LeadChase implements PlaybookKind
 {
-    public function trigger(): array
+    public function trigger(array $filters): array
     {
         return [
             'type' => 'trigger.object_created',

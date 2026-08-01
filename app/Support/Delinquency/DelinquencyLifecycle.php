@@ -8,6 +8,7 @@ use App\Enums\ContractStatus;
 use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyStepAction;
 use App\Enums\DelinquencyStepTrigger;
+use App\Jobs\EvaluateRunGuards;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractNotice;
@@ -18,6 +19,7 @@ use App\Models\Employee;
 use App\Models\Task;
 use App\Models\UnitHold;
 use App\Support\RecordsActivity;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -102,6 +104,11 @@ final class DelinquencyLifecycle
             'cured_on' => $today,
             'contract_id' => $delinquency->contract_id,
         ], anonymous: true);
+
+        $caseId = (int) $delinquency->id;
+        DB::afterCommit(static function () use ($caseId): void {
+            EvaluateRunGuards::dispatch('delinquency', $caseId);
+        });
 
         return $delinquency->fresh() ?? $delinquency;
     }

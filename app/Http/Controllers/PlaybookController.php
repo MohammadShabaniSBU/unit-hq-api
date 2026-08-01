@@ -15,6 +15,7 @@ use App\Models\AutomationRun;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
 use App\Support\Automation\RunLifecycle;
+use App\Support\Playbooks\DebtPlaybookOverlap;
 use App\Support\Playbooks\PlaybookCompiler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -153,6 +154,8 @@ class PlaybookController extends Controller
                 'status' => 'Cannot activate an archived playbook.',
             ]);
         }
+
+        DebtPlaybookOverlap::assertCanActivate($playbook);
 
         DB::transaction(function () use ($playbook): void {
             $playbook->update(['is_active' => true]);

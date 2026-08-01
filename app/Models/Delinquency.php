@@ -78,6 +78,7 @@ class Delinquency extends Model
         $attributes = $this->attributesToArray();
         $attributes['days_overdue'] = null;
         $attributes['overdue_base'] = null;
+        $attributes['site_id'] = null;
 
         $contract = $this->relationLoaded('contract')
             ? $this->contract
@@ -90,6 +91,12 @@ class Delinquency extends Model
         $contract->loadMissing(['unitItem.item']);
         if (! $contract->unitItem?->item instanceof Unit) {
             return $attributes;
+        }
+
+        try {
+            $attributes['site_id'] = DelinquencyState::resolveSite($contract)->id;
+        } catch (\Throwable) {
+            $attributes['site_id'] = null;
         }
 
         $attributes['days_overdue'] = DelinquencyState::daysOverdue($contract);

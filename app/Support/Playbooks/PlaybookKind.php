@@ -13,10 +13,12 @@ interface PlaybookKind
 {
     /**
      * Trigger node config (type + config payload used by the compiler).
+     * Enrolment filters are compiled into trigger conditions (whitelisted fields only).
      *
+     * @param  array<string, mixed>  $filters
      * @return array{type: string, label: string, config: array<string, mixed>}
      */
-    public function trigger(): array;
+    public function trigger(array $filters): array;
 
     /**
      * Run-guard stay tree (evaluator polarity: must hold; fail → cancel).

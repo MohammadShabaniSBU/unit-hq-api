@@ -16,6 +16,7 @@ use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyPolicyAction;
 use App\Enums\PlaybookKind;
 use App\Enums\PlaybookStepAction;
+use App\Jobs\EvaluateRunGuards;
 use App\Jobs\ExecuteAutomationRun;
 use App\Jobs\MatchAutomationTriggers;
 use App\Jobs\ResumeAutomationRun;
@@ -122,7 +123,8 @@ class CompilerTest extends TestCase
         $this->assertSame(AutomationRunStatus::Waiting, $run->status);
 
         DelinquencyLifecycle::cure($case->fresh(), DelinquencyCureTrigger::Payment);
-        \App\Support\Automation\RunLifecycle::evaluateGuard($run->fresh());
+        // afterCommit may defer under RefreshDatabase — exercise the wired job.
+        (new EvaluateRunGuards('delinquency', (int) $case->id))->handle();
         $run->refresh();
         $this->assertSame(AutomationRunStatus::Cancelled, $run->status);
         $this->assertSame(AutomationCancelCause::Guard, $run->cancel_cause);

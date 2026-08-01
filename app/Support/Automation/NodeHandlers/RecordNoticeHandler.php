@@ -39,6 +39,9 @@ final class RecordNoticeHandler implements NodeHandler
             throw new RuntimeException('record_notice requires a contract in the subject chain');
         }
 
+        // Pairing sugar (playbook send → record_notice): copy sent_at/channel from the
+        // prior send when it actually delivered. A skipped send (no_channel) still
+        // records an unsent notice — the attempt to notify is itself the audit fact.
         $sentAt = null;
         $sentChannel = null;
         $sentTo = null;

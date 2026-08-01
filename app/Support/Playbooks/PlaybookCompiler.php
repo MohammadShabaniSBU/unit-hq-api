@@ -39,7 +39,7 @@ final class PlaybookCompiler
             }
         }
 
-        [$nodes, $edges] = self::buildGraph($playbook, $kind);
+        [$nodes, $edges] = self::buildGraph($playbook, $kind, $filters);
 
         $nodes = TargetRecordValidator::normalizeNodes($nodes);
         $nodes = CreateObjectValidator::normalizeNodes($nodes);
@@ -80,11 +80,12 @@ final class PlaybookCompiler
     }
 
     /**
+     * @param  array<string, mixed>  $filters
      * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
      */
-    private static function buildGraph(Playbook $playbook, PlaybookKind $kind): array
+    private static function buildGraph(Playbook $playbook, PlaybookKind $kind, array $filters): array
     {
-        $trigger = $kind->trigger();
+        $trigger = $kind->trigger($filters);
         $nodes = [];
         $edges = [];
 
@@ -151,6 +152,34 @@ final class PlaybookCompiler
             $previousKey = $actionKey;
             $previousOffset = (int) $step->offset_days;
             $x += 200;
+
+            // Pairing sugar: send_email|send_sms with "record_notice": "<type>" expands to
+            // send → record_notice. A skipped send (no_channel) still records an unsent
+            // notice — the attempt to notify is itself the audit fact.
+            $noticeType = self::pairedNoticeType($step);
+            if ($noticeType !== null) {
+                $noticeKey = 'notice_'.$index;
+                $nodes[] = [
+                    'node_key' => $noticeKey,
+                    'kind' => 'action',
+                    'type' => 'action.record_notice',
+                    'label' => 'Record notice',
+                    'position_x' => $x,
+                    'position_y' => 0,
+                    'config' => [
+                        'notice_type' => $noticeType,
+                        'sent_from_node_key' => $actionKey,
+                    ],
+                ];
+                $edges[] = [
+                    'source_node_id' => $previousKey,
+                    'target_node_id' => $noticeKey,
+                    'source_handle' => 'default',
+                    'condition' => ['type' => 'always'],
+                ];
+                $previousKey = $noticeKey;
+                $x += 200;
+            }
         }
 
         return [$nodes, $edges];
@@ -185,27 +214,7 @@ final class PlaybookCompiler
                     'tokens' => (bool) ($params['tokens'] ?? true),
                 ],
             ],
-            PlaybookStepAction::CreateTask => [
-                'node_key' => $nodeKey,
-                'kind' => 'action',
-                'type' => 'action.create_object',
-                'label' => (string) ($params['label'] ?? 'Create task'),
-                'position_x' => $x,
-                'position_y' => 0,
-                'config' => [
-                    'objectType' => 'task',
-                    'relatedTo' => ['mode' => 'trigger_subject'],
-                    'fields' => [
-                        [
-                            'property' => 'title',
-                            'value' => [
-                                'kind' => 'static',
-                                'value' => (string) ($params['title'] ?? 'Follow-up'),
-                            ],
-                        ],
-                    ],
-                ],
-            ],
+            PlaybookStepAction::CreateTask => self::taskNode($params, $nodeKey, $x),
             PlaybookStepAction::RecordNotice => [
                 'node_key' => $nodeKey,
                 'kind' => 'action',
@@ -218,6 +227,61 @@ final class PlaybookCompiler
                 ],
             ],
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function taskNode(array $params, string $nodeKey, int $x): array
+    {
+        $fields = [
+            [
+                'property' => 'title',
+                'value' => [
+                    'kind' => 'static',
+                    'value' => (string) ($params['title'] ?? 'Follow-up'),
+                ],
+            ],
+        ];
+
+        if (($params['urgent'] ?? false) === true) {
+            $fields[] = [
+                'property' => 'priority',
+                'value' => [
+                    'kind' => 'static',
+                    'value' => 'urgent',
+                ],
+            ];
+        }
+
+        return [
+            'node_key' => $nodeKey,
+            'kind' => 'action',
+            'type' => 'action.create_object',
+            'label' => (string) ($params['label'] ?? 'Create task'),
+            'position_x' => $x,
+            'position_y' => 0,
+            'config' => [
+                'objectType' => 'task',
+                'relatedTo' => ['mode' => 'trigger_subject'],
+                'fields' => $fields,
+            ],
+        ];
+    }
+
+    private static function pairedNoticeType(PlaybookStep $step): ?string
+    {
+        if (! in_array($step->action, [PlaybookStepAction::SendEmail, PlaybookStepAction::SendSms], true)) {
+            return null;
+        }
+
+        $raw = $step->params['record_notice'] ?? null;
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        return $raw;
     }
 
     /**

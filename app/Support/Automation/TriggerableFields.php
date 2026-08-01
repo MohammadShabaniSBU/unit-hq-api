@@ -73,6 +73,7 @@ final class TriggerableFields
             self::number('days_overdue', 'Days overdue'),
             self::money('overdue_base', 'Overdue base'),
             self::number('delinquency_policy_id', 'Delinquency policy'),
+            self::number('site_id', 'Site'),
             self::date('cured_on', 'Cured on'),
         ];
     }

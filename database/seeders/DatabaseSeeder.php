@@ -280,6 +280,7 @@ class DatabaseSeeder extends Seeder
         $this->call(DealSeeder::class);
         $this->call(OccupancySeeder::class);
         $this->call(BillingSeeder::class);
+        $this->call(DebtPlaybookSeeder::class);
 
         $this->command?->info("RNG seed: {$rngSeed}");
     }

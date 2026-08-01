@@ -10,14 +10,42 @@ use Illuminate\Validation\ValidationException;
 
 final class DebtProcess implements PlaybookKind
 {
-    public function trigger(): array
+    public function trigger(array $filters): array
     {
+        $conditions = [];
+
+        $siteIds = self::intList($filters['site_ids'] ?? null);
+        if ($siteIds !== []) {
+            $conditions[] = [
+                'field' => 'site_id',
+                'operator' => 'in',
+                'value' => $siteIds,
+            ];
+        }
+
+        $policyIds = self::intList($filters['policy_ids'] ?? null);
+        if ($policyIds !== []) {
+            $conditions[] = [
+                'field' => 'delinquency_policy_id',
+                'operator' => 'in',
+                'value' => $policyIds,
+            ];
+        }
+
+        if (isset($filters['min_days_overdue']) && is_numeric($filters['min_days_overdue'])) {
+            $conditions[] = [
+                'field' => 'days_overdue',
+                'operator' => 'gte',
+                'value' => (int) $filters['min_days_overdue'],
+            ];
+        }
+
         return [
             'type' => 'trigger.object_created',
             'label' => 'Delinquency opened',
             'config' => [
                 'objectType' => 'delinquency',
-                'filters' => ['logic' => 'and', 'conditions' => []],
+                'filters' => ['logic' => 'and', 'conditions' => $conditions],
             ],
         ];
     }
@@ -75,5 +103,24 @@ final class DebtProcess implements PlaybookKind
     public function subjectDescriptor(): string
     {
         return 'delinquency';
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function intList(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($raw as $value) {
+            if (is_numeric($value)) {
+                $ids[] = (int) $value;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 }
