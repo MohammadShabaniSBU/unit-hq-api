@@ -103,6 +103,14 @@
     delivery events and the idempotency key for inbound receipt. Bodies are sanitized at
     write; attachments live on the private disk.
 
+39. **Delivery webhooks are idempotent and status is forward-only.** Provider callbacks
+    persist on `comms_webhook_events` under unique `(communication_account_id,
+    provider_event_id)` before processing — replay is a no-op (parity with Stripe).
+    Message status advances only when `DeliveryStatus::rank()` of the new event is
+    strictly greater than the current rank; full history accumulates on
+    `messages.delivery_events`. Bounce/spam emit `ChannelDeliveryFailed` facts;
+    suppression is a separate concern (never inline in the delivery job).
+
 ## Code conventions
 
 ### API (Laravel)

@@ -19,5 +19,7 @@ final readonly class DeliveryEvent
         public ?string $recipient,
         public ?string $reason,
         public array $raw,
+        public string $providerEventId,
+        public bool $isPermanent = false,
     ) {}
 }

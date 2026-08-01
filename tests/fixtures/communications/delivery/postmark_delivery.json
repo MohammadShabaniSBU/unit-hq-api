@@ -1,0 +1,11 @@
+{
+  "RecordType": "Delivery",
+  "MessageStream": "outbound",
+  "ServerID": 23,
+  "MessageID": "00000000-0000-0000-0000-000000000003",
+  "Recipient": "renter@example.com",
+  "Tag": "site:1",
+  "DeliveredAt": "2026-08-02T10:22:00Z",
+  "Details": "Test delivery webhook details",
+  "Metadata": {}
+}

@@ -14,6 +14,7 @@ use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Provider;
 use App\Support\Communications\Results\DeliveryEvent;
+use App\Support\Communications\Results\DeliveryEventId;
 use App\Support\Communications\Results\DeliveryStatus;
 use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\Results\VerificationResult;
@@ -155,6 +156,11 @@ final class BrevoAdapter implements ProviderAccount, SendsEmail, AutoRegistersWe
         return ['delivered', 'hardBounce', 'softBounce', 'spam', 'blocked', 'unsubscribed', 'opened', 'click'];
     }
 
+    /**
+     * Brevo transactional webhooks. Prefer native `id` when present; otherwise
+     * derive sha256(message-id|event|minute-bucket). Permanence: hardBounce /
+     * spam are permanent; softBounce is not.
+     */
     public function parseDeliveryEvents(array $payload): array
     {
         $rawStatus = (string) ($payload['event'] ?? '');
@@ -185,6 +191,16 @@ final class BrevoAdapter implements ProviderAccount, SendsEmail, AutoRegistersWe
             ? CarbonImmutable::parse($payload['date'])
             : null;
 
+        $nativeId = isset($payload['id']) ? (string) $payload['id'] : '';
+        $providerEventId = $nativeId !== ''
+            ? $nativeId
+            : DeliveryEventId::derive($messageId, $rawStatus, $occurredAt);
+
+        $isPermanent = match ($rawStatus) {
+            'hardBounce', 'spam' => true,
+            default => false,
+        };
+
         return [
             new DeliveryEvent(
                 providerMessageId: $messageId,
@@ -194,6 +210,8 @@ final class BrevoAdapter implements ProviderAccount, SendsEmail, AutoRegistersWe
                 recipient: isset($payload['email']) && is_string($payload['email']) ? $payload['email'] : null,
                 reason: isset($payload['reason']) && is_string($payload['reason']) ? $payload['reason'] : null,
                 raw: $payload,
+                providerEventId: $providerEventId,
+                isPermanent: $isPermanent,
             ),
         ];
     }

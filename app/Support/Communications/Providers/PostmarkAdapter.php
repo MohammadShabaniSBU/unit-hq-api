@@ -13,6 +13,7 @@ use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Provider;
 use App\Support\Communications\Results\DeliveryEvent;
+use App\Support\Communications\Results\DeliveryEventId;
 use App\Support\Communications\Results\DeliveryStatus;
 use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\Results\VerificationResult;
@@ -136,6 +137,11 @@ final class PostmarkAdapter implements ProviderAccount, SendsEmail, ReportsDeliv
         return new SendResult($messageId, Provider::Postmark, 0, $raw);
     }
 
+    /**
+     * Postmark has no stable per-callback event id — derive
+     * sha256(MessageID|RecordType|minute-bucket). Bounce permanence from
+     * Type/TypeCode (HardBounce / hard); SpamComplaint is always permanent.
+     */
     public function parseDeliveryEvents(array $payload): array
     {
         $rawStatus = (string) ($payload['RecordType'] ?? '');
@@ -165,6 +171,20 @@ final class PostmarkAdapter implements ProviderAccount, SendsEmail, ReportsDeliv
                 ? CarbonImmutable::parse($payload['DeliveredAt'])
                 : null);
 
+        $nativeId = isset($payload['ID']) ? (string) $payload['ID'] : '';
+        $providerEventId = $nativeId !== ''
+            ? 'postmark:'.$nativeId.':'.$rawStatus
+            : DeliveryEventId::derive($messageId, $rawStatus, $occurredAt);
+
+        $isPermanent = false;
+        if ($rawStatus === 'SpamComplaint') {
+            $isPermanent = true;
+        } elseif ($rawStatus === 'Bounce') {
+            $bounceType = strtolower((string) ($payload['Type'] ?? $payload['BounceType'] ?? ''));
+            $isPermanent = str_contains($bounceType, 'hard')
+                || (int) ($payload['TypeCode'] ?? 0) === 1;
+        }
+
         return [
             new DeliveryEvent(
                 providerMessageId: $messageId,
@@ -178,6 +198,8 @@ final class PostmarkAdapter implements ProviderAccount, SendsEmail, ReportsDeliv
                     ? $payload['Description']
                     : null,
                 raw: $payload,
+                providerEventId: $providerEventId,
+                isPermanent: $isPermanent,
             ),
         ];
     }

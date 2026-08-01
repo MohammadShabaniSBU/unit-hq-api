@@ -1,0 +1,15 @@
+{
+  "RecordType": "SpamComplaint",
+  "MessageStream": "outbound",
+  "ID": 4322,
+  "Type": "SpamComplaint",
+  "TypeCode": 100001,
+  "Name": "Spam complaint",
+  "Tag": "site:1",
+  "MessageID": "00000000-0000-0000-0000-000000000002",
+  "Description": "The subscriber complained about this message.",
+  "Email": "annoyed@example.com",
+  "From": "desk@example.com",
+  "BouncedAt": "2026-08-02T10:21:00Z",
+  "ReceivedAt": "2026-08-02T10:21:00Z"
+}

@@ -1,0 +1,16 @@
+{
+  "RecordType": "Bounce",
+  "MessageStream": "outbound",
+  "ID": 4321,
+  "Type": "HardBounce",
+  "TypeCode": 1,
+  "Name": "Hard bounce",
+  "Tag": "site:1",
+  "MessageID": "00000000-0000-0000-0000-000000000001",
+  "Description": "The server was unable to deliver your message (ex: unknown user, mailbox not found).",
+  "Email": "gone@example.com",
+  "Recipient": "gone@example.com",
+  "From": "desk@example.com",
+  "BouncedAt": "2026-08-02T10:20:00Z",
+  "ReceivedAt": "2026-08-02T10:20:00Z"
+}

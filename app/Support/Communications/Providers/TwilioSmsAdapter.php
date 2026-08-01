@@ -12,6 +12,7 @@ use App\Support\Communications\Exceptions\ProviderRequestFailed;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\Provider;
 use App\Support\Communications\Results\DeliveryEvent;
+use App\Support\Communications\Results\DeliveryEventId;
 use App\Support\Communications\Results\DeliveryStatus;
 use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\Results\VerificationResult;
@@ -107,6 +108,11 @@ final class TwilioSmsAdapter implements ProviderAccount, SendsSms, ReportsDelive
         return new SendResult($messageId, Provider::Twilio, 0, $raw);
     }
 
+    /**
+     * Twilio status callbacks have no stable event id — always derive
+     * sha256(MessageSid|status|minute-bucket). Permanence from ErrorCode:
+     * 21610 (blacklist), 30005 (unknown destination), 30006 (landline).
+     */
     public function parseDeliveryEvents(array $payload): array
     {
         $rawStatus = strtolower((string) ($payload['MessageStatus'] ?? $payload['SmsStatus'] ?? ''));
@@ -128,17 +134,25 @@ final class TwilioSmsAdapter implements ProviderAccount, SendsSms, ReportsDelive
             return [];
         }
 
+        $occurredAt = CarbonImmutable::now();
+        $providerEventId = DeliveryEventId::derive($messageId, $rawStatus, $occurredAt);
+
+        $errorCode = (int) ($payload['ErrorCode'] ?? 0);
+        $isPermanent = in_array($errorCode, [21610, 30005, 30006], true);
+
         return [
             new DeliveryEvent(
                 providerMessageId: $messageId,
                 status: $status,
                 rawStatus: $rawStatus,
-                occurredAt: CarbonImmutable::now(),
+                occurredAt: $occurredAt,
                 recipient: isset($payload['To']) && is_string($payload['To']) ? $payload['To'] : null,
                 reason: isset($payload['ErrorMessage']) && is_string($payload['ErrorMessage'])
                     ? $payload['ErrorMessage']
                     : null,
                 raw: $payload,
+                providerEventId: $providerEventId,
+                isPermanent: $isPermanent,
             ),
         ];
     }
