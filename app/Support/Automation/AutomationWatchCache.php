@@ -50,7 +50,18 @@ final class AutomationWatchCache
             AutomationNodeType::ObjectCreated,
             AutomationNodeType::ObjectUpdated,
         ] as $triggerType) {
-            foreach (['contact', 'deal', 'offer', 'reservation', 'unit', 'contract', 'insurance'] as $objectType) {
+            foreach ([
+                'contact',
+                'deal',
+                'offer',
+                'reservation',
+                'unit',
+                'contract',
+                'insurance',
+                'delinquency',
+                'autopay_attempt',
+                'payment',
+            ] as $objectType) {
                 self::forget($objectType, $triggerType);
             }
         }

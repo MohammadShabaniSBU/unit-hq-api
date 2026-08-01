@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\DelinquencyCureTrigger;
+use App\Models\Concerns\HasAutomationTriggers;
+use App\Support\Delinquency\DelinquencyState;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -39,6 +41,7 @@ use Illuminate\Support\Carbon;
 class Delinquency extends Model
 {
     use HasFactory;
+    use HasAutomationTriggers;
 
     protected $fillable = [
         'contract_id',
@@ -61,6 +64,38 @@ class Delinquency extends Model
             'cure_trigger' => DelinquencyCureTrigger::class,
             'paused_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Snapshot computed severity at dispatch — conditions must not drift with live ledger.
+     * Never throws: trigger dispatch must not break domain writes (e.g. fixture contracts
+     * without a unit item cannot resolve site timezone).
+     *
+     * @return array<string, mixed>
+     */
+    public function automationTriggerAttributes(): array
+    {
+        $attributes = $this->attributesToArray();
+        $attributes['days_overdue'] = null;
+        $attributes['overdue_base'] = null;
+
+        $contract = $this->relationLoaded('contract')
+            ? $this->contract
+            : Contract::query()->find($this->contract_id);
+
+        if ($contract === null) {
+            return $attributes;
+        }
+
+        $contract->loadMissing(['unitItem.item']);
+        if (! $contract->unitItem?->item instanceof Unit) {
+            return $attributes;
+        }
+
+        $attributes['days_overdue'] = DelinquencyState::daysOverdue($contract);
+        $attributes['overdue_base'] = DelinquencyState::overdueBase($contract);
+
+        return $attributes;
     }
 
     public function isOpen(): bool

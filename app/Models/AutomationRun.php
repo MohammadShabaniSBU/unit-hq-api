@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\AutomationCancelCause;
 use App\Enums\AutomationRunStatus;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * A single execution instance of an automation.
@@ -18,26 +19,33 @@ use Illuminate\Database\Eloquent\Model;
  * `trigger_payload` is the immutable snapshot that started the run.
  * Step outputs live on automation_run_steps — TokenResolver builds an in-memory bag from those.
  *
- * @property int                       $id
- * @property int|null                  $automation_id
- * @property int|null                  $trigger_node_id
- * @property string|null               $subject_type
- * @property int|null                  $subject_id
- * @property string|null               $causer_type
- * @property int|null                  $causer_id
- * @property int|null                  $root_run_id
- * @property int                       $depth
- * @property AutomationRunStatus       $status
- * @property array<string, mixed>|null $trigger_payload
- * @property string|null               $error
- * @property Carbon|null               $started_at
- * @property Carbon|null               $completed_at
- * @property Carbon                    $created_at
- * @property Carbon                    $updated_at
+ * @property int                            $id
+ * @property int|null                       $automation_id
+ * @property int|null                       $trigger_node_id
+ * @property string|null                    $subject_type
+ * @property int|null                       $subject_id
+ * @property string|null                    $causer_type
+ * @property int|null                       $causer_id
+ * @property int|null                       $root_run_id
+ * @property int                            $depth
+ * @property AutomationRunStatus            $status
+ * @property array<string, mixed>|null      $trigger_payload
+ * @property array<string, mixed>|null      $guard
+ * @property string|null                    $error
+ * @property AutomationCancelCause|null     $cancel_cause
+ * @property int|null                       $cancelled_by
+ * @property Carbon|null                    $waiting_until
+ * @property int|null                       $current_node_id
+ * @property Carbon|null                    $started_at
+ * @property Carbon|null                    $completed_at
+ * @property Carbon                         $created_at
+ * @property Carbon                         $updated_at
  *
  * @property-read Automation|null                     $automation
  * @property-read AutomationNode|null                 $triggerNode
+ * @property-read AutomationNode|null                 $currentNode
  * @property-read AutomationRun|null                  $rootRun
+ * @property-read Employee|null                       $cancelledBy
  * @property-read Collection<int, AutomationRunStep>  $steps
  */
 class AutomationRun extends Model
@@ -53,7 +61,12 @@ class AutomationRun extends Model
         'depth',
         'status',
         'trigger_payload',
+        'guard',
         'error',
+        'cancel_cause',
+        'cancelled_by',
+        'waiting_until',
+        'current_node_id',
         'started_at',
         'completed_at',
     ];
@@ -63,7 +76,10 @@ class AutomationRun extends Model
         return [
             'status' => AutomationRunStatus::class,
             'trigger_payload' => 'array',
+            'guard' => 'array',
+            'cancel_cause' => AutomationCancelCause::class,
             'depth' => 'integer',
+            'waiting_until' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
@@ -81,10 +97,22 @@ class AutomationRun extends Model
         return $this->belongsTo(AutomationNode::class, 'trigger_node_id');
     }
 
+    /** @return BelongsTo<AutomationNode, AutomationRun> */
+    public function currentNode(): BelongsTo
+    {
+        return $this->belongsTo(AutomationNode::class, 'current_node_id');
+    }
+
     /** @return BelongsTo<AutomationRun, AutomationRun> */
     public function rootRun(): BelongsTo
     {
         return $this->belongsTo(AutomationRun::class, 'root_run_id');
+    }
+
+    /** @return BelongsTo<Employee, AutomationRun> */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'cancelled_by');
     }
 
     /** @return MorphTo<Model, AutomationRun> */

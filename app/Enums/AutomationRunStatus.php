@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum AutomationRunStatus: string
 {
     case Pending = 'pending';
     case Running = 'running';
+    case Waiting = 'waiting';
     case Succeeded = 'succeeded';
     case Failed = 'failed';
     case Cancelled = 'cancelled';

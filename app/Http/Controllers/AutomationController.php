@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\AutomationCancelCause;
 use App\Enums\AutomationNodeType;
 use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationStatus;
@@ -14,9 +15,13 @@ use App\Models\AutomationEdge;
 use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\Deal;
+use App\Models\Employee;
 use App\Support\Automation\AutomationWatchCache;
 use App\Support\Automation\CreateObjectValidator;
+use App\Support\Automation\RunLifecycle;
 use App\Support\Automation\TargetRecordValidator;
+use App\Support\Automation\TriggerableFields;
+use App\Support\Automation\TriggerConfigValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +88,7 @@ class AutomationController extends Controller
             $edges = $validated['edges'] ?? [];
             TargetRecordValidator::assertValid($nodes, $edges);
             CreateObjectValidator::assertValid($nodes);
+            TriggerConfigValidator::assertValid($nodes);
             $this->syncNodes($automation, $nodes);
             $this->syncEdges($automation, $edges);
 
@@ -124,6 +130,10 @@ class AutomationController extends Controller
             ) === AutomationStatus::Active
         ) {
             $this->assertCanActivate($automation, $validated['nodes'] ?? null);
+            if (! array_key_exists('nodes', $validated)) {
+                $automation->loadMissing('nodes');
+                TriggerConfigValidator::assertAutomation($automation);
+            }
         }
 
         DB::transaction(function () use ($automation, $validated): void {
@@ -174,6 +184,7 @@ class AutomationController extends Controller
                 $nodes = CreateObjectValidator::normalizeNodes($nodes);
                 TargetRecordValidator::assertValid($nodes, $edges);
                 CreateObjectValidator::assertValid($nodes);
+                TriggerConfigValidator::assertValid($nodes);
 
                 if (array_key_exists('nodes', $validated)) {
                     $this->syncNodes($automation, $nodes);
@@ -249,7 +260,9 @@ class AutomationController extends Controller
             ]);
         }
 
+        $automation->loadMissing('nodes');
         $this->assertCanActivate($automation);
+        TriggerConfigValidator::assertAutomation($automation);
 
         $automation->update(['status' => AutomationStatus::Active]);
         AutomationWatchCache::flushAll();
@@ -257,6 +270,20 @@ class AutomationController extends Controller
         return $this->success(
             AutomationResource::make($automation->fresh()->load(['nodes', 'edges.sourceNode', 'edges.targetNode'])),
             'Automation activated successfully.',
+        );
+    }
+
+    public function triggerFields(string $objectType): JsonResponse
+    {
+        if (! TriggerableFields::supports($objectType)) {
+            throw ValidationException::withMessages([
+                'objectType' => "Unknown trigger object type [{$objectType}].",
+            ]);
+        }
+
+        return $this->success(
+            TriggerableFields::schema($objectType),
+            'Trigger fields retrieved successfully.',
         );
     }
 
@@ -333,6 +360,29 @@ class AutomationController extends Controller
         return $this->success(
             AutomationRunResource::make($run),
             'Automation run retrieved successfully.',
+        );
+    }
+
+    public function cancelRun(Request $request, AutomationRun $run): JsonResponse
+    {
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        RunLifecycle::cancel($run, AutomationCancelCause::Manual, $employee);
+
+        $run->load([
+            'steps',
+            'subject' => fn ($morphTo) => $morphTo->morphWith([
+                Deal::class => ['contact'],
+            ]),
+            'causer',
+            'triggerNode',
+            'cancelledBy',
+        ]);
+
+        return $this->success(
+            AutomationRunResource::make($run),
+            'Automation run cancelled successfully.',
         );
     }
 

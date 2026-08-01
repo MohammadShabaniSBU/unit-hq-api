@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
+use App\Models\Concerns\HasAutomationTriggers;
 use App\Support\Billing\CurrencyGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -41,8 +42,19 @@ use Illuminate\Support\Carbon;
 class Payment extends Model
 {
     use HasFactory;
+    use HasAutomationTriggers;
 
     const UPDATED_AT = null;
+
+    /**
+     * Payments are append-only — an update trigger on an immutable table is a lie.
+     *
+     * @return list<'created'|'updated'|'deleted'>
+     */
+    public static function automationTriggerLifecycles(): array
+    {
+        return ['created'];
+    }
 
     protected static function booted(): void
     {

@@ -1,0 +1,193 @@
+{
+  "name": "nested_branch_3deep",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "branch_1",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Level 1",
+      "position_x": 160,
+      "position_y": 0,
+      "config": {
+        "filters": {
+          "logic": "and",
+          "conditions": [
+            {
+              "logic": "or",
+              "conditions": [
+                { "field": "first_name", "operator": "equals", "value": "Nested" },
+                { "field": "first_name", "operator": "equals", "value": "Other" }
+              ]
+            },
+            { "field": "last_name", "operator": "equals", "value": "Deep" }
+          ]
+        }
+      }
+    },
+    {
+      "node_key": "branch_2",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Level 2",
+      "position_x": 320,
+      "position_y": -40,
+      "config": {
+        "filters": {
+          "logic": "and",
+          "conditions": [
+            { "field": "email", "operator": "is_not_empty" }
+          ]
+        }
+      }
+    },
+    {
+      "node_key": "branch_3",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Level 3",
+      "position_x": 480,
+      "position_y": -80,
+      "config": {
+        "filters": {
+          "logic": "and",
+          "conditions": [
+            {
+              "logic": "and",
+              "conditions": [
+                { "field": "first_name", "operator": "equals", "value": "Nested" },
+                { "field": "last_name", "operator": "equals", "value": "Deep" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "node_key": "deep_yes",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Deep yes",
+      "position_x": 640,
+      "position_y": -120,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "DeepYes" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "no_1",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "No L1",
+      "position_x": 320,
+      "position_y": 120,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "No1" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "no_2",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "No L2",
+      "position_x": 480,
+      "position_y": 40,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "No2" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "no_3",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "No L3",
+      "position_x": 640,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "No3" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "branch_1",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_1",
+      "target_node_id": "branch_2",
+      "source_handle": "true",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_1",
+      "target_node_id": "no_1",
+      "source_handle": "false",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_2",
+      "target_node_id": "branch_3",
+      "source_handle": "true",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_2",
+      "target_node_id": "no_2",
+      "source_handle": "false",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_3",
+      "target_node_id": "deep_yes",
+      "source_handle": "true",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch_3",
+      "target_node_id": "no_3",
+      "source_handle": "false",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

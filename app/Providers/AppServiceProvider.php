@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AutopayAttempt;
 use App\Models\BillingRun;
 use App\Models\Contact;
 use App\Models\Contract;
@@ -63,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
             'note'             => Note::class,
             'invoice'          => Invoice::class,
             'payment'          => Payment::class,
+            'autopay_attempt'  => AutopayAttempt::class,
             'billing_run'      => BillingRun::class,
             'delinquency'      => Delinquency::class,
             'contract_notice'  => ContractNotice::class,

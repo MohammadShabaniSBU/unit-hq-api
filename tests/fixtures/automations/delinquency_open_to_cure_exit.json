@@ -1,0 +1,87 @@
+{
+  "name": "delinquency_open_to_cure_exit",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Delinquency opened",
+      "position_x": 0,
+      "position_y": 0,
+      "config": {
+        "objectType": "delinquency",
+        "filters": { "logic": "and", "conditions": [] }
+      }
+    },
+    {
+      "node_key": "email",
+      "kind": "action",
+      "type": "action.send_email",
+      "label": "Debt notice",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "to": { "kind": "static", "value": "debt-notice@example.com" },
+        "subject": { "kind": "static", "value": "Overdue balance" },
+        "bodyType": "custom",
+        "body": { "kind": "static", "value": "Please pay your balance." }
+      }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait 3 days",
+      "position_x": 400,
+      "position_y": 0,
+      "config": { "mode": "relative", "amount": 3, "unit": "days" }
+    },
+    {
+      "node_key": "create_task",
+      "kind": "action",
+      "type": "action.create_object",
+      "label": "Follow-up task",
+      "position_x": 600,
+      "position_y": 0,
+      "config": {
+        "objectType": "task",
+        "relatedTo": { "mode": "trigger_subject" },
+        "fields": [
+          {
+            "property": "title",
+            "value": { "kind": "static", "value": "Debt follow-up" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "email",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "email",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "create_task",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {
+    "guard": {
+      "logic": "and",
+      "conditions": [
+        { "field": "cured_on", "operator": "is_empty" }
+      ]
+    }
+  }
+}

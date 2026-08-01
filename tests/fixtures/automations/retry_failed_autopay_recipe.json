@@ -1,0 +1,63 @@
+{
+  "name": "retry_failed_autopay_recipe",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_updated",
+      "label": "Autopay failed",
+      "position_x": 0,
+      "position_y": 0,
+      "config": {
+        "objectType": "autopay_attempt",
+        "property": "status",
+        "conditions": [
+          { "operator": "equals", "value": "failed" }
+        ]
+      }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait 3 days",
+      "position_x": 200,
+      "position_y": 0,
+      "config": { "mode": "relative", "amount": 3, "unit": "days" }
+    },
+    {
+      "node_key": "retry_task",
+      "kind": "action",
+      "type": "action.create_object",
+      "label": "Manual retry task",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "task",
+        "relatedTo": { "mode": "trigger_subject" },
+        "fields": [
+          {
+            "property": "title",
+            "value": { "kind": "static", "value": "Retry failed autopay" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "retry_task",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

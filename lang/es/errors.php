@@ -86,5 +86,9 @@ return [
         'action_failed' => 'No se pudo completar la acción de impago.',
         'notice_already_sent' => 'Este aviso ya se ha marcado como enviado.',
     ],
+    'automations' => [
+        'transition_not_allowed' => 'No se puede transicionar la ejecución de automatización de :from a :to.',
+        'already_terminal' => 'La ejecución de automatización ya está :status y no se puede cancelar.',
+    ],
 ];
 

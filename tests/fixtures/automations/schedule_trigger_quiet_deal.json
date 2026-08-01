@@ -1,0 +1,77 @@
+{
+  "name": "schedule_trigger_quiet_deal",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.schedule",
+      "label": "Daily schedule",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "frequency": "daily" }
+    },
+    {
+      "node_key": "create_contact",
+      "kind": "action",
+      "type": "action.create_object",
+      "label": "Placeholder chase contact",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "fields": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "Quiet" }
+          },
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "Deal" }
+          },
+          {
+            "property": "email",
+            "value": { "kind": "static", "value": "quiet-deal@example.com" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "chase_task",
+      "kind": "action",
+      "type": "action.create_object",
+      "label": "Lead chase task",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "task",
+        "relatedTo": {
+          "mode": "step_output",
+          "nodeKey": "create_contact",
+          "field": "subject_id"
+        },
+        "fields": [
+          {
+            "property": "title",
+            "value": { "kind": "static", "value": "Chase quiet deal" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "create_contact",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "create_contact",
+      "target_node_id": "chase_task",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

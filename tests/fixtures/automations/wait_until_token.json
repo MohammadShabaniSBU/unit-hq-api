@@ -1,0 +1,64 @@
+{
+  "name": "wait_until_token",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait until due",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "mode": "until",
+        "expression": "{{trigger.due_at}}"
+      }
+    },
+    {
+      "node_key": "after",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "After resume",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "UntilDone" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "after",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {
+    "trigger_payload": {
+      "due_at": "2026-08-02T15:30:00+00:00"
+    }
+  }
+}

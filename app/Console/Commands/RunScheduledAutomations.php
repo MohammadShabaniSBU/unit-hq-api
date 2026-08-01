@@ -76,6 +76,7 @@ class RunScheduledAutomations extends Command
             ->whereIn('status', [
                 AutomationRunStatus::Pending,
                 AutomationRunStatus::Running,
+                AutomationRunStatus::Waiting,
                 AutomationRunStatus::Succeeded,
             ])
             ->latest('id')

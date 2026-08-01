@@ -12,6 +12,7 @@ use App\Events\ModelLifecycleEvent;
 use App\Events\ModelUpdated;
 use App\Models\AutomationRun;
 use App\Support\Automation\AutomationWatchCache;
+use App\Support\Automation\CustomAttributeBag;
 use App\Support\Automation\TriggerMatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -69,12 +70,15 @@ class MatchAutomationTriggers implements ShouldQueue
             return;
         }
 
+        $customAttributes = CustomAttributeBag::forEntity($this->subjectType, $this->subjectId);
+        $valueBag = array_merge($this->attributes, $customAttributes);
+
         $matches = TriggerMatcher::match(
             $triggerType,
             $this->subjectType,
             $ids,
             $this->dirty,
-            $this->attributes,
+            $valueBag,
         );
 
         foreach ($matches as $match) {
@@ -90,6 +94,7 @@ class MatchAutomationTriggers implements ShouldQueue
                     'lifecycle' => $this->lifecycle,
                     'dirty' => $this->dirty,
                     'attributes' => $this->attributes,
+                    'custom_attributes' => $customAttributes,
                 ],
                 'depth' => 0,
                 'root_run_id' => null,

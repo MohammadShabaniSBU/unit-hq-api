@@ -1,0 +1,103 @@
+{
+  "name": "wait_relative_then_branch",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait 1 hour",
+      "position_x": 200,
+      "position_y": 0,
+      "config": { "mode": "relative", "amount": 1, "unit": "hours" }
+    },
+    {
+      "node_key": "branch",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Snapshot name",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "filters": {
+          "logic": "and",
+          "conditions": [
+            { "field": "first_name", "operator": "equals", "value": "WaitSnap" }
+          ]
+        }
+      }
+    },
+    {
+      "node_key": "yes_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "True path",
+      "position_x": 600,
+      "position_y": -60,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "SnapYes" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "no_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "False path",
+      "position_x": 600,
+      "position_y": 60,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "SnapNo" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "branch",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "yes_path",
+      "source_handle": "true",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "no_path",
+      "source_handle": "false",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

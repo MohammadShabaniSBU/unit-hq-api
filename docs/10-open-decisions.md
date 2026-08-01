@@ -42,6 +42,7 @@
 - **D6 / D7 — Payments and fiscal identity scope to `legal_entities`.** Not sites. Sites belong to one legal entity. `legal_entities` is fiscal, not a tenancy boundary (invariant 34). Supersedes roadmap README §4 D6/D7 site scoping. Schema in S03; doc surgery in S01-05.
 - **D-entry — S03 built answer-agnostic.** Schema, Settings UI, and issuance path support several legal entities; one is seeded (`PENDING-GESTOR`). The client's one-vs-several answer is go-live data entry, not a code blocker. See sprint-03 README.
 - **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
+- **Automation `waiting` run status (S08-00):** `AutomationRunStatus::Waiting` parks `logic.wait` with `waiting_until` + `current_node_id` cursor. Resume via delayed `ResumeAutomationRun` and authoritative `automations:resume-waiting` sweeper. Cancel + run-level guard funnel through `RunLifecycle`. Business-hours/weekday wait windows deferred to S09 playbook params if needed.
 
 ## Explicitly out of scope (for now)
 
@@ -82,7 +83,6 @@
 | Late-fee fee-terms snapshot | Live-policy reading in v1 (see `09` invariant 18 exception). Snapshotting fee type/amount/percent onto contracts is the follow-up if a client pins exact fees in contract terms. |
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
-| Automation `waiting` run status | Real delayed `logic.wait` (`ExecuteAutomationRun` with `->delay()`) needs a status other than `running` while parked, or run-log UI shows idle waits as running. Stub WaitHandler does not add the enum yet. |
 
 ## Active WIP
 

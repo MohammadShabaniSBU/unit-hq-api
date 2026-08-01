@@ -1,0 +1,77 @@
+{
+  "name": "create_object_chain",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "create_contact",
+      "kind": "action",
+      "type": "action.create_object",
+      "label": "Create contact",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "fields": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "Created" }
+          },
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "Chain" }
+          },
+          {
+            "property": "email",
+            "value": { "kind": "static", "value": "created-chain@example.com" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "update_created",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Update via step_output",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": {
+          "mode": "step_output",
+          "nodeKey": "create_contact",
+          "field": "subject_id"
+        },
+        "updates": [
+          {
+            "property": "first_name",
+            "value": { "kind": "static", "value": "UpdatedChain" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "create_contact",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "create_contact",
+      "target_node_id": "update_created",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

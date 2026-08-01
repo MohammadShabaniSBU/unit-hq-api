@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Automation;
 
 use App\Enums\AutomationNodeType;
+use App\Enums\ConditionSource;
 use App\Models\Automation;
 use App\Models\AutomationNode;
 
@@ -46,7 +47,7 @@ final class TriggerMatcher
                 continue;
             }
 
-            if (! self::passesPrefilter($trigger, $triggerType, $dirty, $modelAttributes ?? [])) {
+            if (! self::passesPrefilter($trigger, $triggerType, $dirty, $modelAttributes ?? [], $objectType)) {
                 continue;
             }
 
@@ -65,6 +66,7 @@ final class TriggerMatcher
         AutomationNodeType $triggerType,
         array $dirty,
         array $attributes,
+        string $objectType,
     ): bool {
         $config = $trigger->config ?? [];
 
@@ -91,7 +93,12 @@ final class TriggerMatcher
                 return true;
             }
 
-            return ConditionEvaluator::matchesGroup($filters, $attributes);
+            $context = new ConditionContext(
+                source: ConditionSource::Snapshot,
+                entityType: $objectType,
+            );
+
+            return ConditionEvaluator::matchesGroupWithContext($filters, $attributes, $context);
         }
 
         return true;

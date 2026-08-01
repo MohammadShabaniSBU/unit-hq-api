@@ -7,6 +7,7 @@ namespace App\Support\Automation;
 use App\Enums\AutomationNodeType;
 use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationRunStepStatus;
+use App\Jobs\ResumeAutomationRun;
 use App\Models\Automation;
 use App\Models\AutomationEdge;
 use App\Models\AutomationNode;
@@ -36,74 +37,102 @@ final class AutomationExecutor
         'logic.wait' => WaitHandler::class,
     ];
 
+    /**
+     * Registered node-type → handler map (for harness coverage gates).
+     *
+     * @return array<string, class-string<NodeHandler>>
+     */
+    public static function handlers(): array
+    {
+        return self::HANDLERS;
+    }
+
     public function execute(AutomationRun $run): void
     {
         if ($run->depth > self::MAX_DEPTH) {
-            $run->update([
-                'status' => AutomationRunStatus::Failed,
-                'error' => 'max depth exceeded',
-                'completed_at' => now(),
-            ]);
+            RunLifecycle::fail($run, 'max depth exceeded');
 
             return;
         }
 
         $automation = Automation::query()->with(['nodes', 'edges'])->find($run->automation_id);
+
+        $isResume = $run->status === AutomationRunStatus::Waiting
+            || (
+                $run->status === AutomationRunStatus::Running
+                && $run->current_node_id !== null
+                && $this->hasWaitingStep($run)
+            );
+
+        if ($run->status === AutomationRunStatus::Pending || $run->status === AutomationRunStatus::Waiting) {
+            if (! RunLifecycle::claimRunning($run)) {
+                return;
+            }
+        } elseif ($run->status !== AutomationRunStatus::Running) {
+            return;
+        }
+
         if ($automation === null) {
-            $run->update([
-                'status' => AutomationRunStatus::Failed,
-                'error' => 'automation missing',
-                'completed_at' => now(),
-            ]);
+            RunLifecycle::fail($run, 'automation missing');
 
             return;
         }
 
-        $run->update([
-            'status' => AutomationRunStatus::Running,
-            'started_at' => $run->started_at ?? now(),
-        ]);
+        RunLifecycle::evaluateGuard($run);
+        $run->refresh();
+        if ($run->status === AutomationRunStatus::Cancelled) {
+            return;
+        }
 
-        $context = new RunContext($run->trigger_payload ?? [], [], $run->subject_id);
+        $context = $this->buildContext($run, $automation);
         $trigger = $automation->nodes->firstWhere('id', $run->trigger_node_id)
             ?? $automation->nodes->first(fn (AutomationNode $n) => $n->type->isTrigger());
 
         if ($trigger === null) {
-            $run->update([
-                'status' => AutomationRunStatus::Failed,
-                'error' => 'trigger node missing',
-                'completed_at' => now(),
-            ]);
+            RunLifecycle::fail($run, 'trigger node missing');
 
             return;
         }
 
-        // Record trigger as succeeded step (no handler).
-        $this->writeStep($run, $trigger, AutomationRunStepStatus::Succeeded, [
-            'trigger_payload' => $run->trigger_payload,
-        ], [
-            'subject_type' => $run->subject_type,
-            'subject_id' => $run->subject_id,
-        ]);
-        $context->putStepOutput($trigger->node_key, [
-            'subject_type' => $run->subject_type,
-            'subject_id' => $run->subject_id,
-            'attributes' => $run->trigger_payload['attributes'] ?? [],
-        ]);
-
         try {
-            $this->walk($run, $automation, $trigger, 'default', $context);
-            $run->update([
-                'status' => AutomationRunStatus::Succeeded,
-                'completed_at' => now(),
-                'error' => null,
-            ]);
+            if ($isResume) {
+                $cursor = $automation->nodes->firstWhere('id', $run->current_node_id);
+                if ($cursor === null) {
+                    RunLifecycle::fail($run, 'resume cursor missing');
+
+                    return;
+                }
+
+                $this->completeWaitingStep($run);
+                $this->walk($run, $automation, $cursor, 'default', $context);
+            } else {
+                if (! $this->hasTriggerStep($run, $trigger)) {
+                    $this->writeStep($run, $trigger, AutomationRunStepStatus::Succeeded, [
+                        'trigger_payload' => $run->trigger_payload,
+                    ], [
+                        'subject_type' => $run->subject_type,
+                        'subject_id' => $run->subject_id,
+                    ]);
+                }
+                $context->putStepOutput($trigger->node_key, [
+                    'subject_type' => $run->subject_type,
+                    'subject_id' => $run->subject_id,
+                    'attributes' => $run->trigger_payload['attributes'] ?? [],
+                ]);
+
+                $this->walk($run, $automation, $trigger, 'default', $context);
+            }
+
+            $run->refresh();
+            if ($run->status === AutomationRunStatus::Running) {
+                RunLifecycle::succeed($run);
+            }
+        } catch (Parked $parked) {
+            if (RunLifecycle::park($run, $parked->until, $parked->nodeId)) {
+                ResumeAutomationRun::dispatch($run->id)->delay($parked->until);
+            }
         } catch (Throwable $e) {
-            $run->update([
-                'status' => AutomationRunStatus::Failed,
-                'error' => $e->getMessage(),
-                'completed_at' => now(),
-            ]);
+            RunLifecycle::fail($run->fresh() ?? $run, $e->getMessage());
             report($e);
         }
     }
@@ -115,6 +144,17 @@ final class AutomationExecutor
         string $handle,
         RunContext $context,
     ): void {
+        $run->refresh();
+        if ($run->status !== AutomationRunStatus::Running) {
+            return;
+        }
+
+        RunLifecycle::evaluateGuard($run);
+        $run->refresh();
+        if ($run->status !== AutomationRunStatus::Running) {
+            return;
+        }
+
         $edges = $automation->edges
             ->where('source_node_id', $from->id)
             ->values();
@@ -150,6 +190,17 @@ final class AutomationExecutor
         }
 
         if ($next->type->isTrigger()) {
+            return;
+        }
+
+        $run->refresh();
+        if ($run->status !== AutomationRunStatus::Running) {
+            return;
+        }
+
+        RunLifecycle::evaluateGuard($run);
+        $run->refresh();
+        if ($run->status !== AutomationRunStatus::Running) {
             return;
         }
 
@@ -213,6 +264,8 @@ final class AutomationExecutor
             $context->putStepOutput($node->node_key, $output);
 
             return $output;
+        } catch (Parked $parked) {
+            throw $parked;
         } catch (Throwable $e) {
             $durationMs = (int) ((hrtime(true) - $started) / 1_000_000);
             $step->update([
@@ -224,6 +277,71 @@ final class AutomationExecutor
 
             throw $e;
         }
+    }
+
+    private function buildContext(AutomationRun $run, Automation $automation): RunContext
+    {
+        $stepOutputs = [];
+
+        $steps = AutomationRunStep::query()
+            ->where('run_id', $run->id)
+            ->where('status', AutomationRunStepStatus::Succeeded)
+            ->whereNotNull('node_id')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($steps as $step) {
+            $node = $automation->nodes->firstWhere('id', $step->node_id);
+            if ($node === null) {
+                continue;
+            }
+            $stepOutputs[$node->node_key] = $step->output ?? [];
+        }
+
+        return new RunContext($run->trigger_payload ?? [], $stepOutputs, $run->subject_id);
+    }
+
+    private function hasWaitingStep(AutomationRun $run): bool
+    {
+        return AutomationRunStep::query()
+            ->where('run_id', $run->id)
+            ->where('status', AutomationRunStepStatus::Waiting)
+            ->exists();
+    }
+
+    private function hasTriggerStep(AutomationRun $run, AutomationNode $trigger): bool
+    {
+        return AutomationRunStep::query()
+            ->where('run_id', $run->id)
+            ->where('node_id', $trigger->id)
+            ->exists();
+    }
+
+    private function completeWaitingStep(AutomationRun $run): void
+    {
+        $step = AutomationRunStep::query()
+            ->where('run_id', $run->id)
+            ->where('status', AutomationRunStepStatus::Waiting)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($step === null) {
+            return;
+        }
+
+        $output = $step->output ?? [];
+        $output['resumed_at'] = now()->toIso8601String();
+        $started = $step->started_at;
+        $durationMs = $started !== null
+            ? (int) $started->diffInMilliseconds(now())
+            : 0;
+
+        $step->update([
+            'status' => AutomationRunStepStatus::Succeeded,
+            'output' => $output,
+            'completed_at' => now(),
+            'duration_ms' => $durationMs,
+        ]);
     }
 
     /**

@@ -86,5 +86,9 @@ return [
         'action_failed' => 'The delinquency action could not be completed.',
         'notice_already_sent' => 'This notice has already been marked as sent.',
     ],
+    'automations' => [
+        'transition_not_allowed' => 'Cannot transition automation run from :from to :to.',
+        'already_terminal' => 'Automation run is already :status and cannot be cancelled.',
+    ],
 ];
 

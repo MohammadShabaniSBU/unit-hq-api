@@ -251,6 +251,7 @@ Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)-
 
 Route::apiResource('email-templates', Controllers\EmailTemplateController::class);
 
+Route::get('automations/trigger-fields/{objectType}', [Controllers\AutomationController::class, 'triggerFields']);
 Route::apiResource('automations', Controllers\AutomationController::class);
 Route::post('automations/{automation}/archive', [Controllers\AutomationController::class, 'archive']);
 Route::post('automations/{automation}/unarchive', [Controllers\AutomationController::class, 'unarchive']);
@@ -258,4 +259,5 @@ Route::post('automations/{automation}/activate', [Controllers\AutomationControll
 Route::post('automations/{automation}/deactivate', [Controllers\AutomationController::class, 'deactivate']);
 Route::get('automations/{automation}/runs', [Controllers\AutomationController::class, 'runs']);
 Route::get('automations/{automation}/runs/{run}', [Controllers\AutomationController::class, 'showRun']);
+Route::post('automation-runs/{run}/cancel', [Controllers\AutomationController::class, 'cancelRun']);
 

@@ -86,5 +86,9 @@ return [
         'action_failed' => 'L’action d’impayés n’a pas pu être effectuée.',
         'notice_already_sent' => 'Cet avis a déjà été marqué comme envoyé.',
     ],
+    'automations' => [
+        'transition_not_allowed' => 'Impossible de faire passer l’exécution d’automatisation de :from à :to.',
+        'already_terminal' => 'L’exécution d’automatisation est déjà :status et ne peut pas être annulée.',
+    ],
 ];
 

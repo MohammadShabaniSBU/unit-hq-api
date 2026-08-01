@@ -18,13 +18,42 @@ use Illuminate\Support\Facades\DB;
  */
 trait HasAutomationTriggers
 {
+    /**
+     * Lifecycles that dispatch automation events for this model.
+     *
+     * @return list<'created'|'updated'|'deleted'>
+     */
+    public static function automationTriggerLifecycles(): array
+    {
+        return ['created', 'updated', 'deleted'];
+    }
+
+    /**
+     * Attribute bag frozen into the Model* event (and later trigger_payload).
+     * Override to include computed snapshot fields (e.g. delinquency days/base).
+     *
+     * @return array<string, mixed>
+     */
+    public function automationTriggerAttributes(): array
+    {
+        return $this->attributesToArray();
+    }
+
     public static function bootHasAutomationTriggers(): void
     {
         static::created(function (Model $model): void {
+            if (! in_array('created', static::automationTriggerLifecycles(), true)) {
+                return;
+            }
+
             self::dispatchAutomationEvent($model, ModelCreated::class, []);
         });
 
         static::updated(function (Model $model): void {
+            if (! in_array('updated', static::automationTriggerLifecycles(), true)) {
+                return;
+            }
+
             $dirty = [];
             foreach ($model->getChanges() as $key => $new) {
                 if ($key === 'updated_at') {
@@ -44,6 +73,10 @@ trait HasAutomationTriggers
         });
 
         static::deleted(function (Model $model): void {
+            if (! in_array('deleted', static::automationTriggerLifecycles(), true)) {
+                return;
+            }
+
             self::dispatchAutomationEvent($model, ModelDeleted::class, []);
         });
     }
@@ -64,7 +97,7 @@ trait HasAutomationTriggers
 
         $subjectType = $model->getMorphClass();
         $subjectId = $model->getKey();
-        $attributes = $model->attributesToArray();
+        $attributes = $model->automationTriggerAttributes();
 
         $dispatch = static function () use ($eventClass, $subjectType, $subjectId, $dirty, $attributes, $causerType, $causerId): void {
             event(new $eventClass(

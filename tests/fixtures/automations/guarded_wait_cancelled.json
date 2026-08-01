@@ -1,0 +1,88 @@
+{
+  "name": "guarded_wait_cancelled",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "act",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Stamp last name",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "Guarded" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait 2 days",
+      "position_x": 400,
+      "position_y": 0,
+      "config": { "mode": "relative", "amount": 2, "unit": "days" }
+    },
+    {
+      "node_key": "after",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Should not run",
+      "position_x": 600,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "AfterWait" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "act",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "act",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "after",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {
+    "guard": {
+      "logic": "and",
+      "conditions": [
+        { "field": "first_name", "operator": "equals", "value": "GuardMe" }
+      ]
+    }
+  }
+}

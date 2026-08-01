@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('system-events:maintain')->daily();
         $schedule->command('activitylog:prune-tiers')->daily();
         $schedule->command('automations:run-scheduled')->everyMinute();
+        $schedule->command('automations:resume-waiting')->everyMinute();
 
         // Activation must run at least as often as billing, and is registered
         // first so same-tick hourly runs activate move-ins before billing

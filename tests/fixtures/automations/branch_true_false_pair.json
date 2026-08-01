@@ -1,0 +1,88 @@
+{
+  "name": "branch_true_false_pair",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "branch",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Name is BranchPair",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "filters": {
+          "logic": "and",
+          "conditions": [
+            { "field": "first_name", "operator": "equals", "value": "BranchPair" }
+          ]
+        }
+      }
+    },
+    {
+      "node_key": "yes_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "True path",
+      "position_x": 400,
+      "position_y": -80,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "YesPath" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "no_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "False path",
+      "position_x": 400,
+      "position_y": 80,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "NoPath" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "branch",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "yes_path",
+      "source_handle": "true",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "no_path",
+      "source_handle": "false",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

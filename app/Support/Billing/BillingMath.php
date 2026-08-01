@@ -356,6 +356,16 @@ final class BillingMath
     }
 
     /**
+     * Compare two decimal strings via bcmath (never float).
+     *
+     * @return int -1 if $a < $b, 0 if equal, 1 if $a > $b
+     */
+    public static function cmp(string $a, string $b, int $scale = self::SCALE): int
+    {
+        return bccomp($a, $b, $scale);
+    }
+
+    /**
      * Exclusive tax breakdown: net is rounded once, tax = round(net * rate / 100),
      * gross = net + tax. Multiply-before-divide, same discipline as prorate().
      */
