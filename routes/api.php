@@ -128,6 +128,10 @@ Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardControlle
 Route::patch('contacts/{contact}/status', [Controllers\ContactController::class, 'updateStatus']);
 Route::apiResource('contacts', Controllers\ContactController::class);
 Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
+Route::get('contacts/{contact}/payment-methods', [Controllers\ContactPaymentMethodController::class, 'index']);
+Route::post('contacts/{contact}/payment-methods/setup', [Controllers\ContactPaymentMethodController::class, 'setup']);
+Route::patch('payment-methods/{paymentMethod}', [Controllers\ContactPaymentMethodController::class, 'update']);
+Route::delete('payment-methods/{paymentMethod}', [Controllers\ContactPaymentMethodController::class, 'destroy']);
 Route::post('contacts/{contact}/channels', [Controllers\ContactChannelController::class, 'store']);
 Route::patch('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'update']);
 Route::delete('contacts/{contact}/channels/{channel}', [Controllers\ContactChannelController::class, 'destroy']);

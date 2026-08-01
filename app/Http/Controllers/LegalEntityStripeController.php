@@ -165,6 +165,7 @@ class LegalEntityStripeController extends Controller
                 'payment_intent.succeeded',
                 'payment_intent.payment_failed',
                 'charge.refunded',
+                'setup_intent.succeeded',
             ]);
         } catch (ApiErrorException $e) {
             throw ValidationException::withMessages(['webhook' => [$e->getMessage()]]);

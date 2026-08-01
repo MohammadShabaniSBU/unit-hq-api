@@ -317,6 +317,18 @@ class Contact extends Model
         return $this->hasMany(Contract::class);
     }
 
+    /** @return HasMany<StripeCustomer, $this> */
+    public function stripeCustomers(): HasMany
+    {
+        return $this->hasMany(StripeCustomer::class);
+    }
+
+    /** @return HasMany<PaymentMethod, $this> */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(PaymentMethod::class);
+    }
+
     /** @return MorphMany<Task> */
     public function tasks(): MorphMany
     {

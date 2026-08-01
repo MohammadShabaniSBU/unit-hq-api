@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Support\Payments;
 
+use Stripe\Customer;
 use Stripe\Exception\ApiErrorException;
+use Stripe\PaymentMethod as StripePaymentMethod;
+use Stripe\SetupIntent;
 use Stripe\StripeClient as SdkClient;
 use Stripe\WebhookEndpoint;
 
 /**
- * Thin wrapper around the Stripe SDK. All Stripe-specific API calls for
- * credential lifecycle live here so controllers stay provider-seam-clean
- * (S06-00 — provider === 'stripe' assumptions only in this class and
- * webhook signature verification).
+ * Thin wrapper around the Stripe SDK. All Stripe-specific API calls live here
+ * so controllers stay provider-seam-clean (S06-00 — provider === 'stripe'
+ * assumptions only in this class and webhook signature verification).
  */
 class StripeClient
 {
@@ -34,6 +36,83 @@ class StripeClient
         $account = $this->sdk($secretKey)->accounts->retrieve();
 
         return ['id' => (string) $account->id];
+    }
+
+    /**
+     * @param  array{name?: string|null, email?: string|null, metadata?: array<string, string>}  $params
+     * @return array{id: string}
+     *
+     * @throws ApiErrorException
+     */
+    public function createCustomer(string $secretKey, array $params): array
+    {
+        /** @var Customer $customer */
+        $customer = $this->sdk($secretKey)->customers->create(array_filter([
+            'name' => $params['name'] ?? null,
+            'email' => $params['email'] ?? null,
+            'metadata' => $params['metadata'] ?? null,
+        ], fn (mixed $v): bool => $v !== null));
+
+        return ['id' => (string) $customer->id];
+    }
+
+    /**
+     * @param  array{customer: string, usage?: string, metadata?: array<string, string>}  $params
+     * @return array{id: string, client_secret: string|null}
+     *
+     * @throws ApiErrorException
+     */
+    public function createSetupIntent(string $secretKey, array $params): array
+    {
+        /** @var SetupIntent $intent */
+        $intent = $this->sdk($secretKey)->setupIntents->create([
+            'customer' => $params['customer'],
+            'usage' => $params['usage'] ?? 'off_session',
+            'payment_method_types' => ['card'],
+            'metadata' => $params['metadata'] ?? [],
+        ]);
+
+        return [
+            'id' => (string) $intent->id,
+            'client_secret' => $intent->client_secret !== null ? (string) $intent->client_secret : null,
+        ];
+    }
+
+    /**
+     * @return array{id: string, type: string|null, card: array{brand: string|null, last4: string|null, exp_month: int|null, exp_year: int|null}|null}
+     *
+     * @throws ApiErrorException
+     */
+    public function retrievePaymentMethod(string $secretKey, string $paymentMethodId): array
+    {
+        /** @var StripePaymentMethod $pm */
+        $pm = $this->sdk($secretKey)->paymentMethods->retrieve($paymentMethodId);
+
+        $card = null;
+        if ($pm->card !== null) {
+            $card = [
+                'brand' => $pm->card->brand !== null ? (string) $pm->card->brand : null,
+                'last4' => $pm->card->last4 !== null ? (string) $pm->card->last4 : null,
+                'exp_month' => $pm->card->exp_month !== null ? (int) $pm->card->exp_month : null,
+                'exp_year' => $pm->card->exp_year !== null ? (int) $pm->card->exp_year : null,
+            ];
+        }
+
+        return [
+            'id' => (string) $pm->id,
+            'type' => $pm->type !== null ? (string) $pm->type : null,
+            'card' => $card,
+        ];
+    }
+
+    /**
+     * Best-effort remote detach — callers swallow ApiErrorException.
+     *
+     * @throws ApiErrorException
+     */
+    public function detachPaymentMethod(string $secretKey, string $paymentMethodId): void
+    {
+        $this->sdk($secretKey)->paymentMethods->detach($paymentMethodId);
     }
 
     /**

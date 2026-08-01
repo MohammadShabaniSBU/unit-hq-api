@@ -53,6 +53,7 @@ use Illuminate\Support\Carbon;
  * @property string|null         $move_in_date             Y-m-d
  * @property string              $deposit_amount           NUMERIC(10,2)
  * @property string              $currency                 ISO 4217 snapshot at signing (invariant 35)
+ * @property int|null            $payment_method_id        Saved instrument for autopay (S06)
  * @property ContractStatus           $status                   pending|active|notice_given|ended|cancelled
  * @property string|null              $notice_given_on          Y-m-d
  * @property int|null                 $notice_period_days       snapshot at signing (invariant 18)
@@ -66,6 +67,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon                   $updated_at
  *
  * @property-read Contact                          $contact
+ * @property-read PaymentMethod|null               $paymentMethod
  * @property-read Reservation|null                 $reservation
  * @property-read Deal|null                        $deal
  * @property-read Collection<int, ContractItem>    $items
@@ -99,6 +101,7 @@ class Contract extends Model
         'move_in_date',
         'deposit_amount',
         'currency',
+        'payment_method_id',
         'status',
         'notice_given_on',
         'notice_period_days',
@@ -225,6 +228,12 @@ class Contract extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    /** @return BelongsTo<PaymentMethod, $this> */
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
 
     /** @return BelongsTo<Reservation, Contract> */

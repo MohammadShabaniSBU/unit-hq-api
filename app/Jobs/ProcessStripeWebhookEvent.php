@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\StripeWebhookEvent;
+use App\Support\Payments\PaymentMethods;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Stub: reconciles a Stripe event against the ledger (the ledger stays the
- * system of record — this job maps confirmed payment_intent/charge events
- * onto Payment rows). Real reconciliation is out of this phase's scope;
- * this keeps the webhook receiver fast and structures where it will live.
+ * Reconciles verified Stripe events. S06-01 handles setup_intent.succeeded
+ * (local payment_methods rows). PaymentIntent → ledger is S06-03.
  */
 class ProcessStripeWebhookEvent implements ShouldQueue
 {
@@ -28,8 +28,42 @@ class ProcessStripeWebhookEvent implements ShouldQueue
             return;
         }
 
-        // TODO: map $event->event_type (payment_intent.succeeded, …) onto a
-        // Payment row via payment_provider_account_id, then mark processed/failed.
-        $event->update(['processed_at' => now()]);
+        match ($event->event_type) {
+            'setup_intent.succeeded' => $this->handleSetupIntentSucceeded($event),
+            // TODO S06-03: payment_intent.succeeded / payment_failed / charge.refunded
+            default => null,
+        };
+
+        $event->update([
+            'processing_status' => 'processed',
+            'processed_at' => now(),
+        ]);
+    }
+
+    private function handleSetupIntentSucceeded(StripeWebhookEvent $event): void
+    {
+        $account = $event->paymentProviderAccount;
+        if ($account === null) {
+            Log::warning('stripe.setup_intent.missing_account', [
+                'stripe_webhook_event_id' => $event->id,
+            ]);
+
+            return;
+        }
+
+        $payload = $event->payload;
+        $setupIntent = is_array($payload['data']['object'] ?? null)
+            ? $payload['data']['object']
+            : null;
+
+        if ($setupIntent === null) {
+            Log::warning('stripe.setup_intent.missing_object', [
+                'stripe_webhook_event_id' => $event->id,
+            ]);
+
+            return;
+        }
+
+        PaymentMethods::recordFromSetupIntent($account, $setupIntent);
     }
 }
