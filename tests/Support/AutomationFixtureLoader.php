@@ -59,6 +59,9 @@ final class AutomationFixtureLoader
             'status' => AutomationStatus::tryFrom((string) ($decoded['status'] ?? 'active'))
                 ?? AutomationStatus::Active,
             'version' => 1,
+            'single_active_run_per_subject' => (bool) ($decoded['single_active_run_per_subject'] ?? false),
+            'default_guard' => is_array($decoded['default_guard'] ?? null) ? $decoded['default_guard'] : null,
+            'playbook_id' => $decoded['playbook_id'] ?? null,
         ]);
 
         self::syncNodes($automation, $nodes);

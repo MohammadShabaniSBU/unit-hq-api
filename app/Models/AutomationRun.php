@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
  * @property int|null                       $cancelled_by
  * @property Carbon|null                    $waiting_until
  * @property int|null                       $current_node_id
+ * @property string|null                    $active_key
  * @property Carbon|null                    $started_at
  * @property Carbon|null                    $completed_at
  * @property Carbon                         $created_at
@@ -67,6 +68,7 @@ class AutomationRun extends Model
         'cancelled_by',
         'waiting_until',
         'current_node_id',
+        'active_key',
         'started_at',
         'completed_at',
     ];

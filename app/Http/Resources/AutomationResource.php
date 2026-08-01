@@ -17,6 +17,8 @@ class AutomationResource extends BaseResource
             'description' => $this->description,
             'status' => $this->status,
             'version' => $this->version,
+            'playbook_id' => $this->playbook_id,
+            'single_active_run_per_subject' => (bool) $this->single_active_run_per_subject,
             'archived_at' => $this->datetime($this->archived_at),
             'runs_count' => $this->when(isset($this->runs_count), (int) $this->runs_count),
             'successful_runs_count' => $this->when(

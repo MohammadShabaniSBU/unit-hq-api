@@ -15,6 +15,7 @@ use App\Support\Automation\AutomationWatchCache;
 use App\Support\Automation\CustomAttributeBag;
 use App\Support\Automation\TriggerMatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Queue\Queueable;
 
 class MatchAutomationTriggers implements ShouldQueue
@@ -82,23 +83,45 @@ class MatchAutomationTriggers implements ShouldQueue
         );
 
         foreach ($matches as $match) {
-            $run = AutomationRun::query()->create([
-                'automation_id' => $match['automation']->id,
-                'trigger_node_id' => $match['trigger']->id,
-                'subject_type' => $this->subjectType,
-                'subject_id' => $this->subjectId,
-                'causer_type' => $this->causerType,
-                'causer_id' => $this->causerId,
-                'status' => AutomationRunStatus::Pending,
-                'trigger_payload' => [
-                    'lifecycle' => $this->lifecycle,
-                    'dirty' => $this->dirty,
-                    'attributes' => $this->attributes,
-                    'custom_attributes' => $customAttributes,
-                ],
-                'depth' => 0,
-                'root_run_id' => null,
-            ]);
+            $automation = $match['automation'];
+            $activeKey = null;
+            if ($automation->single_active_run_per_subject) {
+                $activeKey = $this->subjectType.':'.$this->subjectId;
+
+                // Soft check for drivers without the partial unique index (SQLite).
+                $alreadyActive = AutomationRun::query()
+                    ->where('automation_id', $automation->id)
+                    ->where('active_key', $activeKey)
+                    ->exists();
+                if ($alreadyActive) {
+                    continue;
+                }
+            }
+
+            try {
+                $run = AutomationRun::query()->create([
+                    'automation_id' => $automation->id,
+                    'trigger_node_id' => $match['trigger']->id,
+                    'subject_type' => $this->subjectType,
+                    'subject_id' => $this->subjectId,
+                    'causer_type' => $this->causerType,
+                    'causer_id' => $this->causerId,
+                    'status' => AutomationRunStatus::Pending,
+                    'trigger_payload' => [
+                        'lifecycle' => $this->lifecycle,
+                        'dirty' => $this->dirty,
+                        'attributes' => $this->attributes,
+                        'custom_attributes' => $customAttributes,
+                    ],
+                    'guard' => $automation->default_guard,
+                    'active_key' => $activeKey,
+                    'depth' => 0,
+                    'root_run_id' => null,
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                // single_active_run_per_subject: race lost to an existing active enrolment
+                continue;
+            }
 
             ExecuteAutomationRun::dispatch($run->id);
         }

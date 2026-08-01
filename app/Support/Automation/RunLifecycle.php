@@ -62,6 +62,10 @@ final class RunLifecycle
             'updated_at' => now(),
         ]);
 
+        if ($to->isTerminal()) {
+            $payload['active_key'] = null;
+        }
+
         $affected = AutomationRun::query()
             ->whereKey($run->id)
             ->where('status', $from->value)

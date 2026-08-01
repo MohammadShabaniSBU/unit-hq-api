@@ -1,0 +1,54 @@
+{
+  "name": "single_enrolment_per_subject",
+  "status": "active",
+  "single_active_run_per_subject": true,
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "wait",
+      "kind": "condition",
+      "type": "logic.wait",
+      "label": "Wait 1 day",
+      "position_x": 200,
+      "position_y": 0,
+      "config": { "mode": "relative", "amount": 1, "unit": "days" }
+    },
+    {
+      "node_key": "email",
+      "kind": "action",
+      "type": "action.send_email",
+      "label": "Nudge",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "to": { "kind": "dynamic", "expression": "{{trigger.attributes.email}}" },
+        "subject": { "kind": "static", "value": "Still here" },
+        "bodyType": "custom",
+        "body": { "kind": "static", "value": "Following up." }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "wait",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "wait",
+      "target_node_id": "email",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

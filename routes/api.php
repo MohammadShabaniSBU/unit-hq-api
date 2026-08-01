@@ -261,3 +261,8 @@ Route::get('automations/{automation}/runs', [Controllers\AutomationController::c
 Route::get('automations/{automation}/runs/{run}', [Controllers\AutomationController::class, 'showRun']);
 Route::post('automation-runs/{run}/cancel', [Controllers\AutomationController::class, 'cancelRun']);
 
+Route::apiResource('playbooks', Controllers\PlaybookController::class);
+Route::post('playbooks/{playbook}/activate', [Controllers\PlaybookController::class, 'activate']);
+Route::post('playbooks/{playbook}/deactivate', [Controllers\PlaybookController::class, 'deactivate']);
+Route::post('playbooks/{playbook}/exit-enrolments', [Controllers\PlaybookController::class, 'exitEnrolments']);
+

@@ -122,6 +122,15 @@ class AutomationController extends Controller
         ]);
 
         if (
+            $automation->playbook_id !== null
+            && (array_key_exists('nodes', $validated) || array_key_exists('edges', $validated))
+        ) {
+            throw ValidationException::withMessages([
+                'compiled_playbook' => 'This automation is compiled from a playbook and cannot be edited in the graph editor.',
+            ]);
+        }
+
+        if (
             isset($validated['status'])
             && AutomationStatus::tryFrom(
                 $validated['status'] instanceof AutomationStatus

@@ -16,6 +16,8 @@ enum AutomationNodeType: string
     case UpdateObject = 'action.update_object';
     case CreateObject = 'action.create_object';
     case SendEmail = 'action.send_email';
+    case SendSms = 'action.send_sms';
+    case RecordNotice = 'action.record_notice';
 
     // Logic
     case Branch = 'logic.branch';
@@ -30,7 +32,9 @@ enum AutomationNodeType: string
             self::EmailReceived => AutomationNodeKind::Trigger,
             self::UpdateObject,
             self::CreateObject,
-            self::SendEmail => AutomationNodeKind::Action,
+            self::SendEmail,
+            self::SendSms,
+            self::RecordNotice => AutomationNodeKind::Action,
             self::Branch,
             self::Wait => AutomationNodeKind::Condition,
         };

@@ -320,6 +320,40 @@ class HarnessLibraryTest extends TestCase
         );
     }
 
+    public function test_single_enrolment_per_subject(): void
+    {
+        $contact = Contact::factory()->create([
+            'first_name' => 'Once',
+            'email' => 'once-'.uniqid().'@example.com',
+        ]);
+
+        $harness = AutomationHarness::load('single_enrolment_per_subject')
+            ->trigger('object_created', $contact)
+            ->assertRunStatus(AutomationRunStatus::Waiting);
+
+        $firstRunId = $harness->run()->id;
+
+        // Re-dispatch matcher while first enrolment is still active — no second run.
+        (new \App\Jobs\MatchAutomationTriggers(
+            'created',
+            (string) $contact->getMorphClass(),
+            $contact->getKey(),
+            [],
+            $contact->attributesToArray(),
+            null,
+            null,
+        ))->handle();
+
+        $this->assertSame(
+            1,
+            \App\Models\AutomationRun::query()
+                ->where('automation_id', $harness->automation()->id)
+                ->where('subject_id', $contact->id)
+                ->count(),
+        );
+        $this->assertSame($firstRunId, $harness->run()->fresh()->id);
+    }
+
     /** @return array{0: Contract, 1: Site} */
     private function seedDelinquencyCatalogue(): array
     {
