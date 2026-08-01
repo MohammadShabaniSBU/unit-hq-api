@@ -39,6 +39,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('billing:run --trigger=scheduled')->hourly();
         // Sweep catches contracts enabled after the morning run (S06-04).
         $schedule->command('autopay:collect --trigger=sweep')->hourly();
+        // Idempotent ladder; daily is enough, hourly is safe if wanted.
+        $schedule->command('delinquency:run')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

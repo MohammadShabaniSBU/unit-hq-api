@@ -1,0 +1,126 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Support\Delinquency;
+
+use App\Enums\HoldType;
+use App\Models\Delinquency;
+use App\Models\Employee;
+use App\Models\UnitHold;
+use App\Models\UnitOccupancy;
+use Illuminate\Support\Collection;
+
+/**
+ * Place / release overlock holds for a delinquency case.
+ * Overlock is case-linked (reason = delinquency:{id}); never via the holds API.
+ */
+final class Overlock
+{
+    public static function reasonFor(Delinquency $case): string
+    {
+        return 'delinquency:'.$case->id;
+    }
+
+    /**
+     * Overlock each unit currently occupied by the contract.
+     * Idempotent: an unreleased overlock for that unit+case is returned as-is.
+     *
+     * @return UnitHold|list<UnitHold>
+     */
+    public static function place(Delinquency $case, ?Employee $by = null): UnitHold|array
+    {
+        $contract = $case->contract;
+        $today = DelinquencyState::siteToday($contract)->toDateString();
+        $reason = self::reasonFor($case);
+
+        $unitIds = UnitOccupancy::query()
+            ->where('contract_id', $contract->id)
+            ->whereNull('ended_on')
+            ->orderBy('id')
+            ->pluck('unit_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($unitIds === []) {
+            // Fall back to the contract's current unit item when occupancy is absent in tests.
+            $contract->loadMissing(['unitItem']);
+            $unitId = $contract->unitItem?->item_id;
+            if ($unitId !== null) {
+                $unitIds = [(int) $unitId];
+            }
+        }
+
+        $holds = [];
+        foreach ($unitIds as $unitId) {
+            $existing = UnitHold::query()
+                ->where('unit_id', $unitId)
+                ->where('hold_type', HoldType::Overlock)
+                ->whereNull('released_at')
+                ->where('reason', $reason)
+                ->first();
+
+            if ($existing !== null) {
+                $holds[] = $existing;
+
+                continue;
+            }
+
+            // Another live overlock on the unit (different case) — return it; don't duplicate.
+            $anyLive = UnitHold::query()
+                ->where('unit_id', $unitId)
+                ->where('hold_type', HoldType::Overlock)
+                ->whereNull('released_at')
+                ->first();
+
+            if ($anyLive !== null) {
+                $holds[] = $anyLive;
+
+                continue;
+            }
+
+            $holds[] = UnitHold::query()->create([
+                'unit_id' => $unitId,
+                'hold_type' => HoldType::Overlock,
+                'reservation_id' => null,
+                'starts_on' => $today,
+                'ends_on' => null,
+                'released_at' => null,
+                'reason' => $reason,
+                'created_by' => $by?->id,
+            ]);
+        }
+
+        if ($holds === []) {
+            throw new \RuntimeException("No units to overlock for delinquency {$case->id}.");
+        }
+
+        return count($holds) === 1 ? $holds[0] : $holds;
+    }
+
+    /**
+     * Release unreleased overlock holds for this case. Never deletes (S01).
+     *
+     * @return Collection<int, UnitHold>
+     */
+    public static function release(Delinquency $case, string $reason, ?Employee $by = null): Collection
+    {
+        $caseReason = self::reasonFor($case);
+
+        $holds = UnitHold::query()
+            ->where('hold_type', HoldType::Overlock)
+            ->whereNull('released_at')
+            ->where('reason', $caseReason)
+            ->get();
+
+        foreach ($holds as $hold) {
+            $hold->forceFill([
+                'released_at' => now(),
+            ])->save();
+        }
+
+        return $holds;
+    }
+}

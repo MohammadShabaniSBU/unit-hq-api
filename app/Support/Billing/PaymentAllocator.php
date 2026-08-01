@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Support\Billing;
 
+use App\Enums\DelinquencyCureTrigger;
+use App\Jobs\EvaluateDelinquency;
 use App\Models\Allocation;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Payment;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -48,6 +51,8 @@ final class PaymentAllocator
             ]));
         }
 
+        self::dispatchEvaluateAfterCommit($contract);
+
         return $created;
     }
 
@@ -83,7 +88,21 @@ final class PaymentAllocator
             ]));
         }
 
+        self::dispatchEvaluateAfterCommit($contract);
+
         return $created;
+    }
+
+    private static function dispatchEvaluateAfterCommit(Contract $contract): void
+    {
+        $contractId = (int) $contract->id;
+
+        DB::afterCommit(static function () use ($contractId): void {
+            EvaluateDelinquency::dispatch(
+                $contractId,
+                DelinquencyCureTrigger::Payment,
+            );
+        });
     }
 
     /**

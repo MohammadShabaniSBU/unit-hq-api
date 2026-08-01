@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
+use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DepositSettlementOutcome;
 use App\Enums\HoldType;
 use App\Http\Resources\ContractResource;
+use App\Jobs\EvaluateDelinquency;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractItem;
@@ -237,6 +239,14 @@ trait VacatesContracts
             if ($contract->billedThrough() !== $billedThroughBefore) {
                 $contract->forceFill(['billed_through' => $billedThroughBefore])->save();
             }
+
+            $vacatedContractId = (int) $contract->id;
+            DB::afterCommit(static function () use ($vacatedContractId): void {
+                EvaluateDelinquency::dispatch(
+                    $vacatedContractId,
+                    DelinquencyCureTrigger::Vacated,
+                );
+            });
         });
 
         $contract->refresh();

@@ -646,9 +646,10 @@ final class InvoiceIssuer
     public static function filterCharges(Contract $contract, Collection $charges): Collection
     {
         $invoiceDeposits = (bool) config('fiscal.invoice_deposits', false);
+        $invoiceLateFees = (bool) config('fiscal.invoice_late_fees', false);
 
         return $charges
-            ->filter(function (Charge $charge) use ($contract, $invoiceDeposits): bool {
+            ->filter(function (Charge $charge) use ($contract, $invoiceDeposits, $invoiceLateFees): bool {
                 if ((int) $charge->contract_id !== (int) $contract->id) {
                     return false;
                 }
@@ -665,6 +666,10 @@ final class InvoiceIssuer
                 }
 
                 if ($type === ChargeType::Deposit && ! $invoiceDeposits) {
+                    return false;
+                }
+
+                if ($type === ChargeType::LateFee && ! $invoiceLateFees) {
                     return false;
                 }
 
