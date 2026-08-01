@@ -77,6 +77,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, BillingRunItem>  $billingRunItems
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
+ * @property-read Collection<int, PaymentRequest>  $paymentRequests
  * @property-read Collection<int, UnitOccupancy>   $occupancies
  * @property-read Collection<int, ContractTransfer> $transfers
  * @property-read DepositSettlement|null           $depositSettlement
@@ -345,6 +346,12 @@ class Contract extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /** @return HasMany<PaymentRequest, $this> */
+    public function paymentRequests(): HasMany
+    {
+        return $this->hasMany(PaymentRequest::class);
     }
 
     /** @return HasMany<UnitOccupancy, Contract> */

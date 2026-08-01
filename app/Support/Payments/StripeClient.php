@@ -6,6 +6,7 @@ namespace App\Support\Payments;
 
 use Stripe\Customer;
 use Stripe\Exception\ApiErrorException;
+use Stripe\PaymentIntent;
 use Stripe\PaymentMethod as StripePaymentMethod;
 use Stripe\SetupIntent;
 use Stripe\StripeClient as SdkClient;
@@ -113,6 +114,72 @@ class StripeClient
     public function detachPaymentMethod(string $secretKey, string $paymentMethodId): void
     {
         $this->sdk($secretKey)->paymentMethods->detach($paymentMethodId);
+    }
+
+    /**
+     * @param  array{
+     *     amount: int,
+     *     currency: string,
+     *     customer?: string|null,
+     *     setup_future_usage?: string|null,
+     *     metadata?: array<string, string>
+     * }  $params
+     * @return array{id: string, client_secret: string|null, status: string}
+     *
+     * @throws ApiErrorException
+     */
+    public function createPaymentIntent(string $secretKey, array $params): array
+    {
+        $payload = [
+            'amount' => $params['amount'],
+            'currency' => strtolower($params['currency']),
+            'payment_method_types' => ['card'],
+            'metadata' => $params['metadata'] ?? [],
+        ];
+
+        if (! empty($params['customer'])) {
+            $payload['customer'] = $params['customer'];
+        }
+
+        if (! empty($params['setup_future_usage'])) {
+            $payload['setup_future_usage'] = $params['setup_future_usage'];
+        }
+
+        /** @var PaymentIntent $intent */
+        $intent = $this->sdk($secretKey)->paymentIntents->create($payload);
+
+        return [
+            'id' => (string) $intent->id,
+            'client_secret' => $intent->client_secret !== null ? (string) $intent->client_secret : null,
+            'status' => (string) $intent->status,
+        ];
+    }
+
+    /**
+     * @return array{id: string, client_secret: string|null, status: string}
+     *
+     * @throws ApiErrorException
+     */
+    public function retrievePaymentIntent(string $secretKey, string $paymentIntentId): array
+    {
+        /** @var PaymentIntent $intent */
+        $intent = $this->sdk($secretKey)->paymentIntents->retrieve($paymentIntentId);
+
+        return [
+            'id' => (string) $intent->id,
+            'client_secret' => $intent->client_secret !== null ? (string) $intent->client_secret : null,
+            'status' => (string) $intent->status,
+        ];
+    }
+
+    /**
+     * Best-effort remote cancel — callers swallow ApiErrorException.
+     *
+     * @throws ApiErrorException
+     */
+    public function cancelPaymentIntent(string $secretKey, string $paymentIntentId): void
+    {
+        $this->sdk($secretKey)->paymentIntents->cancel($paymentIntentId);
     }
 
     /**

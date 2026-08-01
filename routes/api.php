@@ -166,6 +166,9 @@ Route::patch('deals/{deal}/tasks/{task}', [Controllers\DealTaskController::class
 Route::apiResource('deals', Controllers\DealController::class);
 
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
+
+Route::get('pay/{token}', [Controllers\PublicPaymentController::class, 'show']);
+Route::post('pay/{token}/intent', [Controllers\PublicPaymentController::class, 'intent']);
 Route::get('offers/filters/schema', [Controllers\OfferController::class, 'filterSchema']);
 Route::post('offers/search', [Controllers\OfferController::class, 'search']);
 Route::get('offers/board', [Controllers\OfferBoardController::class, 'index']);
@@ -199,9 +202,12 @@ Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractContro
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::class, 'storeForContract']);
 Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
+Route::get('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'index']);
+Route::post('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'store']);
 Route::get('contracts/{contract}/next-bill', [Controllers\ContractController::class, 'nextBill']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
+Route::post('payment-requests/{paymentRequest}/cancel', [Controllers\PaymentRequestController::class, 'cancel']);
 Route::post('payments/{payment}/reverse', [Controllers\PaymentController::class, 'reverse']);
 
 Route::get('invoices', [Controllers\InvoiceController::class, 'index']);

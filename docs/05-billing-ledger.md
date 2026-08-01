@@ -180,6 +180,12 @@ Credentials live on `payment_provider_accounts` scoped to `legal_entity_id`
 
 - **Stripe:** payments are written only on receipt of a verified webhook, with per-account
   idempotency keys. Never from a client-side success callback.
+- **Payment links:** operators create `payment_requests` (tokenised public `/pay/{token}`
+  page, offer-token idiom). The page creates/reuses a PaymentIntent and confirms
+  client-side; it **never** writes `payments` / allocations. Status flips to `paid` and
+  ledger rows land only from the verified `payment_intent.succeeded` webhook (S06-03).
+  Expiry is read-time (invariant 13); `amount` is a snapshot of the targeted open set at
+  create — intent creation refuses when the open total no longer matches.
 - **Saved cards:** each contact has at most one Stripe Customer per
   `payment_provider_account` (`stripe_customers`). Attached PaymentMethods are mirrored
   locally in `payment_methods` (display label + Stripe ids only — never PAN/CVC). Local
