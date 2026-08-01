@@ -200,6 +200,66 @@ final class SuppressionWriter
         return null;
     }
 
+    /**
+     * Inbox composer pre-warning: whether a transactional reply would be blocked.
+     * Batched for list pages — keep ChannelSuppression reads inside this writer.
+     *
+     * @param  list<array{0: Channel, 1: string}>  $channelAddresses
+     * @return array<string, bool> keyed by "{channel}|{normalizedAddress}"
+     */
+    public static function transactionalBlockedMap(array $channelAddresses): array
+    {
+        $pairs = [];
+
+        foreach ($channelAddresses as [$channel, $address]) {
+            $normalized = ContactChannelMatcher::normalize($channel, $address);
+            if ($normalized === '') {
+                continue;
+            }
+
+            $pairs[$channel->value.'|'.$normalized] = [$channel, $normalized];
+        }
+
+        if ($pairs === []) {
+            return [];
+        }
+
+        $byChannel = [];
+        foreach ($pairs as [$channel, $normalized]) {
+            $byChannel[$channel->value][] = $normalized;
+        }
+
+        $rows = ChannelSuppression::query()
+            ->active()
+            ->where(function ($q) use ($byChannel): void {
+                foreach ($byChannel as $channelValue => $addresses) {
+                    $q->orWhere(function ($inner) use ($channelValue, $addresses): void {
+                        $inner->where('channel', $channelValue)
+                            ->whereIn('address', array_values(array_unique($addresses)));
+                    });
+                }
+            })
+            ->get();
+
+        $map = [];
+        foreach ($pairs as $key => [$channel, $normalized]) {
+            $map[$key] = false;
+            foreach ($rows as $row) {
+                if ($row->channel !== $channel || $row->address !== $normalized) {
+                    continue;
+                }
+
+                // Marketing-only does not block transactional replies.
+                if ($row->scope === SuppressionScope::All) {
+                    $map[$key] = true;
+                    break;
+                }
+            }
+        }
+
+        return $map;
+    }
+
     public static function isStopKeyword(?string $body): bool
     {
         if ($body === null) {

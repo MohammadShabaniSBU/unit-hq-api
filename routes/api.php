@@ -20,6 +20,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('comms-triage/{commsTriage}/discard', [Controllers\CommsTriageController::class, 'discard']);
     Route::post('messages/{message}/move-thread', [Controllers\MessageController::class, 'moveThread']);
 
+    // Inbox (S11-00) — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    Route::get('inbox/threads', [Controllers\InboxController::class, 'index']);
+    Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
+    Route::get('inbox/badge', [Controllers\InboxController::class, 'badge']);
+    Route::post('inbox/threads/{messageThread}/read', [Controllers\InboxController::class, 'read']);
+    Route::post('inbox/threads/{messageThread}/assign', [Controllers\InboxController::class, 'assign']);
+    Route::get('message-attachments/{messageAttachment}/download', [Controllers\MessageAttachmentController::class, 'download']);
+
     // Credential-bearing routes — always behind auth (09-conventions-and-invariants.md #26/#27).
     Route::get('settings/communications', [Facility\CommunicationAccountController::class, 'index']);
     Route::put('settings/communications/{channel}', [Facility\CommunicationAccountController::class, 'update']);

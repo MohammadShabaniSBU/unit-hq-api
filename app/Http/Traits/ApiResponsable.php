@@ -50,6 +50,22 @@ trait ApiResponsable
         ]);
     }
 
+    /**
+     * Cursor-paginated list: { message, data, meta: { next_cursor } }.
+     *
+     * @param  list<mixed>|iterable<mixed>  $items
+     */
+    protected function cursorPaginated(iterable $items, ?string $nextCursor, string $message = 'OK'): JsonResponse
+    {
+        return response()->json([
+            'message' => $message,
+            'data' => $items,
+            'meta' => [
+                'next_cursor' => $nextCursor,
+            ],
+        ]);
+    }
+
     protected function error(string $message, array $errors = [], int $statusCode = 400): JsonResponse
     {
         $payload = ['message' => $message];
