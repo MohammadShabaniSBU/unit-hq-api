@@ -26,7 +26,10 @@ Three logging tiers on two tables:
 | `crm` | 2 | Contact / ContactChannel diffs; attribute value upserts on CRM entities |
 | `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned`; object-customization layout mutations; attribute value upserts on Unit |
 | `comms` | 2 | `offer.sent` |
-| `billing` | 2 | Reserved for billing attribute/events |
+| `billing` | 2 | Billing run events (`billing.run.completed`); reserved for further billing attribute/events |
+
+Tier-1 (system_events): `billing.contract.failed` — per-contract failure inside a billing run
+(isolated; run continues).
 
 ## Event naming
 

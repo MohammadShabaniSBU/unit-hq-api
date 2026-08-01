@@ -1,0 +1,416 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Support\Billing;
+
+use App\Enums\BillingRunItemOutcome;
+use App\Enums\BillingRunTrigger;
+use App\Enums\ContractStatus;
+use App\Enums\LogChannel;
+use App\Models\BillingRun;
+use App\Models\BillingRunItem;
+use App\Models\Contract;
+use App\Models\Site;
+use App\Models\SystemEvent;
+use App\Support\Billing\Exceptions\CatchUpCapExceeded;
+use App\Support\RecordsActivity;
+use App\Support\Time\SiteClock;
+use Carbon\CarbonImmutable;
+use Closure;
+use Illuminate\Support\Facades\DB;
+use Throwable;
+
+/**
+ * Recurring billing run shell: eligibility, per-contract locking, failure
+ * isolation, and audit trail. Charge/invoice writes live in RecurringBilling
+ * (S05-02); this class only orchestrates the trustworthy money-job envelope.
+ *
+ * Idempotency is the row-locked read-and-advance of contracts.billed_through —
+ * no secondary dedup state (invariant: cursor-serialised billing).
+ */
+final class BillingRunEngine
+{
+    /**
+     * @param  (Closure(Contract, array{start: CarbonImmutable, end: CarbonImmutable}): PeriodResult)|null  $generator
+     * @param  (Closure(int): void)|null  $beforeLock  test seam: runs after eligibility, before FOR UPDATE
+     */
+    public function __construct(
+        private readonly ?Closure $generator = null,
+        private readonly ?Closure $beforeLock = null,
+    ) {}
+
+    /**
+     * @return BillingRun|list<array{
+     *     contract_id: int,
+     *     periods: int,
+     *     window_start: string|null,
+     *     window_end: string|null,
+     *     est_amount: string
+     * }>
+     */
+    public function run(
+        BillingRunTrigger $trigger = BillingRunTrigger::Manual,
+        ?int $contractId = null,
+        bool $dryRun = false,
+        ?int $createdBy = null,
+    ): BillingRun|array {
+        $horizonDays = max(0, (int) config('billing.horizon_days', 0));
+        $catchUpCap = max(1, (int) config('billing.catch_up_cap', 12));
+        $horizonDate = CarbonImmutable::today()->addDays($horizonDays)->startOfDay();
+
+        $eligibleIds = $this->eligibleContractIds($horizonDate, $contractId);
+
+        if ($dryRun) {
+            return $this->dryRunPreview($eligibleIds, $horizonDays, $catchUpCap);
+        }
+
+        $run = BillingRun::query()->create([
+            'started_at' => now(),
+            'finished_at' => null,
+            'trigger' => $trigger,
+            'horizon_date' => $horizonDate->toDateString(),
+            'contracts_considered' => count($eligibleIds),
+            'contracts_billed' => 0,
+            'contracts_skipped' => 0,
+            'contracts_failed' => 0,
+            'created_by' => $createdBy,
+            'created_at' => now(),
+        ]);
+
+        $billed = 0;
+        $skipped = 0;
+        $failed = 0;
+
+        foreach ($eligibleIds as $id) {
+            if ($this->beforeLock !== null) {
+                ($this->beforeLock)($id);
+            }
+
+            $outcome = $this->processContract($run, $id, $horizonDays, $catchUpCap);
+
+            match ($outcome) {
+                BillingRunItemOutcome::Billed => $billed++,
+                BillingRunItemOutcome::Skipped => $skipped++,
+                BillingRunItemOutcome::Failed => $failed++,
+            };
+        }
+
+        $run->forceFill([
+            'finished_at' => now(),
+            'contracts_billed' => $billed,
+            'contracts_skipped' => $skipped,
+            'contracts_failed' => $failed,
+        ])->save();
+
+        RecordsActivity::log(LogChannel::Billing, 'billing.run.completed', $run, [
+            'trigger' => $trigger->value,
+            'horizon_date' => $horizonDate->toDateString(),
+            'contracts_considered' => count($eligibleIds),
+            'contracts_billed' => $billed,
+            'contracts_skipped' => $skipped,
+            'contracts_failed' => $failed,
+        ]);
+
+        return $run->refresh();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function eligibleContractIds(CarbonImmutable $horizonDate, ?int $contractId): array
+    {
+        $query = Contract::query()
+            ->whereIn('status', [ContractStatus::Active, ContractStatus::NoticeGiven])
+            ->whereNotNull('billed_through')
+            ->whereDate('billed_through', '<=', $horizonDate->toDateString())
+            ->orderBy('id');
+
+        if ($contractId !== null) {
+            $query->where('id', $contractId);
+        }
+
+        return $query->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /**
+     * @param  list<int>  $eligibleIds
+     * @return list<array{
+     *     contract_id: int,
+     *     periods: int,
+     *     window_start: string|null,
+     *     window_end: string|null,
+     *     est_amount: string
+     * }>
+     */
+    private function dryRunPreview(array $eligibleIds, int $horizonDays, int $catchUpCap): array
+    {
+        $rows = [];
+
+        foreach ($eligibleIds as $id) {
+            $contract = Contract::query()
+                ->with(['unitItem.item.site'])
+                ->find($id);
+
+            if ($contract === null) {
+                continue;
+            }
+
+            $site = $this->resolveSite($contract);
+            if ($site === null || $contract->billed_through === null) {
+                continue;
+            }
+
+            $siteHorizon = $this->civilDate(
+                SiteClock::today($site)->addDays($horizonDays)->toDateString()
+            );
+            $cursor = $this->civilDate($contract->billedThrough());
+
+            try {
+                $windows = BillingMath::periodsBetween($contract, $cursor, $siteHorizon, $catchUpCap);
+            } catch (CatchUpCapExceeded) {
+                $rows[] = [
+                    'contract_id' => $id,
+                    'periods' => 0,
+                    'window_start' => null,
+                    'window_end' => null,
+                    'est_amount' => '0.00',
+                ];
+
+                continue;
+            } catch (Throwable) {
+                continue;
+            }
+
+            if ($windows === []) {
+                continue;
+            }
+
+            $est = '0.00';
+            foreach ($windows as $window) {
+                $result = $this->generate($contract, $window);
+                $est = bcadd($est, $result->amountTotal, 2);
+            }
+
+            $rows[] = [
+                'contract_id' => $id,
+                'periods' => count($windows),
+                'window_start' => $windows[0]['start']->toDateString(),
+                'window_end' => $windows[array_key_last($windows)]['end']->toDateString(),
+                'est_amount' => $est,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function processContract(
+        BillingRun $run,
+        int $contractId,
+        int $horizonDays,
+        int $catchUpCap,
+    ): BillingRunItemOutcome {
+        try {
+            /**
+             * CatchUpCapExceeded is returned as a marker (no writes yet). Generator
+             * throws propagate so the transaction rolls back — S05-02 may write
+             * charges before a later failure in the same period.
+             *
+             * @var array{outcome: BillingRunItemOutcome}|array{fail: string, message: string} $result
+             */
+            $result = DB::transaction(function () use ($run, $contractId, $horizonDays, $catchUpCap) {
+                /** @var Contract|null $contract */
+                $contract = Contract::query()
+                    ->with(['unitItem.item.site'])
+                    ->lockForUpdate()
+                    ->find($contractId);
+
+                if ($contract === null) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'ineligible_status');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
+                if (! in_array($contract->status, [ContractStatus::Active, ContractStatus::NoticeGiven], true)) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'ineligible_status');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
+                $site = $this->resolveSite($contract);
+                if ($site === null || $contract->billed_through === null) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'ineligible_status');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
+                // Civil date only — BillingMath compares midnights; do not pass a
+                // site-TZ instant or inclusive-horizon equality breaks across offsets.
+                $siteHorizon = $this->civilDate(
+                    SiteClock::today($site)->addDays($horizonDays)->toDateString()
+                );
+                $cursor = $this->civilDate($contract->billedThrough());
+
+                if ($cursor->gt($siteHorizon)) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'not_due');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
+                try {
+                    $windows = BillingMath::periodsBetween($contract, $cursor, $siteHorizon, $catchUpCap);
+                } catch (CatchUpCapExceeded $e) {
+                    return ['fail' => 'catch_up_cap', 'message' => $e->getMessage()];
+                }
+
+                if ($windows === []) {
+                    $this->writeItem($run, $contractId, BillingRunItemOutcome::Skipped, detail: 'not_due');
+
+                    return ['outcome' => BillingRunItemOutcome::Skipped];
+                }
+
+                $periodsBilled = 0;
+                $amountTotal = '0.00';
+                $currency = $contract->currency;
+                $invoiceIds = [];
+
+                foreach ($windows as $window) {
+                    $periodResult = $this->generate($contract, $window);
+
+                    if ($periodResult->isSkip()) {
+                        $this->writeItem(
+                            $run,
+                            $contractId,
+                            BillingRunItemOutcome::Skipped,
+                            detail: $periodResult->skipDetail,
+                        );
+
+                        return ['outcome' => BillingRunItemOutcome::Skipped];
+                    }
+
+                    $periodsBilled += $periodResult->periodsBilled;
+                    $amountTotal = bcadd($amountTotal, $periodResult->amountTotal, 2);
+                    if ($periodResult->currency !== null) {
+                        $currency = $periodResult->currency;
+                    }
+                    $invoiceIds = array_merge($invoiceIds, $periodResult->invoiceIds);
+                }
+
+                $lastEnd = $windows[array_key_last($windows)]['end'];
+                $contract->forceFill([
+                    'billed_through' => $lastEnd->toDateString(),
+                ])->save();
+
+                $this->writeItem(
+                    $run,
+                    $contractId,
+                    BillingRunItemOutcome::Billed,
+                    periodsBilled: $periodsBilled,
+                    amountTotal: $amountTotal,
+                    currency: $currency,
+                    invoiceIds: $invoiceIds === [] ? null : array_values(array_unique($invoiceIds)),
+                );
+
+                return ['outcome' => BillingRunItemOutcome::Billed];
+            });
+        } catch (Throwable $e) {
+            $this->recordFailure(
+                $run,
+                $contractId,
+                detail: 'error',
+                message: $e->getMessage(),
+            );
+
+            return BillingRunItemOutcome::Failed;
+        }
+
+        if (isset($result['fail'])) {
+            $this->recordFailure(
+                $run,
+                $contractId,
+                detail: $result['fail'],
+                message: $result['message'],
+            );
+
+            return BillingRunItemOutcome::Failed;
+        }
+
+        return $result['outcome'];
+    }
+
+    private function civilDate(string $ymd): CarbonImmutable
+    {
+        return CarbonImmutable::parse($ymd)->startOfDay();
+    }
+
+    /**
+     * @param  array{start: CarbonImmutable, end: CarbonImmutable}  $window
+     */
+    private function generate(Contract $contract, array $window): PeriodResult
+    {
+        if ($this->generator !== null) {
+            return ($this->generator)($contract, $window);
+        }
+
+        return RecurringBilling::generatePeriod($contract, $window);
+    }
+
+    private function resolveSite(Contract $contract): ?Site
+    {
+        $item = $contract->unitItem?->item;
+
+        return $item instanceof \App\Models\Unit ? $item->site : null;
+    }
+
+    /**
+     * @param  list<int>|null  $invoiceIds
+     */
+    private function writeItem(
+        BillingRun $run,
+        int $contractId,
+        BillingRunItemOutcome $outcome,
+        ?string $detail = null,
+        ?string $errorMessage = null,
+        int $periodsBilled = 0,
+        ?string $amountTotal = null,
+        ?string $currency = null,
+        ?array $invoiceIds = null,
+    ): void {
+        BillingRunItem::query()->create([
+            'billing_run_id' => $run->id,
+            'contract_id' => $contractId,
+            'outcome' => $outcome,
+            'periods_billed' => $periodsBilled,
+            'detail' => $detail,
+            'error_message' => $errorMessage,
+            'invoice_ids' => $invoiceIds,
+            'amount_total' => $amountTotal,
+            'currency' => $currency,
+            'created_at' => now(),
+        ]);
+    }
+
+    private function recordFailure(
+        BillingRun $run,
+        int $contractId,
+        string $detail,
+        string $message,
+    ): void {
+        // Written outside the rolled-back per-contract transaction (fresh work
+        // on the ambient connection / outer test transaction).
+        $this->writeItem(
+            $run,
+            $contractId,
+            BillingRunItemOutcome::Failed,
+            detail: $detail,
+            errorMessage: $message,
+        );
+
+        $contract = Contract::query()->find($contractId);
+        SystemEvent::record('billing.contract.failed', $contract, [
+            'billing_run_id' => $run->id,
+            'detail' => $detail,
+            'error_message' => $message,
+        ]);
+    }
+}

@@ -188,9 +188,19 @@ invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authorit
 
 In all cases the ledger is the system of record; provider events are reconciled inputs.
 
+## Recurring billing runs (S05-01)
+
+`php artisan billing:run` drives `App\Support\Billing\BillingRunEngine`: eligibility for
+`active` / `notice_given` contracts with `billed_through <= horizon`, then one locked
+transaction per contract. Observability lives in append-only `billing_runs` /
+`billing_run_items`. Period arithmetic is `BillingMath::periodsBetween`; per-period
+charge + invoice generation is `RecurringBilling::generatePeriod` (stub until S05-02).
+Idempotency is the cursor lock only (invariant 37).
+
 ## Out of scope (current billing slice)
 
-- Recurring billing job beyond first-charge generation (cursor exists; job does not yet).
+- Per-period charge/invoice generation body (S05-02 — stub in place).
+- Activation job, scheduler wiring, `billing_horizon_days` setting UI (S05-03).
 - Deposit refund / deduction lifecycle.
 - Per-contract cadence override.
 - Multi-week / multi-month epoch for `interval_count > 1` on calendar models (boundaries are still every month-day / every weekday).

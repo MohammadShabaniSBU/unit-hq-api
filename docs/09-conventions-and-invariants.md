@@ -87,6 +87,10 @@
     unreleased blocking `unit_holds` row covering D.** Ranges are half-open — `[started_on,
     ended_on)` and `[starts_on, ends_on)` — so an end date is the first day *not* covered. Never
     store availability as a column.
+37. **Recurring billing is cursor-serialised.** The only idempotency mechanism is the
+    row-locked read-and-advance of `contracts.billed_through`; charges, invoice and cursor
+    advance commit atomically per contract per run. No secondary dedup state may be
+    introduced. Run and run-item rows (`billing_runs` / `billing_run_items`) are append-only.
 
 ## Code conventions
 

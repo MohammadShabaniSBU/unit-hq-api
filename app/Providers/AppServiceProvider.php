@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\BillingRun;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
             'note'             => Note::class,
             'invoice'          => Invoice::class,
             'payment'          => Payment::class,
+            'billing_run'      => BillingRun::class,
         ]);
 
         Session::extend('database', function ($app) {
