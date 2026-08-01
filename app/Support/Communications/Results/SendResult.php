@@ -18,6 +18,7 @@ final readonly class SendResult
         public array $raw,
         public ?int $messageId = null,
         public ?int $interactionId = null,
+        public ?string $suppressedReason = null,
     ) {}
 
     public function withAccountId(int $accountId): self
@@ -29,6 +30,7 @@ final readonly class SendResult
             raw: $this->raw,
             messageId: $this->messageId,
             interactionId: $this->interactionId,
+            suppressedReason: $this->suppressedReason,
         );
     }
 
@@ -41,6 +43,12 @@ final readonly class SendResult
             raw: $this->raw,
             messageId: $messageId,
             interactionId: $interactionId,
+            suppressedReason: $this->suppressedReason,
         );
+    }
+
+    public function wasSuppressed(): bool
+    {
+        return $this->suppressedReason !== null;
     }
 }

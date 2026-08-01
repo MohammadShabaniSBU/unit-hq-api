@@ -62,4 +62,23 @@ final readonly class EmailMessage
             headers: $this->headers,
         );
     }
+
+    /** @param  array<string, string>  $headers */
+    public function withHeaders(array $headers): self
+    {
+        return new self(
+            to: $this->to,
+            subject: $this->subject,
+            html: $this->html,
+            text: $this->text,
+            from: $this->from,
+            replyTo: $this->replyTo,
+            cc: $this->cc,
+            bcc: $this->bcc,
+            attachments: $this->attachments,
+            tags: $this->tags,
+            headers: $headers,
+        );
+    }
 }
+

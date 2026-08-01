@@ -1,0 +1,9 @@
+{
+  "id": 123456791,
+  "event": "spam",
+  "email": "annoyed@example.com",
+  "date": "2026-08-02T10:21:00+00:00",
+  "message-id": "<brevo-msg-spam@smtp-relay.mailin.fr>",
+  "reason": "spam",
+  "ts_event": 1754130060
+}

@@ -17,6 +17,7 @@ use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\Provider;
 use App\Models\Message;
+use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\Senders\SmsSender;
@@ -65,7 +66,7 @@ class SenderTest extends TestCase
             ),
             $site,
             $contact,
-            SendContext::manual(),
+            SendContext::manual(SendClass::Transactional),
         );
 
         $this->assertSame($account->id, $result->accountId);
@@ -126,7 +127,7 @@ class SenderTest extends TestCase
             new SmsMessage('+15559999999', 'Hello'),
             $site,
             null,
-            SendContext::manual(),
+            SendContext::manual(SendClass::Transactional),
         );
 
         $this->assertSame($account->id, $result->accountId);

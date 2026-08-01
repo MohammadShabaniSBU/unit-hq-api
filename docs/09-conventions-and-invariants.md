@@ -109,7 +109,9 @@
     Message status advances only when `DeliveryStatus::rank()` of the new event is
     strictly greater than the current rank; full history accumulates on
     `messages.delivery_events`. Bounce/spam emit `ChannelDeliveryFailed` facts;
-    suppression is a separate concern (never inline in the delivery job).
+    suppression is a separate concern (listener → `SuppressionWriter`, never inline
+    in the delivery job). Address-keyed `channel_suppressions` are enforced only
+    inside `EmailSender` / `SmsSender`; they survive `contacts:redact`.
 
 40. **Inbound receipt never creates contacts silently.** Unknown senders park on
     `comms_triage`; contacts are created only via explicit triage resolve

@@ -13,9 +13,11 @@ use App\Support\Communications\Exceptions\ProviderRequestFailed;
 use App\Support\Communications\MessageStatus;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\OutboundMessageRecorder;
+use App\Support\Communications\Provider;
 use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\SendContext;
+use App\Support\Communications\SuppressionWriter;
 
 final class SmsSender
 {
@@ -44,6 +46,21 @@ final class SmsSender
         }
 
         $fromAddress = $message->from ?? $identity?->from_number ?? '';
+
+        $suppression = SuppressionWriter::blocks(Channel::Sms, $message->to, $context->class);
+        if ($suppression !== null) {
+            return $this->recordSuppressed(
+                $message,
+                $contact,
+                $context,
+                $fromAddress,
+                $resolved->account->provider,
+                $resolved->account->id,
+                $suppression->reason->value,
+                $dealId,
+                $interactionMetadata,
+            );
+        }
 
         try {
             $result = $adapter->sendSms($message)->withAccountId($resolved->account->id);
@@ -92,5 +109,55 @@ final class SmsSender
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $interactionMetadata
+     */
+    private function recordSuppressed(
+        SmsMessage $message,
+        ?Contact $contact,
+        SendContext $context,
+        string $fromAddress,
+        Provider $provider,
+        int $accountId,
+        string $suppressedReason,
+        ?int $dealId,
+        ?array $interactionMetadata,
+    ): SendResult {
+        $messageId = null;
+        $interactionId = null;
+
+        if ($contact !== null) {
+            $recorded = OutboundMessageRecorder::record(
+                contact: $contact,
+                channel: Channel::Sms,
+                threadKey: $message->to,
+                status: MessageStatus::Failed,
+                context: $context,
+                fromAddress: $fromAddress,
+                toAddress: $message->to,
+                bodyText: $message->body,
+                bodyHtml: null,
+                provider: $provider,
+                accountId: $accountId,
+                providerMessageId: null,
+                dealId: $dealId,
+                interactionMetadata: $interactionMetadata,
+                detail: ['suppressed_reason' => $suppressedReason],
+            );
+            $messageId = $recorded['message']->id;
+            $interactionId = $recorded['interaction']->id;
+        }
+
+        return new SendResult(
+            providerMessageId: '',
+            provider: $provider,
+            accountId: $accountId,
+            raw: ['suppressed' => true, 'reason' => $suppressedReason],
+            messageId: $messageId,
+            interactionId: $interactionId,
+            suppressedReason: $suppressedReason,
+        );
     }
 }

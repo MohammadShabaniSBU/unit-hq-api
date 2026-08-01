@@ -63,6 +63,11 @@ final class DeliveryEventApplier
                 ));
             }
 
+            if ($event->status === DeliveryStatus::Unsubscribed) {
+                $address = $event->recipient ?? $message->to_address;
+                SuppressionWriter::fromUnsubscribe($address, (int) $message->id);
+            }
+
             return $message->fresh(['interaction', 'thread']);
         });
     }

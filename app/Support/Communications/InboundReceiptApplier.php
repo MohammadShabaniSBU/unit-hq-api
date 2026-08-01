@@ -60,11 +60,14 @@ final class InboundReceiptApplier
 
         if ($contact === null) {
             $triage = self::parkTriage($provider, $accountId, $inbound, $existingTriage);
+            self::maybeWriteStopSuppression($inbound, null);
 
             return ['outcome' => 'triage', 'message' => null, 'triage' => $triage];
         }
 
         $message = self::writeMessage($provider, $accountId, $inbound, $contact, $ambiguous);
+
+        self::maybeWriteStopSuppression($inbound, $message->id);
 
         return ['outcome' => 'message', 'message' => $message, 'triage' => null];
     }
@@ -196,6 +199,19 @@ final class InboundReceiptApplier
 
             return $message->fresh(['attachments', 'thread']) ?? $message;
         });
+    }
+
+    private static function maybeWriteStopSuppression(InboundMessage $inbound, ?int $messageId): void
+    {
+        if ($inbound->channel !== Channel::Sms) {
+            return;
+        }
+
+        if (! SuppressionWriter::isStopKeyword($inbound->bodyText)) {
+            return;
+        }
+
+        SuppressionWriter::fromStopKeyword($inbound->from, $messageId);
     }
 
     /**

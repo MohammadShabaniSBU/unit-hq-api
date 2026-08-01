@@ -17,6 +17,10 @@ return [
     | activity. Issued-invoice buyer snapshots are retained — legal obligation
     | basis; those rows are not subjects of contacts:redact.
     |
+    | channel_suppressions are intentionally NOT touched: they key on the
+    | normalized channel address (not contact_id). A redacted contact's
+    | bounced/complained address must stay suppressed if re-added later.
+    |
     */
 
     'property_keys' => [

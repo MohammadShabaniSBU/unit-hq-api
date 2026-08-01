@@ -1,0 +1,21 @@
+{
+  "ToCountry": "US",
+  "ToState": "CA",
+  "SmsMessageSid": "SMinbound0000000000000000000000STOP",
+  "NumMedia": "0",
+  "ToCity": "",
+  "FromZip": "",
+  "SmsSid": "SMinbound0000000000000000000000STOP",
+  "FromState": "CA",
+  "SmsStatus": "received",
+  "FromCity": "LOS ANGELES",
+  "Body": "STOP",
+  "FromCountry": "US",
+  "To": "+15550001111",
+  "ToZip": "",
+  "NumSegments": "1",
+  "MessageSid": "SMinbound0000000000000000000000STOP",
+  "AccountSid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "From": "+15551234567",
+  "ApiVersion": "2010-04-01"
+}

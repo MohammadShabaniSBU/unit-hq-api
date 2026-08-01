@@ -72,6 +72,19 @@ final class SendSmsHandler implements NodeHandler
             $metadata,
         );
 
+        if ($result->wasSuppressed()) {
+            return [
+                'to' => $channel->value,
+                'body' => $body,
+                'channel' => 'sms',
+                'provider_message_id' => null,
+                'communication_account_id' => $result->accountId,
+                'interaction_id' => $result->interactionId,
+                'message_id' => $result->messageId,
+                'skipped_reason' => 'suppressed',
+            ];
+        }
+
         return [
             'to' => $channel->value,
             'body' => $body,

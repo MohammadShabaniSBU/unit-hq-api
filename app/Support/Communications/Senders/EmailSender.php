@@ -14,9 +14,13 @@ use App\Support\Communications\MessageStatus;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\OutboundMessageRecorder;
+use App\Support\Communications\Provider;
 use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\Results\SendResult;
+use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
+use App\Support\Communications\SuppressionWriter;
+use App\Support\Communications\UnsubscribeToken;
 
 final class EmailSender
 {
@@ -65,6 +69,30 @@ final class EmailSender
         $fromAddress = $message->from?->email ?? $identity?->from_email ?? '';
         $toAddress = $message->to[0]->email ?? '';
 
+        $suppression = SuppressionWriter::blocks(Channel::Email, $toAddress, $context->class);
+        if ($suppression !== null) {
+            return $this->recordSuppressed(
+                $message,
+                $contact,
+                $context,
+                $fromAddress,
+                $toAddress,
+                $resolved->account->provider,
+                $resolved->account->id,
+                $suppression->reason->value,
+                $dealId,
+                $interactionMetadata,
+            );
+        }
+
+        if ($context->class === SendClass::Marketing && $toAddress !== '') {
+            $url = UnsubscribeToken::url($toAddress);
+            $headers = $message->headers;
+            $headers['List-Unsubscribe'] = '<'.$url.'>';
+            $headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+            $message = $message->withHeaders($headers);
+        }
+
         try {
             $result = $adapter->sendEmail($message)->withAccountId($resolved->account->id);
         } catch (ProviderRequestFailed $exception) {
@@ -112,5 +140,56 @@ final class EmailSender
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $interactionMetadata
+     */
+    private function recordSuppressed(
+        EmailMessage $message,
+        ?Contact $contact,
+        SendContext $context,
+        string $fromAddress,
+        string $toAddress,
+        Provider $provider,
+        int $accountId,
+        string $suppressedReason,
+        ?int $dealId,
+        ?array $interactionMetadata,
+    ): SendResult {
+        $messageId = null;
+        $interactionId = null;
+
+        if ($contact !== null) {
+            $recorded = OutboundMessageRecorder::record(
+                contact: $contact,
+                channel: Channel::Email,
+                threadKey: $message->subject,
+                status: MessageStatus::Failed,
+                context: $context,
+                fromAddress: $fromAddress,
+                toAddress: $toAddress,
+                bodyText: $message->text !== '' ? $message->text : null,
+                bodyHtml: $message->html !== '' ? $message->html : null,
+                provider: $provider,
+                accountId: $accountId,
+                providerMessageId: null,
+                dealId: $dealId,
+                interactionMetadata: $interactionMetadata,
+                detail: ['suppressed_reason' => $suppressedReason],
+            );
+            $messageId = $recorded['message']->id;
+            $interactionId = $recorded['interaction']->id;
+        }
+
+        return new SendResult(
+            providerMessageId: '',
+            provider: $provider,
+            accountId: $accountId,
+            raw: ['suppressed' => true, 'reason' => $suppressedReason],
+            messageId: $messageId,
+            interactionId: $interactionId,
+            suppressedReason: $suppressedReason,
+        );
     }
 }

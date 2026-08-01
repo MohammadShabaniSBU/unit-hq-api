@@ -62,6 +62,9 @@ Route::post('webhooks/stripe/{accountToken}', Webhooks\StripeWebhookController::
 Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}/inbound', Webhooks\DeliveryWebhookController::class);
 
+// List-Unsubscribe floor — public HMAC token, not Sanctum.
+Route::match(['get', 'post'], 'comms/unsubscribe/{token}', Controllers\UnsubscribeController::class);
+
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);
 Route::get('settings/billing', [Facility\SettingController::class, 'showBilling']);

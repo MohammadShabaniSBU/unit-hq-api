@@ -19,10 +19,12 @@ use App\Models\Reservation;
 use App\Models\Task;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Events\ChannelDeliveryFailed;
 use App\Events\ModelCreated;
 use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
 use App\Listeners\QueueAutomationMatching;
+use App\Listeners\WriteChannelSuppression;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
@@ -99,5 +101,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ModelCreated::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ModelUpdated::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ModelDeleted::class, [QueueAutomationMatching::class, 'handle']);
+        Event::listen(ChannelDeliveryFailed::class, [WriteChannelSuppression::class, 'handle']);
     }
 }

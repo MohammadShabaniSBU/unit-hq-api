@@ -38,5 +38,20 @@ return [
         'max_attachment_bytes' => (int) env('COMMS_INBOUND_MAX_ATTACHMENT_BYTES', 10 * 1024 * 1024),
         'max_total_attachment_bytes' => (int) env('COMMS_INBOUND_MAX_TOTAL_ATTACHMENT_BYTES', 25 * 1024 * 1024),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS STOP keywords
+    |--------------------------------------------------------------------------
+    |
+    | Exact match (case-insensitive, whitespace-collapsed) against inbound SMS
+    | body. Match → sms scope=all suppression. No auto-acknowledgement is sent.
+    |
+    */
+    'stop_keywords' => [
+        'STOP',
+        'BAJA',
+        'STOP TODO',
+    ],
 ];
 

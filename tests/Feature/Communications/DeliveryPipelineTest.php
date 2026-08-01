@@ -250,7 +250,7 @@ class DeliveryPipelineTest extends TestCase
                 && $e->status->value === 'bounced';
         });
 
-        $this->assertFalse(Schema::hasTable('channel_suppressions'));
+        $this->assertTrue(Schema::hasTable('channel_suppressions'));
     }
 
     public function test_unmatched_and_legacy_offer_delivery(): void

@@ -79,16 +79,18 @@ supresión*.
 
 ## Acceptance criteria
 
-- [ ] Hard bounce, complaint, STOP, unsubscribe each write the right scope/reason;
+- [x] Hard bounce, complaint, STOP, unsubscribe each write the right scope/reason;
       soft bounce writes nothing.
-- [ ] Suppressed-all blocks both classes; marketing-scope blocks marketing only —
+- [x] Suppressed-all blocks both classes; marketing-scope blocks marketing only —
       dunning email to an unsubscribed (not bounced) address still sends.
-- [ ] Enforcement lives only in the senders (grep: no caller pre-checks); every caller
+- [x] Enforcement lives only in the senders (grep: no caller pre-checks); every caller
       inherits it; playbook sequences continue past suppressed steps.
-- [ ] Address-keyed: channel deleted and re-added stays suppressed; redaction survives.
-- [ ] List-Unsubscribe on marketing mail only; the public endpoint writes and is
+- [x] Address-keyed: channel deleted and re-added stays suppressed; redaction survives.
+- [x] List-Unsubscribe on marketing mail only; the public endpoint writes and is
       idempotent.
-- [ ] Lift is audited and reversible history (never delete).
+- [x] Lift is audited and reversible history (never delete).
+
+Panel badge / Settings suppressions list / i18n remain for the panel surface (out of API test plan).
 
 ## Tests required
 

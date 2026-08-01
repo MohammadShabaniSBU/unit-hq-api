@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Communications;
 
+use App\Enums\PlaybookKind;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
 use App\Models\OfferDelivery;
@@ -11,6 +12,7 @@ use App\Models\OfferDelivery;
 /**
  * Provenance for an outbound send — callers pass this so the message store
  * can stamp source / source_ref and optionally link an OfferDelivery.
+ * `class` is required: senders refuse a missing classification.
  */
 final readonly class SendContext
 {
@@ -19,24 +21,26 @@ final readonly class SendContext
      */
     public function __construct(
         public MessageSource $source,
+        public SendClass $class,
         public ?array $sourceRef = null,
         public ?int $offerDeliveryId = null,
     ) {}
 
-    public static function manual(): self
+    public static function manual(SendClass $class = SendClass::Transactional): self
     {
-        return new self(MessageSource::Manual);
+        return new self(MessageSource::Manual, $class);
     }
 
-    public static function system(?array $sourceRef = null): self
+    public static function system(?array $sourceRef = null, SendClass $class = SendClass::Transactional): self
     {
-        return new self(MessageSource::System, $sourceRef);
+        return new self(MessageSource::System, $class, $sourceRef);
     }
 
     public static function offer(OfferDelivery $delivery): self
     {
         return new self(
             MessageSource::Offer,
+            SendClass::Transactional,
             ['offer_delivery_id' => $delivery->id, 'offer_id' => $delivery->offer_id],
             $delivery->id,
         );
@@ -44,10 +48,11 @@ final readonly class SendContext
 
     public static function playbook(AutomationRun $run, AutomationRunStep $step): self
     {
-        $run->loadMissing('automation');
+        $run->loadMissing('automation.playbook');
 
         return new self(
             MessageSource::Playbook,
+            self::classForPlaybookRun($run),
             [
                 'automation_id' => $run->automation_id,
                 'automation_run_id' => $run->id,
@@ -61,6 +66,7 @@ final readonly class SendContext
     {
         return new self(
             MessageSource::Automation,
+            SendClass::Transactional,
             [
                 'automation_id' => $run->automation_id,
                 'automation_run_id' => $run->id,
@@ -75,12 +81,21 @@ final readonly class SendContext
      */
     public static function forRun(AutomationRun $run, AutomationRunStep $step): self
     {
-        $run->loadMissing('automation');
+        $run->loadMissing('automation.playbook');
 
         if ($run->automation?->playbook_id !== null) {
             return self::playbook($run, $step);
         }
 
         return self::automation($run, $step);
+    }
+
+    private static function classForPlaybookRun(AutomationRun $run): SendClass
+    {
+        $kind = $run->automation?->playbook?->kind;
+
+        return $kind === PlaybookKind::LeadChase
+            ? SendClass::Marketing
+            : SendClass::Transactional;
     }
 }

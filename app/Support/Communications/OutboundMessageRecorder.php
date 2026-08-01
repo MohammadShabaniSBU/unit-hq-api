@@ -19,6 +19,7 @@ final class OutboundMessageRecorder
 {
     /**
      * @param  array<string, mixed>|null  $interactionMetadata
+     * @param  array<string, mixed>|null  $detail
      * @return array{message: Message, interaction: Interaction}
      */
     public static function record(
@@ -36,6 +37,7 @@ final class OutboundMessageRecorder
         ?string $providerMessageId,
         ?int $dealId = null,
         ?array $interactionMetadata = null,
+        ?array $detail = null,
     ): array {
         return DB::transaction(function () use (
             $contact,
@@ -52,6 +54,7 @@ final class OutboundMessageRecorder
             $providerMessageId,
             $dealId,
             $interactionMetadata,
+            $detail,
         ): array {
             $resolved = Threading::forOutbound($contact, $channel, $threadKey);
             $thread = $resolved['thread'];
@@ -78,6 +81,7 @@ final class OutboundMessageRecorder
                 'threading_evidence' => $evidence,
                 'source' => $context->source,
                 'source_ref' => $context->sourceRef,
+                'detail' => $detail,
                 'sent_at' => $status === MessageStatus::Failed ? null : $now,
             ]);
 
