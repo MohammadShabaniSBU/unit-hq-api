@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\AutopayAttempt;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\Discount;
 use App\Models\Insurance;
 use App\Models\Unit;
 use App\Models\UnitOccupancy;
+use App\Support\Billing\RecurringBilling;
 use App\Support\Contracts\ContractTransition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -35,6 +37,9 @@ class ContractResource extends BaseResource
             'move_in_date'           => $this->date($this->move_in_date),
             'deposit_amount'         => $this->deposit_amount,
             'currency'               => $this->currency,
+            'payment_method_id'      => $this->payment_method_id,
+            'autopay_enabled'        => (bool) $this->autopay_enabled,
+            'autopay'                => $this->autopayBlock(),
             'status'          => $this->enumValue($this->status),
             'allowed_transitions' => ContractTransition::allowed($this->contract()),
             'can_transfer'    => ContractTransition::canTransfer($this->contract()),
@@ -193,6 +198,54 @@ class ContractResource extends BaseResource
         $contract = $this->resource;
 
         return $contract;
+    }
+
+    /** @return array<string, mixed> */
+    private function autopayBlock(): array
+    {
+        $contract = $this->contract();
+
+        $method = $contract->relationLoaded('paymentMethod')
+            ? $contract->paymentMethod
+            : null;
+
+        /** @var AutopayAttempt|null $last */
+        $last = null;
+        if ($contract->relationLoaded('autopayAttempts')) {
+            $last = $contract->autopayAttempts->sortByDesc('id')->first();
+        }
+
+        $nextBill = RecurringBilling::nextBillEstimate($contract);
+
+        return [
+            'enabled' => (bool) $contract->autopay_enabled,
+            'payment_method_id' => $contract->payment_method_id,
+            'payment_method' => $method !== null ? [
+                'id' => $method->id,
+                'display_label' => $method->display_label,
+                'type' => $method->type instanceof \BackedEnum
+                    ? $method->type->value
+                    : $method->type,
+                'is_default' => (bool) $method->is_default,
+            ] : null,
+            'last_attempt' => $last !== null ? [
+                'id' => $last->id,
+                'status' => $this->enumValue($last->status),
+                'amount' => (string) $last->amount,
+                'currency' => $last->currency,
+                'failure_code' => $last->failure_code,
+                'decline_code' => $last->decline_code,
+                'failure_message' => $last->failure_message,
+                'triggered_by' => $this->enumValue($last->triggered_by),
+                'attempted_at' => $this->datetime($last->attempted_at),
+                'resolved_at' => $this->datetime($last->resolved_at),
+            ] : null,
+            'next_collection' => $nextBill !== null ? [
+                'date' => $nextBill['window']['start'] ?? null,
+                'amount' => $nextBill['amount'] ?? null,
+                'currency' => $nextBill['currency'] ?? null,
+            ] : null,
+        ];
     }
 
     private function enumValue(mixed $value): mixed

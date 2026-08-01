@@ -310,6 +310,8 @@ class ContractController extends Controller
             'notes.employee',
             'occupancies.unit',
             'depositSettlement.lines',
+            'paymentMethod',
+            'autopayAttempts' => fn ($query) => $query->latest('id')->limit(1),
             'billingPeriods' => fn ($query) => $query->orderByDesc('billing_period_start')->with('charges'),
             'payments' => fn ($query) => $query->orderByDesc('created_at')->with('allocations'),
             'charges' => fn ($query) => $query->orderBy('due_date')->orderBy('id')->with('allocations'),

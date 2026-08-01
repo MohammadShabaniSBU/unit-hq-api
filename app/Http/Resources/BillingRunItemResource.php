@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\AutopayAttemptStatus;
+use App\Models\AutopayAttempt;
 use App\Models\BillingRunItem;
 use Illuminate\Http\Request;
 
@@ -45,6 +47,7 @@ class BillingRunItemResource extends BaseResource
             'invoice_ids' => $item->invoice_ids ?? [],
             'amount_total' => $item->amount_total !== null ? (string) $item->amount_total : null,
             'currency' => $item->currency,
+            'autopay' => $this->autopayStatus($item, $contract),
             'contract' => $contract !== null ? [
                 'id' => $contract->id,
                 'contact_id' => $contract->contact_id,
@@ -53,5 +56,30 @@ class BillingRunItemResource extends BaseResource
             ] : null,
             'created_at' => $this->datetime($item->created_at),
         ];
+    }
+
+    /**
+     * @return 'collected'|'failed'|'pending'|'off'
+     */
+    private function autopayStatus(BillingRunItem $item, mixed $contract): string
+    {
+        /** @var AutopayAttempt|null $attempt */
+        $attempt = null;
+
+        if ($contract !== null && $contract->relationLoaded('autopayAttempts')) {
+            $attempt = $contract->autopayAttempts
+                ->first(fn (AutopayAttempt $a): bool => (int) $a->billing_run_id === (int) $item->billing_run_id);
+        }
+
+        if ($attempt === null) {
+            return 'off';
+        }
+
+        return match ($attempt->status) {
+            AutopayAttemptStatus::Succeeded => 'collected',
+            AutopayAttemptStatus::Failed => 'failed',
+            AutopayAttemptStatus::Pending => 'pending',
+            default => 'off',
+        };
     }
 }

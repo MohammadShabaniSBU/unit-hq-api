@@ -45,6 +45,9 @@ class BillingRunController extends Controller
         $itemsQuery = $billingRun->items()
             ->with([
                 'contract.contact',
+                'contract.autopayAttempts' => fn ($q) => $q
+                    ->where('billing_run_id', $billingRun->id)
+                    ->latest('id'),
                 'contract.unitItem' => function ($query): void {
                     $query->with(['item' => function (MorphTo $morphTo): void {
                         $morphTo->morphWith([

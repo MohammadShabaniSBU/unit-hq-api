@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Billing;
 
+use App\Enums\AutopayAttemptTrigger;
 use App\Enums\BillingRunItemOutcome;
 use App\Enums\BillingRunTrigger;
 use App\Enums\ContractStatus;
@@ -17,6 +18,7 @@ use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Support\Billing\Exceptions\BillingRunFailure;
 use App\Support\Billing\Exceptions\CatchUpCapExceeded;
+use App\Support\Payments\AutopayCollector;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -125,7 +127,41 @@ final class BillingRunEngine
             $causer,
         );
 
+        $this->collectAutopayForRun($run);
+
         return $run->refresh();
+    }
+
+    /**
+     * Post-run autopay for contracts this run billed. Errors isolate inside
+     * AutopayCollector — a Stripe blip must not undo billing.
+     */
+    private function collectAutopayForRun(BillingRun $run): void
+    {
+        $billedIds = $run->items()
+            ->where('outcome', BillingRunItemOutcome::Billed)
+            ->pluck('contract_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($billedIds === []) {
+            return;
+        }
+
+        try {
+            app(AutopayCollector::class)->collect(
+                trigger: AutopayAttemptTrigger::BillingRun,
+                contractIds: $billedIds,
+                billingRunId: (int) $run->id,
+            );
+        } catch (Throwable $e) {
+            SystemEvent::record('autopay.collect.failed', $run, [
+                'billing_run_id' => $run->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

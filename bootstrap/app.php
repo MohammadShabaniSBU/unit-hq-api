@@ -37,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // evaluates eligibility (a reverse order loses a day of rent).
         $schedule->command('contracts:activate')->hourly();
         $schedule->command('billing:run --trigger=scheduled')->hourly();
+        // Sweep catches contracts enabled after the morning run (S06-04).
+        $schedule->command('autopay:collect --trigger=sweep')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

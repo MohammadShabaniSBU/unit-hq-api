@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('billing-runs', [Controllers\BillingRunController::class, 'index']);
     Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
+    Route::get('billing/overdue', [Controllers\BillingOverdueController::class, 'index']);
 });
 
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
@@ -204,6 +205,9 @@ Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::cla
 Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
 Route::get('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'index']);
 Route::post('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'store']);
+Route::get('contracts/{contract}/autopay', [Controllers\ContractAutopayController::class, 'show']);
+Route::put('contracts/{contract}/autopay', [Controllers\ContractAutopayController::class, 'update']);
+Route::post('contracts/{contract}/autopay/retry', [Controllers\ContractAutopayController::class, 'retry']);
 Route::get('contracts/{contract}/next-bill', [Controllers\ContractController::class, 'nextBill']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 

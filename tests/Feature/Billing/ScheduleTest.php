@@ -28,23 +28,36 @@ class ScheduleTest extends TestCase
             fn (Event $event): bool => str_contains((string) $event->command, 'billing:run')
                 && str_contains((string) $event->command, '--trigger=scheduled')
         );
+        $autopayIndex = $events->search(
+            fn (Event $event): bool => str_contains((string) $event->command, 'autopay:collect')
+                && str_contains((string) $event->command, '--trigger=sweep')
+        );
 
         $this->assertNotFalse($activateIndex, 'contracts:activate must be scheduled');
         $this->assertNotFalse($billingIndex, 'billing:run --trigger=scheduled must be scheduled');
+        $this->assertNotFalse($autopayIndex, 'autopay:collect --trigger=sweep must be scheduled');
 
         /** @var Event $activate */
         $activate = $events[$activateIndex];
         /** @var Event $billing */
         $billing = $events[$billingIndex];
+        /** @var Event $autopay */
+        $autopay = $events[$autopayIndex];
 
-        // Hourly cron for both — activation must not be slower (expression equal or more frequent).
+        // Hourly cron — activation before billing; autopay sweep after billing.
         $this->assertSame('0 * * * *', $activate->expression);
         $this->assertSame('0 * * * *', $billing->expression);
+        $this->assertSame('0 * * * *', $autopay->expression);
 
         $this->assertLessThan(
             $billingIndex,
             $activateIndex,
             'contracts:activate must be registered before billing:run so same-tick runs activate first',
+        );
+        $this->assertLessThan(
+            $autopayIndex,
+            $billingIndex,
+            'billing:run must be registered before autopay:collect so same-tick runs bill first',
         );
     }
 }

@@ -121,10 +121,18 @@ class StripeClient
      *     amount: int,
      *     currency: string,
      *     customer?: string|null,
+     *     payment_method?: string|null,
+     *     confirm?: bool,
+     *     off_session?: bool,
      *     setup_future_usage?: string|null,
      *     metadata?: array<string, string>
      * }  $params
-     * @return array{id: string, client_secret: string|null, status: string}
+     * @return array{
+     *     id: string,
+     *     client_secret: string|null,
+     *     status: string,
+     *     last_payment_error: array{code: string|null, decline_code: string|null, message: string|null}|null
+     * }
      *
      * @throws ApiErrorException
      */
@@ -141,6 +149,18 @@ class StripeClient
             $payload['customer'] = $params['customer'];
         }
 
+        if (! empty($params['payment_method'])) {
+            $payload['payment_method'] = $params['payment_method'];
+        }
+
+        if (array_key_exists('confirm', $params)) {
+            $payload['confirm'] = (bool) $params['confirm'];
+        }
+
+        if (array_key_exists('off_session', $params)) {
+            $payload['off_session'] = (bool) $params['off_session'];
+        }
+
         if (! empty($params['setup_future_usage'])) {
             $payload['setup_future_usage'] = $params['setup_future_usage'];
         }
@@ -148,15 +168,16 @@ class StripeClient
         /** @var PaymentIntent $intent */
         $intent = $this->sdk($secretKey)->paymentIntents->create($payload);
 
-        return [
-            'id' => (string) $intent->id,
-            'client_secret' => $intent->client_secret !== null ? (string) $intent->client_secret : null,
-            'status' => (string) $intent->status,
-        ];
+        return self::paymentIntentPayload($intent);
     }
 
     /**
-     * @return array{id: string, client_secret: string|null, status: string}
+     * @return array{
+     *     id: string,
+     *     client_secret: string|null,
+     *     status: string,
+     *     last_payment_error: array{code: string|null, decline_code: string|null, message: string|null}|null
+     * }
      *
      * @throws ApiErrorException
      */
@@ -165,10 +186,34 @@ class StripeClient
         /** @var PaymentIntent $intent */
         $intent = $this->sdk($secretKey)->paymentIntents->retrieve($paymentIntentId);
 
+        return self::paymentIntentPayload($intent);
+    }
+
+    /**
+     * @return array{
+     *     id: string,
+     *     client_secret: string|null,
+     *     status: string,
+     *     last_payment_error: array{code: string|null, decline_code: string|null, message: string|null}|null
+     * }
+     */
+    private static function paymentIntentPayload(PaymentIntent $intent): array
+    {
+        $error = null;
+        $lastError = $intent->last_payment_error;
+        if ($lastError !== null) {
+            $error = [
+                'code' => isset($lastError->code) ? (string) $lastError->code : null,
+                'decline_code' => isset($lastError->decline_code) ? (string) $lastError->decline_code : null,
+                'message' => isset($lastError->message) ? (string) $lastError->message : null,
+            ];
+        }
+
         return [
             'id' => (string) $intent->id,
             'client_secret' => $intent->client_secret !== null ? (string) $intent->client_secret : null,
             'status' => (string) $intent->status,
+            'last_payment_error' => $error,
         ];
     }
 

@@ -54,6 +54,7 @@ use Illuminate\Support\Carbon;
  * @property string              $deposit_amount           NUMERIC(10,2)
  * @property string              $currency                 ISO 4217 snapshot at signing (invariant 35)
  * @property int|null            $payment_method_id        Saved instrument for autopay (S06)
+ * @property bool                $autopay_enabled          Per-contract autopay consent (S06-04)
  * @property ContractStatus           $status                   pending|active|notice_given|ended|cancelled
  * @property string|null              $notice_given_on          Y-m-d
  * @property int|null                 $notice_period_days       snapshot at signing (invariant 18)
@@ -78,6 +79,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Charge>          $charges
  * @property-read Collection<int, Payment>         $payments
  * @property-read Collection<int, PaymentRequest>  $paymentRequests
+ * @property-read Collection<int, AutopayAttempt>  $autopayAttempts
  * @property-read Collection<int, UnitOccupancy>   $occupancies
  * @property-read Collection<int, ContractTransfer> $transfers
  * @property-read DepositSettlement|null           $depositSettlement
@@ -103,6 +105,7 @@ class Contract extends Model
         'deposit_amount',
         'currency',
         'payment_method_id',
+        'autopay_enabled',
         'status',
         'notice_given_on',
         'notice_period_days',
@@ -133,6 +136,7 @@ class Contract extends Model
             'proration_method'       => ProrationMethod::class,
             'move_in_date'           => 'date',
             'deposit_amount'         => 'decimal:2',
+            'autopay_enabled'        => 'boolean',
             'start_date'             => 'date',
             'end_date'               => 'date',
             'signed_at'              => 'datetime',
