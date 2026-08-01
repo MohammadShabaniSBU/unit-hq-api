@@ -23,6 +23,8 @@ trait SeedsCommunicationAccounts
         Http::fake([
             'api.brevo.com/v3/smtp/email' => Http::response(['messageId' => 'brevo-test-1'], 201),
             'api.twilio.com/*' => Http::response(['sid' => 'SM-test-1'], 201),
+            'us.sms.api.sinch.com/*' => Http::response(['id' => '01FC-sinch-test'], 201),
+            'api.aircall.io/*' => Http::response(['ping' => 'pong'], 200),
         ]);
     }
 

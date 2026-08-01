@@ -1,0 +1,9 @@
+{
+  "type": "recipient_delivery_report_sms",
+  "batch_id": "01FC66621YYYYY",
+  "recipient": "+15551234567",
+  "status": "Failed",
+  "code": 402,
+  "at": "2026-08-02T10:41:00.000Z",
+  "operator_status_at": "2026-08-02T10:40:58.000Z"
+}

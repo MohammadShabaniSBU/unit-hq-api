@@ -1,0 +1,34 @@
+{
+  "resource": "call",
+  "event": "call.created",
+  "timestamp": 1754131200,
+  "token": "45XXYYZZa08",
+  "data": {
+    "id": 812001,
+    "sid": "CA1234567890created",
+    "direct_link": "https://api.aircall.io/v1/calls/812001",
+    "direction": "inbound",
+    "status": "initial",
+    "missed_call_reason": null,
+    "started_at": 1754131200,
+    "answered_at": null,
+    "ended_at": null,
+    "duration": 0,
+    "voicemail": null,
+    "recording": null,
+    "asset": null,
+    "raw_digits": "+15551234567",
+    "user": null,
+    "contact": null,
+    "archived": false,
+    "number": {
+      "id": 1234,
+      "direct_link": "https://api.aircall.io/v1/numbers/1234",
+      "name": "Main Line",
+      "digits": "+15550001111",
+      "country": "US",
+      "time_zone": "America/New_York",
+      "open": true
+    }
+  }
+}

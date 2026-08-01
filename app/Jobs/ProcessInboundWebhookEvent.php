@@ -77,7 +77,7 @@ class ProcessInboundWebhookEvent implements ShouldQueue
             $inbound,
         );
 
-        if ($result['outcome'] === 'message' || $result['outcome'] === 'duplicate') {
+        if (in_array($result['outcome'], ['message', 'duplicate', 'updated'], true)) {
             $row->update([
                 'processing_status' => 'processed',
                 'message_id' => $result['message']?->id,

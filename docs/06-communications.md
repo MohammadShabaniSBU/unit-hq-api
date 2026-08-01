@@ -50,11 +50,11 @@ Each **channel** (email, SMS, WhatsApp, call) can have several **providers** con
 
 | Enum | Values (this slice) |
 |---|---|
-| `Channel` | `email`, `sms`, `whatsapp`, `call` — only email/sms are `isImplemented()` |
+| `Channel` | `email`, `sms`, `whatsapp`, `call` — email/sms/call are `isImplemented()`; WhatsApp later |
 | `Provider` | `brevo`, `postmark`, `mandrill`, `twilio`, `sinch`, `aircall` |
 | `AccountScope` | `company`, `site` |
 
-Registered adapters today: Brevo + Postmark (email), Twilio (SMS). Mandrill / Sinch registry entries are left commented until needed. WhatsApp and Calls are additive later.
+Registered adapters today: Brevo + Postmark (email), Twilio + Sinch (SMS), Aircall (call, receive-only). Mandrill remains commented. WhatsApp is additive later; Aircall outbound dialing is S12.
 
 ### Capability-by-interface
 
@@ -66,7 +66,7 @@ Adapters do **not** expose a `capabilities()` boolean map. Capability is interfa
 | `SendsEmail` / `SendsSms` | outbound send |
 | `AutoRegistersWebhooks` | create/delete endpoint resources over the vendor API |
 | `ReportsDeliveryEvents` | parse delivery status callbacks into normalised `DeliveryEvent`s |
-| `ReceivesInbound` | parse inbound content webhooks into normalised `InboundMessage`s (Postmark email, Twilio SMS; Brevo delivery-only) |
+| `ReceivesInbound` | parse inbound content webhooks into normalised `InboundMessage`s (Postmark email, Twilio/Sinch SMS, Aircall calls; Brevo delivery-only) |
 
 The panel renders "Create webhook" only when `auto_registers_webhooks` is true (derived from `instanceof AutoRegistersWebhooks`). Postmark and Twilio show a pasteable URL instead.
 

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Communications;
 
+use App\Support\Communications\MessageDirection;
+use App\Support\Communications\Providers\AircallAdapter;
 use App\Support\Communications\Providers\BrevoAdapter;
 use App\Support\Communications\Providers\PostmarkAdapter;
+use App\Support\Communications\Providers\SinchAdapter;
 use App\Support\Communications\Providers\TwilioSmsAdapter;
 use App\Support\Communications\Results\DeliveryEventId;
 use App\Support\Communications\Results\DeliveryStatus;
@@ -99,6 +102,84 @@ class AdapterParseTest extends TestCase
         $this->assertSame('30005', (string) ($undelivered[0]->raw['ErrorCode'] ?? ''));
 
         CarbonImmutable::setTestNow();
+    }
+
+    public function test_sinch_fixtures(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-02T10:40:00Z'));
+
+        $adapter = SinchAdapter::make([
+            'service_plan_id' => 'plan',
+            'api_token' => 'tok',
+            'region' => 'us',
+        ]);
+
+        $delivered = $adapter->parseDeliveryEvents($this->fixture('sinch_delivered.json'));
+        $this->assertCount(1, $delivered);
+        $this->assertSame(DeliveryStatus::Delivered, $delivered[0]->status);
+        $this->assertSame('01FC66621XXXXX', $delivered[0]->providerMessageId);
+        $this->assertFalse($delivered[0]->isPermanent);
+        $this->assertSame(
+            DeliveryEventId::derive(
+                '01FC66621XXXXX',
+                'Delivered',
+                CarbonImmutable::parse('2026-08-02T10:40:00.000Z'),
+            ),
+            $delivered[0]->providerEventId,
+        );
+
+        $failed = $adapter->parseDeliveryEvents($this->fixture('sinch_failed.json'));
+        $this->assertSame(DeliveryStatus::Failed, $failed[0]->status);
+        $this->assertTrue($failed[0]->isPermanent);
+
+        $this->assertNull($adapter->parseInbound($this->fixture('sinch_delivered.json')));
+        $this->assertSame([], $adapter->parseDeliveryEvents($this->inboundFixture('sinch_mo.json')));
+
+        $inbound = $adapter->parseInbound($this->inboundFixture('sinch_mo.json'));
+        $this->assertNotNull($inbound);
+        $this->assertSame('01FC66621MO0001', $inbound->providerMessageId);
+        $this->assertSame('+15551234567', $inbound->from);
+        $this->assertSame('Yes, please call me tomorrow.', $inbound->bodyText);
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_aircall_fixtures(): void
+    {
+        $adapter = AircallAdapter::make([
+            'api_id' => 'id',
+            'api_token' => 'tok',
+        ]);
+
+        $created = $adapter->parseInbound($this->inboundFixture('aircall_call_created.json'));
+        $this->assertNotNull($created);
+        $this->assertSame('812001', $created->providerMessageId);
+        $this->assertSame('812001:call.created', $created->providerEventId);
+        $this->assertSame(MessageDirection::Inbound, $created->direction);
+        $this->assertFalse($created->shouldCountAsUnread());
+
+        $ended = $adapter->parseInbound($this->inboundFixture('aircall_call_ended.json'));
+        $this->assertNotNull($ended);
+        $this->assertSame('https://assets.aircall.io/calls/812001/recording.mp3', $ended->sourceRef['recording_url'] ?? null);
+        $this->assertFalse($ended->shouldCountAsUnread());
+
+        $missed = $adapter->parseInbound($this->inboundFixture('aircall_call_missed.json'));
+        $this->assertNotNull($missed);
+        $this->assertTrue($missed->shouldCountAsUnread());
+        $this->assertStringContainsString('missed', (string) $missed->bodyText);
+
+        $voicemail = $adapter->parseInbound($this->inboundFixture('aircall_voicemail_left.json'));
+        $this->assertNotNull($voicemail);
+        $this->assertTrue($voicemail->shouldCountAsUnread());
+        $this->assertSame(
+            'https://assets.aircall.io/calls/812003/voicemail.mp3',
+            $voicemail->sourceRef['voicemail_url'] ?? null,
+        );
+
+        $this->assertNull($adapter->parseInbound([
+            'event' => 'user.connected',
+            'data' => ['id' => 1],
+        ]));
     }
 
     public function test_postmark_inbound_fixture(): void

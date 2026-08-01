@@ -9,8 +9,10 @@ use App\Support\Communications\Contracts\ProviderAccount;
 use App\Support\Communications\Contracts\ReportsDeliveryEvents;
 use App\Support\Communications\Contracts\SendsEmail;
 use App\Support\Communications\Contracts\SendsSms;
+use App\Support\Communications\Providers\AircallAdapter;
 use App\Support\Communications\Providers\BrevoAdapter;
 use App\Support\Communications\Providers\PostmarkAdapter;
+use App\Support\Communications\Providers\SinchAdapter;
 use App\Support\Communications\Providers\TwilioSmsAdapter;
 use InvalidArgumentException;
 
@@ -31,9 +33,10 @@ final class ProviderRegistry
             $this->key(Channel::Email, Provider::Brevo) => BrevoAdapter::class,
             $this->key(Channel::Email, Provider::Postmark) => PostmarkAdapter::class,
             $this->key(Channel::Sms, Provider::Twilio) => TwilioSmsAdapter::class,
-            // Mandrill / Sinch adapters land when needed:
+            $this->key(Channel::Sms, Provider::Sinch) => SinchAdapter::class,
+            $this->key(Channel::Call, Provider::Aircall) => AircallAdapter::class,
+            // Mandrill adapter lands when needed:
             // $this->key(Channel::Email, Provider::Mandrill) => MandrillAdapter::class,
-            // $this->key(Channel::Sms, Provider::Sinch) => SinchAdapter::class,
         ];
     }
 

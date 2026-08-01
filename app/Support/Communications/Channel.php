@@ -22,13 +22,13 @@ enum Channel: string
     }
 
     /**
-     * Channels with a send path in this slice. WhatsApp and Calls land later.
+     * Channels with a live path. WhatsApp lands later; Call is receive-only (Aircall).
      */
     public function isImplemented(): bool
     {
         return match ($this) {
-            self::Email, self::Sms => true,
-            self::Whatsapp, self::Call => false,
+            self::Email, self::Sms, self::Call => true,
+            self::Whatsapp => false,
         };
     }
 

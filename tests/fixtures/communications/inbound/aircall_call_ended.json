@@ -1,0 +1,40 @@
+{
+  "resource": "call",
+  "event": "call.ended",
+  "timestamp": 1754131230,
+  "token": "45XXYYZZa08",
+  "data": {
+    "id": 812001,
+    "sid": "CA1234567890created",
+    "direct_link": "https://api.aircall.io/v1/calls/812001",
+    "direction": "inbound",
+    "status": "done",
+    "missed_call_reason": null,
+    "started_at": 1754131200,
+    "answered_at": 1754131205,
+    "ended_at": 1754131230,
+    "duration": 30,
+    "voicemail": null,
+    "recording": "https://assets.aircall.io/calls/812001/recording.mp3",
+    "asset": "https://assets.aircall.io/calls/812001",
+    "raw_digits": "+15551234567",
+    "user": {
+      "id": 456,
+      "direct_link": "https://api.aircall.io/v1/users/456",
+      "name": "Jane Agent",
+      "email": "jane@example.com",
+      "available": true
+    },
+    "contact": null,
+    "archived": false,
+    "number": {
+      "id": 1234,
+      "direct_link": "https://api.aircall.io/v1/numbers/1234",
+      "name": "Main Line",
+      "digits": "+15550001111",
+      "country": "US",
+      "time_zone": "America/New_York",
+      "open": true
+    }
+  }
+}
