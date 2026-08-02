@@ -5,19 +5,23 @@ declare(strict_types=1);
 namespace App\Support\Communications\Providers;
 
 use App\Support\Communications\Channel;
+use App\Support\Communications\Contracts\ManagesWhatsAppTemplates;
 use App\Support\Communications\Contracts\ProviderAccount;
 use App\Support\Communications\Contracts\ReceivesInbound;
 use App\Support\Communications\Contracts\ReportsDeliveryEvents;
 use App\Support\Communications\Contracts\SendsWhatsApp;
 use App\Support\Communications\Exceptions\ProviderRequestFailed;
 use App\Support\Communications\Messages\WhatsAppSessionMessage;
+use App\Support\Communications\Messages\WhatsAppTemplateDraft;
 use App\Support\Communications\Messages\WhatsAppTemplateMessage;
 use App\Support\Communications\Provider;
 use App\Support\Communications\Results\DeliveryEvent;
 use App\Support\Communications\Results\DeliveryEventId;
 use App\Support\Communications\Results\DeliveryStatus;
 use App\Support\Communications\Results\InboundMessage;
+use App\Support\Communications\Results\ProviderTemplateRef;
 use App\Support\Communications\Results\SendResult;
+use App\Support\Communications\Results\TemplateStatusSnapshot;
 use App\Support\Communications\Results\VerificationResult;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
@@ -26,9 +30,10 @@ use Illuminate\Support\Facades\Http;
 
 /**
  * Sinch Conversation API adapter for WhatsApp (session text + template send).
+ * Template create/status uses Sinch Provisioning API (Meta-backed WA templates).
  * Separate from SinchAdapter (SMS REST) — different host, auth, and payloads.
  */
-final class SinchWhatsAppAdapter implements ProviderAccount, SendsWhatsApp, ReportsDeliveryEvents, ReceivesInbound
+final class SinchWhatsAppAdapter implements ProviderAccount, SendsWhatsApp, ReportsDeliveryEvents, ReceivesInbound, ManagesWhatsAppTemplates
 {
     private const REGIONS = ['us', 'eu', 'br'];
 
@@ -137,6 +142,152 @@ final class SinchWhatsAppAdapter implements ProviderAccount, SendsWhatsApp, Repo
         ];
 
         return $this->sendPayload($payload);
+    }
+
+    public function submit(WhatsAppTemplateDraft $draft): ProviderTemplateRef
+    {
+        $projectId = (string) ($this->credentials['project_id'] ?? '');
+        $components = $this->buildComponents($draft);
+
+        $payload = [
+            'name' => $draft->name,
+            'language' => $draft->language,
+            'category' => $this->toProviderCategory($draft->category),
+            'status' => 'submit',
+            'components' => $components,
+        ];
+
+        $response = $this->client()->post(
+            $this->provisioningBaseUrl()."/v1alpha1/projects/{$projectId}/whatsapp/templates",
+            $payload,
+        );
+        $this->throwIfFailed($response, 'Sinch WhatsApp template submit');
+
+        /** @var array<string, mixed> $raw */
+        $raw = $response->json() ?? [];
+        $id = (string) ($raw['id'] ?? $raw['template_id'] ?? $raw['name'] ?? $draft->name);
+        if ($id === '') {
+            $id = $draft->name.':'.$draft->language;
+        }
+
+        return new ProviderTemplateRef($id, 'submitted');
+    }
+
+    public function fetchStatus(string $providerTemplateId): TemplateStatusSnapshot
+    {
+        $projectId = (string) ($this->credentials['project_id'] ?? '');
+        $response = $this->client()->get(
+            $this->provisioningBaseUrl()
+            ."/v1alpha1/projects/{$projectId}/whatsapp/templates/{$providerTemplateId}"
+        );
+        $this->throwIfFailed($response, 'Sinch WhatsApp template fetch');
+
+        /** @var array<string, mixed> $raw */
+        $raw = $response->json() ?? [];
+
+        return $this->snapshotFromProviderRow($raw, $providerTemplateId);
+    }
+
+    /**
+     * @return list<TemplateStatusSnapshot>
+     */
+    public function listNonTerminalStatuses(): array
+    {
+        $projectId = (string) ($this->credentials['project_id'] ?? '');
+        $snapshots = [];
+        $pageToken = '';
+
+        do {
+            $query = ['pageSize' => 100];
+            if ($pageToken !== '') {
+                $query['pageToken'] = $pageToken;
+            }
+
+            $response = $this->client()->get(
+                $this->provisioningBaseUrl()."/v1alpha1/projects/{$projectId}/whatsapp/templates",
+                $query,
+            );
+            $this->throwIfFailed($response, 'Sinch WhatsApp template list');
+
+            /** @var array<string, mixed> $raw */
+            $raw = $response->json() ?? [];
+            $templates = $raw['templates'] ?? [];
+            if (! is_array($templates)) {
+                break;
+            }
+
+            foreach ($templates as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $snapshot = $this->snapshotFromProviderRow($row);
+                // Poll cares about rows that can still change, plus approved
+                // (Meta may revoke). Include all recognised statuses.
+                if ($snapshot->status !== '') {
+                    $snapshots[] = $snapshot;
+                }
+            }
+
+            $pageToken = is_string($raw['nextPageToken'] ?? null)
+                ? (string) $raw['nextPageToken']
+                : '';
+        } while ($pageToken !== '');
+
+        return $snapshots;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<TemplateStatusSnapshot>
+     */
+    public function parseTemplateStatusEvents(array $payload): array
+    {
+        if (($payload['type'] ?? null) === 'whatsapp_template_status') {
+            $id = (string) ($payload['template_id'] ?? $payload['id'] ?? '');
+            if ($id === '') {
+                return [];
+            }
+
+            return [
+                new TemplateStatusSnapshot(
+                    providerTemplateId: $id,
+                    status: $this->normalizeProviderStatus((string) ($payload['status'] ?? '')),
+                    name: isset($payload['name']) && is_string($payload['name']) ? $payload['name'] : null,
+                    language: isset($payload['language']) && is_string($payload['language'])
+                        ? $payload['language']
+                        : null,
+                    rejectionReason: isset($payload['rejection_reason']) && is_string($payload['rejection_reason'])
+                        ? $payload['rejection_reason']
+                        : (isset($payload['rejected_reason']) && is_string($payload['rejected_reason'])
+                            ? $payload['rejected_reason']
+                            : null),
+                ),
+            ];
+        }
+
+        $event = $payload['whatsapp_template_status'] ?? $payload['template_status'] ?? null;
+        if (! is_array($event)) {
+            return [];
+        }
+
+        $id = (string) ($event['template_id'] ?? $event['id'] ?? '');
+        if ($id === '') {
+            return [];
+        }
+
+        return [
+            new TemplateStatusSnapshot(
+                providerTemplateId: $id,
+                status: $this->normalizeProviderStatus((string) ($event['status'] ?? '')),
+                name: isset($event['name']) && is_string($event['name']) ? $event['name'] : null,
+                language: isset($event['language']) && is_string($event['language'])
+                    ? $event['language']
+                    : null,
+                rejectionReason: isset($event['rejection_reason']) && is_string($event['rejection_reason'])
+                    ? $event['rejection_reason']
+                    : null,
+            ),
+        ];
     }
 
     /**
@@ -388,6 +539,11 @@ final class SinchWhatsAppAdapter implements ProviderAccount, SendsWhatsApp, Repo
         return 'https://'.$this->region().'.conversation.api.sinch.com';
     }
 
+    private function provisioningBaseUrl(): string
+    {
+        return 'https://provisioning.api.sinch.com';
+    }
+
     private function client(): PendingRequest
     {
         $keyId = (string) ($this->credentials['key_id'] ?? '');
@@ -406,4 +562,115 @@ final class SinchWhatsAppAdapter implements ProviderAccount, SendsWhatsApp, Repo
             throw ProviderRequestFailed::fromResponse(Provider::Sinch, $response, $context);
         }
     }
+
+    private function toProviderCategory(string $category): string
+    {
+        return match ($category) {
+            'marketing' => 'MARKETING',
+            'authentication' => 'OTP',
+            default => 'TRANSACTIONAL',
+        };
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function buildComponents(WhatsAppTemplateDraft $draft): array
+    {
+        $components = [];
+
+        if ($draft->headerText !== null && $draft->headerText !== '') {
+            $components[] = [
+                'type' => 'HEADER',
+                'format' => 'TEXT',
+                'text' => $draft->headerText,
+            ];
+        }
+
+        $examples = [];
+        foreach ($draft->variables as $variable) {
+            $index = (int) ($variable['index'] ?? 0);
+            if ($index < 1) {
+                continue;
+            }
+            $examples[$index - 1] = (string) ($variable['sample'] ?? '');
+        }
+        ksort($examples);
+
+        $body = [
+            'type' => 'BODY',
+            'text' => $draft->body,
+        ];
+        if ($examples !== []) {
+            $body['examples'] = array_values($examples);
+        }
+        $components[] = $body;
+
+        if ($draft->footerText !== null && $draft->footerText !== '') {
+            $components[] = [
+                'type' => 'FOOTER',
+                'text' => $draft->footerText,
+            ];
+        }
+
+        if ($draft->buttons !== null && $draft->buttons !== []) {
+            $buttons = [];
+            foreach ($draft->buttons as $button) {
+                $type = strtoupper((string) ($button['type'] ?? 'QUICK_REPLY'));
+                $entry = [
+                    'type' => $type === 'URL' ? 'URL' : 'QUICK_REPLY',
+                    'text' => (string) ($button['text'] ?? ''),
+                ];
+                if ($entry['type'] === 'URL' && ! empty($button['url'])) {
+                    $entry['url'] = (string) $button['url'];
+                }
+                $buttons[] = $entry;
+            }
+            $components[] = [
+                'type' => 'BUTTONS',
+                'buttons' => $buttons,
+            ];
+        }
+
+        return $components;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function snapshotFromProviderRow(array $row, ?string $fallbackId = null): TemplateStatusSnapshot
+    {
+        $id = (string) ($row['id'] ?? $row['template_id'] ?? $fallbackId ?? '');
+        $rawStatus = (string) ($row['status'] ?? $row['templateStatus'] ?? $row['template_status'] ?? '');
+
+        $rejection = null;
+        if (isset($row['rejected_reason']) && is_string($row['rejected_reason'])) {
+            $rejection = $row['rejected_reason'];
+        } elseif (isset($row['rejection_reason']) && is_string($row['rejection_reason'])) {
+            $rejection = $row['rejection_reason'];
+        } elseif (isset($row['quality_score']['reasons']) && is_array($row['quality_score']['reasons'])) {
+            $rejection = implode('; ', array_map('strval', $row['quality_score']['reasons']));
+        }
+
+        return new TemplateStatusSnapshot(
+            providerTemplateId: $id !== '' ? $id : (string) ($row['name'] ?? ''),
+            status: $this->normalizeProviderStatus($rawStatus),
+            name: isset($row['name']) && is_string($row['name']) ? $row['name'] : null,
+            language: isset($row['language']) && is_string($row['language']) ? $row['language'] : null,
+            rejectionReason: $rejection,
+        );
+    }
+
+    private function normalizeProviderStatus(string $raw): string
+    {
+        return match (strtoupper(trim($raw))) {
+            'APPROVED', 'ACTIVE' => 'approved',
+            'REJECTED', 'FAILED' => 'rejected',
+            'DISABLED', 'PAUSED', 'DELETED', 'REVOKED' => 'revoked',
+            'PENDING', 'IN_APPEAL', 'SUBMITTED', 'SUBMIT', 'IN_REVIEW', 'PENDING_REVIEW' => 'submitted',
+            'DRAFT' => 'draft',
+            default => strtolower(trim($raw)),
+        };
+    }
 }
+

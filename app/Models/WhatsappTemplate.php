@@ -7,10 +7,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 
 /**
  * Provider-synced WhatsApp template registry (approval substrate).
- * Manager UI / sync land in S13-03; send path reads live status here.
  *
  * @property int                       $id
  * @property string                    $name
@@ -47,6 +47,27 @@ class WhatsappTemplate extends Model
 
     public const STATUS_ARCHIVED = 'archived';
 
+    /** @var list<string> */
+    public const CONTENT_FIELDS = [
+        'name',
+        'language',
+        'category',
+        'header_text',
+        'body',
+        'footer_text',
+        'buttons',
+        'variables',
+    ];
+
+    /** @var list<string> */
+    public const SYNC_FIELDS = [
+        'status',
+        'rejection_reason',
+        'provider_template_id',
+        'submitted_at',
+        'decided_at',
+    ];
+
     protected $fillable = [
         'name',
         'language',
@@ -75,6 +96,23 @@ class WhatsappTemplate extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::updating(function (self $template): void {
+            if (! in_array($template->getOriginal('status'), [self::STATUS_APPROVED, self::STATUS_REVOKED], true)) {
+                return;
+            }
+
+            foreach (self::CONTENT_FIELDS as $field) {
+                if ($template->isDirty($field)) {
+                    throw new RuntimeException(
+                        'Approved or revoked WhatsApp templates are immutable; clone to a new draft instead.'
+                    );
+                }
+            }
+        });
+    }
+
     public function communicationAccount(): BelongsTo
     {
         return $this->belongsTo(CommunicationAccount::class);
@@ -83,5 +121,20 @@ class WhatsappTemplate extends Model
     public function isApproved(): bool
     {
         return $this->status === self::STATUS_APPROVED;
+    }
+
+    public function isEditable(): bool
+    {
+        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_REJECTED], true);
+    }
+
+    public function isTerminal(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_APPROVED,
+            self::STATUS_REJECTED,
+            self::STATUS_REVOKED,
+            self::STATUS_ARCHIVED,
+        ], true);
     }
 }

@@ -44,6 +44,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('delinquency:run')->daily();
         $schedule->command('comms:sweep-orphan-attachments')->daily();
         $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute();
+        // Authoritative WA template approval sync (webhooks are latency only).
+        $schedule->command('whatsapp:sync-templates')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

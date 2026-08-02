@@ -10,10 +10,12 @@ use App\Jobs\ProcessInboundWebhookEvent;
 use App\Models\CommsWebhookEvent;
 use App\Models\CommunicationAccount;
 use App\Models\SystemEvent;
+use App\Support\Communications\Contracts\ManagesWhatsAppTemplates;
 use App\Support\Communications\Contracts\ReceivesInbound;
 use App\Support\Communications\Contracts\ReportsDeliveryEvents;
 use App\Support\Communications\Provider;
 use App\Support\Communications\ProviderRegistry;
+use App\Support\Communications\WhatsAppTemplateSync;
 use App\Support\Credentials\CredentialMasker;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -87,6 +89,14 @@ class DeliveryWebhookController extends Controller
                     $payload,
                     fn (int $id) => ProcessInboundWebhookEvent::dispatch($id),
                 );
+            }
+        }
+
+        // Template approval status: apply immediately (latency path; poll is authoritative).
+        if ($adapter instanceof ManagesWhatsAppTemplates) {
+            $sync = app(WhatsAppTemplateSync::class);
+            foreach ($adapter->parseTemplateStatusEvents($payload) as $snapshot) {
+                $sync->apply($account->id, $snapshot);
             }
         }
 

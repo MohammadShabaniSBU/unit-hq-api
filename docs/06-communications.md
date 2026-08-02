@@ -21,7 +21,7 @@ creates exactly one `messages` row. See invariant 38 in `09`.
 | `Threading::forOutbound` / `forInbound` | Outbound subject/number reuse; inbound References → subject → new (email) or `(contact, number)` (SMS/call/WhatsApp) |
 | `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system`) **and required `class`** (`transactional` / `marketing`) into `EmailSender` / `SmsSender` / `WhatsAppSender` |
 | `WhatsAppWindow` | Computed 24h customer-service window from `last_inbound_at` (never stored). Inbox WA threads expose `whatsapp_window: {open, closes_at}\|null` |
-| `whatsapp_templates` | Provider-synced approval registry (live `status`); sendTemplate refuses non-`approved`. Manager UI/sync in S13-03 |
+| `whatsapp_templates` | Provider-synced approval registry (live `status`); sendTemplate refuses non-`approved`. Manager + sync (S13-03) |
 | `channel_suppressions` | Address-keyed pre-send gate (`all` / `marketing` scope). Writers: hard bounce, complaint, SMS/WhatsApp STOP (+ Meta opt-out), unsubscribe, manual. Enforced only in senders. |
 | `comms_triage` | Unmatched inbound parking lot — attach / create-and-attach / discard; never silent Contact create |
 
@@ -66,6 +66,7 @@ Adapters do **not** expose a `capabilities()` boolean map. Capability is interfa
 |---|---|
 | `ProviderAccount` | `make`, `verify`, `credentialFields`, `channels` |
 | `SendsEmail` / `SendsSms` / `SendsWhatsApp` | outbound send (`SendsWhatsApp`: session text + template) |
+| `ManagesWhatsAppTemplates` | submit / fetch / list / parse template approval status (Sinch Provisioning API) |
 | `AutoRegistersWebhooks` | create/delete endpoint resources over the vendor API |
 | `ReportsDeliveryEvents` | parse delivery status callbacks into normalised `DeliveryEvent`s |
 | `ReceivesInbound` | parse inbound content webhooks into normalised `InboundMessage`s (Postmark email, Twilio/Sinch SMS, Aircall calls; Brevo delivery-only) |
@@ -82,6 +83,22 @@ Mirrors site-over-org preference:
 4. Archived site → `ChannelNotConfigured::siteArchived()` (credentials kept, sending refused)
 
 Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` / `WhatsAppSender` (same tier as `ContractBilling` — **no** `app/Services/`). WhatsApp session sends refuse locally when the 24h window is closed; template sends skip the window but require a live `approved` registry row and a `whatsapp` contact channel (phone alone is not consent).
+
+### WhatsApp template registry (S13-03)
+
+Local `whatsapp_templates` rows are the operator-facing registry; Meta's approval state is authoritative and synced through the provider:
+
+| Status | Meaning |
+|---|---|
+| `draft` / `rejected` | Editable; Submit calls `ManagesWhatsAppTemplates::submit` with samples |
+| `submitted` | Awaiting Meta; content locked |
+| `approved` | Content immutable (Meta rule); Clone → new draft (`{name}_v2`); sendable |
+| `revoked` | Meta pulled approval; send refuses (`template_not_approved`) |
+| `archived` | Hidden from pickers; frees the partial unique `(account, name, language)` identity |
+
+- **Sync:** hourly `whatsapp:sync-templates` poll is authoritative; webhook events (`parseTemplateStatusEvents`) are latency. Rejection reasons are stored **verbatim**.
+- **Locale ladder** (`WhatsAppTemplateResolver`): among approved rows of a `name`, pick contact.locale → site locale → `en` → any approved. `WhatsAppSender::sendResolvedTemplate` logs `{preferred, chosen, fallback}` on `messages.detail.whatsapp_template.resolution`.
+- **Auth API:** `GET/POST /api/whatsapp-templates`, `GET/PUT …/{id}`, `POST …/{id}/submit|clone|archive`, `POST /api/whatsapp-templates/sync`. Panel: Marketing → Templates → WhatsApp.
 
 ### Normalised delivery vocabulary
 

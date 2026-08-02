@@ -303,6 +303,14 @@ Route::get('template-builder/sample-contexts', [Controllers\TemplateFamilyContro
 Route::post('template-assets', [Controllers\TemplateAssetController::class, 'store']);
 Route::delete('template-assets/{templateAsset}', [Controllers\TemplateAssetController::class, 'destroy']);
 
+Route::post('whatsapp-templates/sync', [Controllers\WhatsappTemplateController::class, 'sync']);
+Route::apiResource('whatsapp-templates', Controllers\WhatsappTemplateController::class)
+    ->parameters(['whatsapp-templates' => 'whatsappTemplate'])
+    ->except(['destroy']);
+Route::post('whatsapp-templates/{whatsappTemplate}/submit', [Controllers\WhatsappTemplateController::class, 'submit']);
+Route::post('whatsapp-templates/{whatsappTemplate}/clone', [Controllers\WhatsappTemplateController::class, 'clone']);
+Route::post('whatsapp-templates/{whatsappTemplate}/archive', [Controllers\WhatsappTemplateController::class, 'archive']);
+
 Route::get('automations/trigger-fields/{objectType}', [Controllers\AutomationController::class, 'triggerFields']);
 Route::apiResource('automations', Controllers\AutomationController::class);
 Route::post('automations/{automation}/archive', [Controllers\AutomationController::class, 'archive']);

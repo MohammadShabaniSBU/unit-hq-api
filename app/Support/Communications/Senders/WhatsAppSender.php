@@ -25,6 +25,7 @@ use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\SuppressionWriter;
+use App\Support\Communications\WhatsAppTemplateResolver;
 use App\Support\Communications\WhatsAppWindow;
 
 final class WhatsAppSender
@@ -90,6 +91,17 @@ final class WhatsAppSender
             $message->language,
         );
 
+        $incomingDetail = $detail ?? [];
+        $templateDetail = [
+            'name' => $message->templateName,
+            'language' => $message->language,
+            'variables' => $message->variables,
+        ];
+        if (isset($incomingDetail['whatsapp_template']) && is_array($incomingDetail['whatsapp_template'])) {
+            $templateDetail = array_merge($incomingDetail['whatsapp_template'], $templateDetail);
+            unset($incomingDetail['whatsapp_template']);
+        }
+
         return $this->dispatch(
             mode: 'template',
             message: $message,
@@ -100,16 +112,67 @@ final class WhatsAppSender
             bodyText: $this->templateBodyPreview($resolved->account->id, $message),
             dealId: $dealId,
             interactionMetadata: $interactionMetadata,
-            detail: array_merge($detail ?? [], [
-                'whatsapp_template' => [
-                    'name' => $message->templateName,
-                    'language' => $message->language,
-                    'variables' => $message->variables,
-                ],
+            detail: array_merge($incomingDetail, [
+                'whatsapp_template' => $templateDetail,
             ]),
             resolvedAccountId: $resolved->account->id,
             resolvedProvider: $resolved->account->provider,
             resolvedAdapter: $resolved->require(SendsWhatsApp::class, 'sending WhatsApp'),
+        );
+    }
+
+    /**
+     * Resolve language via locale ladder, send, and log the choice on the message.
+     *
+     * @param  list<string>  $variables
+     * @param  array<string, mixed>|null  $interactionMetadata
+     * @param  array<string, mixed>|null  $detail
+     */
+    public function sendResolvedTemplate(
+        string $to,
+        string $templateName,
+        array $variables,
+        Site $site,
+        Contact $contact,
+        SendContext $context,
+        ?MessageThread $thread = null,
+        ?int $dealId = null,
+        ?array $interactionMetadata = null,
+        ?array $detail = null,
+    ): SendResult {
+        $account = $this->resolver->resolve(Channel::Whatsapp, $site)->account;
+
+        try {
+            $resolution = WhatsAppTemplateResolver::resolve(
+                $account->id,
+                $templateName,
+                $contact,
+                $site,
+            );
+        } catch (\RuntimeException) {
+            throw SendRefused::templateNotApproved();
+        }
+
+        /** @var WhatsappTemplate $template */
+        $template = $resolution['template'];
+
+        return $this->sendTemplate(
+            new WhatsAppTemplateMessage($to, $templateName, $template->language, $variables),
+            $site,
+            $contact,
+            $context,
+            $thread,
+            $dealId,
+            $interactionMetadata,
+            array_merge($detail ?? [], [
+                'whatsapp_template' => [
+                    'resolution' => [
+                        'preferred' => $resolution['preferred'],
+                        'chosen' => $resolution['chosen'],
+                        'fallback' => $resolution['used_fallback'],
+                    ],
+                ],
+            ]),
         );
     }
 
