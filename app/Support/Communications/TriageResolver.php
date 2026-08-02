@@ -43,7 +43,8 @@ final class TriageResolver
 
             $channelType = match ($triage->channel) {
                 Channel::Email => ContactChannelType::Email,
-                Channel::Sms, Channel::Call, Channel::Whatsapp => ContactChannelType::Phone,
+                Channel::Sms, Channel::Call => ContactChannelType::Phone,
+                Channel::Whatsapp => ContactChannelType::Whatsapp,
             };
 
             $contact = Contact::query()->create([

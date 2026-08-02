@@ -37,6 +37,7 @@ class ProviderRegistryTest extends TestCase
         $this->assertTrue($registry->supports(Channel::Email, Provider::Brevo));
         $this->assertTrue($registry->supports(Channel::Sms, Provider::Twilio));
         $this->assertTrue($registry->supports(Channel::Sms, Provider::Sinch));
+        $this->assertTrue($registry->supports(Channel::Whatsapp, Provider::Sinch));
         $this->assertTrue($registry->supports(Channel::Call, Provider::Aircall));
         $this->assertFalse($registry->supports(Channel::Sms, Provider::Brevo));
     }

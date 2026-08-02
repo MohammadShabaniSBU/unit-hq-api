@@ -328,15 +328,16 @@ final class InboundReceiptApplier
 
     private static function maybeWriteStopSuppression(InboundMessage $inbound, ?int $messageId): void
     {
-        if ($inbound->channel !== Channel::Sms) {
+        if (! in_array($inbound->channel, [Channel::Sms, Channel::Whatsapp], true)) {
             return;
         }
 
-        if (! SuppressionWriter::isStopKeyword($inbound->bodyText)) {
+        $optOut = ($inbound->sourceRef['opt_out'] ?? false) === true;
+        if (! $optOut && ! SuppressionWriter::isStopKeyword($inbound->bodyText)) {
             return;
         }
 
-        SuppressionWriter::fromStopKeyword($inbound->from, $messageId);
+        SuppressionWriter::fromStopKeyword($inbound->from, $messageId, $inbound->channel);
     }
 
     /**

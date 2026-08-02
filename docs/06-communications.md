@@ -15,12 +15,14 @@ creates exactly one `messages` row. See invariant 38 in `09`.
 
 | Piece | Role |
 |---|---|
-| `message_threads` | One conversation per contact+channel (email subject reuse; SMS/call by `channel_key`) |
+| `message_threads` | One conversation per contact+channel (email subject reuse; SMS/call/WhatsApp by `channel_key`) |
 | `messages` | Direction, status, bodies (HTML sanitized at write), provider ids, `source` / `source_ref` |
 | `message_attachments` | Private-disk files linked to a message |
-| `Threading::forOutbound` / `forInbound` | Outbound subject/number reuse; inbound References → subject → new (email) or `(contact, number)` (SMS) |
-| `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system`) **and required `class`** (`transactional` / `marketing`) into `EmailSender` / `SmsSender` |
-| `channel_suppressions` | Address-keyed pre-send gate (`all` / `marketing` scope). Writers: hard bounce, complaint, SMS STOP, unsubscribe, manual. Enforced only in senders. |
+| `Threading::forOutbound` / `forInbound` | Outbound subject/number reuse; inbound References → subject → new (email) or `(contact, number)` (SMS/call/WhatsApp) |
+| `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system`) **and required `class`** (`transactional` / `marketing`) into `EmailSender` / `SmsSender` / `WhatsAppSender` |
+| `WhatsAppWindow` | Computed 24h customer-service window from `last_inbound_at` (never stored). Inbox WA threads expose `whatsapp_window: {open, closes_at}\|null` |
+| `whatsapp_templates` | Provider-synced approval registry (live `status`); sendTemplate refuses non-`approved`. Manager UI/sync in S13-03 |
+| `channel_suppressions` | Address-keyed pre-send gate (`all` / `marketing` scope). Writers: hard bounce, complaint, SMS/WhatsApp STOP (+ Meta opt-out), unsubscribe, manual. Enforced only in senders. |
 | `comms_triage` | Unmatched inbound parking lot — attach / create-and-attach / discard; never silent Contact create |
 
 ## Interaction — CRM timeline index
@@ -50,11 +52,11 @@ Each **channel** (email, SMS, WhatsApp, call) can have several **providers** con
 
 | Enum | Values (this slice) |
 |---|---|
-| `Channel` | `email`, `sms`, `whatsapp`, `call` — email/sms/call are `isImplemented()`; WhatsApp later |
+| `Channel` | `email`, `sms`, `whatsapp`, `call` — all four are `isImplemented()` (call receive-only) |
 | `Provider` | `brevo`, `postmark`, `mandrill`, `twilio`, `sinch`, `aircall` |
 | `AccountScope` | `company`, `site` |
 
-Registered adapters today: Brevo + Postmark (email), Twilio + Sinch (SMS), Aircall (call — inbound lifecycle webhooks + click-to-dial). Mandrill remains commented. WhatsApp is additive later.
+Registered adapters today: Brevo + Postmark (email), Twilio + Sinch (SMS), Sinch Conversation (WhatsApp), Aircall (call — inbound lifecycle webhooks + click-to-dial). Mandrill remains commented.
 
 ### Capability-by-interface
 
@@ -63,7 +65,7 @@ Adapters do **not** expose a `capabilities()` boolean map. Capability is interfa
 | Interface | Purpose |
 |---|---|
 | `ProviderAccount` | `make`, `verify`, `credentialFields`, `channels` |
-| `SendsEmail` / `SendsSms` | outbound send |
+| `SendsEmail` / `SendsSms` / `SendsWhatsApp` | outbound send (`SendsWhatsApp`: session text + template) |
 | `AutoRegistersWebhooks` | create/delete endpoint resources over the vendor API |
 | `ReportsDeliveryEvents` | parse delivery status callbacks into normalised `DeliveryEvent`s |
 | `ReceivesInbound` | parse inbound content webhooks into normalised `InboundMessage`s (Postmark email, Twilio/Sinch SMS, Aircall calls; Brevo delivery-only) |
@@ -79,7 +81,7 @@ Mirrors site-over-org preference:
 3. Else `ChannelNotConfigured`
 4. Archived site → `ChannelNotConfigured::siteArchived()` (credentials kept, sending refused)
 
-Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` (same tier as `ContractBilling` — **no** `app/Services/`).
+Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` / `WhatsAppSender` (same tier as `ContractBilling` — **no** `app/Services/`). WhatsApp session sends refuse locally when the 24h window is closed; template sends skip the window but require a live `approved` registry row and a `whatsapp` contact channel (phone alone is not consent).
 
 ### Normalised delivery vocabulary
 

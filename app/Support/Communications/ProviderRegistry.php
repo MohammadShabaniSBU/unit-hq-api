@@ -9,10 +9,12 @@ use App\Support\Communications\Contracts\ProviderAccount;
 use App\Support\Communications\Contracts\ReportsDeliveryEvents;
 use App\Support\Communications\Contracts\SendsEmail;
 use App\Support\Communications\Contracts\SendsSms;
+use App\Support\Communications\Contracts\SendsWhatsApp;
 use App\Support\Communications\Providers\AircallAdapter;
 use App\Support\Communications\Providers\BrevoAdapter;
 use App\Support\Communications\Providers\PostmarkAdapter;
 use App\Support\Communications\Providers\SinchAdapter;
+use App\Support\Communications\Providers\SinchWhatsAppAdapter;
 use App\Support\Communications\Providers\TwilioSmsAdapter;
 use InvalidArgumentException;
 
@@ -34,6 +36,7 @@ final class ProviderRegistry
             $this->key(Channel::Email, Provider::Postmark) => PostmarkAdapter::class,
             $this->key(Channel::Sms, Provider::Twilio) => TwilioSmsAdapter::class,
             $this->key(Channel::Sms, Provider::Sinch) => SinchAdapter::class,
+            $this->key(Channel::Whatsapp, Provider::Sinch) => SinchWhatsAppAdapter::class,
             $this->key(Channel::Call, Provider::Aircall) => AircallAdapter::class,
             // Mandrill adapter lands when needed:
             // $this->key(Channel::Email, Provider::Mandrill) => MandrillAdapter::class,
@@ -97,6 +100,7 @@ final class ProviderRegistry
      *     credential_fields: array<string, array{label: string, secret: bool}>,
      *     sends_email: bool,
      *     sends_sms: bool,
+     *     sends_whatsapp: bool,
      *     auto_registers_webhooks: bool,
      *     reports_delivery_events: bool
      * }>
@@ -115,6 +119,7 @@ final class ProviderRegistry
                 'credential_fields' => $adapter->credentialFields(),
                 'sends_email' => is_subclass_of($class, SendsEmail::class),
                 'sends_sms' => is_subclass_of($class, SendsSms::class),
+                'sends_whatsapp' => is_subclass_of($class, SendsWhatsApp::class),
                 'auto_registers_webhooks' => is_subclass_of($class, AutoRegistersWebhooks::class),
                 'reports_delivery_events' => is_subclass_of($class, ReportsDeliveryEvents::class),
             ];

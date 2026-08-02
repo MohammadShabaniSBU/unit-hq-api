@@ -7,12 +7,23 @@ namespace App\Http\Controllers;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Http\Resources\TemplateFamilyResource;
+use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
-use App\Support\Communications\LegacyEmailBlocksHtml;
+use App\Support\Communications\EmailTemplateRenderer;
+use App\Support\Communications\EmailBlockDocument;
+use App\Support\Communications\Messages\EmailAddress;
+use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\SendClass;
+use App\Support\Communications\SendContext;
+use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\SiteLocale;
+use App\Support\Communications\TemplateBuilderContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -69,28 +80,26 @@ class TemplateFamilyController extends Controller
             'body_text' => ['sometimes', 'nullable', 'string'],
             'legacy_html' => ['sometimes', 'nullable', 'string'],
             'blocks' => ['sometimes', 'nullable', 'array'],
-            'blocks.*.type' => ['required_with:blocks', 'string', 'max:50'],
-            'blocks.*.props' => ['nullable', 'array'],
         ]);
 
-        $family = DB::transaction(function () use ($validated, $request): TemplateFamily {
+        $blocksDoc = null;
+        if (array_key_exists('blocks', $validated) && $validated['blocks'] !== null) {
+            $blocksDoc = EmailBlockDocument::validate($validated['blocks']);
+        }
+
+        $family = DB::transaction(function () use ($validated, $request, $blocksDoc): TemplateFamily {
             $family = TemplateFamily::query()->create([
                 'channel' => $validated['channel'],
                 'name' => $validated['name'],
                 'purpose' => $validated['purpose'] ?? TemplatePurpose::General,
             ]);
 
-            $locale = $validated['locale'] ?? 'en';
-            $legacyHtml = $validated['legacy_html'] ?? null;
-            if ($legacyHtml === null && ! empty($validated['blocks'])) {
-                $legacyHtml = LegacyEmailBlocksHtml::fromBlocks($validated['blocks']);
-            }
-
             TemplateVariant::query()->create([
                 'template_family_id' => $family->id,
-                'locale' => $locale,
+                'locale' => $validated['locale'] ?? 'en',
                 'subject' => $validated['subject'] ?? $validated['name'],
-                'legacy_html' => $legacyHtml,
+                'blocks' => $blocksDoc,
+                'legacy_html' => $blocksDoc !== null ? null : ($validated['legacy_html'] ?? null),
                 'body_text' => $validated['body_text'] ?? null,
                 'updated_by' => $request->user()?->id,
             ]);
@@ -153,7 +162,7 @@ class TemplateFamilyController extends Controller
 
     public function storeVariant(Request $request, TemplateFamily $templateFamily): JsonResponse
     {
-        $validated = $this->variantRules($request, $templateFamily);
+        $validated = $this->variantRules($request, updating: false);
 
         if ($templateFamily->variants()->where('locale', $validated['locale'])->exists()) {
             throw ValidationException::withMessages([
@@ -161,7 +170,31 @@ class TemplateFamilyController extends Controller
             ]);
         }
 
-        $this->createOrUpdateVariant($templateFamily, $validated, $request->user()?->id);
+        $copyFrom = null;
+        if (! empty($validated['copy_from_variant_id'])) {
+            $copyFrom = TemplateVariant::query()->find($validated['copy_from_variant_id']);
+            if ($copyFrom === null || $copyFrom->template_family_id !== $templateFamily->id) {
+                throw ValidationException::withMessages([
+                    'copy_from_variant_id' => [__('errors.templates.variant_mismatch')],
+                ]);
+            }
+        }
+
+        $payload = $validated;
+        if ($copyFrom instanceof TemplateVariant) {
+            if (! array_key_exists('subject', $payload)) {
+                $payload['subject'] = $copyFrom->subject;
+            }
+            if (! array_key_exists('blocks', $payload) && ! array_key_exists('legacy_html', $payload)) {
+                $payload['blocks'] = $copyFrom->blocks;
+                $payload['legacy_html'] = $copyFrom->legacy_html;
+            }
+            if (! array_key_exists('body_text', $payload)) {
+                $payload['body_text'] = $copyFrom->body_text;
+            }
+        }
+
+        $this->createOrUpdateVariant($templateFamily, $payload, $request->user()?->id);
 
         return $this->created(
             TemplateFamilyResource::make($templateFamily->fresh('variants')),
@@ -175,7 +208,7 @@ class TemplateFamilyController extends Controller
         TemplateVariant $variant,
     ): JsonResponse {
         $this->assertVariantBelongs($templateFamily, $variant);
-        $validated = $this->variantRules($request, $templateFamily, updating: true);
+        $validated = $this->variantRules($request, updating: true);
 
         if (isset($validated['locale']) && $validated['locale'] !== $variant->locale) {
             $exists = $templateFamily->variants()
@@ -212,10 +245,143 @@ class TemplateFamilyController extends Controller
         return $this->noContent('Template variant deleted successfully.');
     }
 
+    public function preview(
+        Request $request,
+        TemplateFamily $templateFamily,
+        TemplateVariant $variant,
+    ): Response {
+        $this->assertVariantBelongs($templateFamily, $variant);
+
+        $validated = $request->validate([
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'contract_id' => ['sometimes', 'nullable', 'integer', 'exists:contracts,id'],
+        ]);
+
+        $contact = Contact::query()->findOrFail($validated['contact_id']);
+        $contract = null;
+        if (! empty($validated['contract_id'])) {
+            $contract = Contract::query()->findOrFail($validated['contract_id']);
+            if ($contract->contact_id !== $contact->id) {
+                throw ValidationException::withMessages([
+                    'contract_id' => ['Contract does not belong to the selected contact.'],
+                ]);
+            }
+        }
+
+        $context = TemplateBuilderContext::for($contact, $contract);
+        $rendered = EmailTemplateRenderer::render($variant, $context, previewMarkers: true);
+
+        return response($rendered['html'], 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
+    }
+
+    public function testSend(
+        Request $request,
+        TemplateFamily $templateFamily,
+        TemplateVariant $variant,
+        EmailSender $sender,
+    ): JsonResponse {
+        $this->assertVariantBelongs($templateFamily, $variant);
+
+        $validated = $request->validate([
+            'to' => ['required', 'email', 'max:255'],
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'contract_id' => ['sometimes', 'nullable', 'integer', 'exists:contracts,id'],
+            'site_id' => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
+        ]);
+
+        $contact = Contact::query()->findOrFail($validated['contact_id']);
+        $contract = null;
+        if (! empty($validated['contract_id'])) {
+            $contract = Contract::query()->findOrFail($validated['contract_id']);
+            if ($contract->contact_id !== $contact->id) {
+                throw ValidationException::withMessages([
+                    'contract_id' => ['Contract does not belong to the selected contact.'],
+                ]);
+            }
+        }
+
+        $site = ! empty($validated['site_id'])
+            ? Site::query()->findOrFail($validated['site_id'])
+            : Site::query()->orderBy('id')->first();
+
+        if ($site === null) {
+            return $this->error(__('errors.templates.test_send_failed'), [], 422);
+        }
+
+        $context = TemplateBuilderContext::for($contact, $contract);
+        $rendered = EmailTemplateRenderer::render($variant, $context, previewMarkers: false);
+
+        $message = new EmailMessage(
+            to: [new EmailAddress($validated['to'])],
+            subject: $rendered['subject'] !== '' ? $rendered['subject'] : (string) $templateFamily->name,
+            html: $rendered['html'],
+            text: $rendered['text'],
+        );
+
+        $result = $sender->send(
+            $message,
+            $site,
+            $contact,
+            SendContext::system(
+                ['template_family_id' => $templateFamily->id, 'template_variant_id' => $variant->id, 'test' => true],
+                SendClass::Transactional,
+            ),
+            detail: [
+                'token_warnings' => $rendered['warnings'],
+                'test_send' => true,
+            ],
+        );
+
+        if ($result->wasSuppressed()) {
+            return $this->error(__('errors.templates.test_send_failed'), [
+                'to' => [$result->suppressedReason ?? 'suppressed'],
+            ], 422);
+        }
+
+        return $this->success([
+            'message_id' => $result->messageId,
+            'provider_message_id' => $result->providerMessageId,
+        ], 'Test email sent.');
+    }
+
+    public function sampleContexts(Request $request): JsonResponse
+    {
+        $contacts = Contact::query()
+            ->orderByDesc('updated_at')
+            ->limit(25)
+            ->get(['id', 'first_name', 'last_name', 'email', 'locale']);
+
+        $items = $contacts->map(function (Contact $contact): array {
+            $contracts = Contract::query()
+                ->where('contact_id', $contact->id)
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get(['id', 'contact_id', 'currency', 'status']);
+
+            return [
+                'contact' => [
+                    'id' => $contact->id,
+                    'name' => trim($contact->first_name.' '.$contact->last_name),
+                    'email' => $contact->email,
+                    'locale' => $contact->locale,
+                ],
+                'contracts' => $contracts->map(fn (Contract $c) => [
+                    'id' => $c->id,
+                    'currency' => $c->currency,
+                    'status' => $c->status?->value ?? $c->status,
+                ])->values()->all(),
+            ];
+        })->values()->all();
+
+        return $this->success($items, 'Sample contexts retrieved.');
+    }
+
     /**
      * @return array<string, mixed>
      */
-    private function variantRules(Request $request, TemplateFamily $family, bool $updating = false): array
+    private function variantRules(Request $request, bool $updating = false): array
     {
         $localeRule = $updating
             ? ['sometimes', 'required', 'string', Rule::in(SiteLocale::ALLOWED)]
@@ -227,9 +393,7 @@ class TemplateFamilyController extends Controller
             'body_text' => ['sometimes', 'nullable', 'string'],
             'legacy_html' => ['sometimes', 'nullable', 'string'],
             'blocks' => ['sometimes', 'nullable', 'array'],
-            'blocks.*.type' => ['required_with:blocks', 'string', 'max:50'],
-            'blocks.*.props' => ['nullable', 'array'],
-            'blocks.*.params' => ['nullable', 'array'],
+            'copy_from_variant_id' => ['sometimes', 'nullable', 'integer'],
         ]);
     }
 
@@ -261,19 +425,20 @@ class TemplateFamilyController extends Controller
         if (array_key_exists('body_text', $validated)) {
             $variant->body_text = $validated['body_text'];
         }
-        if (array_key_exists('legacy_html', $validated)) {
-            $variant->legacy_html = $validated['legacy_html'];
-        }
-        if (array_key_exists('blocks', $validated)) {
-            $blocks = $validated['blocks'];
-            // Transitional: old editor block arrays freeze to legacy_html.
-            if (is_array($blocks) && $blocks !== [] && isset($blocks[0]['type'], $blocks[0]['props'])) {
-                $variant->legacy_html = LegacyEmailBlocksHtml::fromBlocks($blocks);
+
+        if (array_key_exists('blocks', $validated) && $validated['blocks'] !== null) {
+            $doc = EmailBlockDocument::validate($validated['blocks']);
+            $variant->blocks = $doc;
+            $variant->legacy_html = null;
+        } else {
+            if (array_key_exists('blocks', $validated) && $validated['blocks'] === null) {
                 $variant->blocks = null;
-            } else {
-                $variant->blocks = $blocks;
+            }
+            if (array_key_exists('legacy_html', $validated)) {
+                $variant->legacy_html = $validated['legacy_html'];
             }
         }
+
         $variant->updated_by = $employeeId;
         $variant->save();
     }

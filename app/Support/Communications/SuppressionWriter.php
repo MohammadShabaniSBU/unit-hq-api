@@ -109,9 +109,10 @@ final class SuppressionWriter
     public static function fromStopKeyword(
         string $address,
         ?int $sourceMessageId = null,
+        Channel $channel = Channel::Sms,
     ): ChannelSuppression {
         return self::write(
-            Channel::Sms,
+            $channel,
             $address,
             SuppressionScope::All,
             SuppressionReason::StopKeyword,

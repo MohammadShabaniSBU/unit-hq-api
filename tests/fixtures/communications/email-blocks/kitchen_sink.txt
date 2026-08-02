@@ -1,0 +1,16 @@
+Hello Ada
+
+Dear Ada, welcome.
+
+Pay now: https://pay.example/x
+
+Details: https://example.com
+
+[image: Logo]
+
+---
+
+A-101
+89.00 EUR
+
+Legacy Ada

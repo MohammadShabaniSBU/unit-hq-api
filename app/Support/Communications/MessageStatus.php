@@ -10,6 +10,7 @@ enum MessageStatus: string
     case Sent = 'sent';
     case Delivered = 'delivered';
     case Opened = 'opened';
+    case Read = 'read';
     case Clicked = 'clicked';
     case Bounced = 'bounced';
     case Failed = 'failed';
@@ -19,6 +20,7 @@ enum MessageStatus: string
     /**
      * Lattice rank aligned with DeliveryStatus::rank() for outbound states.
      * Received (inbound) is outside the delivery lattice.
+     * Opened (email) and Read (WhatsApp) share rank 40 — they never compete.
      */
     public function rank(): ?int
     {
@@ -26,7 +28,7 @@ enum MessageStatus: string
             self::Queued => 10,
             self::Sent => 20,
             self::Delivered => 30,
-            self::Opened => 40,
+            self::Opened, self::Read => 40,
             self::Clicked => 50,
             self::Failed, self::Bounced, self::Spam => 100,
             self::Received => null,

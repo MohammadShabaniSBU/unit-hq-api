@@ -241,6 +241,7 @@ final class InboxThreadQuery
             ] : null,
             'last_message_at' => $thread->last_message_at?->toIso8601String(),
             'suppressed' => $suppressed,
+            'whatsapp_window' => WhatsAppWindow::payload($thread),
         ];
     }
 }

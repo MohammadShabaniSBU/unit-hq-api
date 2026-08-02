@@ -90,5 +90,19 @@ return [
         'transition_not_allowed' => 'No se puede transicionar la ejecución de automatización de :from a :to.',
         'already_terminal' => 'La ejecución de automatización ya está :status y no se puede cancelar.',
     ],
+    'templates' => [
+        'blocks_invalid' => 'El documento de bloques de email no es válido.',
+        'blocks_unknown_version' => 'Versión de documento de bloques no soportada: :version.',
+        'blocks_unknown_type' => 'Tipo de bloque de email desconocido: :type.',
+        'image_ref_required' => 'Los bloques de imagen requieren asset_id o url.',
+        'asset_in_use' => 'No se puede eliminar un recurso de plantilla referenciado por una plantilla.',
+        'variant_mismatch' => 'La variante no pertenece a esta familia de plantillas.',
+        'test_send_failed' => 'No se pudo enviar el email de prueba.',
+    ],
+    'whatsapp' => [
+        'window_closed' => 'La ventana de atención de WhatsApp está cerrada. Envíe una plantilla aprobada.',
+        'consent_floor' => 'Este contacto no tiene un canal de WhatsApp registrado. Un teléfono no implica opt-in de WhatsApp.',
+        'template_not_approved' => 'Esa plantilla de WhatsApp no está aprobada y no se puede enviar.',
+    ],
 ];
 

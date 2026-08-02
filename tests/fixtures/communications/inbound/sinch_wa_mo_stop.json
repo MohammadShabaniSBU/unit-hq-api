@@ -1,0 +1,8 @@
+{
+  "type": "whatsapp_mo",
+  "id": "01WA-MO-STOP",
+  "from": "+15551234567",
+  "to": "+15550009999",
+  "body": "STOP",
+  "received_at": "2026-08-02T10:45:00.000Z"
+}

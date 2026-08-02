@@ -27,6 +27,7 @@ class SettingController extends Controller
             'company_name'          => ['sometimes', 'required', 'string', 'max:255'],
             'company_contact_email' => ['sometimes', 'required', 'email', 'max:255'],
             'phone'                 => ['sometimes', 'required', 'string', 'max:50'],
+            'email_accent_color'    => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         Setting::setGeneral(
@@ -34,6 +35,7 @@ class SettingController extends Controller
                 companyName: $validated['company_name'] ?? null,
                 companyContactEmail: $validated['company_contact_email'] ?? null,
                 phone: $validated['phone'] ?? null,
+                emailAccentColor: $validated['email_accent_color'] ?? null,
             )
         );
 

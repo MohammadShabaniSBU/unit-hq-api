@@ -127,13 +127,16 @@ class EnforcementTest extends TestCase
     {
         $emailSender = (string) file_get_contents(app_path('Support/Communications/Senders/EmailSender.php'));
         $smsSender = (string) file_get_contents(app_path('Support/Communications/Senders/SmsSender.php'));
+        $waSender = (string) file_get_contents(app_path('Support/Communications/Senders/WhatsAppSender.php'));
 
         $this->assertStringContainsString('SuppressionWriter::blocks', $emailSender);
         $this->assertStringContainsString('SuppressionWriter::blocks', $smsSender);
+        $this->assertStringContainsString('SuppressionWriter::blocks', $waSender);
 
         $exclude = [
             app_path('Support/Communications/Senders/EmailSender.php'),
             app_path('Support/Communications/Senders/SmsSender.php'),
+            app_path('Support/Communications/Senders/WhatsAppSender.php'),
             app_path('Support/Communications/SuppressionWriter.php'),
             app_path('Models/ChannelSuppression.php'),
             app_path('Listeners/WriteChannelSuppression.php'),

@@ -26,7 +26,8 @@ final class ContactChannelMatcher
 
         $type = match ($channel) {
             Channel::Email => ContactChannelType::Email,
-            Channel::Sms, Channel::Call, Channel::Whatsapp => ContactChannelType::Phone,
+            Channel::Sms, Channel::Call => ContactChannelType::Phone,
+            Channel::Whatsapp => ContactChannelType::Whatsapp,
         };
 
         $candidates = ContactChannel::query()

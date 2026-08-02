@@ -90,5 +90,19 @@ return [
         'transition_not_allowed' => 'Cannot transition automation run from :from to :to.',
         'already_terminal' => 'Automation run is already :status and cannot be cancelled.',
     ],
+    'templates' => [
+        'blocks_invalid' => 'The email block document is invalid.',
+        'blocks_unknown_version' => 'Unsupported email block document version: :version.',
+        'blocks_unknown_type' => 'Unknown email block type: :type.',
+        'image_ref_required' => 'Image blocks require an asset_id or url.',
+        'asset_in_use' => 'Cannot delete a template asset that is referenced by a template.',
+        'variant_mismatch' => 'The variant does not belong to this template family.',
+        'test_send_failed' => 'The test email could not be sent.',
+    ],
+    'whatsapp' => [
+        'window_closed' => 'The WhatsApp customer-service window is closed. Send an approved template instead.',
+        'consent_floor' => 'This contact has no WhatsApp channel on file. A phone number alone is not WhatsApp opt-in.',
+        'template_not_approved' => 'That WhatsApp template is not approved and cannot be sent.',
+    ],
 ];
 

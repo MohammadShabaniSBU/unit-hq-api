@@ -94,6 +94,11 @@ Route::post('webhooks/{provider}/{webhookUrlToken}/inbound', Webhooks\DeliveryWe
 // List-Unsubscribe floor — public HMAC token, not Sanctum.
 Route::match(['get', 'post'], 'comms/unsubscribe/{token}', Controllers\UnsubscribeController::class);
 
+// Template email assets — content-hash public URLs for mailbox clients.
+Route::get('public/template-assets/{hash}/{filename}', [Controllers\TemplateAssetController::class, 'showPublic'])
+    ->where('hash', '[a-f0-9]{64}')
+    ->where('filename', '.*');
+
 Route::get('settings/general', [Facility\SettingController::class, 'showGeneral']);
 Route::patch('settings/general', [Facility\SettingController::class, 'updateGeneral']);
 Route::get('settings/billing', [Facility\SettingController::class, 'showBilling']);
@@ -292,6 +297,11 @@ Route::post('template-families/{templateFamily}/archive', [Controllers\TemplateF
 Route::post('template-families/{templateFamily}/variants', [Controllers\TemplateFamilyController::class, 'storeVariant']);
 Route::put('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'updateVariant']);
 Route::delete('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'destroyVariant']);
+Route::post('template-families/{templateFamily}/variants/{variant}/preview', [Controllers\TemplateFamilyController::class, 'preview']);
+Route::post('template-families/{templateFamily}/variants/{variant}/test-send', [Controllers\TemplateFamilyController::class, 'testSend']);
+Route::get('template-builder/sample-contexts', [Controllers\TemplateFamilyController::class, 'sampleContexts']);
+Route::post('template-assets', [Controllers\TemplateAssetController::class, 'store']);
+Route::delete('template-assets/{templateAsset}', [Controllers\TemplateAssetController::class, 'destroy']);
 
 Route::get('automations/trigger-fields/{objectType}', [Controllers\AutomationController::class, 'triggerFields']);
 Route::apiResource('automations', Controllers\AutomationController::class);

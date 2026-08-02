@@ -22,9 +22,10 @@ final class Threading
     {
         return match ($channel) {
             Channel::Email => self::forEmailSubject($contact, $subjectOrNumber, markNew: false),
-            Channel::Sms, Channel::Call => self::forNumberKeyed($contact, $channel, $subjectOrNumber),
-            Channel::Whatsapp => throw new InvalidArgumentException(
-                'WhatsApp thread resolution is not implemented yet.'
+            Channel::Sms, Channel::Call, Channel::Whatsapp => self::forNumberKeyed(
+                $contact,
+                $channel,
+                $subjectOrNumber,
             ),
         };
     }
@@ -61,9 +62,10 @@ final class Threading
     ): array {
         $resolved = match ($channel) {
             Channel::Email => self::forInboundEmail($contact, $subjectOrNumber, $headers),
-            Channel::Sms, Channel::Call => self::forNumberKeyed($contact, $channel, $subjectOrNumber),
-            Channel::Whatsapp => throw new InvalidArgumentException(
-                'WhatsApp thread resolution is not implemented yet.'
+            Channel::Sms, Channel::Call, Channel::Whatsapp => self::forNumberKeyed(
+                $contact,
+                $channel,
+                $subjectOrNumber,
             ),
         };
 
@@ -224,7 +226,9 @@ final class Threading
     {
         $channelKey = trim($number);
         if ($channelKey === '') {
-            throw new InvalidArgumentException('channel_key (counterparty number) is required for SMS/call threads.');
+            throw new InvalidArgumentException(
+                'channel_key (counterparty number) is required for SMS/call/WhatsApp threads.'
+            );
         }
 
         $evidence = [

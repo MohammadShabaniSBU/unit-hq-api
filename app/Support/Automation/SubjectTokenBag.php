@@ -35,9 +35,42 @@ final class SubjectTokenBag
             'contract.id',
             'contract.balance_owed',
             'contract.currency',
+            'contract.unit_name',
+            'contract.unit_rate',
             'deal.id',
             'deal.status',
             'pay_link',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function contractBag(Contract $contract): array
+    {
+        $contract->loadMissing(['unitItem.item', 'unitItem.price']);
+
+        $unitName = null;
+        $unitRate = null;
+        $unitItem = $contract->unitItem;
+        if ($unitItem !== null) {
+            $item = $unitItem->item;
+            if ($item !== null && isset($item->unit_number)) {
+                $unitName = (string) $item->unit_number;
+            }
+            $unitRate = $unitItem->base_rate !== null
+                ? (string) $unitItem->base_rate
+                : ($unitItem->price?->amount !== null ? (string) $unitItem->price->amount : null);
+        }
+
+        return [
+            'contract' => [
+                'id' => $contract->id,
+                'balance_owed' => $contract->balanceOwed(),
+                'currency' => $contract->currency,
+                'unit_name' => $unitName,
+                'unit_rate' => $unitRate,
+            ],
         ];
     }
 
@@ -59,11 +92,7 @@ final class SubjectTokenBag
 
         $contract = ComposerIdentity::mostRelevantContract($contact);
         if ($contract instanceof Contract) {
-            $bag['contract'] = [
-                'id' => $contract->id,
-                'balance_owed' => $contract->balanceOwed(),
-                'currency' => $contract->currency,
-            ];
+            $bag = array_replace_recursive($bag, self::contractBag($contract));
         }
 
         $deal = Deal::query()
@@ -108,11 +137,7 @@ final class SubjectTokenBag
 
         $contract = SubjectChain::contract($run);
         if ($contract instanceof Contract) {
-            $bag['contract'] = [
-                'id' => $contract->id,
-                'balance_owed' => $contract->balanceOwed(),
-                'currency' => $contract->currency,
-            ];
+            $bag = array_replace_recursive($bag, self::contractBag($contract));
         }
 
         if ($run->subject_type === 'deal' && $run->subject_id !== null) {

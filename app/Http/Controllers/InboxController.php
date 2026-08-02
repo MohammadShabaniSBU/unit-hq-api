@@ -56,7 +56,7 @@ class InboxController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'channel' => ['sometimes', 'nullable', Rule::in(['email', 'sms', 'call'])],
+            'channel' => ['sometimes', 'nullable', Rule::in(['email', 'sms', 'call', 'whatsapp'])],
             'filter' => ['sometimes', Rule::in(['mine', 'unassigned', 'all'])],
             'unread' => ['sometimes', 'boolean'],
             'q' => ['sometimes', 'nullable', 'string', 'max:255'],
