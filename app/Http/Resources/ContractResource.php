@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Enums\AccessSuspensionReason;
 use App\Enums\HoldType;
-use App\Models\AccessSuspension;
 use App\Models\AutopayAttempt;
 use App\Models\Contract;
 use App\Models\ContractItem;
@@ -16,6 +14,7 @@ use App\Models\Insurance;
 use App\Models\Unit;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessState;
 use App\Support\Billing\RecurringBilling;
 use App\Support\Contracts\ContractTransition;
 use App\Support\Delinquency\Overlock;
@@ -48,7 +47,8 @@ class ContractResource extends BaseResource
             'autopay'                => $this->autopayBlock(),
             'status'          => $this->enumValue($this->status),
             'overlock'        => $this->overlockBlock(),
-            'access_suspension' => $this->accessSuspensionBlock(),
+            'access_suspension' => AccessState::suspensionBlock($this->contract()),
+            'access_grants'   => AccessState::contractGrants($this->contract()),
             'allowed_transitions' => ContractTransition::allowed($this->contract()),
             'can_transfer'    => ContractTransition::canTransfer($this->contract()),
             'notice_given_on' => $this->date($this->notice_given_on),
@@ -211,40 +211,6 @@ class ContractResource extends BaseResource
     /**
      * @return array{active: bool, pending_restore: bool, reason: string|null, delinquency_id: int|null}
      */
-    private function accessSuspensionBlock(): array
-    {
-        $active = AccessSuspension::query()
-            ->active()
-            ->where('contract_id', $this->contract()->id)
-            ->first();
-
-        if ($active === null) {
-            return [
-                'active' => false,
-                'pending_restore' => false,
-                'reason' => null,
-                'delinquency_id' => null,
-            ];
-        }
-
-        $reason = $active->reason instanceof AccessSuspensionReason
-            ? $active->reason->value
-            : (string) $active->reason;
-
-        $pendingRestore = false;
-        if ($active->reason === AccessSuspensionReason::Delinquency && $active->delinquency_id !== null) {
-            $case = Delinquency::query()->find($active->delinquency_id);
-            $pendingRestore = $case !== null && ! $case->isOpen();
-        }
-
-        return [
-            'active' => true,
-            'pending_restore' => $pendingRestore,
-            'reason' => $reason,
-            'delinquency_id' => $active->delinquency_id !== null ? (int) $active->delinquency_id : null,
-        ];
-    }
-
     /**
      * Derived decoration: live overlock holds for this contract's delinquencies.
      *

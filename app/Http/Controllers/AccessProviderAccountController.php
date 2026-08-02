@@ -10,12 +10,14 @@ use App\Enums\CredentialStatus;
 use App\Http\Resources\AccessProviderAccountResource;
 use App\Models\AccessEvent;
 use App\Models\AccessProviderAccount;
+use App\Support\Access\AccessProviderException;
 use App\Support\Access\AccessProviderRegistry;
 use App\Support\Access\AccessVerificationException;
 use App\Support\Credentials\CredentialAudit;
 use App\Support\Credentials\CredentialMasker;
 use App\Support\Http\PublicUrlGuard;
 use App\Support\Http\PublicUrlUnreachableException;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -186,6 +188,60 @@ class AccessProviderAccountController extends Controller
         $account->save();
 
         return $this->success($this->payload(), 'Discovered points refreshed successfully.');
+    }
+
+    /**
+     * Human-only revoke of a provider grant we did not place (S15-02 posture).
+     */
+    public function revokeUnknownGrant(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'grant_ref' => ['required', 'string', 'max:128'],
+        ]);
+
+        $account = AccessProviderAccount::query()
+            ->where('is_active', true)
+            ->first();
+
+        if ($account === null || ! $account->isConnected()) {
+            throw ValidationException::withMessages([
+                'grant_ref' => ['Connect and activate a provider before revoking grants.'],
+            ]);
+        }
+
+        $attention = is_array($account->sync_attention) ? $account->sync_attention : [];
+        $unknown = is_array($attention['unknown_grants'] ?? null)
+            ? array_values($attention['unknown_grants'])
+            : [];
+
+        $ref = $validated['grant_ref'];
+        $known = collect($unknown)->contains(
+            fn ($row): bool => is_array($row) && (string) ($row['grant_ref'] ?? '') === $ref,
+        );
+
+        if (! $known) {
+            throw ValidationException::withMessages([
+                'grant_ref' => ['Unknown grant is not on the attention list.'],
+            ]);
+        }
+
+        try {
+            $this->registry->forAccount($account)->revoke($ref);
+        } catch (AccessProviderException $e) {
+            throw ValidationException::withMessages(['grant_ref' => [$e->getMessage()]]);
+        }
+
+        $attention['unknown_grants'] = array_values(array_filter(
+            $unknown,
+            fn ($row): bool => ! (is_array($row) && (string) ($row['grant_ref'] ?? '') === $ref),
+        ));
+        $account->forceFill(['sync_attention' => $attention])->save();
+
+        RecordsActivity::core('access.unknown_grant.revoked', $account, [
+            'grant_ref' => $ref,
+        ]);
+
+        return $this->success($this->payload(), 'Unknown grant revoked successfully.');
     }
 
     public function destroy(): JsonResponse

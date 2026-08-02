@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AccessGrantState;
 use App\Enums\BillingAnchorModel;
 use App\Enums\BillingInterval;
 use App\Enums\BillingRunItemOutcome;
@@ -264,13 +265,80 @@ class Contract extends Model
         });
     }
 
-    /** @return array{declined_count: int, post_cancellation_count: int} */
+    /**
+     * Contracts with a failed access grant (S15-04 attention chip).
+     */
+    public function scopeAttentionFailedGrants(Builder $query): Builder
+    {
+        return $query->whereHas('accessGrants', function (Builder $q): void {
+            $q->where('state', AccessGrantState::Failed->value);
+        });
+    }
+
+    /**
+     * Contracts flagged by denied-but-granted drift incidents (last 30 days).
+     */
+    public function scopeAttentionDriftDeniedButGranted(Builder $query): Builder
+    {
+        $ids = self::driftDeniedContractIds();
+        if ($ids === []) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->whereIn('id', $ids);
+    }
+
+    /**
+     * @return array{
+     *     declined_count: int,
+     *     post_cancellation_count: int,
+     *     failed_grants_count: int,
+     *     drift_denied_but_granted_count: int
+     * }
+     */
     public static function attentionCounts(): array
     {
         return [
             'declined_count' => (int) static::query()->attentionDeclined()->count(),
             'post_cancellation_count' => (int) static::query()->attentionPostCancellation()->count(),
+            'failed_grants_count' => (int) static::query()->attentionFailedGrants()->count(),
+            'drift_denied_but_granted_count' => count(self::driftDeniedContractIds()),
         ];
+    }
+
+    /** @return list<int> */
+    public static function driftDeniedContractIds(): array
+    {
+        $account = AccessProviderAccount::query()->where('is_active', true)->first();
+        if ($account === null || ! is_array($account->sync_attention)) {
+            return [];
+        }
+
+        $incidents = $account->sync_attention['drift_denied_but_granted'] ?? [];
+        if (! is_array($incidents)) {
+            return [];
+        }
+
+        $cutoff = now()->subDays(30);
+        $ids = [];
+        foreach ($incidents as $row) {
+            if (! is_array($row) || ! isset($row['contract_id'])) {
+                continue;
+            }
+            $occurred = isset($row['occurred_at']) ? (string) $row['occurred_at'] : '';
+            if ($occurred !== '') {
+                try {
+                    if (\Illuminate\Support\Carbon::parse($occurred)->lt($cutoff)) {
+                        continue;
+                    }
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+            $ids[] = (int) $row['contract_id'];
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /** @return BelongsTo<Contact, Contract> */
@@ -388,6 +456,12 @@ class Contract extends Model
     public function delinquencies(): HasMany
     {
         return $this->hasMany(Delinquency::class);
+    }
+
+    /** @return HasMany<AccessGrant, Contract> */
+    public function accessGrants(): HasMany
+    {
+        return $this->hasMany(AccessGrant::class);
     }
 
     /** @return HasMany<ContractNotice, Contract> */

@@ -6,6 +6,7 @@ use App\Enums\UnitState;
 use App\Enums\UnitStatus;
 use App\Models\Unit;
 use App\Models\UnitHold;
+use App\Support\Access\AccessState;
 use App\Support\Delinquency\Overlock;
 use App\Support\Time\SiteClock;
 use Illuminate\Http\Request;
@@ -66,6 +67,7 @@ class UnitResource extends BaseResource
                 ],
             ),
             'overlock' => $this->formatOverlock($overlock instanceof UnitHold ? $overlock : null),
+            'access' => $unit !== null ? AccessState::forUnit($unit) : null,
             'created_at'    => $this->datetime($this->created_at),
             'updated_at'    => $this->datetime($this->updated_at),
             'site'          => SiteResource::make($this->whenLoaded('site')),

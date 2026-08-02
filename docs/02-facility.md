@@ -45,6 +45,25 @@ The **commercial product definition**, not the physical box.
 - Catalogue prices (`prices.scope = catalogue`) morph-own the junction (`priceable` → `unit_class_rate`) and carry `effective_from` / `effective_to`.
 - A rate change means: **close the current catalogue price via `effective_to`, insert a successor price owned by the same junction**. Never update a price amount in place; never insert a second junction row. (See `03-pricing.md` and `roadmap/sprint-02-pricing-model/architecture-pricing.md`.)
 
+## Access points
+
+Physical locks/gates/zones discovered from an access provider and mapped into the
+facility hierarchy (S15).
+
+- **`access_points`** bind a provider point (`provider_point_id` + label) to a
+  `site_id` and optional `unit_id`.
+- Point types: `unit_door` (requires `unit_id`), `gate`, `zone` (site-level —
+  `unit_id` null).
+- **One live door per unit** (partial unique on `unit_id` where not archived).
+  Multi-door units are deferred — see `10-open-decisions.md`.
+- Mapping is archive-only (`archived_at`); archive releases the unit slot so a
+  replacement door can be assigned.
+- Discovery cache lives on `access_provider_accounts.discovered_points`; the
+  mapping UI surfaces unassigned, assigned, and assigned-but-vanished (removed at
+  the provider) rows. Bulk label→`unit_number` suggestions exist for large sites.
+- Desired grants / sync / suspensions are access-domain concerns (S15 roadmap);
+  facility pages expose mapped state and the events log only.
+
 ## Related tables
 
 | Table | Purpose |
@@ -54,6 +73,7 @@ The **commercial product definition**, not the physical box.
 | `units` | Physical boxes |
 | `site_maps` | Visual facility maps (SVG; id ↔ `unit_number`) |
 | `unit_class_rates` | Site × class → price junction |
+| `access_points` | Mapped provider locks/gates/zones (S15) |
 | `payment_provider_accounts` | Per-entity Stripe (and future debit) credentials + webhook routing — see `05-billing-ledger.md` |
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |

@@ -43,7 +43,7 @@ class ContractController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation'])],
+            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation', 'failed_grants', 'drift_denied_but_granted'])],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
             'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
             'status' => ['nullable', 'string'],
@@ -112,7 +112,7 @@ class ContractController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'search' => ['nullable', 'string'],
             'status' => ['nullable', 'string'],
-            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation'])],
+            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation', 'failed_grants', 'drift_denied_but_granted'])],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
             'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
@@ -177,6 +177,10 @@ class ContractController extends Controller
             $query->attentionDeclined();
         } elseif ($attention === 'post_cancellation') {
             $query->attentionPostCancellation();
+        } elseif ($attention === 'failed_grants') {
+            $query->attentionFailedGrants();
+        } elseif ($attention === 'drift_denied_but_granted') {
+            $query->attentionDriftDeniedButGranted();
         }
     }
 

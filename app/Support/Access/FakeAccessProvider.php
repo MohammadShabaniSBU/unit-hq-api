@@ -78,6 +78,14 @@ final class FakeAccessProvider implements AccessProvider
         unset(self::$grants[$ref]);
     }
 
+    /**
+     * @param  list<array{provider_point_id: string, label: string, kind_hint: string|null}>  $points
+     */
+    public static function setPoints(array $points): void
+    {
+        self::$points = $points;
+    }
+
     /** @param  array<string, mixed>  $credentials */
     public static function make(array $credentials = []): self
     {

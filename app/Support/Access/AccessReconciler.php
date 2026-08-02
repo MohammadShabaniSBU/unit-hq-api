@@ -651,6 +651,15 @@ final class AccessReconciler
                     'contact_id' => $local->contact_id,
                     'contract_id' => $local->contract_id,
                 ], anonymous: true);
+                if ($account !== null) {
+                    $this->appendDriftIncident($account, [
+                        'contract_id' => (int) $local->contract_id,
+                        'grant_ref' => $ref,
+                        'access_point_id' => (int) $local->access_point_id,
+                        'contact_id' => (int) $local->contact_id,
+                        'occurred_at' => now()->toIso8601String(),
+                    ]);
+                }
             }
         }
 
@@ -777,11 +786,62 @@ final class AccessReconciler
             $attention['applied_count'] = $applied;
             $attention['failed_count'] = $failed;
             $attention['unknown_grants'] = $attention['unknown_grants'] ?? [];
+            $attention['drift_denied_but_granted'] = $this->pruneDriftIncidents(
+                is_array($attention['drift_denied_but_granted'] ?? null)
+                    ? $attention['drift_denied_but_granted']
+                    : [],
+            );
 
             $account->forceFill([
                 'last_full_synced_at' => now(),
                 'sync_attention' => $attention,
             ])->save();
         }
+    }
+
+    /**
+     * @param  array{contract_id: int, grant_ref: string, access_point_id: int, contact_id: int, occurred_at: string}  $incident
+     */
+    private function appendDriftIncident(AccessProviderAccount $account, array $incident): void
+    {
+        $attention = is_array($account->sync_attention) ? $account->sync_attention : [];
+        $list = is_array($attention['drift_denied_but_granted'] ?? null)
+            ? $attention['drift_denied_but_granted']
+            : [];
+        $list[] = $incident;
+        $attention['drift_denied_but_granted'] = $this->pruneDriftIncidents($list);
+        $account->forceFill(['sync_attention' => $attention])->save();
+    }
+
+    /**
+     * Keep drift incidents for 30 days (operator queue without a dismiss API).
+     *
+     * @param  list<mixed>  $incidents
+     * @return list<array<string, mixed>>
+     */
+    private function pruneDriftIncidents(array $incidents): array
+    {
+        $cutoff = now()->subDays(30);
+        $out = [];
+
+        foreach ($incidents as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $occurred = isset($row['occurred_at']) ? (string) $row['occurred_at'] : '';
+            if ($occurred === '') {
+                continue;
+            }
+            try {
+                if (\Illuminate\Support\Carbon::parse($occurred)->lt($cutoff)) {
+                    continue;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+            $out[] = $row;
+        }
+
+        return array_values($out);
     }
 }

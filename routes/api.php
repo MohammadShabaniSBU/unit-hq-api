@@ -57,7 +57,17 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('settings/access', [Controllers\AccessProviderAccountController::class, 'update']);
     Route::post('settings/access/webhook', [Controllers\AccessProviderAccountController::class, 'createWebhook']);
     Route::post('settings/access/points/refresh', [Controllers\AccessProviderAccountController::class, 'refreshPoints']);
+    Route::get('settings/access/points', [Controllers\AccessPointController::class, 'index']);
+    Route::post('settings/access/points', [Controllers\AccessPointController::class, 'store']);
+    Route::post('settings/access/points/suggest', [Controllers\AccessPointController::class, 'suggest']);
+    Route::post('settings/access/points/bulk-assign', [Controllers\AccessPointController::class, 'bulkAssign']);
+    Route::patch('settings/access/points/{accessPoint}', [Controllers\AccessPointController::class, 'update']);
+    Route::post('settings/access/points/{accessPoint}/archive', [Controllers\AccessPointController::class, 'archive']);
+    Route::post('settings/access/unknown-grants/revoke', [Controllers\AccessProviderAccountController::class, 'revokeUnknownGrant']);
     Route::delete('settings/access', [Controllers\AccessProviderAccountController::class, 'destroy']);
+
+    Route::get('access/events', [Controllers\AccessEventController::class, 'index']);
+    Route::post('access/grants/{accessGrant}/retry', [Controllers\AccessGrantController::class, 'retry']);
 
     // Aircall user mapping + dial (S12-00).
     Route::get('settings/communications/call/aircall/users', [Controllers\AircallUserLinkController::class, 'index']);
@@ -198,6 +208,7 @@ Route::get('units/{unit}/holds', [Facility\UnitHoldController::class, 'index']);
 Route::post('units/{unit}/holds', [Facility\UnitHoldController::class, 'store']);
 Route::delete('units/{unit}/holds/{hold}', [Facility\UnitHoldController::class, 'destroy']);
 Route::get('units/{unit}/occupancies', [Facility\UnitOccupancyController::class, 'index']);
+Route::get('units/{unit}/access-events', [Controllers\AccessEventController::class, 'forUnit']);
 
 Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
 Route::get('contacts/filters/schema', [Controllers\ContactController::class, 'filterSchema']);
@@ -207,6 +218,7 @@ Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardControlle
 Route::patch('contacts/{contact}/status', [Controllers\ContactController::class, 'updateStatus']);
 Route::apiResource('contacts', Controllers\ContactController::class);
 Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
+Route::get('contacts/{contact}/access-events', [Controllers\AccessEventController::class, 'forContact']);
 Route::get('contacts/{contact}/payment-methods', [Controllers\ContactPaymentMethodController::class, 'index']);
 Route::post('contacts/{contact}/payment-methods/setup', [Controllers\ContactPaymentMethodController::class, 'setup']);
 Route::patch('payment-methods/{paymentMethod}', [Controllers\ContactPaymentMethodController::class, 'update']);

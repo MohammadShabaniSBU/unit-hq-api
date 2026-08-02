@@ -90,6 +90,11 @@
 | Clause libraries / conditional sections | S14-01 ships a fixed block vocabulary (`legal_section`, smart blocks). Reusable clause libraries and conditional sections are deferred. |
 | Notices / vacate via document channel | S14-01 is contract-purpose only. `contract_notices.document_ref` (S02) pairing with the document channel is the natural fast-follow, not built here. |
 | Per-entity e-sign accounts | S14-02 v1: one active e-sign provider account per install. Per-legal-entity signing brand deferred (unlike payments). |
+| Multi-door units | S15 v1: one live `unit_door` access point per unit (partial unique). Multi-door / multi-zone per unit deferred. |
+| Visitor / temporary access | S15 v1 grants follow occupancy + standing only. Short-lived visitor credentials deferred (model can grow via short-lived desired-grants later). |
+| Per-point access suspension | S15 suspensions are contract-total by design. Per-point suspension (deny door, keep gate) deferred. |
+| After-hours / schedule rules | Schedule-based access restrictions are provider-side territory for now; not modeled in desired-state v1. |
+| Drift incident dismiss | S15-04 stores denied-but-granted incidents on `sync_attention` for 30 days for contracts-index chips; no operator dismiss API yet. |
 
 ## Active WIP
 

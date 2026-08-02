@@ -22,6 +22,7 @@ use App\Models\MessageThread;
 use App\Models\Playbook;
 use App\Models\Unit;
 use App\Models\UnitHold;
+use App\Support\Access\AccessState;
 use App\Support\Delinquency\DelinquencyState;
 use App\Support\Delinquency\Overlock;
 use App\Support\Playbooks\PlaybookEnrolmentSummary;
@@ -227,6 +228,11 @@ final class InboxThreadContext
             'autopay' => 'off',
             'autopay_attempt_id' => null,
             'delinquency' => null,
+            'access' => [
+                'suspended' => false,
+                'reason' => null,
+                'day_count' => null,
+            ],
             'signature' => [
                 'envelope_status' => $envelopeStatus,
                 'sent_at' => $envelope?->sent_at?->toDateTimeString(),
@@ -294,6 +300,7 @@ final class InboxThreadContext
             'autopay' => $autopay,
             'autopay_attempt_id' => $autopayAttemptId,
             'delinquency' => $delinquency,
+            'access' => AccessState::inboxAccess($contract, $unit),
             'signature' => null,
         ];
     }
