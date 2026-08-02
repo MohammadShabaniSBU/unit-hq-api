@@ -401,6 +401,12 @@ class Contract extends Model
         return $this->hasMany(ContractDocument::class);
     }
 
+    /** @return HasMany<EsignEnvelope, Contract> */
+    public function esignEnvelopes(): HasMany
+    {
+        return $this->hasMany(EsignEnvelope::class);
+    }
+
     /** @return HasMany<ContractTransfer, Contract> */
     public function transfers(): HasMany
     {

@@ -104,5 +104,18 @@ return [
         'document_mismatch' => 'Le document n’appartient pas à ce contrat.',
         'preview_requires_contract' => 'L’aperçu du document nécessite un contrat.',
     ],
+    'esign' => [
+        'contract_not_awaiting' => 'Les enveloppes ne peuvent être envoyées que pour les contrats en attente de signature.',
+        'document_not_draft' => 'Le document sélectionné doit être un brouillon (ou le document figé pour un renvoi).',
+        'document_missing' => 'Aucun document de contrat n’est disponible pour l’envoi.',
+        'document_pdf_missing' => 'Le PDF du document de contrat n’est pas disponible sur le disque.',
+        'missing_signer_email' => 'Le contact n’a pas d’e-mail principal. Ajoutez-en un avant l’envoi pour signature.',
+        'missing_signer_name' => 'Le contact n’a pas de nom adapté pour le signataire.',
+        'no_provider_account' => 'Aucun compte fournisseur de signature électronique actif n’est connecté.',
+        'envelope_mismatch' => 'L’enveloppe n’appartient pas à ce contrat.',
+        'envelope_not_live' => 'Cette enveloppe n’est plus ouverte pour annulation ou renvoi.',
+        'artifact_missing' => 'L’artefact signé n’est pas disponible.',
+        'live_envelope_exists' => 'Ce contrat a déjà une enveloppe ouverte. Renvoyez-la ou annulez-la d’abord.',
+    ],
 ];
 

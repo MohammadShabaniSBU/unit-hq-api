@@ -285,6 +285,12 @@ Route::post('contracts/{contract}/documents', [Controllers\ContractDocumentContr
 Route::get('contracts/{contract}/documents/preview', [Controllers\ContractDocumentController::class, 'preview']);
 Route::post('contracts/{contract}/documents/{document}/regenerate', [Controllers\ContractDocumentController::class, 'regenerate']);
 Route::get('contracts/{contract}/documents/{document}/pdf', [Controllers\ContractDocumentController::class, 'pdf']);
+Route::get('contracts/{contract}/envelopes', [Controllers\EsignEnvelopeController::class, 'index']);
+Route::post('contracts/{contract}/envelopes', [Controllers\EsignEnvelopeController::class, 'store']);
+Route::post('contracts/{contract}/envelopes/{envelope}/resend', [Controllers\EsignEnvelopeController::class, 'resend']);
+Route::post('contracts/{contract}/envelopes/{envelope}/cancel', [Controllers\EsignEnvelopeController::class, 'cancel']);
+Route::get('contracts/{contract}/envelopes/{envelope}/signed-pdf', [Controllers\EsignEnvelopeController::class, 'signedPdf']);
+Route::get('contracts/{contract}/envelopes/{envelope}/certificate', [Controllers\EsignEnvelopeController::class, 'certificate']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
 Route::post('payment-requests/{paymentRequest}/cancel', [Controllers\PaymentRequestController::class, 'cancel']);

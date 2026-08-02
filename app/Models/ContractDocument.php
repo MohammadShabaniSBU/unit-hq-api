@@ -66,4 +66,10 @@ class ContractDocument extends Model
     {
         return $this->belongsTo(TemplateVariant::class);
     }
+
+    /** @return BelongsTo<EsignEnvelope, $this> */
+    public function envelope(): BelongsTo
+    {
+        return $this->belongsTo(EsignEnvelope::class, 'envelope_id');
+    }
 }

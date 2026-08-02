@@ -46,6 +46,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute();
         // Authoritative WA template approval sync (webhooks are latency only).
         $schedule->command('whatsapp:sync-templates')->hourly();
+        // E-sign: retry artifact download before completing; belt for provider expiry.
+        $schedule->command('esign:sweep-completion-pending')->hourly();
+        $schedule->command('esign:sweep-expired')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

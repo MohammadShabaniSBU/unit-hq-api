@@ -26,6 +26,11 @@ return [
     | (source_ref.recording_redacted + cleared media URLs). See
     | RedactContactCommand — not a JSON property_keys path.
     |
+    | E-sign signed PDFs + certificates (S14-03): retained on the private disk
+    | (esign_envelopes.signed_pdf_path / certificate_path). Legal-retention
+    | basis — same posture as issued-invoice snapshots. contacts:redact must
+    | NOT delete these artifacts; include them in any future GDPR export.
+    |
     */
 
     'property_keys' => [

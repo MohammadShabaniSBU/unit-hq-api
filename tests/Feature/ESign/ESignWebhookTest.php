@@ -122,7 +122,7 @@ class ESignWebhookTest extends TestCase
         $event->processed_at = null;
         $event->save();
 
-        (new ProcessEsignWebhookEvent($event->id))->handle(app(ESignProviderRegistry::class));
+        $this->app->call([new ProcessEsignWebhookEvent($event->id), 'handle']);
 
         $event->refresh();
         $this->assertSame('processed', $event->processing_status);

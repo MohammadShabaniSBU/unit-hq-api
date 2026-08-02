@@ -20,6 +20,7 @@ use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\FirstPeriodPlan;
+use App\Support\ESign\EnvelopeOrchestrator;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
@@ -134,6 +135,9 @@ final class ContractSigning
     public static function cancel(Contract $contract): void
     {
         $contract->refresh();
+
+        // Best-effort provider cancel for any live envelope before the status claim.
+        app(EnvelopeOrchestrator::class)->cancelLiveForContract($contract);
 
         self::releaseSignatureHolds($contract);
 

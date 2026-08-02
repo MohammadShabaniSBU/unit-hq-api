@@ -136,6 +136,7 @@ class SettingController extends Controller
             'default_reservation_expiration_value' => ['sometimes', 'required', 'integer', 'min:1'],
             'default_reservation_expiration_unit'  => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
             'default_notice_period_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
+            'default_esign_expiration_days'        => ['sometimes', 'required', 'integer', 'min:1', 'max:365'],
         ]);
 
         Setting::setLeasing(
@@ -145,6 +146,7 @@ class SettingController extends Controller
                 defaultReservationExpirationValue: $validated['default_reservation_expiration_value'] ?? null,
                 defaultReservationExpirationUnit: $validated['default_reservation_expiration_unit'] ?? null,
                 defaultNoticePeriodDays: $validated['default_notice_period_days'] ?? null,
+                defaultEsignExpirationDays: $validated['default_esign_expiration_days'] ?? null,
             )
         );
 

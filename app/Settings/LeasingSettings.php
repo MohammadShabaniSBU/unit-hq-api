@@ -10,6 +10,7 @@ readonly class LeasingSettings implements SettingsPayload
         public int $defaultReservationExpirationValue,
         public string $defaultReservationExpirationUnit,
         public int $defaultNoticePeriodDays,
+        public int $defaultEsignExpirationDays = 14,
     ) {}
 
     public static function default(): static
@@ -20,6 +21,7 @@ readonly class LeasingSettings implements SettingsPayload
             defaultReservationExpirationValue: 3,
             defaultReservationExpirationUnit: 'days',
             defaultNoticePeriodDays: 14,
+            defaultEsignExpirationDays: 14,
         );
     }
 
@@ -31,6 +33,7 @@ readonly class LeasingSettings implements SettingsPayload
             defaultReservationExpirationValue: $data['default_reservation_expiration_value'],
             defaultReservationExpirationUnit: $data['default_reservation_expiration_unit'],
             defaultNoticePeriodDays: (int) ($data['default_notice_period_days'] ?? 14),
+            defaultEsignExpirationDays: (int) ($data['default_esign_expiration_days'] ?? 14),
         );
     }
 
@@ -42,6 +45,7 @@ readonly class LeasingSettings implements SettingsPayload
             'default_reservation_expiration_value'  => $this->defaultReservationExpirationValue,
             'default_reservation_expiration_unit'   => $this->defaultReservationExpirationUnit,
             'default_notice_period_days'            => $this->defaultNoticePeriodDays,
+            'default_esign_expiration_days'         => $this->defaultEsignExpirationDays,
         ];
     }
 
@@ -51,6 +55,7 @@ readonly class LeasingSettings implements SettingsPayload
         ?int $defaultReservationExpirationValue = null,
         ?string $defaultReservationExpirationUnit = null,
         ?int $defaultNoticePeriodDays = null,
+        ?int $defaultEsignExpirationDays = null,
     ): static {
         return new self(
             defaultOfferExpirationValue: $defaultOfferExpirationValue ?? $this->defaultOfferExpirationValue,
@@ -58,6 +63,7 @@ readonly class LeasingSettings implements SettingsPayload
             defaultReservationExpirationValue: $defaultReservationExpirationValue ?? $this->defaultReservationExpirationValue,
             defaultReservationExpirationUnit: $defaultReservationExpirationUnit ?? $this->defaultReservationExpirationUnit,
             defaultNoticePeriodDays: $defaultNoticePeriodDays ?? $this->defaultNoticePeriodDays,
+            defaultEsignExpirationDays: $defaultEsignExpirationDays ?? $this->defaultEsignExpirationDays,
         );
     }
 }

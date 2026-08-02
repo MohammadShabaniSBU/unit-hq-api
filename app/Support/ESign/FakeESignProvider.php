@@ -16,6 +16,8 @@ final class FakeESignProvider implements ESignProvider
     /** @var array<string, array{spec: EnvelopeSpec, cancelled: bool, signed: bool}> */
     private static array $envelopes = [];
 
+    private static bool $failNextDownload = false;
+
     /** @param  array<string, mixed>  $credentials */
     public function __construct(
         private readonly array $credentials = [],
@@ -25,6 +27,13 @@ final class FakeESignProvider implements ESignProvider
     public static function reset(): void
     {
         self::$envelopes = [];
+        self::$failNextDownload = false;
+    }
+
+    /** Next downloadSigned call throws (tests — completion_pending path). */
+    public static function failNextDownload(): void
+    {
+        self::$failNextDownload = true;
     }
 
     /** @param  array<string, mixed>  $credentials */
@@ -76,11 +85,16 @@ final class FakeESignProvider implements ESignProvider
 
     public function downloadSigned(string $ref): SignedResult
     {
+        if (self::$failNextDownload) {
+            self::$failNextDownload = false;
+            throw new ESignProviderException('Fake download failure');
+        }
+
         if (! isset(self::$envelopes[$ref])) {
             throw new ESignProviderException('Unknown envelope: '.$ref);
         }
 
-        return new SignedResult(self::STUB_PDF, null);
+        return new SignedResult(self::STUB_PDF, '%PDF-1.4 fake-certificate');
     }
 
     public function parseWebhook(array $payload): ESignEvent
