@@ -10,16 +10,21 @@ use InvalidArgumentException;
  * One shape for JSON tables, CSV export, and dashboard tiles.
  * Money is never cross-currency: a money column has exactly one currency;
  * mixed currency input throws.
+ *
+ * Optional {@see $meta} carries footers, honesty notes, headlines, and
+ * trend series. CSV export uses columns + rows only.
  */
 final readonly class ReportResult
 {
     /**
      * @param  list<ReportColumn>  $columns
      * @param  list<array<string, mixed>>  $rows
+     * @param  array<string, mixed>  $meta
      */
     public function __construct(
         public array $columns,
         public array $rows,
+        public array $meta = [],
     ) {
         foreach ($this->columns as $column) {
             if (! $column instanceof ReportColumn) {
@@ -55,7 +60,11 @@ final readonly class ReportResult
     }
 
     /**
-     * @return array{columns: list<array{key: string, label: string, type: string, currency: string|null}>, rows: list<array<string, mixed>>}
+     * @return array{
+     *     columns: list<array{key: string, label: string, type: string, currency: string|null}>,
+     *     rows: list<array<string, mixed>>,
+     *     meta: array<string, mixed>
+     * }
      */
     public function toArray(): array
     {
@@ -65,6 +74,7 @@ final readonly class ReportResult
                 $this->columns,
             ),
             'rows' => $this->rows,
+            'meta' => $this->meta,
         ];
     }
 }

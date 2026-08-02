@@ -45,7 +45,9 @@ class ReportResultTest extends TestCase
         $result = new ReportResult(
             columns: [$column, ReportColumn::int('n', 'N')],
             rows: [['rent' => '10.00', 'n' => 1]],
+            meta: ['notes' => ['hello']],
         );
         $this->assertSame('EUR', $result->toArray()['columns'][0]['currency']);
+        $this->assertSame(['notes' => ['hello']], $result->toArray()['meta']);
     }
 }

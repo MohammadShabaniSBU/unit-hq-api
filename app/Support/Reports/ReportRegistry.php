@@ -17,6 +17,8 @@ final class ReportRegistry
      */
     private const REPORTS = [
         'demo' => DemoReport::class,
+        'rent-roll' => RentRollReport::class,
+        'occupancy' => OccupancyReport::class,
     ];
 
     /**

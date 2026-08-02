@@ -57,4 +57,46 @@ class ReportApiTest extends TestCase
         $this->assertStringStartsWith("\xEF\xBB\xBF", $body);
         $this->assertStringContainsString('Alpha;1;0,00', $body);
     }
+
+    public function test_rent_roll_and_occupancy_json_and_csv(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $entity = LegalEntity::factory()->create();
+        $site = Site::factory()->create([
+            'country_id' => $country->id,
+            'legal_entity_id' => $entity->id,
+            'currency' => 'EUR',
+            'name' => 'Beta',
+            'timezone' => 'Europe/Madrid',
+        ]);
+        $unitClass = UnitClass::factory()->create(['code' => 'X', 'size' => '5.00']);
+        Unit::factory()->create([
+            'site_id' => $site->id,
+            'unit_class_id' => $unitClass->id,
+            'enabled' => true,
+        ]);
+
+        Sanctum::actingAs($employee);
+
+        foreach (['rent-roll', 'occupancy'] as $name) {
+            $json = $this->getJson('/api/reports/'.$name.'?as_of=2026-06-15&site_ids[]='.$site->id);
+            $json->assertOk();
+            $json->assertJsonStructure([
+                'data' => [
+                    'columns',
+                    'rows',
+                    'meta',
+                ],
+            ]);
+
+            $csv = $this->get('/api/reports/'.$name.'?format=csv&locale=en&as_of=2026-06-15&site_ids[]='.$site->id);
+            $csv->assertOk();
+            $csv->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+            $this->assertStringStartsWith("\xEF\xBB\xBF", $csv->getContent());
+        }
+
+        $this->getJson('/api/reports/occupancy?as_of=2026-06-15&site_ids[]='.$site->id)
+            ->assertJsonPath('data.meta.headlines.unit.rentable', 1);
+    }
 }
