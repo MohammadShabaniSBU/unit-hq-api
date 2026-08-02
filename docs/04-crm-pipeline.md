@@ -60,12 +60,25 @@ The **inventory hold** — always references a **specific unit**, never a unit t
 
 ## Contract (ERD may say "Lease" — code says Contract)
 
-The operational and billing anchor, created at signing (walk-in or reservation convert).
+The operational and billing anchor. Creation accepts `signature_mode: immediate | remote` (default `immediate`) on both walk-in create and reservation convert.
+
+### Status lifecycle (signing)
+
+- **`awaiting_signature`** — remote path only. Unit protected by a `unit_holds` row (`hold_type = contract_signature`); **no charges, no invoice, no occupancy**. Cancelling releases the hold with zero ledger rows.
+- **`pending` / `active`** — reached when the contract becomes signed: at creation for walk-in (`immediate`), or when the e-sign webhook completes for remote. `ContractSigning::complete()` is the sole implementation (invariant 20).
+- Later stages unchanged: `notice_given` → `ended`, plus `cancelled`.
+
+### Signing & documents
+
+- Remote flow: create awaiting → generate contract document (template family `channel = document`) → send envelope via the active e-sign provider → webhook lands signed PDF + certificate (immutable hashes) → `ContractSigning::complete()`.
+- Board column **Awaiting signature** shows live-envelope aging (`sent_at` / `viewed_at` / `expires_at`; amber when expiring ≤ 3 days). Attention chips on the contracts index: declined, signed-after-cancellation (`post_cancellation`).
+
+### Billing snapshots
 
 - **Line items live on `ContractItem`** (polymorphic: unit, insurance, …), each with its **own `amount`** (net period price) — not flat FKs on the contract. Column was renamed from `rate` → `amount`.
 - Items also carry optional `price_id`, `description`, `declared_goods_value`, and tax snapshots (`tax_rate_id`, `tax_rate_snapshot`).
 - At signing the contract snapshots org billing: interval / count, `billing_anchor_model`, derived `billing_anchor_date`, `proration_method`, `move_in_date`, `deposit_amount`, and sets `billed_through` (billing cursor).
-- **First-period charges are written in the same transaction** as the contract (one charge per item + optional deposit). Preview (`convert-preview`) uses the same `BillingMath` / `ContractBilling` path so UI and ledger never diverge. Full detail: `05-billing-ledger.md`.
+- **First-period charges are written in the same transaction** as the contract becoming signed (one charge per item + optional deposit). Preview (`convert-preview`) uses the same `BillingMath` / `ContractBilling` path so UI and ledger never diverge. Full detail: `05-billing-ledger.md`.
 - `reservation_id` is **nullable** to support walk-ins.
 - The ledger attaches to the Contract: every charge, payment, and allocation references it.
 - Core activity: `contract.signed` via `RecordsActivity::core` (money in properties as strings).

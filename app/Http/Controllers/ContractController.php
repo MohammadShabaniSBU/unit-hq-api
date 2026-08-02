@@ -17,9 +17,12 @@ use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Contracts\ContractSigning;
+use App\Support\Filtering\FilterBuilder;
+use App\Support\Filtering\FilterTreeValidator;
 use App\Support\Time\SiteClock;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +38,16 @@ class ContractController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation'])],
+            'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
+            'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
+            'status' => ['nullable', 'string'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+        ]);
+
+        $chips = Contract::attentionCounts();
+
         $query = Contract::query()
             ->with([
                 'items' => fn ($q) => $q->whereNull('effective_to')->with(['item', 'price']),
@@ -43,29 +56,40 @@ class ContractController extends Controller
             ])
             ->latest();
 
-        if ($request->filled('contact_id')) {
-            $query->where('contact_id', $request->integer('contact_id'));
+        if (isset($validated['contact_id'])) {
+            $query->where('contact_id', $validated['contact_id']);
         }
 
-        if ($request->filled('deal_id')) {
-            $query->where('deal_id', $request->integer('deal_id'));
+        if (isset($validated['deal_id'])) {
+            $query->where('deal_id', $validated['deal_id']);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+        if (isset($validated['status'])) {
+            $query->where('status', $validated['status']);
         }
 
-        if ($request->filled('unit_id')) {
-            $query->whereHas('items', function ($q) use ($request): void {
+        if (isset($validated['unit_id'])) {
+            $query->whereHas('items', function ($q) use ($validated): void {
                 $q->where('item_type', 'unit')
-                  ->where('item_id', $request->integer('unit_id'));
+                    ->where('item_id', $validated['unit_id']);
             });
         }
 
-        return $this->paginated(
-            $query->paginate($this->perPage())->through(fn (Contract $contract) => ContractResource::make($contract)),
-            'Contracts retrieved successfully.'
-        );
+        $this->applyAttentionFilter($query, $validated['attention'] ?? null);
+
+        $paginator = $query->paginate($this->perPage())
+            ->through(fn (Contract $contract) => ContractResource::make($contract));
+
+        return response()->json([
+            'message' => 'Contracts retrieved successfully.',
+            'data' => $paginator->items(),
+            'meta' => array_merge([
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ], $chips),
+        ]);
     }
 
     public function filterSchema(): JsonResponse
@@ -75,27 +99,81 @@ class ContractController extends Controller
 
     public function search(Request $request): JsonResponse
     {
-        return $this->searchWithFilters(
-            $request,
-            AttributeEntityType::Contract,
-            Contract::query()->with(['items.item', 'contact', 'reservation']),
-            fn (Contract $contract) => ContractResource::make($contract),
-            'Contracts retrieved successfully.',
-            function ($query, Request $request): void {
-                if ($request->filled('contact_id')) {
-                    $query->where('contact_id', $request->integer('contact_id'));
-                }
-                if ($request->filled('deal_id')) {
-                    $query->where('deal_id', $request->integer('deal_id'));
-                }
-                if ($request->filled('unit_id')) {
-                    $query->whereHas('items', function ($q) use ($request): void {
-                        $q->where('item_type', 'unit')
-                            ->where('item_id', $request->integer('unit_id'));
-                    });
-                }
-            },
-        );
+        $validated = $request->validate([
+            'filter' => ['nullable', 'array'],
+            'sort' => ['nullable', 'array'],
+            'sort.*.field' => ['required_with:sort', 'string'],
+            'sort.*.dir' => ['nullable', 'in:asc,desc'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'search' => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
+            'attention' => ['nullable', Rule::in(['declined', 'post_cancellation'])],
+            'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
+            'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+        ]);
+
+        $chips = Contract::attentionCounts();
+
+        $query = Contract::query()->with(['items.item', 'contact', 'reservation']);
+
+        if (isset($validated['contact_id'])) {
+            $query->where('contact_id', $validated['contact_id']);
+        }
+        if (isset($validated['deal_id'])) {
+            $query->where('deal_id', $validated['deal_id']);
+        }
+        if (isset($validated['unit_id'])) {
+            $query->whereHas('items', function ($q) use ($validated): void {
+                $q->where('item_type', 'unit')
+                    ->where('item_id', $validated['unit_id']);
+            });
+        }
+
+        if ($request->filled('search') && method_exists($query->getModel(), 'scopeSearch')) {
+            $query->search($request->string('search')->trim()->value());
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status')->value());
+        }
+
+        $this->applyAttentionFilter($query, $validated['attention'] ?? null);
+
+        $filter = (new FilterTreeValidator(AttributeEntityType::Contract))
+            ->validate($validated['filter'] ?? null);
+
+        if ($filter !== null) {
+            FilterBuilder::for(AttributeEntityType::Contract)->apply($query, $filter);
+        }
+
+        FilterBuilder::for(AttributeEntityType::Contract)
+            ->applySort($query, $validated['sort'] ?? []);
+
+        $perPage = min(max((int) ($validated['per_page'] ?? $this->perPage()), 1), 100);
+        $paginator = $query->paginate($perPage)
+            ->through(fn (Contract $contract) => ContractResource::make($contract));
+
+        return response()->json([
+            'message' => 'Contracts retrieved successfully.',
+            'data' => $paginator->items(),
+            'meta' => array_merge([
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ], $chips),
+        ]);
+    }
+
+    private function applyAttentionFilter(Builder $query, ?string $attention): void
+    {
+        if ($attention === 'declined') {
+            $query->attentionDeclined();
+        } elseif ($attention === 'post_cancellation') {
+            $query->attentionPostCancellation();
+        }
     }
 
     public function store(Request $request): JsonResponse

@@ -9,6 +9,7 @@ use App\Enums\ContactChannelType;
 use App\Enums\ContractStatus;
 use App\Enums\DealStatus;
 use App\Enums\DelinquencyStepAction;
+use App\Enums\EsignEnvelopeStatus;
 use App\Enums\HoldType;
 use App\Models\AutopayAttempt;
 use App\Models\Contact;
@@ -109,11 +110,13 @@ final class InboxThreadContext
     {
         $contracts = $contact->contracts()
             ->whereIn('status', [
+                ContractStatus::AwaitingSignature->value,
                 ContractStatus::Pending->value,
                 ContractStatus::Active->value,
                 ContractStatus::NoticeGiven->value,
             ])
             ->with([
+                'liveEnvelope',
                 'unitItem.price',
                 'unitItem.item' => function (MorphTo $morphTo): void {
                     $morphTo->morphWith([Unit::class => ['site']]);
@@ -127,15 +130,23 @@ final class InboxThreadContext
             return [];
         }
 
+        $billingContracts = $contracts->filter(function (Contract $contract): bool {
+            $status = $contract->status instanceof ContractStatus
+                ? $contract->status
+                : ContractStatus::from((string) $contract->status);
+
+            return $status !== ContractStatus::AwaitingSignature;
+        });
+
         /** @var Collection<int, AutopayAttempt> $latestAttempts */
         $latestAttempts = AutopayAttempt::query()
-            ->whereIn('contract_id', $contracts->pluck('id'))
+            ->whereIn('contract_id', $billingContracts->pluck('id'))
             ->orderByDesc('id')
             ->get()
             ->groupBy('contract_id')
             ->map(fn (Collection $group) => $group->first());
 
-        $caseIds = $contracts->flatMap(fn (Contract $c) => $c->delinquencies)
+        $caseIds = $billingContracts->flatMap(fn (Contract $c) => $c->delinquencies)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -171,14 +182,58 @@ final class InboxThreadContext
         }
 
         return $contracts
-            ->map(fn (Contract $contract) => self::contractBlock(
-                $contract,
-                $latestAttempts->get($contract->id),
-                $liveOverlockCaseIds,
-                $latestSteps,
-            ))
+            ->map(function (Contract $contract) use ($latestAttempts, $liveOverlockCaseIds, $latestSteps) {
+                $status = $contract->status instanceof ContractStatus
+                    ? $contract->status
+                    : ContractStatus::from((string) $contract->status);
+
+                if ($status === ContractStatus::AwaitingSignature) {
+                    return self::awaitingSignatureBlock($contract);
+                }
+
+                return self::contractBlock(
+                    $contract,
+                    $latestAttempts->get($contract->id),
+                    $liveOverlockCaseIds,
+                    $latestSteps,
+                );
+            })
             ->values()
             ->all();
+    }
+
+    /** @return array<string, mixed> */
+    private static function awaitingSignatureBlock(Contract $contract): array
+    {
+        $unit = $contract->unitItem?->item instanceof Unit ? $contract->unitItem->item : null;
+        $envelope = $contract->liveEnvelope;
+        $envelopeStatus = null;
+        if ($envelope !== null) {
+            $envelopeStatus = $envelope->status instanceof EsignEnvelopeStatus
+                ? $envelope->status->value
+                : (string) $envelope->status;
+        }
+
+        return [
+            'id' => $contract->id,
+            'status' => ContractStatus::AwaitingSignature->value,
+            'unit_number' => $unit?->unit_number,
+            'site_name' => $unit?->site?->name,
+            'monthly_display' => [
+                'amount' => $contract->unitItem?->price?->amount,
+                'currency' => $contract->unitItem?->price?->currency ?? $contract->currency,
+            ],
+            'balance' => null,
+            'autopay' => 'off',
+            'autopay_attempt_id' => null,
+            'delinquency' => null,
+            'signature' => [
+                'envelope_status' => $envelopeStatus,
+                'sent_at' => $envelope?->sent_at?->toDateTimeString(),
+                'viewed_at' => $envelope?->viewed_at?->toDateTimeString(),
+                'expires_at' => $envelope?->expires_at?->toDateTimeString(),
+            ],
+        ];
     }
 
     /**
@@ -218,8 +273,13 @@ final class InboxThreadContext
             ];
         }
 
+        $status = $contract->status instanceof ContractStatus
+            ? $contract->status->value
+            : (string) $contract->status;
+
         return [
             'id' => $contract->id,
+            'status' => $status,
             'unit_number' => $unit?->unit_number,
             'site_name' => $unit?->site?->name,
             'monthly_display' => [
@@ -234,6 +294,7 @@ final class InboxThreadContext
             'autopay' => $autopay,
             'autopay_attempt_id' => $autopayAttemptId,
             'delinquency' => $delinquency,
+            'signature' => null,
         ];
     }
 

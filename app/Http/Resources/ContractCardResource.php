@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\EsignEnvelopeStatus;
+use App\Models\EsignEnvelope;
 use App\Models\Unit;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
 class ContractCardResource extends BaseResource
@@ -23,6 +26,7 @@ class ContractCardResource extends BaseResource
             'end_date' => $this->date($this->end_date),
             'signed_at' => $this->datetime($this->signed_at),
             'updated_at' => $this->datetime($this->updated_at),
+            'envelope' => $this->envelopePayload(),
             'contact' => $this->whenLoaded('contact', fn () => $this->contact === null ? null : [
                 'id' => $this->contact->id,
                 'name' => trim("{$this->contact->first_name} {$this->contact->last_name}"),
@@ -47,6 +51,35 @@ class ContractCardResource extends BaseResource
                         : null,
                 ];
             }),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function envelopePayload(): ?array
+    {
+        /** @var EsignEnvelope|null $envelope */
+        $envelope = $this->relationLoaded('liveEnvelope')
+            ? $this->liveEnvelope
+            : null;
+
+        if ($envelope === null) {
+            return null;
+        }
+
+        $status = $envelope->status instanceof EsignEnvelopeStatus
+            ? $envelope->status->value
+            : (string) $envelope->status;
+
+        $expiresAt = $envelope->expires_at;
+        $expiringSoon = $expiresAt !== null
+            && CarbonImmutable::parse($expiresAt)->lessThanOrEqualTo(CarbonImmutable::now()->addDays(3));
+
+        return [
+            'status' => $status,
+            'sent_at' => $this->datetime($envelope->sent_at),
+            'viewed_at' => $this->datetime($envelope->viewed_at),
+            'expires_at' => $this->datetime($envelope->expires_at),
+            'expiring_soon' => $expiringSoon,
         ];
     }
 }

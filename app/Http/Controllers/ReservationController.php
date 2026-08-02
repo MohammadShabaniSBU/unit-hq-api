@@ -440,6 +440,7 @@ class ReservationController extends Controller
             'end_date'              => ['nullable', 'date', 'after:start_date'],
             'move_in_date'          => ['nullable', 'date'],
             'signed_at'             => ['nullable', 'date'],
+            'signature_mode'        => ['nullable', Rule::in(['immediate', 'remote'])],
             'unit_rate'             => ['required', 'numeric', 'min:0'],
             'unit_tax_rate_id'      => ['nullable', 'integer', 'exists:tax_rates,id'],
             'insurance_id'          => ['nullable', 'integer', 'exists:insurances,id'],
@@ -448,7 +449,9 @@ class ReservationController extends Controller
             'deposit_amount'        => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $contract = DB::transaction(function () use ($reservation, $validated, $request) {
+        $signatureMode = $validated['signature_mode'] ?? 'immediate';
+
+        $contract = DB::transaction(function () use ($reservation, $validated, $request, $signatureMode) {
             $reservation->load([
                 'unit.unitClass',
                 'offerOption.discount',
@@ -474,9 +477,12 @@ class ReservationController extends Controller
             $today = $site !== null
                 ? SiteClock::today($site)
                 : CarbonImmutable::today()->startOfDay();
-            $status = $moveIn->toDateString() > $today->toDateString()
-                ? ContractStatus::Pending
-                : ContractStatus::Active;
+            $remote = $signatureMode === 'remote';
+            $status = $remote
+                ? ContractStatus::AwaitingSignature
+                : ($moveIn->toDateString() > $today->toDateString()
+                    ? ContractStatus::Pending
+                    : ContractStatus::Active);
 
             $contract = Contract::query()->create([
                 'contact_id'             => $reservation->contact_id,
@@ -576,16 +582,21 @@ class ReservationController extends Controller
             $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
             $contract->forceFill(['currency' => $agreedCurrency])->save();
 
-            // Release reservation hold before opening occupancy — same TX; half-open
-            // ranges allow occupancy to start on the release day.
+            // Release reservation hold before opening occupancy / signature hold —
+            // same TX; half-open ranges allow occupancy to start on the release day.
             $this->releaseReservationHold($reservation);
 
-            ContractSigning::complete(
-                $contract,
-                $endedOn,
-                $request->user()?->id,
-                $validated['signed_at'] ?? now(),
-            );
+            $createdBy = $request->user()?->id;
+            if ($remote) {
+                ContractSigning::writeSignatureHolds($contract, $contractItems, $createdBy);
+            } else {
+                ContractSigning::complete(
+                    $contract,
+                    $endedOn,
+                    $createdBy,
+                    $validated['signed_at'] ?? now(),
+                );
+            }
 
             $reservation->update(['status' => ReservationStatus::Confirmed->value]);
 

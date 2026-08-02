@@ -7,6 +7,7 @@ use App\Enums\BillingInterval;
 use App\Enums\BillingRunItemOutcome;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
+use App\Enums\EsignEnvelopeStatus;
 use App\Enums\MoveOutSettlement;
 use App\Enums\ProrationMethod;
 use App\Enums\TransferBilling;
@@ -225,6 +226,7 @@ class Contract extends Model
             ->when($search, fn (Builder $q) => $q->search($search))
             ->with([
                 'contact',
+                'liveEnvelope',
                 'unitItem.price',
                 'unitItem.item' => function (MorphTo $morphTo): void {
                     $morphTo->morphWith([
@@ -234,6 +236,41 @@ class Contract extends Model
             ])
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Awaiting contracts whose latest envelope was declined (operator queue).
+     */
+    public function scopeAttentionDeclined(Builder $query): Builder
+    {
+        return $query
+            ->where('status', ContractStatus::AwaitingSignature->value)
+            ->whereHas('esignEnvelopes', function (Builder $q): void {
+                $q->where('status', EsignEnvelopeStatus::Declined->value)
+                    ->whereRaw('esign_envelopes.id = (
+                        SELECT MAX(e2.id) FROM esign_envelopes e2
+                        WHERE e2.contract_id = esign_envelopes.contract_id
+                    )');
+            });
+    }
+
+    /**
+     * Contracts with a signed-after-cancellation envelope (Tier-3 human queue).
+     */
+    public function scopeAttentionPostCancellation(Builder $query): Builder
+    {
+        return $query->whereHas('esignEnvelopes', function (Builder $q): void {
+            $q->where('post_cancellation', true);
+        });
+    }
+
+    /** @return array{declined_count: int, post_cancellation_count: int} */
+    public static function attentionCounts(): array
+    {
+        return [
+            'declined_count' => (int) static::query()->attentionDeclined()->count(),
+            'post_cancellation_count' => (int) static::query()->attentionPostCancellation()->count(),
+        ];
     }
 
     /** @return BelongsTo<Contact, Contract> */
@@ -405,6 +442,19 @@ class Contract extends Model
     public function esignEnvelopes(): HasMany
     {
         return $this->hasMany(EsignEnvelope::class);
+    }
+
+    /** Live (sent|viewed) envelope — at most one per contract via partial unique index. */
+    public function liveEnvelope(): HasOne
+    {
+        return $this->hasOne(EsignEnvelope::class)
+            ->ofMany(
+                ['id' => 'max'],
+                fn (Builder $q) => $q->whereIn('status', [
+                    EsignEnvelopeStatus::Sent->value,
+                    EsignEnvelopeStatus::Viewed->value,
+                ]),
+            );
     }
 
     /** @return HasMany<ContractTransfer, Contract> */
