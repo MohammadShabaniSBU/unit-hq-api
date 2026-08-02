@@ -281,6 +281,7 @@ class DatabaseSeeder extends Seeder
         $this->call(OccupancySeeder::class);
         $this->call(BillingSeeder::class);
         $this->call(DebtPlaybookSeeder::class);
+        $this->call(ContractDocumentTemplateSeeder::class);
         $this->call(MessageStoreSeeder::class);
 
         $this->command?->info("RNG seed: {$rngSeed}");

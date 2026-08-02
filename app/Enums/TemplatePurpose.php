@@ -11,6 +11,7 @@ enum TemplatePurpose: string
     case Lead = 'lead';
     case Offer = 'offer';
     case System = 'system';
+    case Contract = 'contract';
 
     /**
      * Purposes returned when a picker filters by this purpose

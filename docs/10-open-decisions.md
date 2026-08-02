@@ -86,6 +86,10 @@
 | Playbook payment links | Debt playbook emails may reference balance / a pay-link *placeholder*; auto-creating a payment request per enrolment is an **S10-era action**, not S09. |
 | Multi-playbook debt routing | v1 rejects overlapping active debt playbooks for the same site-filter coverage (empty `site_ids` = all sites). Richer priority / routing across overlapping site sets deferred. |
 | Pre-signature deposits / holding fees | S14-00 deliberately does not support taking a deposit (or any payment) before remote signature completes. An `awaiting_signature` contract has zero ledger rows; cancel leaves no fiscal trace. Holding fees / pre-signature deposits are a known future ask. |
+| Document co-signers | S14-01 v1 requires exactly one `signature_anchor`. Multi-party / co-signer anchors deferred. |
+| Clause libraries / conditional sections | S14-01 ships a fixed block vocabulary (`legal_section`, smart blocks). Reusable clause libraries and conditional sections are deferred. |
+| Notices / vacate via document channel | S14-01 is contract-purpose only. `contract_notices.document_ref` (S02) pairing with the document channel is the natural fast-follow, not built here. |
+| Per-entity e-sign accounts | S14-02 v1: one active e-sign provider account per install. Per-legal-entity signing brand deferred (unlike payments). |
 
 ## Active WIP
 

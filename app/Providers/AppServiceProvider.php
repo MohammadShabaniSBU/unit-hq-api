@@ -28,6 +28,7 @@ use App\Listeners\WriteChannelSuppression;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
+use App\Support\ESign\ESignProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\Events\JobProcessing;
@@ -45,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ProviderRegistry::class);
         $this->app->singleton(ProviderResolver::class);
+        $this->app->singleton(ESignProviderRegistry::class);
     }
 
     /**

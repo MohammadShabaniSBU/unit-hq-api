@@ -101,6 +101,18 @@ return [
         'variant_mismatch' => 'The variant does not belong to this template family.',
         'test_send_failed' => 'The test email could not be sent.',
     ],
+    'documents' => [
+        'blocks_invalid' => 'The document block document is invalid.',
+        'blocks_unknown_version' => 'Unsupported document block version: :version.',
+        'blocks_unknown_type' => 'Unknown document block type: :type.',
+        'signature_anchor_required' => 'A contract document must contain exactly one signature_anchor block.',
+        'parties_required' => 'A contract document must contain a parties block.',
+        'terms_table_required' => 'A contract document must contain a terms_table block.',
+        'family_not_found' => 'No active contract document template family was found.',
+        'regenerate_frozen' => 'Sent or signed documents cannot be regenerated.',
+        'document_mismatch' => 'The document does not belong to this contract.',
+        'preview_requires_contract' => 'Document preview requires a contract context.',
+    ],
     'whatsapp' => [
         'window_closed' => 'The WhatsApp customer-service window is closed. Send an approved template instead.',
         'consent_floor' => 'This contact has no WhatsApp channel on file. A phone number alone is not WhatsApp opt-in.',

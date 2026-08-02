@@ -87,6 +87,7 @@ use Illuminate\Support\Carbon;
  * @property-read DepositSettlement|null           $depositSettlement
  * @property-read Collection<int, Delinquency>     $delinquencies
  * @property-read Collection<int, ContractNotice>  $notices
+ * @property-read Collection<int, ContractDocument> $documents
  * @property-read Collection<int, Note>              $notes
  */
 class Contract extends Model
@@ -392,6 +393,12 @@ class Contract extends Model
     public function holds(): HasMany
     {
         return $this->hasMany(UnitHold::class);
+    }
+
+    /** @return HasMany<ContractDocument, Contract> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ContractDocument::class);
     }
 
     /** @return HasMany<ContractTransfer, Contract> */

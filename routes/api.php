@@ -274,6 +274,11 @@ Route::get('contracts/{contract}/autopay', [Controllers\ContractAutopayControlle
 Route::put('contracts/{contract}/autopay', [Controllers\ContractAutopayController::class, 'update']);
 Route::post('contracts/{contract}/autopay/retry', [Controllers\ContractAutopayController::class, 'retry']);
 Route::get('contracts/{contract}/next-bill', [Controllers\ContractController::class, 'nextBill']);
+Route::get('contracts/{contract}/documents', [Controllers\ContractDocumentController::class, 'index']);
+Route::post('contracts/{contract}/documents', [Controllers\ContractDocumentController::class, 'store']);
+Route::get('contracts/{contract}/documents/preview', [Controllers\ContractDocumentController::class, 'preview']);
+Route::post('contracts/{contract}/documents/{document}/regenerate', [Controllers\ContractDocumentController::class, 'regenerate']);
+Route::get('contracts/{contract}/documents/{document}/pdf', [Controllers\ContractDocumentController::class, 'pdf']);
 Route::apiResource('contracts', Controllers\ContractController::class);
 
 Route::post('payment-requests/{paymentRequest}/cancel', [Controllers\PaymentRequestController::class, 'cancel']);

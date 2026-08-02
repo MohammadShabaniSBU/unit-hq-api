@@ -21,6 +21,8 @@ use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\SiteLocale;
 use App\Support\Communications\TemplateBuilderContext;
+use App\Support\Documents\ContractDocumentRenderer;
+use App\Support\Documents\DocumentBlockDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -82,16 +84,25 @@ class TemplateFamilyController extends Controller
             'blocks' => ['sometimes', 'nullable', 'array'],
         ]);
 
+        $channel = TemplateChannel::from($validated['channel'] instanceof TemplateChannel
+            ? $validated['channel']->value
+            : (string) $validated['channel']);
+        $purpose = isset($validated['purpose'])
+            ? ($validated['purpose'] instanceof TemplatePurpose
+                ? $validated['purpose']
+                : TemplatePurpose::from((string) $validated['purpose']))
+            : TemplatePurpose::General;
+
         $blocksDoc = null;
         if (array_key_exists('blocks', $validated) && $validated['blocks'] !== null) {
-            $blocksDoc = EmailBlockDocument::validate($validated['blocks']);
+            $blocksDoc = $this->validateBlocksForChannel($channel, $validated['blocks'], $purpose);
         }
 
-        $family = DB::transaction(function () use ($validated, $request, $blocksDoc): TemplateFamily {
+        $family = DB::transaction(function () use ($validated, $request, $blocksDoc, $purpose): TemplateFamily {
             $family = TemplateFamily::query()->create([
                 'channel' => $validated['channel'],
                 'name' => $validated['name'],
-                'purpose' => $validated['purpose'] ?? TemplatePurpose::General,
+                'purpose' => $purpose,
             ]);
 
             TemplateVariant::query()->create([
@@ -268,6 +279,20 @@ class TemplateFamilyController extends Controller
             }
         }
 
+        if ($templateFamily->channel === TemplateChannel::Document) {
+            if ($contract === null) {
+                throw ValidationException::withMessages([
+                    'contract_id' => [__('errors.documents.preview_requires_contract')],
+                ]);
+            }
+
+            $rendered = ContractDocumentRenderer::render($contract, $variant);
+
+            return response($rendered['html'], 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+            ]);
+        }
+
         $context = TemplateBuilderContext::for($contact, $contract);
         $rendered = EmailTemplateRenderer::render($variant, $context, previewMarkers: true);
 
@@ -283,6 +308,10 @@ class TemplateFamilyController extends Controller
         EmailSender $sender,
     ): JsonResponse {
         $this->assertVariantBelongs($templateFamily, $variant);
+
+        if ($templateFamily->channel === TemplateChannel::Document) {
+            return $this->error('Test send is not available for document templates.', [], 422);
+        }
 
         $validated = $request->validate([
             'to' => ['required', 'email', 'max:255'],
@@ -427,7 +456,14 @@ class TemplateFamilyController extends Controller
         }
 
         if (array_key_exists('blocks', $validated) && $validated['blocks'] !== null) {
-            $doc = EmailBlockDocument::validate($validated['blocks']);
+            $family = $variant->family ?? TemplateFamily::query()->findOrFail($variant->template_family_id);
+            $channel = $family->channel instanceof TemplateChannel
+                ? $family->channel
+                : TemplateChannel::from((string) $family->channel);
+            $purpose = $family->purpose instanceof TemplatePurpose
+                ? $family->purpose
+                : TemplatePurpose::from((string) $family->purpose);
+            $doc = $this->validateBlocksForChannel($channel, $validated['blocks'], $purpose);
             $variant->blocks = $doc;
             $variant->legacy_html = null;
         } else {
@@ -441,6 +477,21 @@ class TemplateFamilyController extends Controller
 
         $variant->updated_by = $employeeId;
         $variant->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $blocks
+     * @return array{version: int, blocks: list<array{id: string, type: string, params: array<string, mixed>}>}
+     */
+    private function validateBlocksForChannel(
+        TemplateChannel $channel,
+        array $blocks,
+        TemplatePurpose $purpose,
+    ): array {
+        return match ($channel) {
+            TemplateChannel::Document => DocumentBlockDocument::validate($blocks, $purpose),
+            default => EmailBlockDocument::validate($blocks),
+        };
     }
 
     private function assertVariantBelongs(TemplateFamily $family, TemplateVariant $variant): void

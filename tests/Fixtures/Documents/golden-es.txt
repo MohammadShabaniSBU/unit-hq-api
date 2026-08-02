@@ -1,0 +1,96 @@
+Contrato de alquiler de trastero
+ 
+ @page { margin: 24mm 18mm 28mm 18mm; }
+ body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; line-height: 1.45; }
+ h1 { font-size: 18px; margin: 0 0 12px; }
+ h2 { font-size: 14px; margin: 16px 0 8px; }
+ h3 { font-size: 12px; margin: 12px 0 6px; }
+ .divider { border-top: 1px solid #ccc; margin: 12px 0; }
+ .parties { width: 100%; margin: 12px 0 18px; }
+ .parties td { width: 50%; vertical-align: top; padding-right: 12px; }
+ .box { border: 1px solid #ccc; padding: 10px; min-height: 70px; }
+ .label { font-size: 9px; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+ .flag { color: #b45309; font-size: 10px; margin-top: 6px; }
+ table.terms { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+ table.terms th, table.terms td { border-bottom: 1px solid #ddd; padding: 6px 4px; text-align: left; }
+ table.terms th.num, table.terms td.num { text-align: right; }
+ .meta-row { margin: 4px 0; }
+ .signature { margin-top: 28px; padding: 16px; border: 1px dashed #999; }
+ .signature-token { font-family: DejaVu Sans Mono, monospace; font-size: 12px; }
+ .page-break { page-break-after: always; }
+ .footer {
+ position: fixed;
+ bottom: -18mm;
+ left: 0;
+ right: 0;
+ height: 14mm;
+ font-size: 9px;
+ color: #666;
+ text-align: center;
+ }
+ .page-number:after { content: counter(page); }
+ 
+ 
+ Página 
+ 
+ Contrato de alquiler de trastero
+ 
+ 1. Contrato
+ El presente contrato se celebra entre el arrendador y el inquilino identificados a continuación para la(s) unidad(es) de trastero descritas en la tabla de condiciones.
+ 
+ 
+ 
+ 
+ Arrendador / Emisor
+ 
+ Acme Storage SL
+ B12345678
+ Calle Emisor 1
+ 28001 Madrid
+ ES
+ 
+ 
+ 
+ Inquilino
+ 
+ Ada Lovelace
+ 12345678Z
+ Calle Mayor 1
+ 28013 Madrid
+ ES
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Unidad / concepto
+ Importe mensual
+ 
+ 
+ 
+ 
+ A-101
+ 125.50 EUR
+ 
+ 
+ 
+ Fianza: 200.00 EUR
+ Fecha de entrada: 2026-08-01
+ Plazo de preaviso: 14 días
+ Periodicidad de facturación: month
+ 
+ 2. Obligaciones del inquilino
+ El inquilino (Ada Lovelace) se compromete a pagar el alquiler indicado, mantener la unidad segura y preavisar antes de la salida.
+Los bienes se almacenan bajo riesgo del inquilino salvo seguro acordado por separado.
+ 
+ 
+ 
+ 3. Legislación aplicable
+ Este contrato se rige por la legislación aplicable en el centro donde se encuentra la unidad.
+ 
+ 
+ Firma
+ {{signature}}

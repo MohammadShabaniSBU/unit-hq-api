@@ -8,4 +8,5 @@ enum TemplateChannel: string
 {
     case Email = 'email';
     case Sms = 'sms';
+    case Document = 'document';
 }

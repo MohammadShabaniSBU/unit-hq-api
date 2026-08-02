@@ -101,6 +101,18 @@ return [
         'variant_mismatch' => 'La variante no pertenece a esta familia de plantillas.',
         'test_send_failed' => 'No se pudo enviar el email de prueba.',
     ],
+    'documents' => [
+        'blocks_invalid' => 'El documento de bloques no es válido.',
+        'blocks_unknown_version' => 'Versión de documento de bloques no soportada: :version.',
+        'blocks_unknown_type' => 'Tipo de bloque de documento desconocido: :type.',
+        'signature_anchor_required' => 'Un documento de contrato debe contener exactamente un bloque signature_anchor.',
+        'parties_required' => 'Un documento de contrato debe contener un bloque parties.',
+        'terms_table_required' => 'Un documento de contrato debe contener un bloque terms_table.',
+        'family_not_found' => 'No se encontró una familia de plantillas de documento de contrato activa.',
+        'regenerate_frozen' => 'Los documentos enviados o firmados no se pueden regenerar.',
+        'document_mismatch' => 'El documento no pertenece a este contrato.',
+        'preview_requires_contract' => 'La vista previa del documento requiere un contrato.',
+    ],
     'whatsapp' => [
         'window_closed' => 'La ventana de atención de WhatsApp está cerrada. Envíe una plantilla aprobada.',
         'consent_floor' => 'Este contacto no tiene un canal de WhatsApp registrado. Un teléfono no implica opt-in de WhatsApp.',

@@ -1,0 +1,96 @@
+Self-storage rental agreement
+ 
+ @page { margin: 24mm 18mm 28mm 18mm; }
+ body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; line-height: 1.45; }
+ h1 { font-size: 18px; margin: 0 0 12px; }
+ h2 { font-size: 14px; margin: 16px 0 8px; }
+ h3 { font-size: 12px; margin: 12px 0 6px; }
+ .divider { border-top: 1px solid #ccc; margin: 12px 0; }
+ .parties { width: 100%; margin: 12px 0 18px; }
+ .parties td { width: 50%; vertical-align: top; padding-right: 12px; }
+ .box { border: 1px solid #ccc; padding: 10px; min-height: 70px; }
+ .label { font-size: 9px; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+ .flag { color: #b45309; font-size: 10px; margin-top: 6px; }
+ table.terms { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+ table.terms th, table.terms td { border-bottom: 1px solid #ddd; padding: 6px 4px; text-align: left; }
+ table.terms th.num, table.terms td.num { text-align: right; }
+ .meta-row { margin: 4px 0; }
+ .signature { margin-top: 28px; padding: 16px; border: 1px dashed #999; }
+ .signature-token { font-family: DejaVu Sans Mono, monospace; font-size: 12px; }
+ .page-break { page-break-after: always; }
+ .footer {
+ position: fixed;
+ bottom: -18mm;
+ left: 0;
+ right: 0;
+ height: 14mm;
+ font-size: 9px;
+ color: #666;
+ text-align: center;
+ }
+ .page-number:after { content: counter(page); }
+ 
+ 
+ Page 
+ 
+ Self-storage rental agreement
+ 
+ 1. Agreement
+ This agreement is entered into between the landlord and the tenant named below for the self-storage unit(s) described in the terms table.
+ 
+ 
+ 
+ 
+ Landlord / Issuer
+ 
+ Acme Storage SL
+ B12345678
+ Calle Emisor 1
+ 28001 Madrid
+ ES
+ 
+ 
+ 
+ Tenant
+ 
+ Ada Lovelace
+ 12345678Z
+ Calle Mayor 1
+ 28013 Madrid
+ ES
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Unit / item
+ Monthly amount
+ 
+ 
+ 
+ 
+ A-101
+ 125.50 EUR
+ 
+ 
+ 
+ Deposit: 200.00 EUR
+ Move-in date: 2026-08-01
+ Notice period: 14 days
+ Billing cadence: month
+ 
+ 2. Tenant obligations
+ The tenant (Ada Lovelace) agrees to pay rent as specified, keep the unit secure, and give notice before vacating.
+Goods are stored at the tenant's risk unless insurance cover is separately agreed.
+ 
+ 
+ 
+ 3. Governing law
+ This agreement is governed by the laws applicable at the site where the unit is located.
+ 
+ 
+ Signature
+ {{signature}}

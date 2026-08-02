@@ -92,5 +92,17 @@ return [
         'transition_not_allowed' => 'Impossible de faire passer l’exécution d’automatisation de :from à :to.',
         'already_terminal' => 'L’exécution d’automatisation est déjà :status et ne peut pas être annulée.',
     ],
+    'documents' => [
+        'blocks_invalid' => 'Le document de blocs est invalide.',
+        'blocks_unknown_version' => 'Version de document de blocs non prise en charge : :version.',
+        'blocks_unknown_type' => 'Type de bloc de document inconnu : :type.',
+        'signature_anchor_required' => 'Un document de contrat doit contenir exactement un bloc signature_anchor.',
+        'parties_required' => 'Un document de contrat doit contenir un bloc parties.',
+        'terms_table_required' => 'Un document de contrat doit contenir un bloc terms_table.',
+        'family_not_found' => 'Aucune famille de modèles de document de contrat active n’a été trouvée.',
+        'regenerate_frozen' => 'Les documents envoyés ou signés ne peuvent pas être régénérés.',
+        'document_mismatch' => 'Le document n’appartient pas à ce contrat.',
+        'preview_requires_contract' => 'L’aperçu du document nécessite un contrat.',
+    ],
 ];
 
