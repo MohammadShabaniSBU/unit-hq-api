@@ -7,6 +7,7 @@ namespace App\Support\Contracts;
 use App\Enums\ContractStatus;
 use App\Models\Contract;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessSync;
 use App\Support\RecordsActivity;
 use Illuminate\Validation\ValidationException;
 
@@ -162,6 +163,11 @@ final class ContractTransition
             'from' => $from->value,
             'to' => $to->value,
         ]);
+
+        $activeFamily = [ContractStatus::Active, ContractStatus::NoticeGiven];
+        if (in_array($from, $activeFamily, true) || in_array($to, $activeFamily, true)) {
+            AccessSync::nudge((int) $contract->id);
+        }
     }
 
     private static function isPermitted(Contract $contract, ContractStatus $to): bool

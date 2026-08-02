@@ -24,6 +24,7 @@ use App\Support\ESign\EnvelopeOrchestrator;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
+use App\Support\Access\AccessSync;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -124,6 +125,8 @@ final class ContractSigning
         if ($contract->contact !== null) {
             RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
         }
+
+        AccessSync::nudge((int) $contract->id);
     }
 
     /**

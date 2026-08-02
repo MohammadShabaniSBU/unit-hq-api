@@ -18,6 +18,10 @@ final class FakeAccessProvider implements AccessProvider
     /** @var array<string, array{point: string, person: array<string, mixed>, mode: string, credential_ref: string, pin: string|null}> */
     private static array $grants = [];
 
+    private static ?string $failNextGrant = null;
+
+    private static ?string $failNextRevoke = null;
+
     /** @param  array<string, mixed>  $credentials */
     public function __construct(
         private readonly array $credentials = [],
@@ -38,6 +42,40 @@ final class FakeAccessProvider implements AccessProvider
             ],
         ];
         self::$grants = [];
+        self::$failNextGrant = null;
+        self::$failNextRevoke = null;
+    }
+
+    public static function failNextGrant(?string $message = 'Simulated grant failure'): void
+    {
+        self::$failNextGrant = $message;
+    }
+
+    public static function failNextRevoke(?string $message = 'Simulated revoke failure'): void
+    {
+        self::$failNextRevoke = $message;
+    }
+
+    /**
+     * Inject a provider-side grant the reconciler does not know about (drift).
+     */
+    public static function injectGrant(
+        string $ref,
+        string $providerPointId,
+        ?string $credentialRef = null,
+    ): void {
+        self::$grants[$ref] = [
+            'point' => $providerPointId,
+            'person' => ['name' => 'Unknown'],
+            'mode' => AccessCredentialMode::AppInvite->value,
+            'credential_ref' => $credentialRef ?? 'cred-injected',
+            'pin' => null,
+        ];
+    }
+
+    public static function dropGrant(string $ref): void
+    {
+        unset(self::$grants[$ref]);
     }
 
     /** @param  array<string, mixed>  $credentials */
@@ -87,6 +125,12 @@ final class FakeAccessProvider implements AccessProvider
 
     public function grant(GrantSpec $spec): GrantRef
     {
+        if (self::$failNextGrant !== null) {
+            $message = self::$failNextGrant;
+            self::$failNextGrant = null;
+            throw new AccessProviderException($message);
+        }
+
         if ($spec->mode === AccessCredentialMode::AppInvite->value) {
             $email = $spec->person['email'] ?? null;
             if (! is_string($email) || $email === '') {
@@ -113,6 +157,12 @@ final class FakeAccessProvider implements AccessProvider
 
     public function revoke(string $grantRef): void
     {
+        if (self::$failNextRevoke !== null) {
+            $message = self::$failNextRevoke;
+            self::$failNextRevoke = null;
+            throw new AccessProviderException($message);
+        }
+
         if (! isset(self::$grants[$grantRef])) {
             throw new AccessProviderException('Unknown grant: '.$grantRef);
         }

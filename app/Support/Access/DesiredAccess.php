@@ -25,6 +25,47 @@ use Illuminate\Support\Collection;
 final class DesiredAccess
 {
     /**
+     * Desired grants for a single contract (filters the site projection).
+     *
+     * @return Collection<int, DesiredGrant>
+     */
+    public static function forContract(Contract $contract): Collection
+    {
+        $site = self::siteForContract($contract);
+        if ($site === null) {
+            return collect();
+        }
+
+        $contractId = (int) $contract->id;
+
+        return self::forSite($site)->filter(
+            fn (DesiredGrant $g): bool => $g->contractId === $contractId,
+        )->values();
+    }
+
+    private static function siteForContract(Contract $contract): ?Site
+    {
+        $contract->loadMissing(['unitItem.item.site']);
+
+        $item = $contract->unitItem?->item;
+        if ($item instanceof Unit && $item->site instanceof Site) {
+            return $item->site;
+        }
+
+        // Vacate closes the unit item — fall back to the latest occupancy's unit.
+        $occupancy = UnitOccupancy::query()
+            ->with('unit.site')
+            ->where('contract_id', $contract->id)
+            ->orderByDesc('started_on')
+            ->orderByDesc('id')
+            ->first();
+
+        $unit = $occupancy?->unit;
+
+        return $unit?->site instanceof Site ? $unit->site : null;
+    }
+
+    /**
      * @return Collection<int, DesiredGrant>
      */
     public static function forSite(Site $site): Collection

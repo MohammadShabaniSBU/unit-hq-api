@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\Unit;
+use App\Support\Access\AccessSync;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Closure;
@@ -110,6 +111,8 @@ final class ActivatePendingContracts
                 'from' => ContractStatus::Pending->value,
                 'to' => ContractStatus::Active->value,
             ]);
+
+            AccessSync::nudge((int) $contract->id);
 
             return 'activated';
         });

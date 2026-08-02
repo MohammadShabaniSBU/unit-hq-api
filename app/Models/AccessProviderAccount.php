@@ -30,6 +30,8 @@ use Illuminate\Support\Str;
  * @property bool                    $is_active
  * @property array|null              $discovered_points
  * @property Carbon|null             $points_discovered_at
+ * @property Carbon|null             $last_full_synced_at
+ * @property array|null              $sync_attention
  * @property Carbon                  $created_at
  * @property Carbon                  $updated_at
  */
@@ -49,6 +51,8 @@ class AccessProviderAccount extends Model
         'is_active',
         'discovered_points',
         'points_discovered_at',
+        'last_full_synced_at',
+        'sync_attention',
     ];
 
     protected $hidden = [
@@ -67,6 +71,8 @@ class AccessProviderAccount extends Model
             'is_active' => 'boolean',
             'discovered_points' => 'array',
             'points_discovered_at' => 'datetime',
+            'last_full_synced_at' => 'datetime',
+            'sync_attention' => 'array',
         ];
     }
 

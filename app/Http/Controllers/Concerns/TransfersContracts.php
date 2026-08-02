@@ -15,6 +15,7 @@ use App\Models\ContractItem;
 use App\Models\ContractTransfer;
 use App\Models\Unit;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessSync;
 use App\Support\Billing\TransferSettlement;
 use App\Support\Contracts\ContractTransition;
 use App\Support\Fiscal\InvoiceIssuer;
@@ -183,6 +184,8 @@ trait TransfersContracts
             if ($contract->billedThrough() !== $billedThroughBefore) {
                 $contract->forceFill(['billed_through' => $billedThroughBefore])->save();
             }
+
+            AccessSync::nudge((int) $contract->id);
         });
 
         $contract->refresh();

@@ -21,6 +21,7 @@ use App\Models\Setting;
 use App\Models\Unit;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessSync;
 use App\Support\Billing\VacateSettlement;
 use App\Support\Contracts\ContractTransition;
 use App\Support\Delinquency\Overlock;
@@ -81,6 +82,8 @@ trait VacatesContracts
                 'notice_given_on' => $today->toDateString(),
                 'scheduled_move_out_on' => $scheduled->toDateString(),
             ]);
+
+            AccessSync::nudge((int) $contract->id);
         });
 
         $contract->refresh();
@@ -245,6 +248,7 @@ trait VacatesContracts
             }
 
             $vacatedContractId = (int) $contract->id;
+            AccessSync::nudge($vacatedContractId);
             DB::afterCommit(static function () use ($vacatedContractId): void {
                 EvaluateDelinquency::dispatch(
                     $vacatedContractId,

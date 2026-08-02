@@ -11,6 +11,7 @@ use App\Models\Delinquency;
 use App\Models\Employee;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessSync;
 use Illuminate\Support\Collection;
 
 /**
@@ -117,6 +118,8 @@ final class Overlock
             throw new \RuntimeException("No units to overlock for delinquency {$case->id}.");
         }
 
+        AccessSync::nudge((int) $contract->id);
+
         return count($holds) === 1 ? $holds[0] : $holds;
     }
 
@@ -171,6 +174,8 @@ final class Overlock
             ],
             createdBy: $by,
         );
+
+        AccessSync::nudge((int) $case->contract_id);
 
         return $holds;
     }

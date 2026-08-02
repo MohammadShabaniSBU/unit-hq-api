@@ -49,6 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // E-sign: retry artifact download before completing; belt for provider expiry.
         $schedule->command('esign:sweep-completion-pending')->hourly();
         $schedule->command('esign:sweep-expired')->daily();
+        // Authoritative access convergence (nudges are latency only).
+        $schedule->command('access:sync')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
