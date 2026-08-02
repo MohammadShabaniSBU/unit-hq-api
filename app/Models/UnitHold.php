@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int         $unit_id
  * @property HoldType    $hold_type
  * @property int|null    $reservation_id
+ * @property int|null    $contract_id
  * @property string      $starts_on   Y-m-d
  * @property string|null $ends_on     Y-m-d — NULL = open-ended
  * @property Carbon|null $released_at
@@ -29,6 +30,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Unit              $unit
  * @property-read Reservation|null  $reservation
+ * @property-read Contract|null     $contract
  * @property-read Employee|null     $createdBy
  */
 class UnitHold extends Model
@@ -39,6 +41,7 @@ class UnitHold extends Model
         'unit_id',
         'hold_type',
         'reservation_id',
+        'contract_id',
         'starts_on',
         'ends_on',
         'released_at',
@@ -66,6 +69,12 @@ class UnitHold extends Model
     public function reservation(): BelongsTo
     {
         return $this->belongsTo(Reservation::class);
+    }
+
+    /** @return BelongsTo<Contract, UnitHold> */
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class);
     }
 
     /** @return BelongsTo<Employee, UnitHold> */

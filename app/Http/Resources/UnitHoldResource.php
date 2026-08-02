@@ -18,6 +18,7 @@ class UnitHoldResource extends BaseResource
                 ? $this->hold_type->value
                 : $this->hold_type,
             'reservation_id' => $this->reservation_id,
+            'contract_id'    => $this->contract_id,
             'starts_on'      => $this->date($this->starts_on),
             'ends_on'        => $this->date($this->ends_on),
             'released_at'    => $this->datetime($this->released_at),

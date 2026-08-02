@@ -9,12 +9,10 @@ use App\Enums\ReservationStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Concerns\WritesReservationHolds;
-use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
 use App\Http\Resources\ReservationResource;
-use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Discount;
@@ -32,6 +30,7 @@ use App\Support\Billing\FirstPeriodPlan;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
+use App\Support\Contracts\ContractSigning;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Fiscal\TaxResolver;
 use App\Support\RecordsActivity;
@@ -49,7 +48,6 @@ class ReservationController extends Controller
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
     use WritesReservationHolds;
-    use WritesUnitOccupancies;
 
     public function index(Request $request): JsonResponse
     {
@@ -490,7 +488,7 @@ class ReservationController extends Controller
                 'notice_period_days'     => $leasing->defaultNoticePeriodDays,
                 'move_out_settlement'    => $billing->moveOutSettlement,
                 'transfer_billing'       => $billing->transferBilling,
-                'signed_at'              => $validated['signed_at'] ?? now(),
+                'signed_at'              => null,
                 'billing_interval'       => $billing->defaultBillingInterval,
                 'billing_interval_count' => $billing->defaultBillingIntervalCount,
                 'billing_anchor_model'   => $billing->billingAnchorModel,
@@ -582,30 +580,14 @@ class ReservationController extends Controller
             // ranges allow occupancy to start on the release day.
             $this->releaseReservationHold($reservation);
 
-            $this->writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $request->user()?->id);
-
-            $plan = ContractBilling::planFirstPeriod(
-                $moveIn,
-                $billing->billingAnchorModel,
-                $billing->defaultBillingInterval,
-                $billing->defaultBillingIntervalCount,
-                $billing->billingAnchorDay,
+            ContractSigning::complete(
+                $contract,
+                $endedOn,
+                $request->user()?->id,
+                $validated['signed_at'] ?? now(),
             );
 
-            $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
-
-            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
-            $charges = Charge::query()->where('contract_id', $contract->id)->get();
-            InvoiceIssuer::issue($contract, $charges, null, $request->user()?->id);
-
             $reservation->update(['status' => ReservationStatus::Confirmed->value]);
-
-            $signedProps = ['reservation_id' => $reservation->id];
-            RecordsActivity::core('contract.signed', $contract, $signedProps);
-            $contract->loadMissing('contact');
-            if ($contract->contact !== null) {
-                RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
-            }
 
             return $contract;
         });

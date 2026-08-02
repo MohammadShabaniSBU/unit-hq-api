@@ -55,7 +55,7 @@ use Illuminate\Support\Carbon;
  * @property string              $currency                 ISO 4217 snapshot at signing (invariant 35)
  * @property int|null            $payment_method_id        Saved instrument for autopay (S06)
  * @property bool                $autopay_enabled          Per-contract autopay consent (S06-04)
- * @property ContractStatus           $status                   pending|active|notice_given|ended|cancelled
+ * @property ContractStatus           $status                   awaiting_signature|pending|active|notice_given|ended|cancelled
  * @property string|null              $notice_given_on          Y-m-d
  * @property int|null                 $notice_period_days       snapshot at signing (invariant 18)
  * @property int|null                 $rate_change_notice_days  snapshot at signing (S02)
@@ -64,7 +64,7 @@ use Illuminate\Support\Carbon;
  * @property TransferBilling          $transfer_billing         snapshot at signing (invariant 18)
  * @property string|null              $move_out_on              Y-m-d — actual, set at ended
  * @property ContractEndedReason|null $ended_reason
- * @property Carbon                   $signed_at
+ * @property Carbon|null              $signed_at
  * @property Carbon                   $created_at
  * @property Carbon                   $updated_at
  *
@@ -82,6 +82,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, PaymentRequest>  $paymentRequests
  * @property-read Collection<int, AutopayAttempt>  $autopayAttempts
  * @property-read Collection<int, UnitOccupancy>   $occupancies
+ * @property-read Collection<int, UnitHold>        $holds
  * @property-read Collection<int, ContractTransfer> $transfers
  * @property-read DepositSettlement|null           $depositSettlement
  * @property-read Collection<int, Delinquency>     $delinquencies
@@ -385,6 +386,12 @@ class Contract extends Model
     public function occupancies(): HasMany
     {
         return $this->hasMany(UnitOccupancy::class);
+    }
+
+    /** @return HasMany<UnitHold, Contract> */
+    public function holds(): HasMany
+    {
+        return $this->hasMany(UnitHold::class);
     }
 
     /** @return HasMany<ContractTransfer, Contract> */

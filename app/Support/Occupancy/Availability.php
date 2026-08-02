@@ -169,7 +169,7 @@ final class Availability
         }
 
         return match ($hold->hold_type) {
-            HoldType::Reservation => UnitState::Reserved,
+            HoldType::Reservation, HoldType::ContractSignature => UnitState::Reserved,
             HoldType::Maintenance => UnitState::Maintenance,
             HoldType::Damaged => UnitState::Damaged,
             HoldType::StaffUse => UnitState::StaffUse,
@@ -207,7 +207,10 @@ final class Availability
         return match ($state) {
             UnitState::Available => self::scopeAvailableOn($q, $on),
             UnitState::Occupied => self::whereCoveringOccupancy($q, $onDay),
-            UnitState::Reserved,
+            UnitState::Reserved => self::whereWinningHoldType($q, $onDay, [
+                HoldType::Reservation->value,
+                HoldType::ContractSignature->value,
+            ]),
             UnitState::Maintenance,
             UnitState::Damaged,
             UnitState::StaffUse,
@@ -505,7 +508,7 @@ final class Availability
                     $unit->setAttribute('derived_state', UnitState::Occupied->value);
                 } elseif ($hold !== null) {
                     $unit->setAttribute('derived_state', match ($hold->hold_type) {
-                        HoldType::Reservation => UnitState::Reserved->value,
+                        HoldType::Reservation, HoldType::ContractSignature => UnitState::Reserved->value,
                         HoldType::Maintenance => UnitState::Maintenance->value,
                         HoldType::Damaged => UnitState::Damaged->value,
                         HoldType::StaffUse => UnitState::StaffUse->value,

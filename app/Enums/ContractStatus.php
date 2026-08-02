@@ -6,6 +6,7 @@ namespace App\Enums;
 
 enum ContractStatus: string
 {
+    case AwaitingSignature = 'awaiting_signature';
     case Pending = 'pending';
     case Active = 'active';
     case NoticeGiven = 'notice_given';

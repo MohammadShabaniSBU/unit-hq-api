@@ -15,11 +15,13 @@ return [
     'holds' => [
         'unit_held' => 'This unit is already held for the selected dates.',
         'reservation_not_manageable' => 'Reservation holds are managed by the reservation lifecycle and cannot be created or released here.',
+        'contract_signature_not_manageable' => 'Contract signature holds are managed by the contract signing lifecycle and cannot be created or released here.',
         'overlock_not_manageable' => 'Overlock holds are managed through the delinquency case and cannot be created or released here.',
         'reason_required' => 'A reason is required for this hold type.',
     ],
     'contracts' => [
         'transition_not_allowed' => 'Cannot transition contract from :from to :to.',
+        'transition_conflict' => 'Contract status changed concurrently; retry the action.',
         'cancel_with_payments' => 'Cannot cancel a contract that has received payments. End the contract instead.',
         'notice_withdraw_conflict' => 'Cannot withdraw notice: reservation #:reservation_id holds unit :unit from :starts_on.',
         'deposit_exceeds' => 'Deposit deductions may not exceed the deposit amount.',

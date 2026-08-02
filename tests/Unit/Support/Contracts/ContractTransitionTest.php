@@ -49,6 +49,9 @@ class ContractTransitionTest extends TestCase
     public static function permittedTransitionsProvider(): array
     {
         return [
+            'awaiting_signature→pending' => [ContractStatus::AwaitingSignature, ContractStatus::Pending],
+            'awaiting_signature→active' => [ContractStatus::AwaitingSignature, ContractStatus::Active],
+            'awaiting_signature→cancelled' => [ContractStatus::AwaitingSignature, ContractStatus::Cancelled],
             'pending→active' => [ContractStatus::Pending, ContractStatus::Active],
             'pending→cancelled' => [ContractStatus::Pending, ContractStatus::Cancelled],
             'active→notice_given' => [ContractStatus::Active, ContractStatus::NoticeGiven],
@@ -75,9 +78,13 @@ class ContractTransitionTest extends TestCase
     public static function forbiddenTransitionsProvider(): array
     {
         return [
+            'awaiting_signature→notice_given' => [ContractStatus::AwaitingSignature, ContractStatus::NoticeGiven],
+            'awaiting_signature→ended' => [ContractStatus::AwaitingSignature, ContractStatus::Ended],
+            'pending→awaiting_signature' => [ContractStatus::Pending, ContractStatus::AwaitingSignature],
             'pending→notice_given' => [ContractStatus::Pending, ContractStatus::NoticeGiven],
             'pending→ended' => [ContractStatus::Pending, ContractStatus::Ended],
             'active→pending' => [ContractStatus::Active, ContractStatus::Pending],
+            'active→awaiting_signature' => [ContractStatus::Active, ContractStatus::AwaitingSignature],
             'notice_given→cancelled' => [ContractStatus::NoticeGiven, ContractStatus::Cancelled],
             'notice_given→pending' => [ContractStatus::NoticeGiven, ContractStatus::Pending],
             'ended→active' => [ContractStatus::Ended, ContractStatus::Active],
@@ -219,6 +226,7 @@ class ContractTransitionTest extends TestCase
     {
         $this->assertTrue(ContractTransition::canTransfer($this->makeContract(ContractStatus::Active)));
         $this->assertTrue(ContractTransition::canTransfer($this->makeContract(ContractStatus::NoticeGiven)));
+        $this->assertFalse(ContractTransition::canTransfer($this->makeContract(ContractStatus::AwaitingSignature)));
         $this->assertFalse(ContractTransition::canTransfer($this->makeContract(ContractStatus::Pending)));
         $this->assertFalse(ContractTransition::canTransfer($this->makeContract(ContractStatus::Ended)));
         $this->assertFalse(ContractTransition::canTransfer($this->makeContract(ContractStatus::Cancelled)));

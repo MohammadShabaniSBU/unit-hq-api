@@ -262,6 +262,7 @@ Route::post('contracts/{contract}/notice', [Controllers\ContractController::clas
 Route::post('contracts/{contract}/notice-withdraw', [Controllers\ContractController::class, 'noticeWithdraw']);
 Route::post('contracts/{contract}/vacate-preview', [Controllers\ContractController::class, 'vacatePreview']);
 Route::post('contracts/{contract}/vacate', [Controllers\ContractController::class, 'vacate']);
+Route::post('contracts/{contract}/cancel', [Controllers\ContractController::class, 'cancel']);
 Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/rate-changes', [Controllers\ContractRateChangeController::class, 'store']);

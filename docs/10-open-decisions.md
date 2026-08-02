@@ -85,6 +85,7 @@
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
 | Playbook payment links | Debt playbook emails may reference balance / a pay-link *placeholder*; auto-creating a payment request per enrolment is an **S10-era action**, not S09. |
 | Multi-playbook debt routing | v1 rejects overlapping active debt playbooks for the same site-filter coverage (empty `site_ids` = all sites). Richer priority / routing across overlapping site sets deferred. |
+| Pre-signature deposits / holding fees | S14-00 deliberately does not support taking a deposit (or any payment) before remote signature completes. An `awaiting_signature` contract has zero ledger rows; cancel leaves no fiscal trace. Holding fees / pre-signature deposits are a known future ask. |
 
 ## Active WIP
 

@@ -15,11 +15,13 @@ return [
     'holds' => [
         'unit_held' => 'Cette unité est déjà bloquée pour les dates sélectionnées.',
         'reservation_not_manageable' => 'Les blocages de réservation sont gérés par le cycle de vie de la réservation et ne peuvent pas être créés ou libérés ici.',
+        'contract_signature_not_manageable' => 'Les blocages de signature de contrat sont gérés par le cycle de signature et ne peuvent pas être créés ou libérés ici.',
         'overlock_not_manageable' => 'Les cadenas de délinquance sont gérés via le dossier d’impayé et ne peuvent pas être créés ou libérés ici.',
         'reason_required' => 'Un motif est requis pour ce type de blocage.',
     ],
     'contracts' => [
         'transition_not_allowed' => 'Impossible de faire passer le contrat de :from à :to.',
+        'transition_conflict' => 'Le statut du contrat a changé concurremment ; réessayez l’action.',
         'cancel_with_payments' => 'Impossible d’annuler un contrat ayant reçu des paiements. Terminez-le plutôt.',
         'notice_withdraw_conflict' => 'Impossible de retirer le préavis : la réservation #:reservation_id bloque l’unité :unit à partir du :starts_on.',
         'deposit_exceeds' => 'Les retenues sur dépôt ne peuvent pas dépasser le montant du dépôt.',

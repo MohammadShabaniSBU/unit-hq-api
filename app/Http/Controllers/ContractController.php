@@ -8,19 +8,15 @@ use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Concerns\TransfersContracts;
 use App\Http\Controllers\Concerns\VacatesContracts;
-use App\Http\Controllers\Concerns\WritesUnitOccupancies;
 use App\Http\Resources\ContractResource;
-use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
-use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
 use App\Support\Billing\ResolvesContractItemPrice;
-use App\Support\Fiscal\InvoiceIssuer;
-use App\Support\RecordsActivity;
+use App\Support\Contracts\ContractSigning;
 use App\Support\Time\SiteClock;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
@@ -36,7 +32,6 @@ class ContractController extends Controller
     use SearchesWithFilters;
     use TransfersContracts;
     use VacatesContracts;
-    use WritesUnitOccupancies;
 
     public function index(Request $request): JsonResponse
     {
@@ -114,6 +109,7 @@ class ContractController extends Controller
             'move_in_date'   => ['nullable', 'date'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'signed_at'      => ['nullable', 'date'],
+            'signature_mode' => ['nullable', Rule::in(['immediate', 'remote'])],
             'items'          => ['required', 'array', 'min:1'],
             'items.*.item_type'             => ['required', 'string', Rule::in(['unit', 'insurance'])],
             'items.*.item_id'               => ['required', 'integer'],
@@ -123,7 +119,9 @@ class ContractController extends Controller
             'items.*.description'           => ['nullable', 'string'],
         ]);
 
-        $contract = DB::transaction(function () use ($validated, $request) {
+        $signatureMode = $validated['signature_mode'] ?? 'immediate';
+
+        $contract = DB::transaction(function () use ($validated, $request, $signatureMode) {
             $billing = Setting::billing();
             $leasing = Setting::leasing();
             $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
@@ -147,9 +145,12 @@ class ContractController extends Controller
                 }
             }
 
-            $status = $moveIn->toDateString() > $today->toDateString()
-                ? ContractStatus::Pending
-                : ContractStatus::Active;
+            $remote = $signatureMode === 'remote';
+            $status = $remote
+                ? ContractStatus::AwaitingSignature
+                : ($moveIn->toDateString() > $today->toDateString()
+                    ? ContractStatus::Pending
+                    : ContractStatus::Active);
 
             $contract = Contract::query()->create([
                 'contact_id'             => $validated['contact_id'],
@@ -161,7 +162,7 @@ class ContractController extends Controller
                 'notice_period_days'     => $leasing->defaultNoticePeriodDays,
                 'move_out_settlement'    => $billing->moveOutSettlement,
                 'transfer_billing'       => $billing->transferBilling,
-                'signed_at'              => $validated['signed_at'] ?? now(),
+                'signed_at'              => null,
                 'billing_interval'       => $billing->defaultBillingInterval,
                 'billing_interval_count' => $billing->defaultBillingIntervalCount,
                 'billing_anchor_model'   => $billing->billingAnchorModel,
@@ -217,27 +218,15 @@ class ContractController extends Controller
             $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
             $contract->forceFill(['currency' => $agreedCurrency])->save();
 
-            $this->writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $request->user()?->id);
-
-            $plan = ContractBilling::planFirstPeriod(
-                $moveIn,
-                $billing->billingAnchorModel,
-                $billing->defaultBillingInterval,
-                $billing->defaultBillingIntervalCount,
-                $billing->billingAnchorDay,
-            );
-
-            $this->generateFirstPeriodCharges($contract, $contractItems, $plan, $billing->prorationMethod, $moveIn);
-
-            $contract->load(['contact', 'unitItem.item.site.country', 'unitItem.item.site.legalEntity']);
-            $charges = Charge::query()->where('contract_id', $contract->id)->get();
-            InvoiceIssuer::issue($contract, $charges, null, $request->user()?->id);
-
-            $signedProps = ['reservation_id' => $contract->reservation_id];
-            RecordsActivity::core('contract.signed', $contract, $signedProps);
-            $contract->loadMissing('contact');
-            if ($contract->contact !== null) {
-                RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
+            if ($remote) {
+                ContractSigning::writeSignatureHolds($contract, $contractItems, $createdBy);
+            } else {
+                ContractSigning::complete(
+                    $contract,
+                    $endedOn,
+                    $createdBy,
+                    $validated['signed_at'] ?? now(),
+                );
             }
 
             return $contract;
@@ -246,6 +235,21 @@ class ContractController extends Controller
         return $this->created(
             ContractResource::make($contract->load(['items.price', 'items.item', 'contact', 'reservation', 'occupancies'])),
             'Contract created successfully.'
+        );
+    }
+
+    public function cancel(Contract $contract): JsonResponse
+    {
+        DB::transaction(function () use ($contract): void {
+            ContractSigning::cancel($contract);
+        });
+
+        $contract->refresh();
+        $this->loadDetailRelations($contract);
+
+        return $this->success(
+            ContractResource::make($contract),
+            'Contract cancelled successfully.'
         );
     }
 

@@ -60,9 +60,11 @@ class UnitHoldController extends Controller
         $holdType = HoldType::from($validated['hold_type']);
 
         if (! $holdType->isManuallyManageable()) {
-            $message = $holdType === HoldType::Overlock
-                ? __('errors.holds.overlock_not_manageable')
-                : __('errors.holds.reservation_not_manageable');
+            $message = match ($holdType) {
+                HoldType::Overlock => __('errors.holds.overlock_not_manageable'),
+                HoldType::ContractSignature => __('errors.holds.contract_signature_not_manageable'),
+                default => __('errors.holds.reservation_not_manageable'),
+            };
 
             throw ValidationException::withMessages([
                 'hold_type' => [$message],
@@ -121,6 +123,12 @@ class UnitHoldController extends Controller
         if ($hold->hold_type === HoldType::Reservation) {
             throw ValidationException::withMessages([
                 'hold' => [__('errors.holds.reservation_not_manageable')],
+            ]);
+        }
+
+        if ($hold->hold_type === HoldType::ContractSignature) {
+            throw ValidationException::withMessages([
+                'hold' => [__('errors.holds.contract_signature_not_manageable')],
             ]);
         }
 

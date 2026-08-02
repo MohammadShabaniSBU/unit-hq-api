@@ -15,11 +15,13 @@ return [
     'holds' => [
         'unit_held' => 'Esta unidad ya tiene una retención en las fechas seleccionadas.',
         'reservation_not_manageable' => 'Las retenciones de reserva se gestionan con el ciclo de vida de la reserva y no se pueden crear ni liberar aquí.',
+        'contract_signature_not_manageable' => 'Las retenciones de firma de contrato se gestionan con el ciclo de firma y no se pueden crear ni liberar aquí.',
         'overlock_not_manageable' => 'Las sobrecerraduras se gestionan desde el caso de impago y no se pueden crear ni liberar aquí.',
         'reason_required' => 'Se requiere un motivo para este tipo de retención.',
     ],
     'contracts' => [
         'transition_not_allowed' => 'No se puede cambiar el contrato de :from a :to.',
+        'transition_conflict' => 'El estado del contrato cambió concurrentemente; reintente la acción.',
         'cancel_with_payments' => 'No se puede anular un contrato que ha recibido pagos. Finalícelo en su lugar.',
         'notice_withdraw_conflict' => 'No se puede retirar el preaviso: la reserva #:reservation_id retiene la unidad :unit desde :starts_on.',
         'deposit_exceeds' => 'Las deducciones de la fianza no pueden superar el importe de la fianza.',

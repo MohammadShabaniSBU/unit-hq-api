@@ -7,14 +7,14 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\UnitOccupancy;
+use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Shared by ContractController::store and ReservationController::convert —
- * occupancy rows join the same transaction as items, currency snapshot, and
- * first-period charges (invariant 20).
+ * Occupancy open at signing. Prefer ContractSigning::complete() for the full
+ * signing block (invariant 20); this trait remains for any legacy call sites.
  */
 trait WritesUnitOccupancies
 {
@@ -34,6 +34,7 @@ trait WritesUnitOccupancies
             }
 
             OccupancyGuard::assertVacant((int) $item->item_id, $moveIn, $endedOn);
+            HoldGuard::assertUnheld((int) $item->item_id, $moveIn, $endedOn);
 
             UnitOccupancy::query()->create([
                 'unit_id'          => $item->item_id,
