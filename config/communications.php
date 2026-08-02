@@ -66,5 +66,26 @@ return [
         'BAJA',
         'STOP TODO',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Call wrap-up dispositions
+    |--------------------------------------------------------------------------
+    |
+    | Machine keys only — panel translates via calls.dispositions.*.
+    | Extend here without a migration. payment_promised feeds S17 collections.
+    |
+    */
+    'call_dispositions' => [
+        'reached',
+        'voicemail_left',
+        'no_answer',
+        'wrong_number',
+        'payment_promised',
+        'callback_requested',
+        'resolved',
+        'other',
+    ],
 ];
+
 

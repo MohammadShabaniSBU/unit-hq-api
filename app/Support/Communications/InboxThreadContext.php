@@ -15,6 +15,7 @@ use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Delinquency;
 use App\Models\DelinquencyStep;
+use App\Models\CallWrapup;
 use App\Models\Interaction;
 use App\Models\MessageThread;
 use App\Models\Playbook;
@@ -287,19 +288,53 @@ final class InboxThreadContext
         return ['open_deal' => $openDeal, 'lead_enrolment' => $leadEnrolment];
     }
 
-    /** @return list<array{type: string, at: string|null, summary: string|null}> */
+    /**
+     * @return list<array{type: string, at: string|null, summary: string|null, disposition: string|null}>
+     */
     private static function recent(Contact $contact): array
     {
-        return $contact->interactions()
+        $interactions = $contact->interactions()
             ->orderByDesc('occurred_at')
             ->limit(self::RECENT_LIMIT)
-            ->get()
-            ->map(fn (Interaction $interaction) => [
-                'type' => $interaction->channel,
-                'at' => $interaction->occurred_at?->toIso8601String(),
-                'summary' => $interaction->summary
-                    ?? ($interaction->content !== null ? Str::limit($interaction->content, 140) : null),
-            ])
+            ->get();
+
+        $callMessageIds = $interactions
+            ->filter(fn (Interaction $i): bool => $i->channel === 'call' && $i->message_id !== null)
+            ->pluck('message_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $dispositions = $callMessageIds === []
+            ? collect()
+            : CallWrapup::query()
+                ->whereIn('message_id', $callMessageIds)
+                ->pluck('disposition', 'message_id');
+
+        return $interactions
+            ->map(function (Interaction $interaction) use ($dispositions): array {
+                $disposition = null;
+                if ($interaction->channel === 'call' && $interaction->message_id !== null) {
+                    $raw = $dispositions->get($interaction->message_id);
+                    $disposition = is_string($raw) && $raw !== '' ? $raw : null;
+                }
+
+                $summary = $interaction->summary
+                    ?? ($interaction->content !== null ? Str::limit($interaction->content, 140) : null);
+                if ($disposition !== null) {
+                    $label = self::humanize($disposition);
+                    $summary = $summary !== null && $summary !== ''
+                        ? $label.' · '.$summary
+                        : $label;
+                }
+
+                return [
+                    'type' => $interaction->channel,
+                    'at' => $interaction->occurred_at?->toIso8601String(),
+                    'summary' => $summary,
+                    'disposition' => $disposition,
+                ];
+            })
             ->values()
             ->all();
     }

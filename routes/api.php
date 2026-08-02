@@ -21,6 +21,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('comms-triage/{commsTriage}/create-and-attach', [Controllers\CommsTriageController::class, 'createAndAttach']);
     Route::post('comms-triage/{commsTriage}/discard', [Controllers\CommsTriageController::class, 'discard']);
     Route::post('messages/{message}/move-thread', [Controllers\MessageController::class, 'moveThread']);
+    Route::get('messages/{message}/wrapup', [Controllers\MessageController::class, 'showWrapup']);
+    Route::put('messages/{message}/wrapup', [Controllers\MessageController::class, 'upsertWrapup']);
+    Route::get('messages/{message}/recording', [Controllers\MessageController::class, 'recording']);
 
     // Inbox (S11-00/01) — any authenticated Employee until S17 RBAC (10-open-decisions.md).
     Route::get('employees/options', [Controllers\EmployeeController::class, 'options']);

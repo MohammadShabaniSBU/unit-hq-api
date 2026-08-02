@@ -62,7 +62,7 @@ final class DelinquencyTimeline
         return Message::query()
             ->where('provider', Provider::Aircall)
             ->whereNotNull('source_ref')
-            ->with('thread')
+            ->with(['thread', 'wrapup'])
             ->orderBy('sent_at')
             ->orderBy('id')
             ->get()
@@ -100,6 +100,7 @@ final class DelinquencyTimeline
             'direction' => $direction,
             'outcome' => isset($ref['outcome']) && is_string($ref['outcome']) ? $ref['outcome'] : null,
             'duration' => isset($ref['duration']) && is_numeric($ref['duration']) ? (int) $ref['duration'] : null,
+            'disposition' => $message->wrapup?->disposition,
             'body_text' => $message->body_text,
             'executed_on' => $at !== null ? Carbon::parse($at)->toDateString() : null,
             'created_at' => $at !== null ? Carbon::parse($at)->toIso8601String() : null,

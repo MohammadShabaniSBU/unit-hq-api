@@ -43,6 +43,7 @@ use Illuminate\Support\Carbon;
  * @property-read CommunicationAccount|null            $communicationAccount
  * @property-read Collection<int, MessageAttachment>   $attachments
  * @property-read Interaction|null                     $interaction
+ * @property-read CallWrapup|null                      $wrapup
  */
 class Message extends Model
 {
@@ -104,5 +105,11 @@ class Message extends Model
     public function interaction(): HasOne
     {
         return $this->hasOne(Interaction::class);
+    }
+
+    /** @return HasOne<CallWrapup> */
+    public function wrapup(): HasOne
+    {
+        return $this->hasOne(CallWrapup::class);
     }
 }

@@ -164,6 +164,41 @@ final class AircallAdapter implements ProviderAccount, ReceivesInbound
     }
 
     /**
+     * Fresh recording/voicemail URL for a call (signed URLs expire ~1h).
+     * Never persist the returned URL — stream/proxy at click time only.
+     *
+     * @return array{url: string, kind: 'recording'|'voicemail'}|null
+     */
+    public function fetchCallMediaUrl(string $callId): ?array
+    {
+        $response = $this->client()->get(self::BASE_URL.'/calls/'.$callId);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $response->json() ?? [];
+        $call = is_array($body['call'] ?? null) ? $body['call'] : $body;
+
+        $recording = isset($call['recording']) && is_string($call['recording']) && $call['recording'] !== ''
+            ? $call['recording']
+            : null;
+        if ($recording !== null) {
+            return ['url' => $recording, 'kind' => 'recording'];
+        }
+
+        $voicemail = isset($call['voicemail']) && is_string($call['voicemail']) && $call['voicemail'] !== ''
+            ? $call['voicemail']
+            : null;
+        if ($voicemail !== null) {
+            return ['url' => $voicemail, 'kind' => 'voicemail'];
+        }
+
+        return null;
+    }
+
+    /**
      * Click-to-dial: fill the user's Aircall Workspace dialer with `$toE164`.
      * Success is typically HTTP 204 with no call id body.
      */

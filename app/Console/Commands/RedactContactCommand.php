@@ -7,8 +7,12 @@ namespace App\Console\Commands;
 use App\Models\Activity;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
+use App\Models\CallWrapup;
 use App\Models\Contact;
+use App\Models\Message;
+use App\Models\MessageThread;
 use App\Models\SystemEvent;
+use App\Support\Communications\Channel;
 use App\Support\RecordsActivity;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
@@ -116,15 +120,77 @@ class RedactContactCommand extends Command
             }
         }
 
+        $wrapupCount = $this->redactCallWrapupsAndRecordings($contact);
+
         RecordsActivity::core('contact.redacted', $contact, [
             'activity_rows' => $activityCount,
             'system_event_rows' => $systemCount,
             'automation_rows' => $automationCount,
+            'call_wrapup_rows' => $wrapupCount,
         ]);
 
-        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation row(s). Logged contact.redacted.");
+        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation, {$wrapupCount} call wrap-up/recording row(s). Logged contact.redacted.");
 
         return self::SUCCESS;
+    }
+
+    private function redactCallWrapupsAndRecordings(Contact $contact): int
+    {
+        $threadIds = MessageThread::query()
+            ->where('contact_id', $contact->id)
+            ->where('channel', Channel::Call)
+            ->pluck('id');
+
+        if ($threadIds->isEmpty()) {
+            return 0;
+        }
+
+        $messages = Message::query()
+            ->whereIn('message_thread_id', $threadIds)
+            ->get();
+
+        $count = 0;
+        foreach ($messages as $message) {
+            $changed = false;
+
+            $wrapup = CallWrapup::query()->where('message_id', $message->id)->first();
+            if ($wrapup !== null && $wrapup->note !== null) {
+                $wrapup->forceFill(['note' => null])->save();
+                $changed = true;
+            }
+
+            $ref = is_array($message->source_ref) ? $message->source_ref : [];
+            $mediaChanged = false;
+            foreach (['recording_url', 'voicemail_url'] as $key) {
+                if (isset($ref[$key]) && $ref[$key] !== null) {
+                    $ref[$key] = null;
+                    $mediaChanged = true;
+                }
+            }
+            if (isset($ref['call']) && is_array($ref['call'])) {
+                foreach (['recording', 'voicemail', 'recording_short_url', 'voicemail_short_url'] as $key) {
+                    if (isset($ref['call'][$key]) && $ref['call'][$key] !== null) {
+                        $ref['call'][$key] = null;
+                        $mediaChanged = true;
+                    }
+                }
+            }
+            if (($ref['recording_redacted'] ?? false) !== true) {
+                $ref['recording_redacted'] = true;
+                $mediaChanged = true;
+            }
+
+            if ($mediaChanged) {
+                $message->forceFill(['source_ref' => $ref])->save();
+                $changed = true;
+            }
+
+            if ($changed) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**

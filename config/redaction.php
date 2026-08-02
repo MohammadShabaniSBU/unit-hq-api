@@ -21,6 +21,11 @@ return [
     | normalized channel address (not contact_id). A redacted contact's
     | bounced/complained address must stay suppressed if re-added later.
     |
+    | Call wrap-ups / recordings (S12-02): contacts:redact also nulls
+    | call_wrapups.note and marks call message recordings unavailable
+    | (source_ref.recording_redacted + cleared media URLs). See
+    | RedactContactCommand — not a JSON property_keys path.
+    |
     */
 
     'property_keys' => [

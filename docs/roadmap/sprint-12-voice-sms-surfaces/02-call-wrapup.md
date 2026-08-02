@@ -51,14 +51,14 @@ disposition text for calls).
 
 ## Acceptance criteria
 
-- [ ] Wrap-up strip appears only for the caller's own ended correlated calls; save/
+- [x] Wrap-up strip appears only for the caller's own ended correlated calls; save/
       dismiss/late-edit all work; disposition renders across the three surfaces.
-- [ ] Playback streams via fresh-fetch; expired URL degrades honestly; no signed URL
+- [x] Playback streams via fresh-fetch; expired URL degrades honestly; no signed URL
       persisted anywhere (grep).
-- [ ] Voicemail playback marks the thread read only on explicit open (S11 semantics
+- [x] Voicemail playback marks the thread read only on explicit open (S11 semantics
       held).
-- [ ] Redaction covers wrap-up notes + recording availability.
-- [ ] Disposition values machine-keyed + translated; config-extendable without
+- [x] Redaction covers wrap-up notes + recording availability.
+- [x] Disposition values machine-keyed + translated; config-extendable without
       migration.
 
 ## Tests required

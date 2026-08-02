@@ -19,7 +19,9 @@ use App\Support\Automation\SubjectTokenBag;
 use App\Support\Automation\TokenResolver;
 use App\Support\Communications\ActiveCalls;
 use App\Support\Communications\CallDialer;
+use App\Support\Communications\CallRecordingProxy;
 use App\Support\Communications\Channel;
+use App\Support\Communications\PendingWrapups;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\HtmlSanitizer;
@@ -134,7 +136,7 @@ class InboxController extends Controller
 
         $messagesQuery = Message::query()
             ->where('message_thread_id', $messageThread->id)
-            ->with('attachments')
+            ->with(['attachments', 'wrapup'])
             ->orderByDesc('id')
             ->when($before !== null, fn ($q) => $q->where('id', '<', $before))
             ->limit($perPage + 1);
@@ -158,12 +160,16 @@ class InboxController extends Controller
         return $this->success($summary, 'Inbox thread retrieved successfully.');
     }
 
-    public function badge(): JsonResponse
+    public function badge(Request $request): JsonResponse
     {
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         return $this->success([
             'unread_threads' => MessageThread::query()->where('unread_count', '>', 0)->count(),
             'triage_count' => CommsTriage::query()->where('status', 'pending')->count(),
             'active_calls' => ActiveCalls::forBadge(),
+            'pending_wrapups' => PendingWrapups::forEmployee($employee),
         ], 'Inbox badge retrieved successfully.');
     }
 
@@ -770,6 +776,10 @@ class InboxController extends Controller
         $evidence = is_array($message->threading_evidence) ? $message->threading_evidence : [];
         $rethreaded = (bool) ($evidence['rethreaded'] ?? false);
 
+        $wrapup = $message->relationLoaded('wrapup')
+            ? $message->wrapup
+            : $message->wrapup()->first();
+
         return [
             'id' => $message->id,
             'direction' => $message->direction?->value ?? (string) $message->direction,
@@ -785,7 +795,17 @@ class InboxController extends Controller
                 ->values()
                 ->all(),
             'source' => $message->source?->value ?? (string) $message->source,
-            'source_ref' => $message->source_ref,
+            'source_ref' => CallRecordingProxy::sanitizeSourceRef(
+                is_array($message->source_ref) ? $message->source_ref : null,
+            ),
+            'has_recording' => CallRecordingProxy::hasRecording($message),
+            'wrapup' => $wrapup !== null ? [
+                'disposition' => $wrapup->disposition,
+                'note' => $wrapup->note,
+                'employee_id' => (int) $wrapup->employee_id,
+                'updated_at' => $wrapup->updated_at?->toIso8601String(),
+                'created_at' => $wrapup->created_at?->toIso8601String(),
+            ] : null,
             'sent_at' => $message->sent_at?->toIso8601String(),
             'created_at' => $message->created_at?->toIso8601String(),
             'delivery_events' => $message->delivery_events,
