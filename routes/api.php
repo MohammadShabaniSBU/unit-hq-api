@@ -53,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/esign/webhook', [Controllers\EsignProviderAccountController::class, 'createWebhook']);
     Route::delete('settings/esign', [Controllers\EsignProviderAccountController::class, 'destroy']);
 
+    Route::get('settings/access', [Controllers\AccessProviderAccountController::class, 'show']);
+    Route::put('settings/access', [Controllers\AccessProviderAccountController::class, 'update']);
+    Route::post('settings/access/webhook', [Controllers\AccessProviderAccountController::class, 'createWebhook']);
+    Route::post('settings/access/points/refresh', [Controllers\AccessProviderAccountController::class, 'refreshPoints']);
+    Route::delete('settings/access', [Controllers\AccessProviderAccountController::class, 'destroy']);
+
     // Aircall user mapping + dial (S12-00).
     Route::get('settings/communications/call/aircall/users', [Controllers\AircallUserLinkController::class, 'index']);
     Route::post('settings/communications/call/aircall/users/sync', [Controllers\AircallUserLinkController::class, 'sync']);
@@ -94,6 +100,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 // Public inbound webhooks — authenticated by URL token / provider signature, not Sanctum.
 Route::post('webhooks/stripe/{accountToken}', Webhooks\StripeWebhookController::class);
 Route::post('webhooks/esign/{webhookToken}', Webhooks\EsignWebhookController::class);
+Route::post('webhooks/access/{webhookToken}', Webhooks\AccessWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}/inbound', Webhooks\DeliveryWebhookController::class);
 

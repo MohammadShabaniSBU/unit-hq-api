@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\AccessEvent;
+use App\Models\AccessGrant;
+use App\Models\AccessPoint;
+use App\Models\AccessProviderAccount;
+use App\Models\AccessSuspension;
 use App\Models\AutopayAttempt;
 use App\Models\BillingRun;
 use App\Models\Contact;
@@ -28,6 +33,7 @@ use App\Listeners\WriteChannelSuppression;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
+use App\Support\Access\AccessProviderRegistry;
 use App\Support\ESign\ESignProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -47,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProviderRegistry::class);
         $this->app->singleton(ProviderResolver::class);
         $this->app->singleton(ESignProviderRegistry::class);
+        $this->app->singleton(AccessProviderRegistry::class);
     }
 
     /**
@@ -72,7 +79,13 @@ class AppServiceProvider extends ServiceProvider
             'billing_run'      => BillingRun::class,
             'delinquency'      => Delinquency::class,
             'contract_notice'  => ContractNotice::class,
+            'access_point'             => AccessPoint::class,
+            'access_suspension'        => AccessSuspension::class,
+            'access_grant'             => AccessGrant::class,
+            'access_provider_account'  => AccessProviderAccount::class,
+            'access_event'             => AccessEvent::class,
         ]);
+
 
         Session::extend('database', function ($app) {
             $config = $app->make('config');
