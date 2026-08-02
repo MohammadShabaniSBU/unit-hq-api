@@ -4,6 +4,10 @@ Canonical vocabulary for Insights reports. Every report page footer links the
 section it uses. Figures are computed live from fact tables — nothing here is
 stored as a rollup.
 
+The Insights **dashboard** (`GET /api/reports/dashboard`) is card-zoom of these
+same definitions — one computation class, two zoom levels. It introduces no new
+terms.
+
 Spanish terms (ES) sit beside English so the operator and accountant share one
 glossary. Review Spanish in the PR that introduces this doc (`es-reviewed`).
 

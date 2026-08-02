@@ -25,6 +25,7 @@ final class ReportRegistry
         'daily-close' => DailyCloseReport::class,
         'movement' => MovementReport::class,
         'funnel' => FunnelReport::class,
+        'dashboard' => DashboardReport::class,
     ];
 
     /**

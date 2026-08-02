@@ -246,6 +246,57 @@ final class OccupancyMetrics
     }
 
     /**
+     * Month-end occupancy points for trend charts (≤24 points).
+     *
+     * @param  list<int>|null  $siteIds
+     * @return list<array{
+     *     month_end: string,
+     *     occupied_units: int,
+     *     rentable_units: int,
+     *     unit_rate: float|null,
+     *     area_rate: float|null,
+     *     economic_rate: float|null,
+     *     economic_numerator: string,
+     *     economic_denominator: string
+     * }>
+     */
+    public static function monthlySeries(
+        string $asOf,
+        ?array $siteIds = null,
+        ?string $from = null,
+        ?string $to = null,
+    ): array {
+        $end = CarbonImmutable::parse($to ?? $asOf)->endOfMonth()->startOfDay();
+        $start = $from !== null
+            ? CarbonImmutable::parse($from)->endOfMonth()->startOfDay()
+            : $end->subMonthsNoOverflow(11)->endOfMonth()->startOfDay();
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $points = [];
+        $cursor = $start;
+        while ($cursor->lessThanOrEqualTo($end) && count($points) < 24) {
+            $monthEnd = $cursor->endOfMonth()->toDateString();
+            $snap = self::snapshot($monthEnd, $siteIds);
+            $points[] = [
+                'month_end' => $monthEnd,
+                'occupied_units' => $snap['occupied_units'],
+                'rentable_units' => $snap['rentable_units'],
+                'unit_rate' => $snap['unit_rate'],
+                'area_rate' => $snap['area_rate'],
+                'economic_rate' => $snap['economic_rate'],
+                'economic_numerator' => $snap['economic_numerator'],
+                'economic_denominator' => $snap['economic_denominator'],
+            ];
+            $cursor = $cursor->addMonthNoOverflow()->endOfMonth()->startOfDay();
+        }
+
+        return $points;
+    }
+
+    /**
      * @return array{
      *     as_of: string,
      *     occupied_units: int,

@@ -96,6 +96,8 @@
 | After-hours / schedule rules | Schedule-based access restrictions are provider-side territory for now; not modeled in desired-state v1. |
 | Drift incident dismiss | S15-04 stores denied-but-granted incidents on `sync_attention` for 30 days for contracts-index chips; no operator dismiss API yet. |
 | Report nightly snapshots | **Escape hatch only.** Insights figures are live bounded queries from fact tables (S16 harvest principle). Nightly snapshot / rollup tables are sanctioned **only if** a report proves slow at real operator scale — design the cache then; do not invent rollups preemptively. Vocabulary: `docs/report-definitions.md`. |
+| Configurable Insights dashboards | S16-04 ships one fixed daily-glance layout (KPI cards + two trends + attention). Per-employee layouts / drag-and-drop widgets deferred. |
+| Scheduled email reports | S16 does not email report PDFs/CSVs on a cadence. Natural later playbook action once Insights figures are trusted. |
 
 ## Active WIP
 

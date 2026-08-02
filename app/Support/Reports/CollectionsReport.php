@@ -32,7 +32,7 @@ final class CollectionsReport extends AbstractReport
 
     public function maxQueries(): int
     {
-        return 40;
+        return 50;
     }
 
     public function run(ReportFilters $filters): ReportResult
@@ -108,6 +108,7 @@ final class CollectionsReport extends AbstractReport
         $autopay = $this->autopayStats($fromDt, $toDt, $siteContractIds);
         $cure = $this->cureStats($fromDt, $toDt, $siteContractIds);
         $overlock = $this->overlockCorrelation($fromDt, $toDt, $siteContractIds);
+        $series = self::monthlySeries($filters->siteIds, $to);
 
         return new ReportResult(
             columns: [
@@ -126,13 +127,72 @@ final class CollectionsReport extends AbstractReport
                 'autopay' => $autopay,
                 'days_to_cure' => $cure,
                 'overlock_correlation' => $overlock,
+                'series' => $series,
                 'notes' => [
                     'Collections rate = allocated-to-period-charges ÷ charged, by charge type.',
                     'Promise-kept: payment_promised wrap-up followed by any allocation within '.$promiseWindow.' days.',
                     'Overlock figures are correlation, not causation — cases that received an overlock vs not.',
+                    'Monthly series axis is zero-based (charged vs allocated).',
                 ],
             ],
         );
+    }
+
+    /**
+     * Calendar-month charged vs allocated totals (≤12 months ending at $endDate).
+     * Same charge/allocation rules as {@see run()}.
+     *
+     * @param  list<int>|null  $siteIds
+     * @return list<array{month: string, charged: string, allocated: string, currency: string}>
+     */
+    public static function monthlySeries(?array $siteIds, string $endDate, int $months = 12): array
+    {
+        $end = CarbonImmutable::parse($endDate)->endOfMonth()->endOfDay();
+        $start = $end->subMonthsNoOverflow(max(1, $months) - 1)->startOfMonth()->startOfDay();
+
+        $siteContractIds = self::contractIdsForSitesStatic($siteIds);
+
+        $charges = Charge::query()
+            ->whereBetween('created_at', [$start->toDateTimeString(), $end->toDateTimeString()])
+            ->when($siteContractIds !== null, static fn (Builder $q) => $q->whereIn('contract_id', $siteContractIds))
+            ->with('allocations')
+            ->get();
+
+        /** @var array<string, array{month: string, charged: string, allocated: string, currency: string}> $byMonth */
+        $byMonth = [];
+        $cursor = $start->startOfMonth();
+        while ($cursor->lessThanOrEqualTo($end) && count($byMonth) < 24) {
+            $key = $cursor->format('Y-m');
+            $byMonth[$key] = [
+                'month' => $key,
+                'charged' => '0.00',
+                'allocated' => '0.00',
+                'currency' => 'EUR',
+            ];
+            $cursor = $cursor->addMonthNoOverflow()->startOfMonth();
+        }
+
+        foreach ($charges as $charge) {
+            $created = CarbonImmutable::parse($charge->created_at->toDateTimeString());
+            $key = $created->format('Y-m');
+            if (! isset($byMonth[$key])) {
+                continue;
+            }
+            $currency = strtoupper(trim((string) ($charge->currency ?: 'EUR'))) ?: 'EUR';
+            $byMonth[$key]['currency'] = $currency;
+            $byMonth[$key]['charged'] = BillingMath::round2(
+                bcadd($byMonth[$key]['charged'], (string) $charge->amount, 2),
+            );
+            $allocatedToCharge = '0.00';
+            foreach ($charge->allocations as $allocation) {
+                $allocatedToCharge = bcadd($allocatedToCharge, (string) $allocation->amount, 2);
+            }
+            $byMonth[$key]['allocated'] = BillingMath::round2(
+                bcadd($byMonth[$key]['allocated'], $allocatedToCharge, 2),
+            );
+        }
+
+        return array_values($byMonth);
     }
 
     /**
@@ -140,6 +200,15 @@ final class CollectionsReport extends AbstractReport
      * @return list<int>|null
      */
     private function contractIdsForSites(?array $siteIds): ?array
+    {
+        return self::contractIdsForSitesStatic($siteIds);
+    }
+
+    /**
+     * @param  list<int>|null  $siteIds
+     * @return list<int>|null
+     */
+    private static function contractIdsForSitesStatic(?array $siteIds): ?array
     {
         if ($siteIds === null) {
             return null;

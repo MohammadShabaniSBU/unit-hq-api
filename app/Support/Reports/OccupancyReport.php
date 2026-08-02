@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Reports;
 
-use Carbon\CarbonImmutable;
-
 /**
  * Three occupancy definitions (unit / area / economic) with site×class
  * breakdown and a bounded monthly trend series.
@@ -46,7 +44,12 @@ final class OccupancyReport extends AbstractReport
             ];
         }
 
-        $series = $this->trendSeries($filters, $asOf);
+        $series = OccupancyMetrics::monthlySeries(
+            $asOf,
+            $filters->siteIds,
+            $filters->from,
+            $filters->to ?? $asOf,
+        );
 
         return new ReportResult(
             columns: [
@@ -93,47 +96,4 @@ final class OccupancyReport extends AbstractReport
         );
     }
 
-    /**
-     * @return list<array{
-     *     month_end: string,
-     *     occupied_units: int,
-     *     rentable_units: int,
-     *     unit_rate: float|null,
-     *     area_rate: float|null,
-     *     economic_rate: float|null,
-     *     economic_numerator: string,
-     *     economic_denominator: string
-     * }>
-     */
-    private function trendSeries(ReportFilters $filters, string $asOf): array
-    {
-        $end = CarbonImmutable::parse($filters->to ?? $asOf)->endOfMonth()->startOfDay();
-        $start = $filters->from !== null
-            ? CarbonImmutable::parse($filters->from)->endOfMonth()->startOfDay()
-            : $end->subMonthsNoOverflow(11)->endOfMonth()->startOfDay();
-
-        if ($start->greaterThan($end)) {
-            [$start, $end] = [$end, $start];
-        }
-
-        $points = [];
-        $cursor = $start;
-        while ($cursor->lessThanOrEqualTo($end) && count($points) < 24) {
-            $monthEnd = $cursor->endOfMonth()->toDateString();
-            $snap = OccupancyMetrics::snapshot($monthEnd, $filters->siteIds);
-            $points[] = [
-                'month_end' => $monthEnd,
-                'occupied_units' => $snap['occupied_units'],
-                'rentable_units' => $snap['rentable_units'],
-                'unit_rate' => $snap['unit_rate'],
-                'area_rate' => $snap['area_rate'],
-                'economic_rate' => $snap['economic_rate'],
-                'economic_numerator' => $snap['economic_numerator'],
-                'economic_denominator' => $snap['economic_denominator'],
-            ];
-            $cursor = $cursor->addMonthNoOverflow()->endOfMonth()->startOfDay();
-        }
-
-        return $points;
-    }
 }
