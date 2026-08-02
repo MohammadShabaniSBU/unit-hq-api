@@ -16,13 +16,28 @@ class MessageController extends Controller
     public function moveThread(Request $request, Message $message): JsonResponse
     {
         $validated = $request->validate([
-            'message_thread_id' => ['required', 'integer', 'exists:message_threads,id'],
+            'message_thread_id' => ['sometimes', 'nullable', 'integer', 'exists:message_threads,id'],
+            'new_thread' => ['sometimes', 'boolean'],
         ]);
 
-        $target = MessageThread::query()->findOrFail($validated['message_thread_id']);
+        $newThread = (bool) ($validated['new_thread'] ?? false);
+        $targetId = isset($validated['message_thread_id']) ? (int) $validated['message_thread_id'] : null;
+
+        if ($newThread && $targetId !== null) {
+            return $this->error('Provide either message_thread_id or new_thread, not both.', statusCode: 422);
+        }
+
+        if (! $newThread && $targetId === null) {
+            return $this->error('Provide message_thread_id or new_thread.', statusCode: 422);
+        }
 
         try {
-            $moved = ThreadMover::move($message, $target, $request->user());
+            if ($newThread) {
+                $moved = ThreadMover::moveToNewThread($message, $request->user());
+            } else {
+                $target = MessageThread::query()->findOrFail($targetId);
+                $moved = ThreadMover::move($message, $target, $request->user());
+            }
         } catch (InvalidArgumentException $e) {
             return $this->error($e->getMessage(), statusCode: 422);
         }

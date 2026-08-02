@@ -15,6 +15,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
     Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
 
+    Route::get('comms-triage', [Controllers\CommsTriageController::class, 'index']);
+    Route::get('comms-triage/{commsTriage}', [Controllers\CommsTriageController::class, 'show']);
     Route::post('comms-triage/{commsTriage}/attach', [Controllers\CommsTriageController::class, 'attach']);
     Route::post('comms-triage/{commsTriage}/create-and-attach', [Controllers\CommsTriageController::class, 'createAndAttach']);
     Route::post('comms-triage/{commsTriage}/discard', [Controllers\CommsTriageController::class, 'discard']);
@@ -26,8 +28,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
     Route::get('inbox/badge', [Controllers\InboxController::class, 'badge']);
     Route::post('inbox/threads/{messageThread}/read', [Controllers\InboxController::class, 'read']);
+    Route::post('inbox/threads/{messageThread}/unread', [Controllers\InboxController::class, 'unread']);
     Route::post('inbox/threads/{messageThread}/assign', [Controllers\InboxController::class, 'assign']);
+    Route::get('inbox/threads/{messageThread}/move-targets', [Controllers\InboxController::class, 'moveTargets']);
     Route::get('inbox/threads/{messageThread}/compose-context', [Controllers\InboxController::class, 'composeContext']);
+    Route::get('inbox/threads/{messageThread}/context', [Controllers\InboxController::class, 'context']);
     Route::post('inbox/threads/{messageThread}/reply', [Controllers\InboxController::class, 'reply']);
     Route::post('inbox/compose', [Controllers\InboxController::class, 'compose']);
     Route::post('inbox/attachments', [Controllers\MessageAttachmentController::class, 'store']);

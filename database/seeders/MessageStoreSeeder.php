@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\ContactChannelType;
+use App\Enums\CredentialStatus;
+use App\Models\CommsTriage;
+use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\ContactChannel;
 use App\Models\Employee;
@@ -12,10 +15,12 @@ use App\Models\Interaction;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\Offer;
+use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\Communications\MessageDirection;
 use App\Support\Communications\MessageSource;
 use App\Support\Communications\MessageStatus;
+use App\Support\Communications\Provider;
 use App\Support\Communications\SuppressionReason;
 use App\Support\Communications\SuppressionScope;
 use App\Support\Communications\SuppressionWriter;
@@ -183,6 +188,98 @@ class MessageStoreSeeder extends Seeder
                     ],
                 );
             }
+        }
+
+        $this->seedTriageQueue();
+    }
+
+    /**
+     * Pending unmatched inbound rows so the S11-04 triage tab is non-empty after seed.
+     */
+    private function seedTriageQueue(): void
+    {
+        $account = CommunicationAccount::query()
+            ->where('channel', Channel::Email)
+            ->where('provider', Provider::Postmark)
+            ->first();
+
+        if ($account === null) {
+            $account = CommunicationAccount::query()->create([
+                'scope' => AccountScope::Company,
+                'site_id' => null,
+                'channel' => Channel::Email,
+                'provider' => Provider::Postmark,
+                'is_active' => true,
+                'credentials' => ['server_token' => 'seed-token'],
+                'webhook_url_token' => 'seed-triage-webhook',
+                'status' => CredentialStatus::Connected,
+            ]);
+        }
+
+        $rows = [
+            [
+                'provider_message_id' => 'seed-triage-001',
+                'sender' => 'mystery.renter@example.com',
+                'name' => 'Mystery Renter',
+                'subject' => 'Do you have a 10x10 available?',
+                'body' => 'Hi — saw your site, looking for a unit next month.',
+            ],
+            [
+                'provider_message_id' => 'seed-triage-002',
+                'sender' => 'newsletter-bounce@spam.example',
+                'name' => 'Spam Bot',
+                'subject' => 'Congratulations you won',
+                'body' => 'Click here to claim your prize.',
+            ],
+            [
+                'provider_message_id' => 'seed-triage-003',
+                'sender' => 'walkin.prospect@example.com',
+                'name' => 'Walk-in Prospect',
+                'subject' => 'Storage near downtown',
+                'body' => 'Can someone call me about climate-controlled units?',
+            ],
+        ];
+
+        foreach ($rows as $index => $row) {
+            if (CommsTriage::query()->where('provider_message_id', $row['provider_message_id'])->exists()) {
+                continue;
+            }
+
+            $payload = [
+                'From' => $row['sender'],
+                'FromName' => $row['name'],
+                'FromFull' => ['Email' => $row['sender'], 'Name' => $row['name'], 'MailboxHash' => ''],
+                'To' => 'inbox@example.com',
+                'ToFull' => [['Email' => 'inbox@example.com', 'Name' => '', 'MailboxHash' => '']],
+                'Subject' => $row['subject'],
+                'MessageID' => $row['provider_message_id'],
+                'TextBody' => $row['body'],
+                'HtmlBody' => '<p>'.e($row['body']).'</p>',
+                'Date' => now()->subHours($index + 1)->toRfc7231String(),
+                'Headers' => [
+                    ['Name' => 'Message-ID', 'Value' => '<'.$row['provider_message_id'].'@mtasv.net>'],
+                ],
+                'Attachments' => [],
+            ];
+
+            CommsTriage::query()->create([
+                'communication_account_id' => $account->id,
+                'provider' => Provider::Postmark,
+                'provider_message_id' => $row['provider_message_id'],
+                'channel' => Channel::Email,
+                'sender_value' => $row['sender'],
+                'preview' => [
+                    'from' => $row['sender'],
+                    'to' => 'inbox@example.com',
+                    'subject' => $row['subject'],
+                    'body_text' => $row['body'],
+                    'channel' => 'email',
+                ],
+                'payload' => $payload,
+                'status' => 'pending',
+                'created_at' => now()->subHours($index + 1),
+                'updated_at' => now()->subHours($index + 1),
+            ]);
         }
     }
 

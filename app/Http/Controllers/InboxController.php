@@ -21,6 +21,7 @@ use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\HtmlSanitizer;
+use App\Support\Communications\InboxThreadContext;
 use App\Support\Communications\InboxThreadQuery;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailAttachment;
@@ -178,6 +179,56 @@ class InboxController extends Controller
         ], 'Thread marked read.');
     }
 
+    public function unread(MessageThread $messageThread): JsonResponse
+    {
+        // Honest hack — thread-level model owns read state; per-message is out of scope.
+        MessageThread::query()
+            ->whereKey($messageThread->id)
+            ->update(['unread_count' => 1]);
+
+        $messageThread->refresh();
+
+        return $this->success([
+            'id' => $messageThread->id,
+            'unread_count' => (int) $messageThread->unread_count,
+        ], 'Thread marked unread.');
+    }
+
+    public function moveTargets(MessageThread $messageThread): JsonResponse
+    {
+        $targets = MessageThread::query()
+            ->where('contact_id', $messageThread->contact_id)
+            ->where('channel', $messageThread->channel)
+            ->whereKeyNot($messageThread->id)
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+
+        $latestByThread = Message::query()
+            ->whereIn('message_thread_id', $targets->pluck('id'))
+            ->orderByDesc('id')
+            ->get()
+            ->unique('message_thread_id')
+            ->keyBy('message_thread_id');
+
+        $data = $targets->map(function (MessageThread $thread) use ($latestByThread): array {
+            $latest = $latestByThread->get($thread->id);
+
+            return [
+                'id' => $thread->id,
+                'subject' => $thread->subject,
+                'channel_key' => $thread->channel_key,
+                'last_message_at' => $thread->last_message_at?->toIso8601String(),
+                'preview_excerpt' => $latest !== null
+                    ? InboxThreadQuery::excerpt($latest->body_text, $latest->body_html)
+                    : null,
+            ];
+        })->values()->all();
+
+        return $this->success($data, 'Move targets retrieved successfully.');
+    }
+
     public function assign(Request $request, MessageThread $messageThread): JsonResponse
     {
         $validated = $request->validate([
@@ -211,6 +262,16 @@ class InboxController extends Controller
                 'name' => $messageThread->assignee->name,
             ] : null,
         ], 'Thread assignment updated.');
+    }
+
+    public function context(MessageThread $messageThread): JsonResponse
+    {
+        $messageThread->load(['contact.channels']);
+
+        return $this->success(
+            InboxThreadContext::build($messageThread),
+            'Inbox thread context retrieved successfully.',
+        );
     }
 
     public function composeContext(MessageThread $messageThread): JsonResponse
@@ -672,6 +733,9 @@ class InboxController extends Controller
             ? ['format' => 'html', 'content' => $html]
             : ['format' => 'text', 'content' => $message->body_text];
 
+        $evidence = is_array($message->threading_evidence) ? $message->threading_evidence : [];
+        $rethreaded = (bool) ($evidence['rethreaded'] ?? false);
+
         return [
             'id' => $message->id,
             'direction' => $message->direction?->value ?? (string) $message->direction,
@@ -693,6 +757,10 @@ class InboxController extends Controller
             'delivery_events' => $message->delivery_events,
             'from_address' => $message->from_address,
             'to_address' => $message->to_address,
+            'rethreaded' => $rethreaded,
+            'rethreaded_from_thread_id' => $rethreaded
+                ? (isset($evidence['from_thread_id']) ? (int) $evidence['from_thread_id'] : null)
+                : null,
         ];
     }
 }

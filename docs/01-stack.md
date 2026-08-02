@@ -23,7 +23,7 @@
 
 ## Panel surface (rough page map)
 
-- **Pinned** — inbox
+- **Pinned** — **Inbox** (`/inbox`): three-pane threads UI (list / conversation / tenant context) across email, SMS, and calls; triage tab for unmatched inbound; nav badge = unread threads (+ triage indicator)
 - **Marketing** — campaigns; templates (email, SMS, WhatsApp)
 - **Automations** — automation workflows (filterable by trigger domain)
 - **Leasing** — contacts, tasks, deals, offers (+ public offer preview), unit map, reservations, contracts, move-outs
@@ -31,7 +31,7 @@
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
 - **Insights** — occupancy, conversion, revenue
 - **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), late fees & liens, tax rates, leasing, custom attributes, object customization, **facility (sites)**, activity log
-- **Inbox / Copilot** — messaging + AI conversations
+- **Copilot** — AI conversations (sidebar), separate from Inbox
 
 ## Quick start
 

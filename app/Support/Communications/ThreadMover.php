@@ -38,6 +38,65 @@ final class ThreadMover
             throw new InvalidArgumentException('Cannot move a message across channels.');
         }
 
+        if ((int) $fromThread->contact_id !== (int) $target->contact_id) {
+            throw new InvalidArgumentException('Cannot move a message to another contact\'s thread.');
+        }
+
+        return self::performMove($message, $fromThread, $target, $fromThreadId, $causer);
+    }
+
+    /**
+     * Create a fresh thread for the message's contact+channel and move onto it.
+     * Email only — SMS/call threads are unique per channel_key.
+     */
+    public static function moveToNewThread(Message $message, ?object $causer = null): Message
+    {
+        if ($message->thread === null) {
+            $message->load('thread');
+        }
+
+        $fromThread = $message->thread;
+        if ($fromThread === null) {
+            throw new InvalidArgumentException('Message has no source thread.');
+        }
+
+        $channel = $fromThread->channel instanceof Channel
+            ? $fromThread->channel
+            : Channel::from((string) $fromThread->channel);
+
+        if ($channel !== Channel::Email) {
+            throw new InvalidArgumentException(
+                'New thread is only supported for email. SMS and call use a single thread per number.',
+            );
+        }
+
+        $subject = $fromThread->subject;
+        if (($subject === null || $subject === '') && is_array($message->threading_evidence)) {
+            $subject = isset($message->threading_evidence['subject'])
+                && is_string($message->threading_evidence['subject'])
+                ? $message->threading_evidence['subject']
+                : null;
+        }
+
+        $target = MessageThread::query()->create([
+            'contact_id' => $fromThread->contact_id,
+            'channel' => Channel::Email,
+            'subject' => $subject !== null && $subject !== '' ? $subject : 'Moved message',
+            'channel_key' => null,
+            'last_message_at' => now(),
+            'unread_count' => 0,
+        ]);
+
+        return self::move($message, $target, $causer);
+    }
+
+    private static function performMove(
+        Message $message,
+        MessageThread $fromThread,
+        MessageThread $target,
+        int $fromThreadId,
+        ?object $causer,
+    ): Message {
         return DB::transaction(function () use ($message, $target, $fromThread, $fromThreadId, $causer): Message {
             $message->forceFill([
                 'message_thread_id' => $target->id,
