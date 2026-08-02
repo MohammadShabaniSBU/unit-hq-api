@@ -8,11 +8,12 @@ use App\Enums\ContactChannelType;
 use App\Enums\LogChannel;
 use App\Models\CommsTriage;
 use App\Models\Contact;
-use App\Models\EmailTemplate;
+use App\Enums\TemplateChannel;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageThread;
+use App\Models\TemplateFamily;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\SubjectTokenBag;
@@ -36,6 +37,7 @@ use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\Senders\SmsSender;
 use App\Support\Communications\SuppressionWriter;
+use App\Support\Communications\TemplateResolver;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -297,10 +299,12 @@ class InboxController extends Controller
         $templates = [];
         $tokens = [];
         if ($channel === Channel::Email) {
-            $templates = EmailTemplate::query()
+            $templates = TemplateFamily::query()
+                ->notArchived()
+                ->channel(TemplateChannel::Email)
                 ->orderBy('name')
                 ->get(['id', 'name'])
-                ->map(fn (EmailTemplate $t) => ['id' => $t->id, 'name' => $t->name])
+                ->map(fn (TemplateFamily $t) => ['id' => $t->id, 'name' => $t->name])
                 ->values()
                 ->all();
             $tokens = SubjectTokenBag::vocabulary();
@@ -330,13 +334,13 @@ class InboxController extends Controller
                 'body_html' => ['sometimes', 'nullable', 'string'],
                 'attachment_ids' => ['sometimes', 'array'],
                 'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
-                'email_template_id' => ['sometimes', 'nullable', 'integer', 'exists:email_templates,id'],
+                'template_family_id' => ['sometimes', 'nullable', 'integer', 'exists:template_families,id'],
             ]);
         } elseif ($channel === Channel::Sms) {
             $validated = $request->validate([
                 'body_text' => ['required', 'string'],
                 'attachment_ids' => ['prohibited'],
-                'email_template_id' => ['prohibited'],
+                'template_family_id' => ['prohibited'],
                 'body_html' => ['prohibited'],
             ]);
         } else {
@@ -394,12 +398,12 @@ class InboxController extends Controller
             'body_html' => ['sometimes', 'nullable', 'string'],
             'attachment_ids' => ['sometimes', 'array'],
             'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
-            'email_template_id' => ['sometimes', 'nullable', 'integer', 'exists:email_templates,id'],
+            'template_family_id' => ['sometimes', 'nullable', 'integer', 'exists:template_families,id'],
         ]);
 
         $channel = Channel::from($validated['channel']);
         if ($channel === Channel::Sms) {
-            if (! empty($validated['attachment_ids']) || isset($validated['email_template_id']) || isset($validated['body_html'])) {
+            if (! empty($validated['attachment_ids']) || isset($validated['template_family_id']) || isset($validated['body_html'])) {
                 throw ValidationException::withMessages([
                     'channel' => ['SMS compose does not support attachments, templates, or HTML.'],
                 ]);
@@ -429,7 +433,12 @@ class InboxController extends Controller
                 return $this->error('Contact has no email address.', [], 422);
             }
 
-            [$bodyText, $bodyHtml] = $this->resolveEmailBodies($validated, $tokenContext);
+            [$bodyText, $bodyHtml, $warnings] = $this->resolveEmailBodies(
+                $validated,
+                $tokenContext,
+                $contact,
+                $resolved['site'],
+            );
             $attachments = $this->loadStagedAttachments($validated['attachment_ids'] ?? []);
             $emailAttachments = $this->toEmailAttachments($attachments);
 
@@ -446,6 +455,7 @@ class InboxController extends Controller
                 $resolved['site'],
                 $contact,
                 $context,
+                detail: $warnings !== [] ? ['token_warnings' => $warnings] : null,
             );
 
             if ($result->wasSuppressed()) {
@@ -503,7 +513,12 @@ class InboxController extends Controller
             return $this->error('Contact has no email address.', [], 422);
         }
 
-        [$bodyText, $bodyHtml] = $this->resolveEmailBodies($validated, $tokenContext);
+        [$bodyText, $bodyHtml, $warnings] = $this->resolveEmailBodies(
+            $validated,
+            $tokenContext,
+            $contact,
+            $site,
+        );
         $attachments = $this->loadStagedAttachments($validated['attachment_ids'] ?? []);
         $emailAttachments = $this->toEmailAttachments($attachments);
 
@@ -522,6 +537,7 @@ class InboxController extends Controller
             $contact,
             $context,
             thread: $thread,
+            detail: $warnings !== [] ? ['token_warnings' => $warnings] : null,
         );
 
         if ($result->wasSuppressed()) {
@@ -580,23 +596,36 @@ class InboxController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{0: string, 1: string|null}
+     * @return array{0: string, 1: string|null, 2: list<string>}
      */
-    private function resolveEmailBodies(array $validated, RunContext $tokenContext): array
-    {
-        if (! empty($validated['email_template_id'])) {
-            $template = EmailTemplate::query()->findOrFail($validated['email_template_id']);
-            $rendered = EmailTemplateRenderer::render($template, $tokenContext);
+    private function resolveEmailBodies(
+        array $validated,
+        RunContext $tokenContext,
+        Contact $contact,
+        ?\App\Models\Site $site,
+    ): array {
+        if (! empty($validated['template_family_id'])) {
+            $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);
+            $variant = TemplateResolver::variant($family, $contact, $site);
+            $rendered = EmailTemplateRenderer::render($variant, $tokenContext);
 
-            return [$rendered['text'], $rendered['html']];
+            return [$rendered['text'], $rendered['html'], $rendered['warnings']];
         }
 
-        $bodyText = TokenResolver::resolve($validated['body_text'], $tokenContext);
-        $bodyHtml = isset($validated['body_html']) && is_string($validated['body_html'])
-            ? TokenResolver::resolve($validated['body_html'], $tokenContext)
-            : null;
+        $textResolved = TokenResolver::resolveCollectingWarnings($validated['body_text'], $tokenContext);
+        $warnings = $textResolved['warnings'];
+        $bodyHtml = null;
+        if (isset($validated['body_html']) && is_string($validated['body_html'])) {
+            $htmlResolved = TokenResolver::resolveCollectingWarnings($validated['body_html'], $tokenContext);
+            $bodyHtml = $htmlResolved['value'];
+            foreach ($htmlResolved['warnings'] as $path) {
+                if (! in_array($path, $warnings, true)) {
+                    $warnings[] = $path;
+                }
+            }
+        }
 
-        return [$bodyText, $bodyHtml];
+        return [$textResolved['value'], $bodyHtml, $warnings];
     }
 
     /**

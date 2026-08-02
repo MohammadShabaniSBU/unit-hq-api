@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Communications;
 
+use App\Enums\TemplateChannel;
+use App\Enums\TemplatePurpose;
 use App\Models\Contact;
-use App\Models\EmailBlock;
-use App\Models\EmailTemplate;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\Site;
+use App\Models\TemplateFamily;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectTokenBag;
 use App\Support\Communications\Channel;
 use App\Support\Communications\EmailTemplateRenderer;
+use App\Support\Communications\LegacyEmailBlocksHtml;
+use App\Support\Communications\TemplateResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -42,26 +45,34 @@ class TemplateTokenTest extends TestCase
         ]);
         $this->givePrimaryEmail($contact, 'ada@example.com');
 
-        $template = EmailTemplate::query()->create(['name' => 'Inbox hello']);
-        EmailBlock::query()->create([
-            'email_template_id' => $template->id,
-            'type' => 'text',
-            'props' => [
-                'content' => 'Hello {{contact.first_name}}, balance link {{pay_link}}',
-                'align' => 'left',
-                'fontSize' => 16,
-                'color' => '#000000',
-            ],
-            'order' => 0,
+        $family = TemplateFamily::query()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Inbox hello',
+            'purpose' => TemplatePurpose::General,
         ]);
+        $family->variants()->create([
+            'locale' => 'en',
+            'subject' => 'Inbox hello',
+            'legacy_html' => LegacyEmailBlocksHtml::fromBlocks([[
+                'type' => 'text',
+                'props' => [
+                    'content' => 'Hello {{contact.first_name}}, balance link {{pay_link}}',
+                    'align' => 'left',
+                    'fontSize' => 16,
+                    'color' => '#000000',
+                ],
+            ]]),
+        ]);
+        $family->load('variants');
 
         $thread = $this->makeInboxThread($contact, [
             'subject' => 'Tokens',
             'channel' => Channel::Email,
         ]);
 
+        $variant = TemplateResolver::variant($family, $contact, $site);
         $expected = EmailTemplateRenderer::render(
-            $template->fresh('emailBlocks') ?? $template,
+            $variant,
             new RunContext(subjectBag: SubjectTokenBag::forContact($contact)),
         );
 
@@ -76,7 +87,7 @@ class TemplateTokenTest extends TestCase
 
         $response = $this->postJson('/api/inbox/threads/'.$thread->id.'/reply', [
             'body_text' => 'unused when template set',
-            'email_template_id' => $template->id,
+            'template_family_id' => $family->id,
         ]);
 
         $response->assertCreated();
@@ -86,7 +97,6 @@ class TemplateTokenTest extends TestCase
         $this->assertStringContainsString('Hello Ada', (string) $message->body_html);
         $this->assertStringContainsString('[pay-link]', (string) $message->body_html);
 
-        // Freeform token resolution
         $free = $this->postJson('/api/inbox/threads/'.$thread->id.'/reply', [
             'body_text' => 'Hi {{contact.first_name}}',
         ]);

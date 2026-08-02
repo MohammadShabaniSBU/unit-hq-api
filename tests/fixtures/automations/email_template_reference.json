@@ -21,6 +21,7 @@
       "config": {
         "bodyType": "template",
         "templateId": 0,
+        "template_family_id": 0,
         "subject": { "kind": "static", "value": "Template subject" }
       }
     },

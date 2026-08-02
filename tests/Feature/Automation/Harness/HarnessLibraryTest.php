@@ -22,9 +22,11 @@ use App\Models\Country;
 use App\Models\DelinquencyPolicy;
 use App\Models\DelinquencyPolicyStep;
 use App\Models\DelinquencyStep;
-use App\Models\EmailBlock;
-use App\Models\EmailTemplate;
+use App\Enums\TemplateChannel;
+use App\Enums\TemplatePurpose;
 use App\Models\Employee;
+use App\Models\TemplateFamily;
+use App\Support\Communications\LegacyEmailBlocksHtml;
 use App\Models\Interaction;
 use App\Models\PaymentMethod;
 use App\Models\Site;
@@ -409,17 +411,23 @@ class HarnessLibraryTest extends TestCase
     {
         $this->seedEmailAccount(Site::factory()->create());
 
-        $template = EmailTemplate::query()->create(['name' => 'Debt reminder']);
-        EmailBlock::query()->create([
-            'email_template_id' => $template->id,
-            'type' => 'text',
-            'props' => [
-                'content' => 'Hello {{trigger.attributes.first_name}}',
-                'align' => 'left',
-                'fontSize' => 16,
-                'color' => '#000000',
-            ],
-            'order' => 0,
+        $family = TemplateFamily::query()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Debt reminder',
+            'purpose' => TemplatePurpose::Debt,
+        ]);
+        $family->variants()->create([
+            'locale' => 'en',
+            'subject' => 'Debt reminder',
+            'legacy_html' => LegacyEmailBlocksHtml::fromBlocks([[
+                'type' => 'text',
+                'props' => [
+                    'content' => 'Hello {{trigger.attributes.first_name}}',
+                    'align' => 'left',
+                    'fontSize' => 16,
+                    'color' => '#000000',
+                ],
+            ]]),
         ]);
 
         $contact = Contact::factory()->create([
@@ -433,7 +441,8 @@ class HarnessLibraryTest extends TestCase
         $emailNode = $harness->automation()->nodes()->where('node_key', 'email')->first();
         $this->assertNotNull($emailNode);
         $config = $emailNode->config;
-        $config['templateId'] = $template->id;
+        $config['templateId'] = $family->id;
+        $config['template_family_id'] = $family->id;
         $emailNode->update(['config' => $config]);
 
         $harness->trigger('object_created', $contact)

@@ -26,6 +26,10 @@ final class SmsSender
         private readonly ProviderResolver $resolver,
     ) {}
 
+    /**
+     * @param  array<string, mixed>|null  $interactionMetadata
+     * @param  array<string, mixed>|null  $detail
+     */
     public function send(
         SmsMessage $message,
         Site $site,
@@ -34,6 +38,7 @@ final class SmsSender
         ?int $dealId = null,
         ?array $interactionMetadata = null,
         ?MessageThread $thread = null,
+        ?array $detail = null,
     ): SendResult {
         $resolved = $this->resolver->resolve(Channel::Sms, $site);
         $adapter = $resolved->require(SendsSms::class, 'sending SMS');
@@ -107,6 +112,7 @@ final class SmsSender
                 providerMessageId: $result->providerMessageId,
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
+                detail: $detail,
                 thread: $thread,
             );
 

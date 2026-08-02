@@ -287,7 +287,11 @@ Route::apiResource('unit-classes', Facility\UnitClassController::class);
 
 Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)->only(['index', 'store']);
 
-Route::apiResource('email-templates', Controllers\EmailTemplateController::class);
+Route::apiResource('template-families', Controllers\TemplateFamilyController::class);
+Route::post('template-families/{templateFamily}/archive', [Controllers\TemplateFamilyController::class, 'archive']);
+Route::post('template-families/{templateFamily}/variants', [Controllers\TemplateFamilyController::class, 'storeVariant']);
+Route::put('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'updateVariant']);
+Route::delete('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'destroyVariant']);
 
 Route::get('automations/trigger-fields/{objectType}', [Controllers\AutomationController::class, 'triggerFields']);
 Route::apiResource('automations', Controllers\AutomationController::class);

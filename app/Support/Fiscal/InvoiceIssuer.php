@@ -16,6 +16,7 @@ use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\Site;
 use App\Models\Unit;
+use App\Support\Communications\SiteLocale;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Illuminate\Support\Collection;
@@ -777,14 +778,7 @@ final class InvoiceIssuer
 
     public static function localeForSite(Site $site): string
     {
-        $site->loadMissing('country');
-        $code = strtoupper((string) ($site->country?->code ?? ''));
-
-        return match ($code) {
-            'ES' => 'es',
-            'FR' => 'fr',
-            default => 'en',
-        };
+        return SiteLocale::for($site);
     }
 
     /** @return array{line1: string, line2: string|null, city: string, postal: string, country: string} */

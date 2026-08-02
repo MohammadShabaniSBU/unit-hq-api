@@ -6,10 +6,13 @@ namespace Database\Seeders;
 
 use App\Enums\PlaybookKind;
 use App\Enums\PlaybookStepAction;
-use App\Models\EmailBlock;
-use App\Models\EmailTemplate;
+use App\Enums\TemplateChannel;
+use App\Enums\TemplatePurpose;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
+use App\Models\TemplateFamily;
+use App\Models\TemplateVariant;
+use App\Support\Communications\LegacyEmailBlocksHtml;
 use Illuminate\Database\Seeder;
 
 /**
@@ -20,13 +23,13 @@ class DebtPlaybookSeeder extends Seeder
 {
     public function run(): void
     {
-        $template = EmailTemplate::query()->firstOrCreate(
-            ['name' => 'Payment reminder'],
+        $family = TemplateFamily::query()->firstOrCreate(
+            ['name' => 'Payment reminder', 'channel' => TemplateChannel::Email],
+            ['purpose' => TemplatePurpose::Debt],
         );
 
-        if ($template->emailBlocks()->count() === 0) {
-            EmailBlock::query()->create([
-                'email_template_id' => $template->id,
+        if ($family->variants()->count() === 0) {
+            $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
                 'type' => 'text',
                 'props' => [
                     'content' => 'Hello {{contact.first_name}}, your balance of {{contract.balance_owed}} is overdue. Pay here: {{pay_link}}',
@@ -34,7 +37,13 @@ class DebtPlaybookSeeder extends Seeder
                     'fontSize' => 16,
                     'color' => '#000000',
                 ],
-                'order' => 0,
+            ]]);
+
+            TemplateVariant::query()->create([
+                'template_family_id' => $family->id,
+                'locale' => 'en',
+                'subject' => 'Payment reminder',
+                'legacy_html' => $legacyHtml,
             ]);
         }
 
@@ -60,7 +69,7 @@ class DebtPlaybookSeeder extends Seeder
                 'action' => PlaybookStepAction::SendEmail,
                 'params' => [
                     'label' => 'Payment reminder',
-                    'email_template_id' => $template->id,
+                    'template_family_id' => $family->id,
                     'subject' => 'Payment reminder',
                 ],
             ],
@@ -78,7 +87,7 @@ class DebtPlaybookSeeder extends Seeder
                 'action' => PlaybookStepAction::SendEmail,
                 'params' => [
                     'label' => 'Overdue notice email',
-                    'email_template_id' => $template->id,
+                    'template_family_id' => $family->id,
                     'subject' => 'Overdue balance notice',
                     'record_notice' => 'overdue',
                 ],

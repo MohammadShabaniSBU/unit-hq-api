@@ -29,6 +29,10 @@ final class EmailSender
         private readonly ProviderResolver $resolver,
     ) {}
 
+    /**
+     * @param  array<string, mixed>|null  $interactionMetadata
+     * @param  array<string, mixed>|null  $detail
+     */
     public function send(
         EmailMessage $message,
         Site $site,
@@ -37,6 +41,7 @@ final class EmailSender
         ?int $dealId = null,
         ?array $interactionMetadata = null,
         ?MessageThread $thread = null,
+        ?array $detail = null,
     ): SendResult {
         $resolved = $this->resolver->resolve(Channel::Email, $site);
         $adapter = $resolved->require(SendsEmail::class, 'sending email');
@@ -138,6 +143,7 @@ final class EmailSender
                 providerMessageId: $result->providerMessageId,
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
+                detail: $detail,
                 thread: $thread,
             );
 

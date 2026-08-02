@@ -8,8 +8,8 @@ use App\Enums\ContactChannelType;
 use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
-use App\Models\EmailTemplate;
 use App\Models\Site;
+use App\Models\TemplateFamily;
 use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
@@ -19,6 +19,7 @@ use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
+use App\Support\Communications\TemplateResolver;
 use RuntimeException;
 
 final class SendEmailHandler implements NodeHandler
@@ -39,7 +40,12 @@ final class SendEmailHandler implements NodeHandler
 
         $channel = SubjectChain::primaryChannel($contact, ContactChannelType::Email);
         if ($channel === null || trim($channel->value) === '') {
-            [$subject, $bodyHtml, $bodyText] = $this->resolveContent($config, $context);
+            [$subject, $bodyHtml, $bodyText] = $this->resolveContent(
+                $config,
+                $context,
+                $contact,
+                SubjectChain::site($run),
+            );
 
             return [
                 'to' => null,
@@ -54,7 +60,12 @@ final class SendEmailHandler implements NodeHandler
             ];
         }
 
-        [$subject, $bodyHtml, $bodyText] = $this->resolveContent($config, $context);
+        [$subject, $bodyHtml, $bodyText, $warnings] = $this->resolveContent(
+            $config,
+            $context,
+            $contact,
+            SubjectChain::site($run),
+        );
 
         $site = SubjectChain::site($run);
         if (! $site instanceof Site) {
@@ -69,6 +80,8 @@ final class SendEmailHandler implements NodeHandler
         ];
         $dealId = $run->subject_type === 'deal' ? $run->subject_id : null;
 
+        $detail = $warnings !== [] ? ['token_warnings' => $warnings] : null;
+
         $result = app(EmailSender::class)->send(
             new EmailMessage(
                 to: [new EmailAddress($channel->value)],
@@ -81,6 +94,8 @@ final class SendEmailHandler implements NodeHandler
             $sendContext,
             $dealId,
             $metadata,
+            null,
+            $detail,
         );
 
         if ($result->wasSuppressed()) {
@@ -111,22 +126,33 @@ final class SendEmailHandler implements NodeHandler
 
     /**
      * @param  array<string, mixed>  $config
-     * @return array{0: string, 1: string, 2: string} subject, html, text
+     * @return array{0: string, 1: string, 2: string, 3: list<string>} subject, html, text, warnings
      */
-    private function resolveContent(array $config, RunContext $context): array
-    {
+    private function resolveContent(
+        array $config,
+        RunContext $context,
+        \App\Models\Contact $contact,
+        mixed $site,
+    ): array {
         $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
-        $templateId = $config['templateId'] ?? $config['template_id'] ?? $config['email_template_id'] ?? null;
+        $templateId = $config['template_family_id']
+            ?? $config['templateId']
+            ?? $config['template_id']
+            ?? $config['email_template_id']
+            ?? null;
 
         if ($bodyType === 'template' || $templateId !== null) {
             if ($templateId === null) {
-                throw new RuntimeException('send_email template path requires templateId');
+                throw new RuntimeException('send_email template path requires template_family_id');
             }
 
-            $template = EmailTemplate::query()->with('emailBlocks')->find($templateId);
-            if ($template === null) {
-                throw new RuntimeException("send_email email template [{$templateId}] not found");
+            $family = TemplateFamily::query()->with('variants')->find($templateId);
+            if ($family === null) {
+                throw new RuntimeException("send_email template family [{$templateId}] not found");
             }
+
+            $siteModel = $site instanceof Site ? $site : null;
+            $variant = TemplateResolver::variant($family, $contact, $siteModel);
 
             $subjectOverride = null;
             if (isset($config['subject'])) {
@@ -134,9 +160,9 @@ final class SendEmailHandler implements NodeHandler
                 $subjectOverride = is_string($resolved) ? $resolved : (string) ($resolved ?? '');
             }
 
-            $rendered = EmailTemplateRenderer::render($template, $context, $subjectOverride);
+            $rendered = EmailTemplateRenderer::render($variant, $context, $subjectOverride);
 
-            return [$rendered['subject'], $rendered['html'], $rendered['text']];
+            return [$rendered['subject'], $rendered['html'], $rendered['text'], $rendered['warnings']];
         }
 
         $subject = TokenResolver::resolveValueSource($config['subject'] ?? null, $context);
@@ -145,18 +171,22 @@ final class SendEmailHandler implements NodeHandler
         $resolved = TokenResolver::resolveValueSource($config['body'] ?? null, $context);
         $body = is_string($resolved) ? $resolved : '';
 
-        return [$subject, $body, $body];
+        return [$subject, $body, $body, []];
     }
 
     /** @param  array<string, mixed>  $config */
     private function assertXor(array $config): void
     {
         $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
-        $templateId = $config['templateId'] ?? $config['template_id'] ?? $config['email_template_id'] ?? null;
+        $templateId = $config['template_family_id']
+            ?? $config['templateId']
+            ?? $config['template_id']
+            ?? $config['email_template_id']
+            ?? null;
         $hasInlineBody = array_key_exists('body', $config) && $config['body'] !== null && $config['body'] !== '';
 
         if ($templateId !== null && $bodyType === 'custom' && $hasInlineBody) {
-            throw new RuntimeException('send_email params must be email_template_id XOR inline subject/body');
+            throw new RuntimeException('send_email params must be template_family_id XOR inline subject/body');
         }
 
         if ($templateId !== null && $bodyType !== 'template' && $bodyType !== 'custom') {
@@ -164,7 +194,7 @@ final class SendEmailHandler implements NodeHandler
         }
 
         if ($bodyType === 'template' && $templateId === null) {
-            throw new RuntimeException('send_email template path requires templateId');
+            throw new RuntimeException('send_email template path requires template_family_id');
         }
     }
 }

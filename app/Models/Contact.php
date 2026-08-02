@@ -40,6 +40,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null               $billing_city
  * @property string|null               $billing_postal_code
  * @property string|null               $billing_country_code
+ * @property string|null               $locale
  * @property ContactLifecycleStatus    $status
  * @property ContactRecordStatus       $contact_status
  * @property int|null                  $canonical_contact_id
@@ -88,6 +89,7 @@ class Contact extends Model
         'billing_city',
         'billing_postal_code',
         'billing_country_code',
+        'locale',
         'status',
         'contact_status',
         'canonical_contact_id',

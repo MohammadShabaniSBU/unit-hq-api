@@ -9,29 +9,55 @@ namespace App\Support\Automation;
  */
 final class TokenResolver
 {
+    public const PREVIEW_MISSING_PREFIX = '⟦missing:';
+
+    public const PREVIEW_MISSING_SUFFIX = '⟧';
+
     public static function resolve(string $template, RunContext $context): string
     {
-        return (string) preg_replace_callback(
+        return self::resolveCollectingWarnings($template, $context)['value'];
+    }
+
+    /**
+     * @return array{value: string, warnings: list<string>}
+     */
+    public static function resolveCollectingWarnings(
+        string $template,
+        RunContext $context,
+        bool $previewMarkers = false,
+    ): array {
+        $warnings = [];
+
+        $value = (string) preg_replace_callback(
             '/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/',
-            function (array $matches) use ($context): string {
-                $value = $context->get($matches[1]);
+            function (array $matches) use ($context, $previewMarkers, &$warnings): string {
+                $path = $matches[1];
+                $resolved = $context->get($path);
 
-                if ($value === null) {
-                    return '';
+                if ($resolved === null) {
+                    if (! in_array($path, $warnings, true)) {
+                        $warnings[] = $path;
+                    }
+
+                    return $previewMarkers
+                        ? self::PREVIEW_MISSING_PREFIX.$path.self::PREVIEW_MISSING_SUFFIX
+                        : '';
                 }
 
-                if (is_bool($value)) {
-                    return $value ? 'true' : 'false';
+                if (is_bool($resolved)) {
+                    return $resolved ? 'true' : 'false';
                 }
 
-                if (is_array($value)) {
-                    return json_encode($value) ?: '';
+                if (is_array($resolved)) {
+                    return json_encode($resolved) ?: '';
                 }
 
-                return (string) $value;
+                return (string) $resolved;
             },
             $template,
         );
+
+        return ['value' => $value, 'warnings' => $warnings];
     }
 
     /**

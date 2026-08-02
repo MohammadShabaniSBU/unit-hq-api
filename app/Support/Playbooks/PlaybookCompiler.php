@@ -290,12 +290,13 @@ final class PlaybookCompiler
      */
     private static function emailConfig(array $params): array
     {
-        $hasTemplate = isset($params['email_template_id']);
+        $templateFamilyId = $params['template_family_id'] ?? $params['email_template_id'] ?? null;
+        $hasTemplate = $templateFamilyId !== null;
         $hasInline = isset($params['body']) || (isset($params['subject']) && ! $hasTemplate);
 
         if ($hasTemplate && isset($params['body'])) {
             throw ValidationException::withMessages([
-                'steps' => 'send_email params must be email_template_id XOR inline subject/body.',
+                'steps' => 'send_email params must be template_family_id XOR inline subject/body.',
             ]);
         }
 
@@ -303,7 +304,8 @@ final class PlaybookCompiler
             return [
                 'subject' => $params['subject'] ?? null,
                 'bodyType' => 'template',
-                'templateId' => $params['email_template_id'],
+                'templateId' => $templateFamilyId,
+                'template_family_id' => $templateFamilyId,
             ];
         }
 
