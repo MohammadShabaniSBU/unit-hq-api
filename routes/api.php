@@ -94,6 +94,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
     Route::get('billing/overdue', [Controllers\BillingOverdueController::class, 'index']);
 
+    // Insights reports — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
+
     // Delinquency collections desk (S07-04)
     Route::get('delinquencies', [Controllers\DelinquencyController::class, 'index']);
     Route::get('delinquencies/{delinquency}', [Controllers\DelinquencyController::class, 'show']);

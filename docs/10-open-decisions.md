@@ -95,6 +95,7 @@
 | Per-point access suspension | S15 suspensions are contract-total by design. Per-point suspension (deny door, keep gate) deferred. |
 | After-hours / schedule rules | Schedule-based access restrictions are provider-side territory for now; not modeled in desired-state v1. |
 | Drift incident dismiss | S15-04 stores denied-but-granted incidents on `sync_attention` for 30 days for contracts-index chips; no operator dismiss API yet. |
+| Report nightly snapshots | **Escape hatch only.** Insights figures are live bounded queries from fact tables (S16 harvest principle). Nightly snapshot / rollup tables are sanctioned **only if** a report proves slow at real operator scale — design the cache then; do not invent rollups preemptively. Vocabulary: `docs/report-definitions.md`. |
 
 ## Active WIP
 
@@ -107,4 +108,5 @@
 - **Site credential authorization stopgap:** `App\Support\Auth\SiteAccess::canManageSite()` lets every authenticated Employee manage every site's comms/Stripe credentials — there is no `Employee`↔`Site` assignment table yet to distinguish site-level staff from company-level roles. Controllers already call through this single helper so wiring real scoping later is a one-file change.
 - **Manual billing-run authorization stopgap:** `POST /api/billing-runs` accepts any authenticated Employee (auth:sanctum only). Tighten to a real capability in S17 RBAC alongside the `canEdit` / `SiteAccess` stopgaps.
 - **Inbox assign authorization stopgap:** `POST /api/inbox/threads/{id}/assign` accepts any authenticated Employee (auth:sanctum only). Same S17 RBAC tightening as billing-runs / `canEdit` / `SiteAccess`.
+- **Reports authorization stopgap (S16):** `GET /api/reports/*` accepts any authenticated Employee (auth:sanctum only). Tighten the whole reports namespace in S17 RBAC alongside billing-runs / `canEdit` / `SiteAccess` / inbox assign.
 - **S10 schema defect (fixed in S11-01):** `message_attachments.message_id` is nullable so outbound compose can stage files before send; orphans are swept daily. Not an S11 schema expansion.
