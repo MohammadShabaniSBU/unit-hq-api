@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Delinquency;
 
+use App\Enums\AccessSuspensionLiftReason;
+use App\Enums\AccessSuspensionReason;
 use App\Enums\ContractNoticeType;
 use App\Enums\ContractStatus;
 use App\Enums\DelinquencyCureTrigger;
@@ -11,6 +13,7 @@ use App\Enums\DelinquencyPolicyAction;
 use App\Enums\DelinquencyStepAction;
 use App\Enums\DelinquencyStepTrigger;
 use App\Enums\LogChannel;
+use App\Models\AccessSuspension;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractNotice;
@@ -158,6 +161,9 @@ final class DelinquencyEngine
             if ($open->policy?->auto_release_overlock ?? true) {
                 Overlock::release($open, 'cure');
             }
+            if ($open->policy?->auto_restore_access ?? true) {
+                $this->liftDelinquencySuspension($contract);
+            }
 
             return ['cured' => 1, 'steps' => 0];
         }
@@ -263,10 +269,7 @@ final class DelinquencyEngine
             DelinquencyPolicyAction::RecordNotice => $this->actRecordNotice($step, $case, $policyStep, $contract),
             DelinquencyPolicyAction::CreateTask => $this->actCreateTask($step, $case, $policyStep, $contract),
             DelinquencyPolicyAction::PlaceOverlock => $this->actPlaceOverlock($step, $case),
-            DelinquencyPolicyAction::RevokeAccess => $this->finishStep($step, [
-                'skipped_reserved' => true,
-                'incomplete' => false,
-            ]),
+            DelinquencyPolicyAction::RevokeAccess => $this->actRevokeAccess($step, $case, $contract),
         };
 
         return true;
@@ -377,6 +380,42 @@ final class DelinquencyEngine
         $this->finishStep($step, $detail, unitHold: $primary);
     }
 
+    private function actRevokeAccess(DelinquencyStep $step, Delinquency $case, Contract $contract): void
+    {
+        $already = AccessSuspension::query()
+            ->active()
+            ->where('contract_id', $contract->id)
+            ->exists();
+
+        $suspension = AccessSuspension::suspend(
+            $contract,
+            AccessSuspensionReason::Delinquency,
+            $case,
+        );
+
+        $this->finishStep($step, [
+            'incomplete' => false,
+            'already_suspended' => $already,
+        ], accessSuspension: $suspension);
+    }
+
+    /**
+     * Lift only delinquency-reason suspensions on cure. Manual suspensions survive.
+     */
+    private function liftDelinquencySuspension(Contract $contract): void
+    {
+        $active = AccessSuspension::query()
+            ->active()
+            ->where('contract_id', $contract->id)
+            ->first();
+
+        if ($active === null || $active->reason !== AccessSuspensionReason::Delinquency) {
+            return;
+        }
+
+        AccessSuspension::lift($contract, AccessSuspensionLiftReason::Cure);
+    }
+
     /**
      * @param  array<string, mixed>  $detail
      */
@@ -387,6 +426,7 @@ final class DelinquencyEngine
         ?UnitHold $unitHold = null,
         ?ContractNotice $contractNotice = null,
         ?Task $task = null,
+        ?AccessSuspension $accessSuspension = null,
     ): void {
         $merged = array_merge($step->detail ?? [], $detail);
         unset($merged['incomplete']);
@@ -399,6 +439,7 @@ final class DelinquencyEngine
             'unit_hold_id' => $unitHold?->id ?? $step->unit_hold_id,
             'contract_notice_id' => $contractNotice?->id ?? $step->contract_notice_id,
             'task_id' => $task?->id ?? $step->task_id,
+            'access_suspension_id' => $accessSuspension?->id ?? $step->access_suspension_id,
             'detail' => $merged,
         ])->save();
     }

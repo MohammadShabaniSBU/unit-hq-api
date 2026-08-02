@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property int|null                 $unit_hold_id
  * @property int|null                 $contract_notice_id
  * @property int|null                 $task_id
+ * @property int|null                 $access_suspension_id
  * @property array<string, mixed>|null $detail
  * @property int|null                 $created_by
  * @property Carbon                   $created_at
@@ -35,6 +36,7 @@ use Illuminate\Support\Carbon;
  * @property-read UnitHold|null            $unitHold
  * @property-read ContractNotice|null      $contractNotice
  * @property-read Task|null                $task
+ * @property-read AccessSuspension|null    $accessSuspension
  * @property-read Employee|null            $createdBy
  */
 class DelinquencyStep extends Model
@@ -53,6 +55,7 @@ class DelinquencyStep extends Model
         'unit_hold_id',
         'contract_notice_id',
         'task_id',
+        'access_suspension_id',
         'detail',
         'created_by',
     ];
@@ -101,6 +104,12 @@ class DelinquencyStep extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    /** @return BelongsTo<AccessSuspension, $this> */
+    public function accessSuspension(): BelongsTo
+    {
+        return $this->belongsTo(AccessSuspension::class);
     }
 
     /** @return BelongsTo<Employee, $this> */

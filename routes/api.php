@@ -90,6 +90,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('delinquencies/{delinquency}/assess-fee', [Controllers\DelinquencyController::class, 'assessFee']);
     Route::post('delinquencies/{delinquency}/overlock', [Controllers\DelinquencyController::class, 'overlock']);
     Route::post('delinquencies/{delinquency}/release-overlock', [Controllers\DelinquencyController::class, 'releaseOverlock']);
+    Route::post('delinquencies/{delinquency}/suspend-access', [Controllers\DelinquencyController::class, 'suspendAccess']);
+    Route::post('delinquencies/{delinquency}/restore-access', [Controllers\DelinquencyController::class, 'restoreAccess']);
     Route::post('delinquencies/{delinquency}/notices', [Controllers\DelinquencyController::class, 'recordNotice']);
     Route::post('delinquencies/{delinquency}/pause', [Controllers\DelinquencyController::class, 'pause']);
     Route::post('delinquencies/{delinquency}/resume', [Controllers\DelinquencyController::class, 'resume']);
@@ -276,6 +278,8 @@ Route::post('contracts/{contract}/notice-withdraw', [Controllers\ContractControl
 Route::post('contracts/{contract}/vacate-preview', [Controllers\ContractController::class, 'vacatePreview']);
 Route::post('contracts/{contract}/vacate', [Controllers\ContractController::class, 'vacate']);
 Route::post('contracts/{contract}/cancel', [Controllers\ContractController::class, 'cancel']);
+Route::post('contracts/{contract}/suspend-access', [Controllers\ContractController::class, 'suspendAccess']);
+Route::post('contracts/{contract}/restore-access', [Controllers\ContractController::class, 'restoreAccess']);
 Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/rate-changes', [Controllers\ContractRateChangeController::class, 'store']);

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\AccessSuspensionReason;
 use App\Enums\ChargeType;
+use App\Models\AccessSuspension;
 use App\Models\Charge;
 use App\Models\Unit;
 use App\Support\Billing\BillingMath;
@@ -82,6 +84,16 @@ class DelinquencyResource extends BaseResource
                 $this->relationLoaded('policy'),
                 fn () => (bool) ($this->policy?->auto_release_overlock ?? true)
             ),
+            'auto_restore_access' => $this->when(
+                $this->relationLoaded('policy'),
+                fn () => (bool) ($this->policy?->auto_restore_access ?? true)
+            ),
+            'access_suspended' => array_key_exists('access_suspended', $this->additional)
+                ? (bool) $this->additional['access_suspended']
+                : $this->accessSuspended(),
+            'pending_restore' => array_key_exists('pending_restore', $this->additional)
+                ? (bool) $this->additional['pending_restore']
+                : $this->pendingRestore(),
             'anchor_due_date' => $this->date($this->anchor_due_date),
             'opened_on' => $this->date($this->opened_on),
             'cured_on' => $this->date($this->cured_on),
@@ -146,6 +158,30 @@ class DelinquencyResource extends BaseResource
         }
 
         return $payload;
+    }
+
+    private function accessSuspended(): bool
+    {
+        return AccessSuspension::query()
+            ->active()
+            ->where('contract_id', $this->contract_id)
+            ->exists();
+    }
+
+    /**
+     * Cured case still carrying a delinquency-reason suspension (flag was false).
+     */
+    private function pendingRestore(): bool
+    {
+        if ($this->isOpen()) {
+            return false;
+        }
+
+        return AccessSuspension::query()
+            ->active()
+            ->where('contract_id', $this->contract_id)
+            ->where('reason', AccessSuspensionReason::Delinquency)
+            ->exists();
     }
 
     /**

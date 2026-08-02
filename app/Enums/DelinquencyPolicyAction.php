@@ -10,13 +10,7 @@ enum DelinquencyPolicyAction: string
     case PlaceOverlock = 'place_overlock';
     case RecordNotice = 'record_notice';
     case CreateTask = 'create_task';
-    /** Reserved for S16 access-control integration — rejected on create/update. */
     case RevokeAccess = 'revoke_access';
-
-    public function isReserved(): bool
-    {
-        return $this === self::RevokeAccess;
-    }
 
     /** @return list<string> */
     public static function values(): array

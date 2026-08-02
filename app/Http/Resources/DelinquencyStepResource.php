@@ -72,6 +72,7 @@ class DelinquencyStepResource extends BaseResource
                     'priority' => $this->task->priority,
                 ]
             ),
+            'access_suspension_id' => $this->access_suspension_id,
             'created_at' => $this->datetime($this->created_at),
         ];
     }

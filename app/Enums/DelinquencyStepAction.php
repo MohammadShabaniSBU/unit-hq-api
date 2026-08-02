@@ -11,6 +11,8 @@ enum DelinquencyStepAction: string
     case RecordNotice = 'record_notice';
     case CreateTask = 'create_task';
     case RevokeAccess = 'revoke_access';
+    /** Manual restore-access — timeline only, not a policy ladder action. */
+    case RestoreAccess = 'restore_access';
     /** Cure-trigger step row — not a policy ladder action. */
     case Cure = 'cure';
     /** Release-overlock step — timeline only, not a policy ladder action. */

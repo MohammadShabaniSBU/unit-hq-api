@@ -79,7 +79,6 @@ return [
         'cannot_reverse_reversal' => 'No se puede anular un pago de anulación.',
     ],
     'delinquency' => [
-        'revoke_access_reserved' => 'La acción «revoke_access» requiere integración de control de acceso (S16) y aún no se puede configurar.',
         'archive_in_use' => 'No se puede archivar la política de impagos asignada a :count sede(s). Reasigne esas sedes primero.',
         'offset_action_unique' => 'Cada par (offset_days, action) debe ser único dentro de una política.',
         'sort_unique' => 'Cada valor de orden (sort) debe ser único dentro de una política.',

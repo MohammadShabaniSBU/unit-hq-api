@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccessSuspensionLiftReason;
+use App\Enums\AccessSuspensionReason;
 use App\Enums\AutopayAttemptStatus;
 use App\Enums\ContractNoticeType;
 use App\Enums\DelinquencyCureTrigger;
@@ -12,6 +14,7 @@ use App\Enums\DelinquencyStepTrigger;
 use App\Enums\HoldType;
 use App\Enums\LogChannel;
 use App\Http\Resources\DelinquencyResource;
+use App\Models\AccessSuspension;
 use App\Models\AutopayAttempt;
 use App\Models\Charge;
 use App\Models\ContractNotice;
@@ -184,10 +187,20 @@ class DelinquencyController extends Controller
             $slice->pluck('contract_id')->map(fn ($id) => (int) $id)->all()
         );
 
-        $items = $slice->map(function (Delinquency $case) use ($listOverlockedIds, $failedAutopayIds) {
+        $suspensionByContract = $this->activeSuspensionsByContractId(
+            $slice->pluck('contract_id')->map(fn ($id) => (int) $id)->all()
+        );
+
+        $items = $slice->map(function (Delinquency $case) use ($listOverlockedIds, $failedAutopayIds, $suspensionByContract) {
+            $suspension = $suspensionByContract[(int) $case->contract_id] ?? null;
+
             return DelinquencyResource::make($case)->additional([
                 'overlocked' => in_array($case->id, $listOverlockedIds, true),
                 'failed_autopay' => in_array((int) $case->contract_id, $failedAutopayIds, true),
+                'access_suspended' => $suspension !== null,
+                'pending_restore' => $suspension !== null
+                    && ! $case->isOpen()
+                    && $suspension->reason === AccessSuspensionReason::Delinquency,
             ]);
         });
 
@@ -321,6 +334,80 @@ class DelinquencyController extends Controller
         $reason = $validated['reason'] ?? 'manual';
 
         Overlock::release($delinquency, $reason, $employee, $unitId);
+
+        return $this->show($delinquency->fresh() ?? $delinquency);
+    }
+
+    public function suspendAccess(Request $request, Delinquency $delinquency): JsonResponse
+    {
+        $this->assertOpen($delinquency);
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+        $contract = $delinquency->contract()->firstOrFail();
+        $today = DelinquencyState::siteToday($contract)->toDateString();
+
+        $already = AccessSuspension::query()
+            ->active()
+            ->where('contract_id', $contract->id)
+            ->exists();
+
+        $suspension = AccessSuspension::suspend(
+            $contract,
+            AccessSuspensionReason::Manual,
+            $delinquency,
+            $employee,
+        );
+
+        DelinquencyLifecycle::recordStep(
+            delinquency: $delinquency,
+            action: DelinquencyStepAction::RevokeAccess,
+            trigger: DelinquencyStepTrigger::Manual,
+            executedOn: $today,
+            accessSuspension: $suspension,
+            detail: [
+                'reason' => $validated['reason'],
+                'already_suspended' => $already,
+            ],
+            createdBy: $employee,
+        );
+
+        return $this->show($delinquency->fresh() ?? $delinquency);
+    }
+
+    public function restoreAccess(Request $request, Delinquency $delinquency): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+        $contract = $delinquency->contract()->firstOrFail();
+        $today = DelinquencyState::siteToday($contract)->toDateString();
+
+        $lifted = AccessSuspension::lift(
+            $contract,
+            AccessSuspensionLiftReason::Manual,
+            $employee,
+        );
+
+        DelinquencyLifecycle::recordStep(
+            delinquency: $delinquency,
+            action: DelinquencyStepAction::RestoreAccess,
+            trigger: DelinquencyStepTrigger::Manual,
+            executedOn: $today,
+            accessSuspension: $lifted,
+            detail: [
+                'reason' => $validated['reason'],
+                'already_restored' => $lifted === null,
+            ],
+            createdBy: $employee,
+        );
 
         return $this->show($delinquency->fresh() ?? $delinquency);
     }
@@ -534,6 +621,24 @@ class DelinquencyController extends Controller
         }
 
         return array_values(array_unique($ids));
+    }
+
+    /**
+     * @param  list<int>  $contractIds
+     * @return array<int, AccessSuspension>
+     */
+    private function activeSuspensionsByContractId(array $contractIds): array
+    {
+        if ($contractIds === []) {
+            return [];
+        }
+
+        return AccessSuspension::query()
+            ->active()
+            ->whereIn('contract_id', $contractIds)
+            ->get()
+            ->keyBy(fn (AccessSuspension $row): int => (int) $row->contract_id)
+            ->all();
     }
 
     /**

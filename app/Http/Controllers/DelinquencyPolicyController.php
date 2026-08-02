@@ -72,6 +72,7 @@ class DelinquencyPolicyController extends Controller
             $policy = DelinquencyPolicy::query()->create([
                 'name' => $validated['name'],
                 'auto_release_overlock' => $validated['auto_release_overlock'] ?? true,
+                'auto_restore_access' => $validated['auto_restore_access'] ?? true,
             ]);
 
             $this->syncSteps($policy, $validated['steps']);
@@ -96,6 +97,9 @@ class DelinquencyPolicyController extends Controller
             }
             if (array_key_exists('auto_release_overlock', $validated)) {
                 $attributes['auto_release_overlock'] = $validated['auto_release_overlock'];
+            }
+            if (array_key_exists('auto_restore_access', $validated)) {
+                $attributes['auto_restore_access'] = $validated['auto_restore_access'];
             }
             if ($attributes !== []) {
                 $delinquencyPolicy->update($attributes);
@@ -156,6 +160,7 @@ class DelinquencyPolicyController extends Controller
         $validated = $request->validate([
             'name' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:128'],
             'auto_release_overlock' => ['sometimes', 'boolean'],
+            'auto_restore_access' => ['sometimes', 'boolean'],
             'steps' => [$creating ? 'required' : 'sometimes', 'required', 'array', 'min:1'],
             'steps.*.offset_days' => ['required', 'integer', 'min:0'],
             'steps.*.action' => ['required', 'string', Rule::in(DelinquencyPolicyAction::values())],
@@ -183,12 +188,6 @@ class DelinquencyPolicyController extends Controller
         foreach (array_values($steps) as $index => $step) {
             $actionValue = (string) $step['action'];
             $action = DelinquencyPolicyAction::from($actionValue);
-
-            if ($action->isReserved()) {
-                throw ValidationException::withMessages([
-                    "steps.{$index}.action" => [__('errors.delinquency.revoke_access_reserved')],
-                ]);
-            }
 
             $offset = (int) $step['offset_days'];
             $sort = array_key_exists('sort', $step) ? (int) $step['sort'] : $index;
@@ -237,9 +236,7 @@ class DelinquencyPolicyController extends Controller
             DelinquencyPolicyAction::PlaceOverlock => $this->rejectUnknownKeys($params, [], $prefix),
             DelinquencyPolicyAction::RecordNotice => $this->validateRecordNoticeParams($params, $prefix),
             DelinquencyPolicyAction::CreateTask => $this->validateCreateTaskParams($params, $prefix),
-            DelinquencyPolicyAction::RevokeAccess => throw ValidationException::withMessages([
-                "steps.{$index}.action" => [__('errors.delinquency.revoke_access_reserved')],
-            ]),
+            DelinquencyPolicyAction::RevokeAccess => $this->rejectUnknownKeys($params, [], $prefix),
         };
     }
 

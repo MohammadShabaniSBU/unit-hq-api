@@ -146,10 +146,10 @@ class PolicyTest extends TestCase
         }
     }
 
-    public function test_revoke_access_reserved(): void
+    public function test_revoke_access_accepted(): void
     {
         $response = $this->postJson('/api/delinquency-policies', [
-            'name' => 'Reserved action',
+            'name' => 'Access revoke ladder',
             'steps' => [[
                 'offset_days' => 30,
                 'action' => DelinquencyPolicyAction::RevokeAccess->value,
@@ -157,11 +157,13 @@ class PolicyTest extends TestCase
             ]],
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['steps.0.action']);
-
-        $message = $response->json('errors')['steps.0.action'][0] ?? '';
-        $this->assertStringContainsString('S16', $message);
+        $response->assertCreated();
+        $this->assertSame(
+            DelinquencyPolicyAction::RevokeAccess->value,
+            $response->json('data.steps.0.action'),
+        );
+        $this->assertSame([], $response->json('data.steps.0.params'));
+        $this->assertTrue($response->json('data.auto_restore_access'));
     }
 
     public function test_offset_action_uniqueness(): void

@@ -22,6 +22,7 @@ class DelinquencyPolicyFactory extends Factory
         return [
             'name' => fake()->words(3, true),
             'auto_release_overlock' => true,
+            'auto_restore_access' => true,
             'archived_at' => null,
         ];
     }

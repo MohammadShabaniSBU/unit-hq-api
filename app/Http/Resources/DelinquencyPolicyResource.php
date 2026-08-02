@@ -15,6 +15,7 @@ class DelinquencyPolicyResource extends BaseResource
             'id' => $this->id,
             'name' => $this->name,
             'auto_release_overlock' => (bool) $this->auto_release_overlock,
+            'auto_restore_access' => (bool) $this->auto_restore_access,
             'sites_count' => $this->whenCounted('sites'),
             'steps' => $this->when(
                 $this->relationLoaded('steps'),

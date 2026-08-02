@@ -9,6 +9,7 @@ use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyStepAction;
 use App\Enums\DelinquencyStepTrigger;
 use App\Jobs\EvaluateRunGuards;
+use App\Models\AccessSuspension;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Models\ContractNotice;
@@ -202,6 +203,7 @@ final class DelinquencyLifecycle
         ?UnitHold $unitHold = null,
         ?ContractNotice $contractNotice = null,
         ?Task $task = null,
+        ?AccessSuspension $accessSuspension = null,
         ?array $detail = null,
         ?Employee $createdBy = null,
         bool $afterPause = false,
@@ -220,6 +222,7 @@ final class DelinquencyLifecycle
             'unit_hold_id' => $unitHold?->id,
             'contract_notice_id' => $contractNotice?->id,
             'task_id' => $task?->id,
+            'access_suspension_id' => $accessSuspension?->id,
             'detail' => $detail,
             'created_by' => $createdBy?->id,
         ]);

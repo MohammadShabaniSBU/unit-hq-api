@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int         $id
  * @property string      $name
  * @property bool        $auto_release_overlock
+ * @property bool        $auto_restore_access
  * @property Carbon|null $archived_at
  * @property Carbon      $created_at
  * @property Carbon      $updated_at
@@ -36,6 +37,7 @@ class DelinquencyPolicy extends Model
     protected $fillable = [
         'name',
         'auto_release_overlock',
+        'auto_restore_access',
         'archived_at',
     ];
 
@@ -43,6 +45,7 @@ class DelinquencyPolicy extends Model
     {
         return [
             'auto_release_overlock' => 'boolean',
+            'auto_restore_access' => 'boolean',
             'archived_at' => 'datetime',
         ];
     }

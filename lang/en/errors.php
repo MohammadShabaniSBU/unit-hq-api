@@ -79,7 +79,6 @@ return [
         'cannot_reverse_reversal' => 'Cannot reverse a reversal payment.',
     ],
     'delinquency' => [
-        'revoke_access_reserved' => 'Action "revoke_access" requires access-control integration (S16) and cannot be configured yet.',
         'archive_in_use' => 'Cannot archive delinquency policy assigned to :count site(s). Reassign those sites first.',
         'offset_action_unique' => 'Each (offset_days, action) pair must be unique within a policy.',
         'sort_unique' => 'Each step sort value must be unique within a policy.',

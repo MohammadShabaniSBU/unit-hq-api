@@ -101,6 +101,7 @@ class DatabaseSeeder extends Seeder
             ['offset_days' => 8, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
                 'notice_type' => 'overdue',
             ]],
+            ['offset_days' => 8, 'action' => DelinquencyPolicyAction::RevokeAccess, 'params' => []],
             ['offset_days' => 12, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
             ['offset_days' => 20, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
                 'notice_type' => 'final_demand',
@@ -117,6 +118,7 @@ class DatabaseSeeder extends Seeder
             ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
                 'notice_type' => 'overdue',
             ]],
+            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RevokeAccess, 'params' => []],
             ['offset_days' => 14, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
             ['offset_days' => 21, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
                 'notice_type' => 'final_demand',
@@ -295,6 +297,7 @@ class DatabaseSeeder extends Seeder
         $policy = DelinquencyPolicy::query()->create([
             'name' => $name,
             'auto_release_overlock' => true,
+            'auto_restore_access' => true,
         ]);
 
         foreach (array_values($steps) as $sort => $step) {

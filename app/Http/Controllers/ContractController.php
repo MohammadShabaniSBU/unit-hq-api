@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccessSuspensionLiftReason;
+use App\Enums\AccessSuspensionReason;
 use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
@@ -9,7 +11,9 @@ use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Concerns\TransfersContracts;
 use App\Http\Controllers\Concerns\VacatesContracts;
 use App\Http\Resources\ContractResource;
+use App\Models\AccessSuspension;
 use App\Models\Contract;
+use App\Models\Employee;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
@@ -379,6 +383,55 @@ class ContractController extends Controller
         $contract->delete();
 
         return $this->noContent('Contract deleted successfully.');
+    }
+
+    public function suspendAccess(Request $request, Contract $contract): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        AccessSuspension::suspend(
+            $contract,
+            AccessSuspensionReason::Manual,
+            null,
+            $employee,
+        );
+
+        $contract->refresh();
+        $this->loadDetailRelations($contract);
+
+        return $this->success(
+            ContractResource::make($contract),
+            'Access suspended successfully.'
+        );
+    }
+
+    public function restoreAccess(Request $request, Contract $contract): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        AccessSuspension::lift(
+            $contract,
+            AccessSuspensionLiftReason::Manual,
+            $employee,
+        );
+
+        $contract->refresh();
+        $this->loadDetailRelations($contract);
+
+        return $this->success(
+            ContractResource::make($contract),
+            'Access restored successfully.'
+        );
     }
 
     private function loadDetailRelations(Contract $contract, ?Carbon $asOf = null): void
