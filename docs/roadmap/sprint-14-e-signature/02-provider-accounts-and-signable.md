@@ -73,14 +73,14 @@ display + state. i18n `settings.esign.*`.
 
 ## Acceptance criteria
 
-- [ ] Connect/verify/error paths with credential discipline; webhook URL shown with
+- [x] Connect/verify/error paths with credential discipline; webhook URL shown with
       state.
 - [ ] Stub-document round trip against Signable **sandbox**: create → their sandbox
       sign → webhook events land idempotently → signed PDF downloads (manual checklist
       item gated on sandbox credentials, mirroring the S04 prewww item; automated
       tests run on a fake adapter).
-- [ ] Replay is a no-op; unknown event types ack + Tier-1; inactive account ignores.
-- [ ] Architecture test: a `FakeSecondProvider` registers and round-trips the fake
+- [x] Replay is a no-op; unknown event types ack + Tier-1; inactive account ignores.
+- [x] Architecture test: a `FakeSecondProvider` registers and round-trips the fake
       flow with zero changes outside adapter + registry.
 
 ## Tests required

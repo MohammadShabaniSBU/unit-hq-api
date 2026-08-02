@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Support\ESign;
 
 /**
- * Multi-adapter e-sign capability interface (S14-02 owns concrete adapters).
- * Document rendering (S14-01) only needs signatureAnchor().
+ * Multi-adapter e-sign capability interface (S14-02).
  */
 interface ESignProvider
 {
     /**
-     * @return list<array{key: string, label: string, secret?: bool}>
+     * @return array<string, array{label: string, secret?: bool}>
      */
     public function credentialFields(): array;
 
+    /**
+     * Cheap authenticated call. Throws ESignVerificationException on failure.
+     */
     public function verify(): void;
 
     /** Provider merge-field / placement token for signature_anchor blocks. */
@@ -30,4 +32,18 @@ interface ESignProvider
      * @param  array<string, mixed>  $payload
      */
     public function parseWebhook(array $payload): ESignEvent;
+
+    /**
+     * Register inbound webhooks for the given public URL.
+     *
+     * @return list<string> Remote endpoint identifiers
+     */
+    public function registerWebhooks(string $webhookUrl): array;
+
+    /**
+     * Best-effort delete of previously registered webhook endpoints.
+     *
+     * @param  list<string>  $endpointIds
+     */
+    public function deleteWebhooks(array $endpointIds): void;
 }
