@@ -17,6 +17,8 @@ use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\SubjectTokenBag;
 use App\Support\Automation\TokenResolver;
+use App\Support\Communications\ActiveCalls;
+use App\Support\Communications\CallDialer;
 use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
@@ -161,6 +163,7 @@ class InboxController extends Controller
         return $this->success([
             'unread_threads' => MessageThread::query()->where('unread_count', '>', 0)->count(),
             'triage_count' => CommsTriage::query()->where('status', 'pending')->count(),
+            'active_calls' => ActiveCalls::forBadge(),
         ], 'Inbox badge retrieved successfully.');
     }
 
@@ -312,11 +315,7 @@ class InboxController extends Controller
             : Channel::from((string) $messageThread->channel);
 
         if ($channel === Channel::Call) {
-            return $this->error(
-                'Call back — coming with phone integration.',
-                ['channel' => ['Call replies are not available yet.']],
-                422,
-            );
+            return $this->dialCallBack($request, $messageThread);
         }
 
         if ($channel === Channel::Email) {
@@ -718,6 +717,41 @@ class InboxController extends Controller
             ],
             422,
         );
+    }
+
+    private function dialCallBack(Request $request, MessageThread $messageThread): JsonResponse
+    {
+        /** @var Employee $actor */
+        $actor = $request->user();
+        $messageThread->load(['contact']);
+        $contact = $messageThread->contact;
+        if ($contact === null) {
+            return $this->error('Thread has no contact.', [], 422);
+        }
+
+        $toNumber = $messageThread->channel_key !== null && $messageThread->channel_key !== ''
+            ? (string) $messageThread->channel_key
+            : null;
+
+        $result = CallDialer::dial(
+            $actor,
+            $contact,
+            $toNumber,
+            ['type' => 'thread', 'id' => (int) $messageThread->id],
+        );
+
+        $intent = $result['intent'];
+
+        return $this->success([
+            'id' => $intent->id,
+            'contact_id' => $intent->contact_id,
+            'to_number' => $intent->to_number,
+            'context_type' => $intent->context_type,
+            'context_id' => $intent->context_id,
+            'aircall_call_id' => $intent->aircall_call_id,
+            'status' => $intent->status,
+            'message_id' => $intent->message_id,
+        ], 'Call requested. Pick up your Aircall device to continue.');
     }
 
     /**

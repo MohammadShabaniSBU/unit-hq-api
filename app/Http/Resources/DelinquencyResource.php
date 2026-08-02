@@ -119,10 +119,20 @@ class DelinquencyResource extends BaseResource
         ];
 
         if ($this->additional['include_timeline'] ?? false) {
-            $payload['timeline'] = $this->when(
-                $this->relationLoaded('steps'),
-                fn () => DelinquencyStepResource::collection($this->steps)->resolve()
-            );
+            if (isset($this->additional['interleaved_timeline']) && is_array($this->additional['interleaved_timeline'])) {
+                $payload['timeline'] = $this->additional['interleaved_timeline'];
+            } else {
+                $payload['timeline'] = $this->when(
+                    $this->relationLoaded('steps'),
+                    fn () => collect(DelinquencyStepResource::collection($this->steps)->resolve())
+                        ->map(function (array $step): array {
+                            $step['entry_type'] = 'step';
+
+                            return $step;
+                        })
+                        ->all()
+                );
+            }
             $payload['fee_suggestion'] = $this->isOpen() && $contract !== null
                 ? LateFeeAssessor::suggestion($this->resource, $contract)
                 : null;

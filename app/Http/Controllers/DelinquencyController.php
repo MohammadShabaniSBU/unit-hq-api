@@ -23,6 +23,7 @@ use App\Support\Billing\BillingMath;
 use App\Support\Delinquency\DelinquencyEngine;
 use App\Support\Delinquency\DelinquencyLifecycle;
 use App\Support\Delinquency\DelinquencyState;
+use App\Support\Delinquency\DelinquencyTimeline;
 use App\Support\Delinquency\LateFeeAssessor;
 use App\Support\Delinquency\Overlock;
 use App\Support\RecordsActivity;
@@ -239,6 +240,7 @@ class DelinquencyController extends Controller
                 'overlocked' => $liveIds !== [],
                 'live_overlock_unit_ids' => $liveIds,
                 'failed_autopay' => $failed,
+                'interleaved_timeline' => DelinquencyTimeline::interleaved($delinquency),
             ]),
             'Delinquency retrieved successfully.',
         );

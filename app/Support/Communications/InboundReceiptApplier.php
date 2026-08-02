@@ -52,6 +52,12 @@ final class InboundReceiptApplier
             ->first();
 
         if ($existingTriage !== null && $forcedContact === null) {
+            // Call lifecycle webhooks for an unknown number must refresh the parked
+            // triage so the banner phase advances (ringing → ongoing → ended).
+            if ($inbound->channel === Channel::Call && $existingTriage->status === 'pending') {
+                $existingTriage = self::refreshCallTriage($existingTriage, $inbound);
+            }
+
             return ['outcome' => 'triage', 'message' => null, 'triage' => $existingTriage];
         }
 
@@ -85,19 +91,15 @@ final class InboundReceiptApplier
         ?CommsTriage $existing,
     ): CommsTriage {
         if ($existing !== null) {
+            if ($inbound->channel === Channel::Call && $existing->status === 'pending') {
+                return self::refreshCallTriage($existing, $inbound);
+            }
+
             return $existing;
         }
 
         $sender = ContactChannelMatcher::normalize($inbound->channel, $inbound->counterparty());
-        $preview = [
-            'from' => $inbound->from,
-            'to' => $inbound->to,
-            'subject' => $inbound->subject,
-            'body_text' => $inbound->bodyText !== null
-                ? Str::limit($inbound->bodyText, 500)
-                : null,
-            'channel' => $inbound->channel->value,
-        ];
+        $preview = self::triagePreview($inbound);
 
         try {
             return CommsTriage::query()->create([
@@ -116,6 +118,32 @@ final class InboundReceiptApplier
                 ->where('provider_message_id', $inbound->providerMessageId)
                 ->firstOrFail();
         }
+    }
+
+    private static function refreshCallTriage(CommsTriage $triage, InboundMessage $inbound): CommsTriage
+    {
+        $triage->forceFill([
+            'preview' => self::triagePreview($inbound),
+            'payload' => $inbound->raw,
+        ])->save();
+
+        return $triage->fresh() ?? $triage;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function triagePreview(InboundMessage $inbound): array
+    {
+        return [
+            'from' => $inbound->from,
+            'to' => $inbound->to,
+            'subject' => $inbound->subject,
+            'body_text' => $inbound->bodyText !== null
+                ? Str::limit($inbound->bodyText, 500)
+                : null,
+            'channel' => $inbound->channel->value,
+        ];
     }
 
     private static function writeMessage(
