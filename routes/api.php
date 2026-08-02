@@ -21,6 +21,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('messages/{message}/move-thread', [Controllers\MessageController::class, 'moveThread']);
 
     // Inbox (S11-00/01) — any authenticated Employee until S17 RBAC (10-open-decisions.md).
+    Route::get('employees/options', [Controllers\EmployeeController::class, 'options']);
     Route::get('inbox/threads', [Controllers\InboxController::class, 'index']);
     Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
     Route::get('inbox/badge', [Controllers\InboxController::class, 'badge']);
