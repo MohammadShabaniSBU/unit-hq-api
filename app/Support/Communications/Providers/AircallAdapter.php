@@ -9,15 +9,17 @@ use App\Support\Communications\Contracts\ProviderAccount;
 use App\Support\Communications\Contracts\ReceivesInbound;
 use App\Support\Communications\MessageDirection;
 use App\Support\Communications\Provider;
+use App\Support\Communications\Results\DialResult;
 use App\Support\Communications\Results\InboundMessage;
 use App\Support\Communications\Results\VerificationResult;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 /**
- * Aircall receive-only adapter. Logs call lifecycle webhooks as call messages.
- * Outbound dialing is S12; media mirroring is out of scope (URL only).
+ * Aircall call adapter: inbound lifecycle webhooks + outbound click-to-dial.
+ * Media mirroring is out of scope (URL only).
  */
 final class AircallAdapter implements ProviderAccount, ReceivesInbound
 {
@@ -69,6 +71,143 @@ final class AircallAdapter implements ProviderAccount, ReceivesInbound
         }
 
         return VerificationResult::ok();
+    }
+
+    /**
+     * List Aircall users (all pages).
+     *
+     * @return list<array{id: string, label: string, email: string|null, availability_status: string|null}>
+     *
+     * @throws RuntimeException when the API rejects credentials or returns an unexpected body
+     */
+    public function listUsers(): array
+    {
+        $users = [];
+        $page = 1;
+
+        do {
+            $response = $this->client()->get(self::BASE_URL.'/users', [
+                'page' => $page,
+                'per_page' => 50,
+            ]);
+
+            if ($response->failed()) {
+                throw new RuntimeException(
+                    'Aircall user sync failed ('.$response->status().'). Check credentials in Settings → Communications.'
+                );
+            }
+
+            /** @var array<string, mixed> $body */
+            $body = $response->json() ?? [];
+            $pageUsers = $body['users'] ?? [];
+            if (! is_array($pageUsers)) {
+                throw new RuntimeException('Aircall user sync returned an unexpected payload.');
+            }
+
+            foreach ($pageUsers as $user) {
+                if (! is_array($user) || ! isset($user['id'])) {
+                    continue;
+                }
+
+                $id = (string) $user['id'];
+                $name = isset($user['name']) && is_string($user['name']) ? $user['name'] : '';
+                $email = isset($user['email']) && is_string($user['email']) ? $user['email'] : null;
+                $label = $name !== '' ? $name : ($email ?? $id);
+
+                $users[] = [
+                    'id' => $id,
+                    'label' => $label,
+                    'email' => $email,
+                    'availability_status' => isset($user['availability_status']) && is_string($user['availability_status'])
+                        ? $user['availability_status']
+                        : null,
+                ];
+            }
+
+            $meta = is_array($body['meta'] ?? null) ? $body['meta'] : [];
+            $nextPageLink = $meta['next_page_link'] ?? null;
+            $total = isset($meta['total']) ? (int) $meta['total'] : null;
+            $page++;
+
+            $done = ! is_string($nextPageLink) || $nextPageLink === ''
+                || $pageUsers === []
+                || ($total !== null && count($users) >= $total);
+        } while (! $done);
+
+        return array_values(collect($users)->unique('id')->values()->all());
+    }
+
+    /**
+     * Granular availability for a user (`available`, `offline`, `in_call`, …).
+     *
+     * @throws RuntimeException when the API call fails
+     */
+    public function userAvailability(string $aircallUserId): string
+    {
+        $response = $this->client()->get(self::BASE_URL.'/users/'.$aircallUserId.'/availability');
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'Aircall availability check failed ('.$response->status().').'
+            );
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $response->json() ?? [];
+        $availability = $body['availability'] ?? null;
+
+        if (! is_string($availability) || $availability === '') {
+            throw new RuntimeException('Aircall availability response was empty.');
+        }
+
+        return $availability;
+    }
+
+    /**
+     * Click-to-dial: fill the user's Aircall Workspace dialer with `$toE164`.
+     * Success is typically HTTP 204 with no call id body.
+     */
+    public function dial(string $aircallUserId, string $toE164): DialResult
+    {
+        $response = $this->client()->post(self::BASE_URL.'/users/'.$aircallUserId.'/dial', [
+            'to' => $toE164,
+        ]);
+
+        /** @var array<string, mixed> $raw */
+        $raw = is_array($response->json()) ? $response->json() : [];
+
+        if ($response->status() === 204 || $response->successful()) {
+            $callId = null;
+            if (isset($raw['call']['id'])) {
+                $callId = (string) $raw['call']['id'];
+            } elseif (isset($raw['id'])) {
+                $callId = (string) $raw['id'];
+            }
+
+            return DialResult::success($callId !== '' ? $callId : null, $raw);
+        }
+
+        if ($response->status() === 405) {
+            return DialResult::failed(
+                'Your Aircall device is offline or unavailable. Open Aircall Workspace and set yourself available, then try again.',
+                'user_offline',
+                $raw,
+            );
+        }
+
+        if ($response->status() === 400) {
+            return DialResult::failed(
+                'Aircall rejected the number. Check the phone number is in E.164 format.',
+                'invalid_number',
+                $raw,
+            );
+        }
+
+        return DialResult::failed(
+            'Aircall dial failed ('.$response->status().'). Try again or check Settings → Communications.',
+            'dial_failed',
+            $raw,
+        );
     }
 
     /**

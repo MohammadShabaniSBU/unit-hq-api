@@ -54,7 +54,7 @@ Each **channel** (email, SMS, WhatsApp, call) can have several **providers** con
 | `Provider` | `brevo`, `postmark`, `mandrill`, `twilio`, `sinch`, `aircall` |
 | `AccountScope` | `company`, `site` |
 
-Registered adapters today: Brevo + Postmark (email), Twilio + Sinch (SMS), Aircall (call, receive-only). Mandrill remains commented. WhatsApp is additive later; Aircall outbound dialing is S12.
+Registered adapters today: Brevo + Postmark (email), Twilio + Sinch (SMS), Aircall (call — inbound lifecycle webhooks + click-to-dial). Mandrill remains commented. WhatsApp is additive later.
 
 ### Capability-by-interface
 
@@ -113,6 +113,7 @@ Indexes (company path): unique `(scope, site_id, channel, provider)`; partial un
 - **Triage queue (auth):** `GET /api/comms-triage` (pending cursor list), `GET /api/comms-triage/{id}` (sanitized body). Resolve: `POST …/attach` `{contact_id}`, `…/create-and-attach` `{first_name?, last_name?}`, `…/discard` `{reason?}` — audits `triage.resolved` (`how`) / `triage.discarded` (optional reason in properties; no reason column). Resolve responses include `message_thread_id` for Inbox navigation.
 - **Rethread (auth):** `POST /api/messages/{id}/move-thread` with `{message_thread_id}` **or** `{new_thread: true}` (email only). Audit `message.rethreaded`. Picker data: `GET /api/inbox/threads/{id}/move-targets`.
 - **Inbox surface (auth):** `GET /api/inbox/threads` (+ filters / `updated_after` deltas), thread detail, reply/compose, `GET /api/inbox/badge` → `{unread_threads, triage_count}`, `POST …/read` (zero unread), `POST …/unread` (set unread to 1 — thread-level model), assign. Panel polls badge every 20s for nav count, triage indicator, document title, and favicon dot.
+- **Aircall dialing (auth, S12-00):** Settings maps employees ↔ Aircall users (`GET/POST …/settings/communications/call/aircall/users`, `PUT/DELETE …/{aircallUserId}`). `POST /api/calls/dial` records a `call_intents` row and calls `POST /v1/users/:id/dial` — it never creates a `messages` row (no-optimism). Outbound `call.created` webhooks correlate exact call id or heuristic (same mapped user + number within 2 minutes) and stamp `source_ref.call_intent`. Unmatched intents age to `uncorrelated` after 10 minutes (`comms:sweep-uncorrelated-call-intents`). `GET /api/calls/availability` (60s cache) is the enable/disable truth for call buttons.
 - **Webhook creation is refused** if the configured public base URL (`communications.public_base_url` / `APP_URL`) is missing, `localhost`, or a private/loopback address — `App\Support\Http\PublicUrlGuard`.
 - Removing a provider deletes the remote webhook endpoint first (when `AutoRegistersWebhooks`) via stored `webhook_endpoint_id`.
 

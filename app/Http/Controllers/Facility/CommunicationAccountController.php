@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunicationAccount;
 use App\Models\SiteSenderIdentity;
 use App\Support\Communications\AccountScope;
+use App\Support\Communications\AircallUserDirectory;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Contracts\AutoRegistersWebhooks;
 use App\Support\Communications\Provider;
@@ -353,7 +354,7 @@ class CommunicationAccountController extends Controller
             )
             : null;
 
-        return [
+        $payload = [
             'id' => $account->id,
             'scope' => $account->scope->value,
             'site_id' => $account->site_id,
@@ -372,6 +373,12 @@ class CommunicationAccountController extends Controller
             'created_at' => $account->created_at?->toIso8601String(),
             'updated_at' => $account->updated_at?->toIso8601String(),
         ];
+
+        if ($account->channel === Channel::Call && $account->provider === Provider::Aircall) {
+            $payload['dial_health'] = AircallUserDirectory::dialHealth();
+        }
+
+        return $payload;
     }
 
     /** @return array<string, mixed> */

@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Idempotent ladder; daily is enough, hourly is safe if wanted.
         $schedule->command('delinquency:run')->daily();
         $schedule->command('comms:sweep-orphan-attachments')->daily();
+        $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

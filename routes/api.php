@@ -45,6 +45,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('settings/communications/{channel}/webhook', [Facility\CommunicationAccountController::class, 'deleteWebhook']);
     Route::delete('settings/communications/{channel}/{provider}', [Facility\CommunicationAccountController::class, 'destroy']);
 
+    // Aircall user mapping + dial (S12-00).
+    Route::get('settings/communications/call/aircall/users', [Controllers\AircallUserLinkController::class, 'index']);
+    Route::post('settings/communications/call/aircall/users/sync', [Controllers\AircallUserLinkController::class, 'sync']);
+    Route::put('settings/communications/call/aircall/users/{aircallUserId}', [Controllers\AircallUserLinkController::class, 'map']);
+    Route::delete('settings/communications/call/aircall/users/{aircallUserId}', [Controllers\AircallUserLinkController::class, 'unlink']);
+    Route::post('calls/dial', [Controllers\CallController::class, 'dial']);
+    Route::get('calls/availability', [Controllers\CallController::class, 'availability']);
+
     Route::get('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'show']);
     Route::put('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'update']);
     Route::post('legal-entities/{legal_entity}/stripe-settings/webhook', [Controllers\LegalEntityStripeController::class, 'createWebhook']);
