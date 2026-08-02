@@ -44,13 +44,13 @@ final class DelinquencyState
 
     /**
      * Overdue charges that trigger / keep delinquency open:
-     * due_date < site-today, open amount > 0, type in TRIGGER_TYPES.
+     * due_date < as-of (default site-today), open amount > 0, type in TRIGGER_TYPES.
      *
      * @return Collection<int, Charge>
      */
-    public static function overdueCharges(Contract $contract): Collection
+    public static function overdueCharges(Contract $contract, ?CarbonImmutable $asOf = null): Collection
     {
-        $today = self::siteToday($contract)->toDateString();
+        $today = ($asOf ?? self::siteToday($contract))->toDateString();
         $triggerValues = array_map(fn (ChargeType $t): string => $t->value, self::TRIGGER_TYPES);
 
         if ($contract->relationLoaded('charges')) {
@@ -84,19 +84,19 @@ final class DelinquencyState
             ->values();
     }
 
-    public static function isDelinquent(Contract $contract): bool
+    public static function isDelinquent(Contract $contract, ?CarbonImmutable $asOf = null): bool
     {
         // Net open overdue across trigger types so a negative write_off can
         // zero the balance and stop the case reopening on the next run.
-        return bccomp(self::netOverdueAmount($contract), '0.00', 2) > 0;
+        return bccomp(self::netOverdueAmount($contract, $asOf), '0.00', 2) > 0;
     }
 
     /**
      * Σ open amounts of overdue trigger-type charges (can be reduced by write_offs).
      */
-    public static function netOverdueAmount(Contract $contract): string
+    public static function netOverdueAmount(Contract $contract, ?CarbonImmutable $asOf = null): string
     {
-        $today = self::siteToday($contract)->toDateString();
+        $today = ($asOf ?? self::siteToday($contract))->toDateString();
         $triggerValues = array_map(fn (ChargeType $t): string => $t->value, self::TRIGGER_TYPES);
 
         if ($contract->relationLoaded('charges')) {
@@ -125,18 +125,18 @@ final class DelinquencyState
     }
 
     /**
-     * Site-today − oldest unpaid trigger charge due date, or null if not delinquent.
+     * As-of − oldest unpaid trigger charge due date, or null if not delinquent.
      */
-    public static function daysOverdue(Contract $contract): ?int
+    public static function daysOverdue(Contract $contract, ?CarbonImmutable $asOf = null): ?int
     {
-        $charges = self::overdueCharges($contract);
+        $charges = self::overdueCharges($contract, $asOf);
         if ($charges->isEmpty()) {
             return null;
         }
 
         /** @var Charge $oldest */
         $oldest = $charges->first();
-        $today = self::siteToday($contract);
+        $today = $asOf ?? self::siteToday($contract);
         $due = CarbonImmutable::parse($oldest->due_date->toDateString());
 
         return BillingMath::daysBetween($due, $today);
@@ -145,16 +145,27 @@ final class DelinquencyState
     /**
      * Σ open gross of rent|insurance overdue charges — the no-fee-on-fee base.
      */
-    public static function overdueBase(Contract $contract): string
+    public static function overdueBase(Contract $contract, ?CarbonImmutable $asOf = null): string
     {
-        $today = self::siteToday($contract)->toDateString();
+        $today = ($asOf ?? self::siteToday($contract))->toDateString();
         $baseValues = array_map(fn (ChargeType $t): string => $t->value, self::FEE_BASE_TYPES);
 
-        $charges = $contract->charges()
-            ->with('allocations')
-            ->where('due_date', '<', $today)
-            ->whereIn('charge_type', $baseValues)
-            ->get();
+        if ($contract->relationLoaded('charges')) {
+            $charges = $contract->charges->filter(function (Charge $charge) use ($today, $baseValues): bool {
+                $due = $charge->due_date?->toDateString() ?? (string) $charge->due_date;
+                $type = $charge->charge_type instanceof ChargeType
+                    ? $charge->charge_type->value
+                    : (string) $charge->charge_type;
+
+                return $due < $today && in_array($type, $baseValues, true);
+            });
+        } else {
+            $charges = $contract->charges()
+                ->with('allocations')
+                ->where('due_date', '<', $today)
+                ->whereIn('charge_type', $baseValues)
+                ->get();
+        }
 
         $sum = '0.00';
         foreach ($charges as $charge) {

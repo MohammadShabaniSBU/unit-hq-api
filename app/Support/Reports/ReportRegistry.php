@@ -19,6 +19,10 @@ final class ReportRegistry
         'demo' => DemoReport::class,
         'rent-roll' => RentRollReport::class,
         'occupancy' => OccupancyReport::class,
+        'ageing' => AgeingReport::class,
+        'collections' => CollectionsReport::class,
+        'deposit-liability' => DepositLiabilityReport::class,
+        'daily-close' => DailyCloseReport::class,
     ];
 
     /**
