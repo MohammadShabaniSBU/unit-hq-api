@@ -13,6 +13,7 @@ use App\Models\AutomationRun;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Delinquency;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 
@@ -21,6 +22,18 @@ use Illuminate\Support\Collection as SupportCollection;
  */
 final class PlaybookEnrolmentSummary
 {
+    /**
+     * Runs across all automation versions linked by playbook_id (S09 lineage).
+     * Shared by the enrolments endpoint and FunnelReport.
+     *
+     * @return Builder<AutomationRun>
+     */
+    public static function lineageQuery(int $playbookId): Builder
+    {
+        return AutomationRun::query()
+            ->whereHas('automation', static fn (Builder $q) => $q->where('playbook_id', $playbookId));
+    }
+
     /** @return list<AutomationRunStatus> */
     public static function activeStatuses(): array
     {

@@ -103,8 +103,7 @@ class PlaybookController extends Controller
             'status' => ['nullable', 'string', Rule::in(['active', 'exited'])],
         ]);
 
-        $query = AutomationRun::query()
-            ->whereHas('automation', fn ($q) => $q->where('playbook_id', $playbook->id))
+        $query = PlaybookEnrolmentSummary::lineageQuery((int) $playbook->id)
             ->with(['automation.nodes', 'steps'])
             ->latest('id');
 

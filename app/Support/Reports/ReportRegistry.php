@@ -23,6 +23,8 @@ final class ReportRegistry
         'collections' => CollectionsReport::class,
         'deposit-liability' => DepositLiabilityReport::class,
         'daily-close' => DailyCloseReport::class,
+        'movement' => MovementReport::class,
+        'funnel' => FunnelReport::class,
     ];
 
     /**

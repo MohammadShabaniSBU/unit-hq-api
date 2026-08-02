@@ -111,12 +111,51 @@ Failed autopay attempts that are later collected by **any** payment rail
 
 ## Movement / Movimiento
 
+Period-filtered tenancy flow. Transfers are neither churn nor acquisition (S02).
+
 | Event (EN) | Event (ES) | Rule |
 |---|---|---|
-| Move-in | Entrada | Occupancy opened; excludes the destination leg of a transfer (`transferred_out` counterparts). |
-| Move-out | Salida | Occupancy `ended_reason` is `vacated` or `non_payment`. |
-| Transfer | Traslado | Counted once, separately — neither churn nor acquisition (S02). |
+| Move-in | Entrada | Occupancy opened in the period; excludes the destination leg of a transfer (`contract_transfers` / `transferred_out` counterparts). |
+| Move-out | Salida | Occupancy ended in the period with `ended_reason` `vacated` or `non_payment`. |
+| Transfer | Traslado | Counted once from `contract_transfers.transfer_date` — neither churn nor acquisition. |
 | Cancelled | Anulado | `cancelled` contracts appear **nowhere** in movement reports. |
+
+| Term (EN) | Term (ES) | Definition |
+|---|---|---|
+| Voluntary move-out | Salida voluntaria | `ended_reason = vacated`. |
+| Involuntary move-out | Salida involuntaria | `ended_reason = non_payment`. |
+| Transfer class direction | Dirección de clase | Compare origin vs destination `unit_classes.size`: up / down / same. |
+| Rate delta | Delta de tarifa | Destination unit-item price − origin unit-item price, grouped by currency (never cross-summed). |
+| Tenure of leavers | Antigüedad de salidas | For period move-outs: `ended_on − started_on` (days) on that occupancy span. |
+| Net identity | Identidad neta | `move-ins − move-outs = Δoccupied` over the period; transfers cancel (coefficient 0). |
+
+Deposit-settlement outcomes for leavers (`released` full refund vs `deducted` / `forfeited`) are a dispute-rate proxy, not a ledger total.
+
+---
+
+## Funnel / Embudo
+
+Period cohort by **deal created** (`deals.created_at` in range), filtered by deal site.
+
+| Stage (EN) | Stage (ES) | Fact |
+|---|---|---|
+| Deals | Oportunidades | Cohort size. |
+| Offers sent | Ofertas enviadas | Linked offer with `sent_at` set. |
+| Offers viewed | Ofertas vistas | Linked offer with `first_viewed_at` set. |
+| Accepted | Aceptadas | Linked offer with `accepted_at` set. |
+| Contracts signed | Contratos firmados | Linked contract with `signed_at` set. |
+
+Stage membership is “ever reached,” not mutually exclusive. Median days between consecutive stage stamps grade pipeline speed.
+
+| Term (EN) | Term (ES) | Definition |
+|---|---|---|
+| Walk-in signature | Firma presencial | Signed contract with no e-sign envelope path (immediate completion). |
+| Remote signature | Firma remota | Signed contract that has/had an `esign_envelopes` row (or was created `awaiting_signature`). |
+| Lead-chase enrolled | En chase de leads | Cohort deal with an automation run under the lead-chase playbook lineage (`automations.playbook_id`). |
+| Correlation caveat | Aviso de correlación | Enrolled vs not comparison is **correlation, not causation**. |
+| Price band | Banda de precio | Catalogue option amount buckets: `<50`, `50–99.99`, `≥100` in the option’s currency (S03 price rows; no stored band table). |
+
+Source attribution uses `contacts.source` (join via deal) — there is no `deals.source` column.
 
 ---
 
