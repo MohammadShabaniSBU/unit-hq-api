@@ -66,6 +66,7 @@ final class LeadChase implements PlaybookKind
         return [
             PlaybookStepAction::SendEmail,
             PlaybookStepAction::SendSms,
+            PlaybookStepAction::SendWhatsappTemplate,
             PlaybookStepAction::CreateTask,
         ];
     }

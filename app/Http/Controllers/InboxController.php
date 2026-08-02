@@ -14,6 +14,7 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageThread;
 use App\Models\TemplateFamily;
+use App\Models\WhatsappTemplate;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\SubjectTokenBag;
@@ -25,6 +26,7 @@ use App\Support\Communications\Channel;
 use App\Support\Communications\PendingWrapups;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
+use App\Support\Communications\Exceptions\SendRefused;
 use App\Support\Communications\HtmlSanitizer;
 use App\Support\Communications\InboxThreadContext;
 use App\Support\Communications\InboxThreadQuery;
@@ -32,12 +34,18 @@ use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailAttachment;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\Messages\WhatsAppSessionMessage;
+use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\Senders\SmsSender;
+use App\Support\Communications\Senders\WhatsAppSender;
+use App\Support\Communications\SmsTemplateRenderer;
 use App\Support\Communications\SuppressionWriter;
 use App\Support\Communications\TemplateResolver;
+use App\Support\Communications\WhatsAppVariableResolver;
+use App\Support\Communications\WhatsAppWindow;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -298,6 +306,9 @@ class InboxController extends Controller
 
         $templates = [];
         $tokens = [];
+        $whatsappWindow = null;
+        $whatsappConsent = null;
+
         if ($channel === Channel::Email) {
             $templates = TemplateFamily::query()
                 ->notArchived()
@@ -308,6 +319,66 @@ class InboxController extends Controller
                 ->values()
                 ->all();
             $tokens = SubjectTokenBag::vocabulary();
+        } elseif ($channel === Channel::Sms) {
+            $templates = TemplateFamily::query()
+                ->notArchived()
+                ->channel(TemplateChannel::Sms)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (TemplateFamily $t) => ['id' => $t->id, 'name' => $t->name])
+                ->values()
+                ->all();
+            $tokens = SubjectTokenBag::vocabulary();
+        } elseif ($channel === Channel::Whatsapp) {
+            $whatsappWindow = WhatsAppWindow::payload($messageThread);
+            $contact = $messageThread->contact;
+            $hasWaChannel = $contact !== null && $contact->channels
+                ->contains(fn ($c) => ($c->type instanceof ContactChannelType
+                    ? $c->type
+                    : ContactChannelType::tryFrom((string) $c->type)) === ContactChannelType::Whatsapp
+                    && trim((string) $c->value) !== '');
+            $whatsappConsent = [
+                'has_channel' => $hasWaChannel,
+            ];
+            $tokens = SubjectTokenBag::vocabulary();
+
+            if ($contact !== null && $resolved['site'] !== null) {
+                try {
+                    $account = app(ProviderResolver::class)
+                        ->resolve(Channel::Whatsapp, $resolved['site'])
+                        ->account;
+                    $tokenContext = new RunContext(subjectBag: SubjectTokenBag::forContact($contact));
+                    $templates = WhatsappTemplate::query()
+                        ->where('communication_account_id', $account->id)
+                        ->where('status', WhatsappTemplate::STATUS_APPROVED)
+                        ->orderBy('name')
+                        ->orderBy('language')
+                        ->get()
+                        ->map(function (WhatsappTemplate $t) use ($tokenContext): array {
+                            $variables = is_array($t->variables) ? $t->variables : [];
+
+                            return [
+                                'id' => $t->id,
+                                'name' => $t->name,
+                                'language' => $t->language,
+                                'category' => $t->category,
+                                'header_text' => $t->header_text,
+                                'body' => $t->body,
+                                'footer_text' => $t->footer_text,
+                                'buttons' => $t->buttons,
+                                'variables' => $variables,
+                                'resolved_variables' => WhatsAppVariableResolver::resolveDefaults(
+                                    $variables,
+                                    $tokenContext,
+                                ),
+                            ];
+                        })
+                        ->values()
+                        ->all();
+                } catch (\Throwable) {
+                    $templates = [];
+                }
+            }
         }
 
         return $this->success([
@@ -315,6 +386,8 @@ class InboxController extends Controller
             'suppression' => $suppression,
             'templates' => $templates,
             'tokens' => $tokens,
+            'whatsapp_window' => $whatsappWindow,
+            'whatsapp_consent' => $whatsappConsent,
         ], 'Compose context retrieved successfully.');
     }
 
@@ -338,11 +411,31 @@ class InboxController extends Controller
             ]);
         } elseif ($channel === Channel::Sms) {
             $validated = $request->validate([
-                'body_text' => ['required', 'string'],
+                'body_text' => ['required_without:template_family_id', 'nullable', 'string'],
                 'attachment_ids' => ['prohibited'],
-                'template_family_id' => ['prohibited'],
+                'template_family_id' => ['required_without:body_text', 'nullable', 'integer', 'exists:template_families,id'],
                 'body_html' => ['prohibited'],
             ]);
+            if (! empty($validated['template_family_id']) && isset($validated['body_text']) && $validated['body_text'] !== '') {
+                throw ValidationException::withMessages([
+                    'body_text' => ['SMS reply must be template_family_id XOR body_text.'],
+                ]);
+            }
+        } elseif ($channel === Channel::Whatsapp) {
+            $validated = $request->validate([
+                'body_text' => ['required_without:whatsapp_template_name', 'nullable', 'string'],
+                'whatsapp_template_name' => ['required_without:body_text', 'nullable', 'string', 'max:128'],
+                'variables' => ['sometimes', 'array'],
+                'variables.*' => ['string'],
+                'attachment_ids' => ['prohibited'],
+                'body_html' => ['prohibited'],
+                'template_family_id' => ['prohibited'],
+            ]);
+            if (! empty($validated['whatsapp_template_name']) && isset($validated['body_text']) && $validated['body_text'] !== '') {
+                throw ValidationException::withMessages([
+                    'body_text' => ['WhatsApp reply must be session body_text XOR template send.'],
+                ]);
+            }
         } else {
             return $this->error('Unsupported channel for reply.', [], 422);
         }
@@ -378,6 +471,17 @@ class InboxController extends Controller
             );
         }
 
+        if ($channel === Channel::Whatsapp) {
+            return $this->sendWhatsAppReply(
+                $messageThread,
+                $contact,
+                $resolved['site'],
+                $validated,
+                $context,
+                $tokenContext,
+            );
+        }
+
         return $this->sendSmsReply(
             $messageThread,
             $contact,
@@ -394,7 +498,7 @@ class InboxController extends Controller
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
             'channel' => ['required', Rule::in(['email', 'sms'])],
             'subject' => ['required_if:channel,email', 'nullable', 'string', 'max:998'],
-            'body_text' => ['required', 'string'],
+            'body_text' => ['required_without:template_family_id', 'nullable', 'string'],
             'body_html' => ['sometimes', 'nullable', 'string'],
             'attachment_ids' => ['sometimes', 'array'],
             'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
@@ -403,9 +507,19 @@ class InboxController extends Controller
 
         $channel = Channel::from($validated['channel']);
         if ($channel === Channel::Sms) {
-            if (! empty($validated['attachment_ids']) || isset($validated['template_family_id']) || isset($validated['body_html'])) {
+            if (! empty($validated['attachment_ids']) || isset($validated['body_html'])) {
                 throw ValidationException::withMessages([
-                    'channel' => ['SMS compose does not support attachments, templates, or HTML.'],
+                    'channel' => ['SMS compose does not support attachments or HTML.'],
+                ]);
+            }
+            if (! empty($validated['template_family_id']) && isset($validated['body_text']) && $validated['body_text'] !== '') {
+                throw ValidationException::withMessages([
+                    'body_text' => ['SMS compose must be template_family_id XOR body_text.'],
+                ]);
+            }
+            if (empty($validated['template_family_id']) && (! isset($validated['body_text']) || $validated['body_text'] === '')) {
+                throw ValidationException::withMessages([
+                    'body_text' => ['SMS compose requires body_text or template_family_id.'],
                 ]);
             }
         }
@@ -476,7 +590,7 @@ class InboxController extends Controller
             return $this->error('Contact has no phone number.', [], 422);
         }
 
-        $body = TokenResolver::resolve($validated['body_text'], $tokenContext);
+        $body = $this->resolveSmsBody($validated, $tokenContext, $contact, $resolved['site']);
         $sms = new SmsMessage(to: $to, body: $body);
         $result = app(SmsSender::class)->send(
             $sms,
@@ -494,6 +608,7 @@ class InboxController extends Controller
         return $this->created([
             'thread_id' => $message->message_thread_id,
             'message' => $this->mapMessage($message),
+            'segments' => $sms->segmentCount(),
         ], 'Message sent.');
     }
 
@@ -571,7 +686,7 @@ class InboxController extends Controller
             return $this->error('Contact has no phone number.', [], 422);
         }
 
-        $body = TokenResolver::resolve($validated['body_text'], $tokenContext);
+        $body = $this->resolveSmsBody($validated, $tokenContext, $contact, $site);
         $sms = new SmsMessage(to: $to, body: $body);
 
         $result = app(SmsSender::class)->send(
@@ -591,7 +706,108 @@ class InboxController extends Controller
         return $this->created([
             'thread_id' => $thread->id,
             'message' => $this->mapMessage($message),
+            'segments' => $sms->segmentCount(),
         ], 'Reply sent.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function sendWhatsAppReply(
+        MessageThread $thread,
+        Contact $contact,
+        \App\Models\Site $site,
+        array $validated,
+        SendContext $context,
+        RunContext $tokenContext,
+    ): JsonResponse {
+        $to = $thread->channel_key
+            ?: SubjectChain::primaryChannel($contact, ContactChannelType::Whatsapp)?->value;
+
+        if ($to === null || $to === '') {
+            return $this->error('Contact has no WhatsApp channel.', [
+                'whatsapp_consent' => ['has_channel' => false],
+            ], 422);
+        }
+
+        try {
+            if (! empty($validated['whatsapp_template_name'])) {
+                /** @var list<string> $variables */
+                $variables = array_values(array_map(
+                    'strval',
+                    is_array($validated['variables'] ?? null) ? $validated['variables'] : [],
+                ));
+
+                $result = app(WhatsAppSender::class)->sendResolvedTemplate(
+                    to: $to,
+                    templateName: (string) $validated['whatsapp_template_name'],
+                    variables: $variables,
+                    site: $site,
+                    contact: $contact,
+                    context: $context,
+                    thread: $thread,
+                );
+
+                $previewBody = null;
+                if ($result->messageId !== null) {
+                    $previewBody = Message::query()->whereKey($result->messageId)->value('body_text');
+                }
+            } else {
+                $body = TokenResolver::resolve((string) ($validated['body_text'] ?? ''), $tokenContext);
+                $result = app(WhatsAppSender::class)->sendSession(
+                    new WhatsAppSessionMessage($to, $body),
+                    $site,
+                    $contact,
+                    $context,
+                    $thread,
+                );
+                $previewBody = $body;
+            }
+        } catch (SendRefused $e) {
+            return $this->error($e->getMessage(), [
+                'reason' => $e->reasonKey,
+            ], 422);
+        }
+
+        if ($result->wasSuppressed()) {
+            return $this->suppressedResponse($contact, Channel::Whatsapp, $to, $result->suppressedReason);
+        }
+
+        $message = Message::query()->with('attachments')->findOrFail($result->messageId);
+
+        return $this->created([
+            'thread_id' => $thread->id,
+            'message' => $this->mapMessage($message),
+            'preview_body' => $previewBody ?? $message->body_text,
+        ], 'Reply sent.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveSmsBody(
+        array $validated,
+        RunContext $tokenContext,
+        Contact $contact,
+        ?\App\Models\Site $site,
+    ): string {
+        if (! empty($validated['template_family_id'])) {
+            $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);
+            $channel = $family->channel instanceof TemplateChannel
+                ? $family->channel
+                : TemplateChannel::tryFrom((string) $family->channel);
+            if ($channel !== TemplateChannel::Sms) {
+                throw ValidationException::withMessages([
+                    'template_family_id' => ['Template family must be an SMS template.'],
+                ]);
+            }
+            $variant = TemplateResolver::variant($family, $contact, $site);
+            $rendered = SmsTemplateRenderer::render($variant, $tokenContext);
+
+            return $rendered['text'];
+        }
+
+        return TokenResolver::resolve((string) ($validated['body_text'] ?? ''), $tokenContext);
     }
 
     /**

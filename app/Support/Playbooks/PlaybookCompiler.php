@@ -6,15 +6,18 @@ namespace App\Support\Playbooks;
 
 use App\Enums\AutomationStatus;
 use App\Enums\PlaybookStepAction;
+use App\Enums\TemplateChannel;
 use App\Models\Automation;
 use App\Models\AutomationEdge;
 use App\Models\AutomationNode;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
+use App\Models\TemplateFamily;
 use App\Support\Automation\AutomationWatchCache;
 use App\Support\Automation\CreateObjectValidator;
 use App\Support\Automation\TargetRecordValidator;
 use App\Support\Automation\TriggerConfigValidator;
+use App\Support\Communications\WhatsAppPlaybookCategory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -141,7 +144,7 @@ final class PlaybookCompiler
             }
 
             $actionKey = 'step_'.$index;
-            $actionNode = self::actionNode($step, $actionKey, $x);
+            $actionNode = self::actionNode($playbook, $step, $actionKey, $x);
             $nodes[] = $actionNode;
             $edges[] = [
                 'source_node_id' => $previousKey,
@@ -188,7 +191,7 @@ final class PlaybookCompiler
     /**
      * @return array<string, mixed>
      */
-    private static function actionNode(PlaybookStep $step, string $nodeKey, int $x): array
+    private static function actionNode(Playbook $playbook, PlaybookStep $step, string $nodeKey, int $x): array
     {
         $params = $step->params ?? [];
 
@@ -209,11 +212,14 @@ final class PlaybookCompiler
                 'label' => (string) ($params['label'] ?? 'Send SMS'),
                 'position_x' => $x,
                 'position_y' => 0,
-                'config' => [
-                    'body' => $params['body'] ?? '',
-                    'tokens' => (bool) ($params['tokens'] ?? true),
-                ],
+                'config' => self::smsConfig($params),
             ],
+            PlaybookStepAction::SendWhatsappTemplate => self::whatsappTemplateNode(
+                $playbook,
+                $params,
+                $nodeKey,
+                $x,
+            ),
             PlaybookStepAction::CreateTask => self::taskNode($params, $nodeKey, $x),
             PlaybookStepAction::RecordNotice => [
                 'node_key' => $nodeKey,
@@ -227,6 +233,86 @@ final class PlaybookCompiler
                 ],
             ],
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function whatsappTemplateNode(Playbook $playbook, array $params, string $nodeKey, int $x): array
+    {
+        $name = trim((string) ($params['whatsapp_template_name'] ?? ''));
+        if ($name === '') {
+            throw ValidationException::withMessages([
+                'steps' => 'send_whatsapp_template requires whatsapp_template_name.',
+            ]);
+        }
+
+        WhatsAppPlaybookCategory::assertAllowedAtSave($playbook->kind, $name);
+
+        /** @var array<int|string, mixed> $variableTokens */
+        $variableTokens = is_array($params['variable_tokens'] ?? null)
+            ? $params['variable_tokens']
+            : [];
+
+        return [
+            'node_key' => $nodeKey,
+            'kind' => 'action',
+            'type' => 'action.send_whatsapp_template',
+            'label' => (string) ($params['label'] ?? 'Send WhatsApp template'),
+            'position_x' => $x,
+            'position_y' => 0,
+            'config' => [
+                'whatsapp_template_name' => $name,
+                'variable_tokens' => $variableTokens,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function smsConfig(array $params): array
+    {
+        $templateFamilyId = $params['template_family_id'] ?? null;
+        $hasTemplate = $templateFamilyId !== null && $templateFamilyId !== '';
+        $hasInline = isset($params['body']) && $params['body'] !== null && $params['body'] !== '';
+
+        if ($hasTemplate && $hasInline) {
+            throw ValidationException::withMessages([
+                'steps' => 'send_sms params must be template_family_id XOR inline body.',
+            ]);
+        }
+
+        if ($hasTemplate) {
+            $family = TemplateFamily::query()->find((int) $templateFamilyId);
+            if ($family === null) {
+                throw ValidationException::withMessages([
+                    'steps' => "SMS template family [{$templateFamilyId}] was not found.",
+                ]);
+            }
+            $channel = $family->channel instanceof TemplateChannel
+                ? $family->channel
+                : TemplateChannel::tryFrom((string) $family->channel);
+            if ($channel !== TemplateChannel::Sms) {
+                throw ValidationException::withMessages([
+                    'steps' => 'send_sms template_family_id must reference an SMS template family.',
+                ]);
+            }
+
+            return [
+                'bodyType' => 'template',
+                'template_family_id' => (int) $templateFamilyId,
+                'tokens' => (bool) ($params['tokens'] ?? true),
+            ];
+        }
+
+        return [
+            'body' => (string) ($params['body'] ?? ''),
+            'tokens' => (bool) ($params['tokens'] ?? true),
+            'bodyType' => 'custom',
+        ];
     }
 
     /**

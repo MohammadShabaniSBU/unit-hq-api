@@ -189,7 +189,7 @@ final class ComposerIdentity
             ];
         }
 
-        if ($channel === Channel::Sms) {
+        if ($channel === Channel::Sms || $channel === Channel::Whatsapp) {
             $number = $row->from_number;
             if ($number === null || trim($number) === '') {
                 return null;

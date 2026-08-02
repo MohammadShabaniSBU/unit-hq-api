@@ -48,6 +48,12 @@ the balance but auto-creating a payment link per enrolment is an S10-era action;
 in `10-open-decisions.md`), D2 SMS nudge, D4 email + `record_notice: overdue`, D7 urgent
 task "call the tenant".
 
+**WhatsApp session subtlety (S13-04).** A debt step may send an approved *utility*
+template via `send_whatsapp_template`, but that outbound does **not** open Meta's 24h
+customer-service window — only the tenant's inbound reply does. The enrolment does not
+react to replies (standing reply-exit deferral). When the tenant answers, the operator
+continues free-form in the inbox composer while the window is open.
+
 ## Acceptance criteria
 
 - [ ] Case open (engine-written, queue context) enrols per filters; `min_days_overdue`
