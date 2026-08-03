@@ -12,7 +12,6 @@ use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Message;
 use Database\Seeders\Demo\DemoWorld;
-use Illuminate\Support\Str;
 
 /**
  * Fabricates Aircall call lifecycle payloads and enters at ProcessInboundWebhookEvent.
@@ -20,6 +19,8 @@ use Illuminate\Support\Str;
 final class AircallInjector
 {
     private int $callSeq = 900_000;
+
+    private bool $seqBootstrapped = false;
 
     public function __construct(private readonly DemoWorld $world) {}
 
@@ -263,8 +264,10 @@ final class AircallInjector
     private function dispatch(array $payload): CommsWebhookEvent
     {
         $account = $this->world->aircallAccount();
-        $callId = (string) ($payload['data']['id'] ?? Str::uuid());
-        $providerEventId = ($payload['event'] ?? 'call').':'.$callId.':'.Str::lower(Str::random(6));
+        // Must match AircallAdapter::parseInbound providerEventId ({callId}:{event}).
+        $callId = (string) ($payload['data']['id'] ?? '');
+        $event = (string) ($payload['event'] ?? 'call');
+        $providerEventId = $callId.':'.$event;
 
         $row = CommsWebhookEvent::query()->create([
             'communication_account_id' => $account->id,
@@ -297,9 +300,47 @@ final class AircallInjector
 
     private function nextCallId(): int
     {
+        if (! $this->seqBootstrapped) {
+            $this->callSeq = max($this->callSeq, $this->highestUsedCallId());
+            $this->seqBootstrapped = true;
+        }
+
         $this->callSeq++;
 
         return $this->callSeq;
+    }
+
+    /**
+     * Fresh injectors (e.g. --inbox-only) must continue past IDs already written
+     * during the full seed — provider_event_id is unique per account.
+     */
+    private function highestUsedCallId(): int
+    {
+        $max = 0;
+
+        $accountId = $this->world->aircallAccount()->id;
+        $eventIds = CommsWebhookEvent::query()
+            ->where('communication_account_id', $accountId)
+            ->pluck('provider_event_id');
+
+        foreach ($eventIds as $providerEventId) {
+            if (preg_match('/^(\d+):/', (string) $providerEventId, $matches) === 1) {
+                $max = max($max, (int) $matches[1]);
+            }
+        }
+
+        $messageIds = Message::query()
+            ->whereNotNull('provider_message_id')
+            ->whereHas('thread', fn ($q) => $q->where('channel', 'call'))
+            ->pluck('provider_message_id');
+
+        foreach ($messageIds as $providerMessageId) {
+            if (ctype_digit((string) $providerMessageId)) {
+                $max = max($max, (int) $providerMessageId);
+            }
+        }
+
+        return $max;
     }
 
     /**

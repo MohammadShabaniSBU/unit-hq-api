@@ -14,6 +14,8 @@ use App\Support\Communications\Channel;
  */
 final class InboxStaging
 {
+    private const MIN_OPERATOR_THREADS = 8;
+
     public static function apply(DemoWorld $world): void
     {
         $employees = Employee::query()->orderBy('id')->get();
@@ -61,6 +63,36 @@ final class InboxStaging
             }
         }
 
+        self::guaranteeOperatorMine($operator);
+
         $world->remember('inbox.staged', true);
+    }
+
+    /**
+     * Mine must not be empty for the demo manager after seed / --inbox-only.
+     */
+    private static function guaranteeOperatorMine(Employee $operator): void
+    {
+        $assigned = MessageThread::query()
+            ->where('assigned_employee_id', $operator->id)
+            ->count();
+
+        $needed = self::MIN_OPERATOR_THREADS - $assigned;
+        if ($needed <= 0) {
+            return;
+        }
+
+        $candidates = MessageThread::query()
+            ->where(function ($query) use ($operator): void {
+                $query->whereNull('assigned_employee_id')
+                    ->orWhere('assigned_employee_id', '!=', $operator->id);
+            })
+            ->orderByDesc('last_message_at')
+            ->limit($needed)
+            ->get();
+
+        foreach ($candidates as $thread) {
+            $thread->forceFill(['assigned_employee_id' => $operator->id])->save();
+        }
     }
 }

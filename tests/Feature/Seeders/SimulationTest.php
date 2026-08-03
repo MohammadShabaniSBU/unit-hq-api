@@ -161,7 +161,7 @@ class SimulationTest extends TestCase
             'delinquencies' => Delinquency::query()->count(),
             'crowd_count' => $result['crowd_count'],
             'first_crowd_email' => Contact::query()
-                ->where('source', 'demo_crowd')
+                ->where('source_detail', 'demo_crowd')
                 ->orderBy('id')
                 ->value('email'),
             'last_active_id' => Contract::query()

@@ -70,6 +70,12 @@ final class DemoClock
             }
 
             $days++;
+
+            // Release cyclic graphs accumulated across standing orders / jobs / texture.
+            if ($days % 14 === 0) {
+                gc_collect_cycles();
+            }
+
             $cursor = $cursor->addDay();
         }
 

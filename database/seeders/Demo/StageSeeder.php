@@ -39,6 +39,7 @@ use App\Enums\PlaybookKind;
 use App\Models\AircallUserLink;
 use App\Models\Playbook;
 use App\Support\Playbooks\PlaybookCompiler;
+use Carbon\CarbonImmutable;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
@@ -76,7 +77,10 @@ class StageSeeder extends Seeder
         $this->call(CountrySeeder::class);
         $this->call(DefaultAttributeLayoutSeeder::class);
 
-        Employee::factory()->manager()->create();
+        Employee::factory()->manager()->create([
+            'name' => 'Demo Manager',
+            'email' => 'manager@example.com',
+        ]);
         Employee::factory()->staff()->count(4)->create();
 
         $manager = Employee::query()->where('role', 'manager')->firstOrFail();
@@ -173,7 +177,7 @@ class StageSeeder extends Seeder
             DemoWorld::current()?->remember('site.'.strtolower($site->code), $site);
         }
 
-        $vatFrom = now()->subYear()->toDateString();
+        $vatFrom = CarbonImmutable::parse(CastExecutor::SIM_START)->subYear()->toDateString();
         foreach (
             [
                 ['jurisdiction' => 'ES', 'rate' => '21.00', 'is_default' => true],
@@ -289,16 +293,22 @@ class StageSeeder extends Seeder
             }
         }
 
+        // ~200 concurrent tenants across 5 sites; crowd RNG can pile onto one
+        // class (cast personas also hard-require SS2–SS6 at Madrid late in the
+        // window). 5/class was exhausting MAD-01 SS5 before Nadia/Ingrid/Amara.
         foreach ($unitClasses as $unitClass) {
             foreach ($sites as $site) {
-                foreach (range(1, 5) as $n) {
-                    Unit::factory()->create([
+                foreach (range(1, 20) as $n) {
+                    // Direct create — UnitFactory::definition() still runs unique()
+                    // even when unit_number is overridden, which exhausted A-###.
+                    Unit::query()->create([
                         'site_id' => $site->id,
                         'unit_class_id' => $unitClass->id,
                         'unit_number' => sprintf('%s-%s-%02d', $site->code, $unitClass->code, $n),
                         'actual_width' => fake()->randomFloat(2, 1.5, 5.0),
                         'actual_depth' => fake()->randomFloat(2, 2.0, 6.0),
                         'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
+                        'enabled' => true,
                     ]);
                 }
             }

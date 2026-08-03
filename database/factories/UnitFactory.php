@@ -20,7 +20,8 @@ class UnitFactory extends Factory
         return [
             'site_id' => Site::factory(),
             'unit_class_id' => UnitClass::factory(),
-            'unit_number' => fake()->unique()->numerify('A-###'),
+            // A-### only yields 1000 uniques; StageSeeder alone creates 2000+ units.
+            'unit_number' => fake()->unique()->bothify('?-####'),
             'actual_width' => null,
             'actual_depth' => null,
             'actual_height' => null,

@@ -108,7 +108,7 @@ class DemoWorldVerificationTest extends TestCase
         $scriptA = DemoScript::render();
         $castEmailsA = $this->castEmails();
         $crowdEmailA = Contact::query()
-            ->where('source', 'demo_crowd')
+            ->where('source_detail', 'demo_crowd')
             ->orderBy('id')
             ->value('email');
         $crowdCountA = (int) $first['crowd_count'];
@@ -124,7 +124,7 @@ class DemoWorldVerificationTest extends TestCase
         $this->assertSame($crowdCountA, (int) $second['crowd_count']);
         $this->assertSame(
             $crowdEmailA,
-            Contact::query()->where('source', 'demo_crowd')->orderBy('id')->value('email'),
+            Contact::query()->where('source_detail', 'demo_crowd')->orderBy('id')->value('email'),
         );
 
         Artisan::call('migrate:fresh', ['--force' => true]);
@@ -134,10 +134,10 @@ class DemoWorldVerificationTest extends TestCase
         DemoPipeline::run($this->app, withCrowd: true);
         $castEmailsAlt = $this->castEmails();
         $crowdEmailAlt = Contact::query()
-            ->where('source', 'demo_crowd')
+            ->where('source_detail', 'demo_crowd')
             ->orderBy('id')
             ->value('email');
-        $crowdCountAlt = Contact::query()->where('source', 'demo_crowd')->count();
+        $crowdCountAlt = Contact::query()->where('source_detail', 'demo_crowd')->count();
 
         $this->assertSame($castEmailsA, $castEmailsAlt, 'DEMO_SEED must not change the cast');
         $this->assertNotSame($crowdEmailA, $crowdEmailAlt, 'DEMO_SEED must vary the crowd');

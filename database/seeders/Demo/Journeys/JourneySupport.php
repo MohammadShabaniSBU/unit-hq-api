@@ -10,6 +10,7 @@ use App\Enums\AutopayAttemptTrigger;
 use App\Enums\ChargeType;
 use App\Enums\ContactChannelType;
 use App\Enums\ContactLifecycleStatus;
+use App\Enums\ContactSource;
 use App\Enums\ContractDocumentStatus;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractItemChangeReason;
@@ -21,6 +22,7 @@ use App\Enums\DelinquencyStepTrigger;
 use App\Enums\DepositSettlementOutcome;
 use App\Enums\PaymentRequestStatus;
 use App\Enums\PlaybookKind;
+use App\Enums\TaxIdType;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Enums\TransferPricingMode;
@@ -67,6 +69,7 @@ use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\TransferSettlement;
 use App\Support\Billing\VacateSettlement;
 use App\Support\Communications\Channel;
+use App\Support\Communications\Exceptions\SendRefused;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
@@ -85,6 +88,7 @@ use App\Support\Delinquency\DelinquencyState;
 use App\Support\Delinquency\Overlock;
 use App\Support\ESign\EnvelopeOrchestrator;
 use App\Support\Fiscal\InvoiceIssuer;
+use App\Support\Fiscal\TaxId;
 use App\Support\Fiscal\TaxResolver;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
@@ -114,17 +118,25 @@ final class JourneySupport
         $email = $attrs['email'] ?? strtolower($handle).'@demo.unit-hq.test';
         $phone = $attrs['phone'] ?? '+34600'.str_pad((string) (abs(crc32($handle)) % 1000000), 6, '0', STR_PAD_LEFT);
 
+        // Ordinary invoices require fiscalComplete(); move-in / quarterly batches
+        // routinely exceed the €400 simplified limit (same pattern as OccupancySeeder).
+        [$defaultTaxId, $defaultTaxIdType] = self::demoFiscalId(
+            $handle,
+            (string) ($attrs['billing_country_code'] ?? 'ES'),
+        );
+
         $contact = Contact::query()->create([
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $email,
             'company' => $attrs['company'] ?? null,
             'status' => $attrs['status'] ?? ContactLifecycleStatus::Prospect,
-            'source' => $attrs['source'] ?? 'demo_cast',
+            'source' => $attrs['source'] ?? ContactSource::Import,
+            'source_detail' => $attrs['source_detail'] ?? 'demo_cast',
             'assigned_to' => $attrs['assigned_to'] ?? Employee::query()->value('id'),
             'billing_name' => $attrs['billing_name'] ?? "{$firstName} {$lastName}",
-            'tax_id' => $attrs['tax_id'] ?? null,
-            'tax_id_type' => $attrs['tax_id_type'] ?? null,
+            'tax_id' => $attrs['tax_id'] ?? $defaultTaxId,
+            'tax_id_type' => $attrs['tax_id_type'] ?? $defaultTaxIdType,
             'billing_address_line1' => $attrs['billing_address_line1'] ?? 'Calle Demo 1',
             'billing_city' => $attrs['billing_city'] ?? 'Madrid',
             'billing_postal_code' => $attrs['billing_postal_code'] ?? '28001',
@@ -444,6 +456,18 @@ final class JourneySupport
     public static function payOpenBalance(DemoWorld $world, string $handle, int $lagDays = 0): ?PaymentRequest
     {
         $contract = self::contract($world, $handle)->fresh(['charges']);
+        $status = $contract->status instanceof ContractStatus
+            ? $contract->status
+            : ContractStatus::from((string) $contract->status);
+        // Vacate/cancel close the live unit item; ProviderAccountResolver needs it.
+        if (! in_array($status, [
+            ContractStatus::Active,
+            ContractStatus::NoticeGiven,
+            ContractStatus::Pending,
+        ], true)) {
+            return null;
+        }
+
         $today = now()->toDateString();
         $open = $contract->charges
             ->filter(static function (Charge $c) use ($today, $lagDays): bool {
@@ -954,6 +978,8 @@ final class JourneySupport
 
         $fresh = $contract->fresh() ?? $contract;
         $world->remember("{$handle}.contract", $fresh);
+        // Stop standing-order autopay — live unit item is closed on vacate.
+        self::startMissingPayments($world, $handle);
         $contact = $world->contact("{$handle}.contact");
         $stillOccupying = Contract::query()
             ->where('contact_id', $contact->id)
@@ -1061,6 +1087,7 @@ final class JourneySupport
 
         $fresh = $contract->fresh() ?? $contract;
         $world->remember("{$handle}.contract", $fresh);
+        self::startMissingPayments($world, $handle);
 
         return $fresh;
     }
@@ -1187,7 +1214,7 @@ final class JourneySupport
         return $message;
     }
 
-    public static function sendWhatsAppSession(DemoWorld $world, string $handle, string $body): Message
+    public static function sendWhatsAppSession(DemoWorld $world, string $handle, string $body): ?Message
     {
         $contact = $world->contact("{$handle}.contact");
         $phone = (string) $world->get("{$handle}.phone");
@@ -1204,13 +1231,22 @@ final class JourneySupport
                 ->firstOrFail();
         }
 
-        $result = app(WhatsAppSender::class)->sendSession(
-            new WhatsAppSessionMessage($phone, $body),
-            $site,
-            $contact,
-            SendContext::manual(SendClass::Transactional),
-            $thread,
-        );
+        try {
+            $result = app(WhatsAppSender::class)->sendSession(
+                new WhatsAppSessionMessage($phone, $body),
+                $site,
+                $contact,
+                SendContext::manual(SendClass::Transactional),
+                $thread,
+            );
+        } catch (SendRefused $e) {
+            // Cast days advance in 24h steps; Meta window is last_inbound+1 day exclusive.
+            if ($e->reasonKey === 'whatsapp.window_closed') {
+                return null;
+            }
+
+            throw $e;
+        }
 
         $message = Message::query()->findOrFail($result->messageId);
         $world->remember("{$handle}.wa_thread", $message->thread);
@@ -1576,6 +1612,43 @@ final class JourneySupport
         }
 
         Overlock::release($open, 'cure');
+    }
+
+    /**
+     * Deterministic, checksum-valid tax IDs so demo contacts are fiscalComplete().
+     *
+     * @return array{0: string, 1: TaxIdType}
+     */
+    private static function demoFiscalId(string $handle, string $countryCode): array
+    {
+        $seed = abs(crc32($handle));
+
+        return match (strtoupper($countryCode)) {
+            'FR' => [self::demoSiren($seed), TaxIdType::Siren],
+            'GB' => [sprintf('%08d', $seed % 100000000), TaxIdType::UkCrn],
+            default => [self::demoNif($seed), TaxIdType::Nif],
+        };
+    }
+
+    private static function demoNif(int $seed): string
+    {
+        $number = $seed % 100000000;
+        $letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+
+        return sprintf('%08d%s', $number, $letters[$number % 23]);
+    }
+
+    private static function demoSiren(int $seed): string
+    {
+        $body = sprintf('%08d', $seed % 100000000);
+        for ($check = 0; $check <= 9; $check++) {
+            $candidate = $body.(string) $check;
+            if (TaxId::validate($candidate, TaxIdType::Siren->value)) {
+                return $candidate;
+            }
+        }
+
+        return '732829320'; // known-valid SIREN fallback
     }
 }
 

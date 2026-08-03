@@ -18,7 +18,8 @@ class DemoSeedCommand extends Command
 {
     protected $signature = 'demo:seed
                             {--fresh : migrate:fresh then seed the empty stage before the demo pipeline}
-                            {--cast-only : skip crowd generation (debug / cast isolation)}';
+                            {--cast-only : skip crowd generation (debug / cast isolation)}
+                            {--inbox-only : skip the clock; bootstrap email + call threads on the existing stage DB}';
 
     protected $description = 'Seed the living demo facility (opt-in; refuses on production)';
 
@@ -28,6 +29,10 @@ class DemoSeedCommand extends Command
             $this->error('demo:seed refuses to run in the production environment.');
 
             return self::FAILURE;
+        }
+
+        if ($this->option('inbox-only')) {
+            return $this->runInboxOnly();
         }
 
         $totalStart = hrtime(true);
@@ -75,6 +80,30 @@ class DemoSeedCommand extends Command
         $this->newLine();
         $this->info('Demo script written to '.$scriptPath);
         $this->line($script);
+
+        return self::SUCCESS;
+    }
+
+    private function runInboxOnly(): int
+    {
+        if ($this->option('fresh')) {
+            $this->error('--inbox-only cannot be combined with --fresh.');
+
+            return self::FAILURE;
+        }
+
+        $this->info('Bootstrapping inbox email + call threads…');
+
+        $start = hrtime(true);
+
+        try {
+            DemoPipeline::runInboxOnly($this->laravel);
+        } finally {
+            DemoWorld::setCurrent(null);
+        }
+
+        $ms = (hrtime(true) - $start) / 1_000_000;
+        $this->info(sprintf('Inbox bootstrap complete (%.0f ms).', $ms));
 
         return self::SUCCESS;
     }
