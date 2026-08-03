@@ -44,10 +44,14 @@
 - **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
 - **Automation `waiting` run status (S08-00):** `AutomationRunStatus::Waiting` parks `logic.wait` with `waiting_until` + `current_node_id` cursor. Resume via delayed `ResumeAutomationRun` and authoritative `automations:resume-waiting` sweeper. Cancel + run-level guard funnel through `RunLifecycle`. Business-hours/weekday wait windows deferred to S09 playbook params if needed.
 - **Demo baseline:** the living facility for demos and cross-surface consistency is `php artisan demo:seed` (optional `--fresh`) — simulated history through real jobs/injectors, not staged status rows. Deterministic via `DEMO_SEED` (crowd only; cast fixed). Presenter sheet: `storage/demo-script.md`. Per-sprint `DatabaseSeeder` fixtures remain test-only and must stay independent (`docs/roadmap/seeders/`).
+- **D-DISC — Discount catalogue & compile-at-signing (ratified 2026-08-02).**
+  1. **No clawback in v1.** Early leavers keep free weeks; clawback-as-vacate-settlement-charge is the recorded follow-up.
+  2. **Zero-total periods: charge yes, invoice no.** €0 charges write (ledger continuity); invoice issuance skips zero-total periods (gestor-flippable flag).
+  3. **Percent tracks rate changes** — scheduled increase recomputes `new list × (1−p)`. Plus a remove action that versions back to list at the next period boundary (Tier-3 with reason).
+  4. **Unit items only in v1** (insurance untouched). Catalogue is archive-only `percent` / `free_time` rows operators pick; they compile into contract-scoped item versions at signing so billing never interprets discounts (invariant 41). Detail: `03-pricing.md`, sprint-17.
 
 ## Explicitly out of scope (for now)
 
-- Discount snapshot JSON / full discount-on-contract-item model (discount columns exist; formal model still open below).
 - Deposit refund / deduction lifecycle.
 - Recurring billing job beyond first-charge generation (cursor is ready; job is not).
 - Per-contract cadence override.
@@ -77,7 +81,6 @@
 | Topic | Options / notes |
 |---|---|
 | Revenue model | **Flat SaaS** (default direction). Application fees are off the table without Connect; do not reopen destination charges / platform fee collection. |
-| Discount model | Next data model to formalise; expresses a reduction, not a standalone amount |
 | Jurisdiction rules | **Addressed (S07-00):** site-assigned `delinquency_policies` (ES/UK flavours seeded). Per-contract override deferred (site-level is v1). |
 | Delinquency per-contract override | Site-level policy assignment only in v1. Per-contract override deferred. |
 | Delinquency recurring steps | One-shot per case in v1; repeating/recurring ladder steps deferred. |
@@ -102,7 +105,7 @@
 
 ## Active WIP
 
-- Discounts API + UI (formal model still open)
+- Discount compiler / signing integration + attach surfaces (sprint-17 DISC-01…03; catalogue DISC-00 shipped)
 - Contract detail / update surfaces
 - Contact transactions
 - Invoice / payment resources polish

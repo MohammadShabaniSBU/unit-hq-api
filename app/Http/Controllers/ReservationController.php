@@ -632,7 +632,7 @@ class ReservationController extends Controller
      *     discount_ends_at: string|null
      * }
      */
-    private function resolveConvertPricing(Reservation $reservation, Carbon $startDate): array
+    private function resolveConvertPricing(Reservation $reservation, Carbon $_startDate): array
     {
         $offerOption = $reservation->offerOption;
         $discount = $offerOption?->discount;
@@ -642,20 +642,16 @@ class ReservationController extends Controller
             ? (float) $offerPrice->amount
             : (float) ($reservation->price?->amount ?? 0);
 
+        // Compat until DISC-01: percent reduces rate; free_time is a no-op here.
         $suggestedUnitRate = $discount !== null && $baseRate > 0
             ? $discount->applyTo($baseRate)
             : $baseRate;
-
-        $discountEndsAt = null;
-        if ($discount !== null && $discount->duration_months !== null) {
-            $discountEndsAt = $startDate->copy()->addMonths($discount->duration_months)->toDateString();
-        }
 
         return [
             'base_rate'           => round($baseRate, 2),
             'suggested_unit_rate' => round($suggestedUnitRate, 2),
             'discount'            => $discount,
-            'discount_ends_at'    => $discountEndsAt,
+            'discount_ends_at'    => null,
         ];
     }
 

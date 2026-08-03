@@ -78,6 +78,9 @@ return [
         'already_reversed' => 'This payment has already been reversed.',
         'cannot_reverse_reversal' => 'Cannot reverse a reversal payment.',
     ],
+    'discounts' => [
+        'archive_in_use' => 'Cannot archive discount referenced by :count offer option(s) or contract item(s).',
+    ],
     'delinquency' => [
         'archive_in_use' => 'Cannot archive delinquency policy assigned to :count site(s). Reassign those sites first.',
         'offset_action_unique' => 'Each (offset_days, action) pair must be unique within a policy.',

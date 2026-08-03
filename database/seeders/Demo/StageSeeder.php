@@ -38,6 +38,7 @@ use App\Support\Communications\Provider;
 use App\Enums\PlaybookKind;
 use App\Models\AircallUserLink;
 use App\Models\Playbook;
+use Database\Seeders\DiscountCatalogueSeeder;
 use App\Support\Playbooks\PlaybookCompiler;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ContractDocumentTemplateSeeder;
@@ -196,6 +197,8 @@ class StageSeeder extends Seeder
                 'created_by' => $manager->id,
             ]);
         }
+
+        (new DiscountCatalogueSeeder)->run($manager);
 
         $unitClasses = collect();
         foreach (range(1, 10) as $n) {

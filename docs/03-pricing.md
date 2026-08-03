@@ -82,10 +82,25 @@ See `05-billing-ledger.md` for charge generation.
 
 ## Discount
 
-- Referenced throughout (notably on `OfferOption`) and on `ContractItem` discount columns.
-- Core semantic: a Discount expresses a **reduction relative to a price**, never a standalone amount.
-- Discounts API + panel UI are actively in progress.
-- **v1 contract billing does not yet snapshot a discount JSON** onto items — discount columns exist; full model is still formalising (`10-open-decisions.md`).
+Admin-defined catalogue rows operators *pick* — never free-typed at a counter.
+Archive-only (`archived_at`); archived rows vanish from pickers but stay resolvable
+for provenance. Settings → Facility → Discounts. Decisions: **D-DISC** in
+`10-open-decisions.md`; invariant 41 in `09`.
+
+| Kind | `params` | Notes |
+|---|---|---|
+| `percent` | `{ "percent": "20.00" }` | `0 < percent < 100`, scale-2 string. `tracks_rate_changes` (default true). |
+| `free_time` | `{ "tiers": [ { "min_commitment_weeks", "free_weeks" }, … ] }` | Non-empty; both fields strictly increasing; `free_weeks < min_commitment_weeks` per tier. |
+
+- **`applies_to`** defaults to `unit` (v1 — insurance untouched).
+- **Cadence alignment** (non-blocking): each `free_weeks × 7` checked against org
+  billing cadence length; misaligned tiers save with `alignment_warnings`.
+- **Compile-at-signing (DISC-01):** a picked discount materializes as contract-
+  scoped `contract_items` price versions (+ `discount_id` provenance). Billing
+  never branches on discount presence. Catalogue CRUD is DISC-00; compiler /
+  surfaces follow in the sprint.
+- Seeded menu: **10% off**, **20% off**, and **Long-stay promo**
+  (`4→2`, `8→4`, `12→6` weeks).
 
 ## Tables
 
@@ -96,5 +111,5 @@ See `05-billing-ledger.md` for charge generation.
 | `insurances` | Insurance plans (+ optional `tax_rate_code`) |
 | `insurance_rates` | Site × Insurance → price |
 | `tax_rates` | Immutable exclusive tax versions by `code` |
-| `discounts` | Reductions (in progress) |
+| `discounts` | Archive-only percent / free_time catalogue |
 | `unit_classes` | Also carries optional `tax_rate_code` |

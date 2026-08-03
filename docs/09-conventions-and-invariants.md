@@ -119,6 +119,11 @@
     external http(s) refs); attachments are size-capped with honest `oversize`
     stubs on the private disk. Auto-Submitted / X-Autoreply messages are stored
     with `auto_generated` and do not increment unread.
+41. **Discounts compile at signing; billing never interprets them.** A discount
+    materializes as contract-scoped price versions (+ linked provenance) inside the
+    signing/convert transaction. No code in billing runs, settlements, or reports may
+    branch on discount presence. Removal and rate-change recompute emit versions
+    through the same rate-change path.
 
 ## Code conventions
 

@@ -158,13 +158,12 @@ class ContractResource extends BaseResource
             /** @var Discount|null $discount */
             $discount = $contractItem->discount;
             $data['discount'] = $discount ? [
-                'id'            => $discount->id,
-                'code'          => $discount->code,
-                'label'         => $discount->label,
-                'discount_type' => $discount->discount_type instanceof \BackedEnum
-                    ? $discount->discount_type->value
-                    : $discount->discount_type,
-                'value'         => $discount->value,
+                'id' => $discount->id,
+                'name' => $discount->name,
+                'kind' => $discount->kind instanceof \BackedEnum
+                    ? $discount->kind->value
+                    : $discount->kind,
+                'params' => $discount->params ?? [],
             ] : null;
         }
 

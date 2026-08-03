@@ -147,7 +147,13 @@ Route::get('insurances/options', [Controllers\InsuranceController::class, 'optio
 Route::get('insurance-rate-matrix', [Facility\InsurancePriceMatrixController::class, 'index']);
 Route::post('insurances/{insurance}/rates', [Facility\InsuranceRateController::class, 'store']);
 Route::apiResource('insurances', Facility\InsurancePlanController::class)->only(['index', 'store', 'update']);
-Route::apiResource('discounts', Controllers\DiscountController::class);
+Route::get('discounts/options', [Controllers\DiscountController::class, 'options']);
+Route::get('discounts', [Controllers\DiscountController::class, 'index']);
+Route::post('discounts', [Controllers\DiscountController::class, 'store']);
+Route::get('discounts/{discount}', [Controllers\DiscountController::class, 'show']);
+Route::patch('discounts/{discount}', [Controllers\DiscountController::class, 'update']);
+Route::post('discounts/{discount}/archive', [Controllers\DiscountController::class, 'archive']);
+Route::post('discounts/{discount}/unarchive', [Controllers\DiscountController::class, 'unarchive']);
 
 Route::get('tax-rates/options', [Controllers\TaxRateController::class, 'options']);
 Route::get('tax-rates', [Controllers\TaxRateController::class, 'index']);

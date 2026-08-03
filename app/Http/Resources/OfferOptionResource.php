@@ -24,13 +24,12 @@ class OfferOptionResource extends BaseResource
             'unit_class_rate'    => UnitClassRateResource::make($this->whenLoaded('unitClassRate')),
             'unit'               => UnitResource::make($this->whenLoaded('unit')),
             'discount'           => $this->whenLoaded('discount', fn () => [
-                'id'             => $this->discount->id,
-                'code'           => $this->discount->code,
-                'label'          => $this->discount->label,
-                'discount_type'  => $this->discount->discount_type,
-                'value'          => $this->discount->value,
-                'effective_from' => $this->date($this->discount->effective_from),
-                'effective_to'   => $this->date($this->discount->effective_to),
+                'id' => $this->discount->id,
+                'name' => $this->discount->name,
+                'kind' => $this->discount->kind instanceof \BackedEnum
+                    ? $this->discount->kind->value
+                    : $this->discount->kind,
+                'params' => $this->discount->params ?? [],
             ]),
         ];
     }

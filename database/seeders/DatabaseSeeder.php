@@ -163,6 +163,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        (new DiscountCatalogueSeeder)->run($manager);
+
         $unitClasses = collect();
         foreach (range(1, 10) as $n) {
             $unitClasses->push(UnitClass::factory()->create([

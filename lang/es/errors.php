@@ -78,6 +78,9 @@ return [
         'already_reversed' => 'Este pago ya ha sido anulado.',
         'cannot_reverse_reversal' => 'No se puede anular un pago de anulación.',
     ],
+    'discounts' => [
+        'archive_in_use' => 'No se puede archivar el descuento referenciado por :count opción(es) de oferta o partida(s) de contrato.',
+    ],
     'delinquency' => [
         'archive_in_use' => 'No se puede archivar la política de impagos asignada a :count sede(s). Reasigne esas sedes primero.',
         'offset_action_unique' => 'Cada par (offset_days, action) debe ser único dentro de una política.',

@@ -4,27 +4,38 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\DiscountType;
+use App\Enums\DiscountKind;
 use App\Enums\LogChannel;
 use App\Models\Concerns\LogsDirtyActivity;
+use App\Support\Discounts\DiscountAlignment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
- * @property int              $id
- * @property string|null      $code
- * @property string           $label
- * @property DiscountType     $discount_type
- * @property string           $value           NUMERIC(10,2) — returned as string
- * @property int|null         $duration_months null = discount applies for life of contract
- * @property string|null      $effective_from  Y-m-d
- * @property string|null      $effective_to    Y-m-d
- * @property Carbon           $created_at
+ * Admin-defined discount catalogue row. Archive-only; picked onto offers /
+ * contracts and compiled at signing (DISC-00 / DISC-01).
  *
- * @property-read Collection<int, OfferOption> $offerOptions
+ * @property int              $id
+ * @property string           $name
+ * @property DiscountKind     $kind
+ * @property array            $params
+ * @property string           $applies_to
+ * @property bool             $tracks_rate_changes
+ * @property Carbon|null      $archived_at
+ * @property int|null         $created_by
+ * @property Carbon           $created_at
+ * @property Carbon           $updated_at
+ *
+ * @property-read Collection<int, OfferOption>  $offerOptions
+ * @property-read Collection<int, ContractItem> $contractItems
+ * @property-read Employee|null                 $creator
+ * @property-read int|null                      $offer_options_count
+ * @property-read int|null                      $contract_items_count
  */
 class Discount extends Model
 {
@@ -35,40 +46,91 @@ class Discount extends Model
         return LogChannel::Facility;
     }
 
-    const UPDATED_AT = null;
-
     protected $fillable = [
-        'code',
-        'label',
-        'discount_type',
-        'value',
-        'duration_months',
-        'effective_from',
-        'effective_to',
+        'name',
+        'kind',
+        'params',
+        'applies_to',
+        'tracks_rate_changes',
+        'archived_at',
+        'created_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'discount_type'   => DiscountType::class,
-            'value'           => 'decimal:2',
-            'duration_months' => 'integer',
-            'effective_from'  => 'date',
-            'effective_to'    => 'date',
+            'kind' => DiscountKind::class,
+            'params' => 'array',
+            'tracks_rate_changes' => 'boolean',
+            'archived_at' => 'datetime',
         ];
     }
 
-    public function applyTo(float $amount): float
+    public function isArchived(): bool
     {
-        return match ($this->discount_type) {
-            DiscountType::Percentage  => round($amount * (1 - (float) $this->value / 100), 2),
-            DiscountType::FixedAmount => max(0.0, round($amount - (float) $this->value, 2)),
-        };
+        return $this->archived_at !== null;
     }
 
-    /** @return HasMany<OfferOption> */
+    /** @param Builder<Discount> $query */
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereNull('archived_at');
+    }
+
+    /** @param Builder<Discount> $query */
+    public function scopeArchived(Builder $query): void
+    {
+        $query->whereNotNull('archived_at');
+    }
+
+    /** @return HasMany<OfferOption, $this> */
     public function offerOptions(): HasMany
     {
         return $this->hasMany(OfferOption::class);
+    }
+
+    /** @return HasMany<ContractItem, $this> */
+    public function contractItems(): HasMany
+    {
+        return $this->hasMany(ContractItem::class);
+    }
+
+    /** @return BelongsTo<Employee, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'created_by');
+    }
+
+    /**
+     * Compat bridge until DISC-01 compiler: percent reduces rate; free_time is a no-op.
+     */
+    public function applyTo(float $amount): float
+    {
+        if ($this->kind !== DiscountKind::Percent) {
+            return round($amount, 2);
+        }
+
+        $percent = (string) ($this->params['percent'] ?? '0');
+        if (bccomp($percent, '0', 2) <= 0) {
+            return round($amount, 2);
+        }
+
+        $factor = bcsub('1', bcdiv($percent, '100', 6), 6);
+
+        return (float) bcmul((string) $amount, $factor, 2);
+    }
+
+    /** @return array<int, string> */
+    public function alignmentWarnings(): array
+    {
+        return DiscountAlignment::warnings($this->kind, $this->params ?? []);
+    }
+
+    public function usageCount(): int
+    {
+        $offerCount = $this->offer_options_count ?? $this->offerOptions()->count();
+        $itemCount = $this->contract_items_count ?? $this->contractItems()->count();
+
+        return (int) $offerCount + (int) $itemCount;
     }
 }

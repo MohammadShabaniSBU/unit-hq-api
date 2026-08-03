@@ -78,6 +78,9 @@ return [
         'already_reversed' => 'Ce paiement a déjà été annulé.',
         'cannot_reverse_reversal' => 'Impossible d’annuler un paiement d’annulation.',
     ],
+    'discounts' => [
+        'archive_in_use' => 'Impossible d’archiver la remise référencée par :count option(s) d’offre ou ligne(s) de contrat.',
+    ],
     'delinquency' => [
         'archive_in_use' => 'Impossible d’archiver la politique d’impayés assignée à :count site(s). Réassignez ces sites d’abord.',
         'offset_action_unique' => 'Chaque paire (offset_days, action) doit être unique au sein d’une politique.',
