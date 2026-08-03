@@ -7,6 +7,21 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Demo world
+
+Opt-in living facility seed (~350 contacts, 14 months of simulated history). Refuses on production.
+
+```bash
+php artisan demo:seed --fresh
+```
+
+- Prints a presenter sheet and writes `storage/demo-script.md` (cast index, 15-minute tour, numbers that must match).
+- `DEMO_SEED` (default `424242`) varies the crowd only; the named cast is fixed.
+- `--cast-only` skips crowd generation (debug).
+- Design and matrix: [`docs/roadmap/seeders/`](docs/roadmap/seeders/).
+
+Per-sprint `php artisan db:seed` fixtures stay separate for the test suite — do not entangle them with the demo pipeline.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

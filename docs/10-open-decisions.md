@@ -43,6 +43,7 @@
 - **D-entry — S03 built answer-agnostic.** Schema, Settings UI, and issuance path support several legal entities; one is seeded (`PENDING-GESTOR`). The client's one-vs-several answer is go-live data entry, not a code blocker. See sprint-03 README.
 - **D8 — Date boundaries via site timezone.** `App\Support\Time\SiteClock`. Bare `Carbon::today()` / `->toDateString()` on timestamps are defects.
 - **Automation `waiting` run status (S08-00):** `AutomationRunStatus::Waiting` parks `logic.wait` with `waiting_until` + `current_node_id` cursor. Resume via delayed `ResumeAutomationRun` and authoritative `automations:resume-waiting` sweeper. Cancel + run-level guard funnel through `RunLifecycle`. Business-hours/weekday wait windows deferred to S09 playbook params if needed.
+- **Demo baseline:** the living facility for demos and cross-surface consistency is `php artisan demo:seed` (optional `--fresh`) — simulated history through real jobs/injectors, not staged status rows. Deterministic via `DEMO_SEED` (crowd only; cast fixed). Presenter sheet: `storage/demo-script.md`. Per-sprint `DatabaseSeeder` fixtures remain test-only and must stay independent (`docs/roadmap/seeders/`).
 
 ## Explicitly out of scope (for now)
 

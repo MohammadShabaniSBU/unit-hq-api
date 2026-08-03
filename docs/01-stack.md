@@ -39,7 +39,10 @@
 # API
 composer setup   # install, .env, migrate, vite build
 composer dev     # serve + queue + pail + vite
+php artisan demo:seed --fresh   # optional living demo world (+ storage/demo-script.md)
 
 # Panel
 bun install && bun run dev   # http://localhost:3000
 ```
+
+See also root `README.md` § Demo world and `docs/roadmap/seeders/`.
