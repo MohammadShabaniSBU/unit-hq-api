@@ -10,15 +10,31 @@ use App\Support\Reports\ReportRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
- * Insights reports. Auth: any authenticated Employee until S17 RBAC
- * (see docs/10-open-decisions.md — reports namespace stopgap).
+ * Insights reports. Financial names require ReportFinancialView.
  */
 class ReportController extends Controller
 {
+    /** @var list<string> */
+    private const FINANCIAL_REPORTS = [
+        'rent-roll',
+        'ageing',
+        'collections',
+        'deposit-liability',
+        'daily-close',
+    ];
+
     public function show(Request $request, string $name): JsonResponse|Response
     {
+        if (in_array($name, self::FINANCIAL_REPORTS, true)) {
+            Gate::authorize(Permission::ReportFinancialView->value);
+        } else {
+            Gate::authorize(Permission::ReportView->value);
+        }
+
         if (! ReportRegistry::has($name)) {
             return $this->notFound('Report not found.');
         }

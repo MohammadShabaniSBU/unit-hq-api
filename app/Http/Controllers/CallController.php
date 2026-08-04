@@ -10,6 +10,8 @@ use App\Support\Communications\CallAvailability;
 use App\Support\Communications\CallDialer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Click-to-dial + per-employee availability (S12-00).
@@ -18,6 +20,8 @@ class CallController extends Controller
 {
     public function dial(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CallPlace->value);
+
         $validated = $request->validate([
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
             'to_number' => ['nullable', 'string', 'max:32'],
@@ -53,6 +57,8 @@ class CallController extends Controller
 
     public function availability(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CallPlace->value);
+
         /** @var Employee $employee */
         $employee = $request->user();
 

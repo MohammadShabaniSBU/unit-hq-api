@@ -24,10 +24,20 @@ System roles are seeded by `RbacSystemRoleSeeder` (`is_system = true`). At least
 
 Permission vocabulary and grant tables are live. Resolution machinery
 (`Employee::can` / `allowsPermission`, `SubjectSite`, `SystemActor`,
-`ContractPolicy` template, 403 `errors.forbidden`) lives under `App\Support\Auth\`
-and `app/Policies/`. **Route-level `authorize()` rollout is task 03**; list
-`visibleTo` scoping is task 04. Until controllers are wired, every authenticated
-employee remains capable of every HTTP action.
+policies, 403 `errors.forbidden`) lives under `App\Support\Auth\` and
+`app/Policies/`. **Every authenticated route** reaches a permission decision via
+`Gate::authorize` / `$this->authorize` and the `RoutePermissions` manifest
+(task 03). List `visibleTo` scoping is task 04.
+
+**Release note:** the task-01 backfill grants every pre-existing employee a
+company-wide `owner` role, so deployments see **no behaviour change** until an
+operator narrows someone's grants. After that, narrowly-granted employees receive
+403 with `{ message: "errors.forbidden", data: { permission, site_id? } }`.
+
+Site scoping is **explicit at authorize call sites** (permission + `SubjectSite`
+on the subject), never a global Eloquent scope, never middleware ambient context,
+and never baked into Sanctum tokens. Company-wide grants allow anywhere; site
+grants allow only when the subject's site matches.
 
 ## Site scoping in the panel (UX rule)
 

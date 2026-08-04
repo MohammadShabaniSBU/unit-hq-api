@@ -31,12 +31,14 @@ use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
 use App\Support\RecordsActivity;
+use App\Support\Auth\Permission;
 use App\Support\Time\SiteClock;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -48,6 +50,8 @@ trait VacatesContracts
 {
     public function notice(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractVacate->value, $contract);
+
         $validated = $request->validate([
             'scheduled_move_out_on' => ['required', 'date'],
         ]);
@@ -99,6 +103,8 @@ trait VacatesContracts
 
     public function noticeWithdraw(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractVacate->value, $contract);
+
         DB::transaction(function () use ($contract): void {
             $contract = Contract::query()->lockForUpdate()->findOrFail($contract->id);
             ContractTransition::assert($contract, ContractStatus::Active);
@@ -121,6 +127,8 @@ trait VacatesContracts
 
     public function vacatePreview(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractVacate->value, $contract);
+
         $validated = $this->validateVacateBody($request);
         $plan = $this->buildVacatePlan($contract, $validated);
         $plan['invoices_to_issue'] = $this->previewVacateInvoices($plan);
@@ -130,6 +138,8 @@ trait VacatesContracts
 
     public function vacate(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractVacate->value, $contract);
+
         $validated = $this->validateVacateBody($request);
 
         DB::transaction(function () use ($contract, $validated): void {

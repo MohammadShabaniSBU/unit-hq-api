@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Staff endpoints for tokenised payment links (S06-02).
@@ -30,6 +32,8 @@ class PaymentRequestController extends Controller
 
     public function index(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::PaymentView->value, $contract);
+
         $requests = $contract->paymentRequests()
             ->orderByDesc('id')
             ->get();
@@ -42,6 +46,8 @@ class PaymentRequestController extends Controller
 
     public function store(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $contract);
+
         $validated = $request->validate([
             'charge_ids' => ['sometimes', 'array', 'min:1'],
             'charge_ids.*' => ['integer'],
@@ -111,6 +117,8 @@ class PaymentRequestController extends Controller
 
     public function cancel(PaymentRequest $paymentRequest): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $paymentRequest);
+
         if ($paymentRequest->status !== PaymentRequestStatus::Pending) {
             throw ValidationException::withMessages([
                 'status' => ['Only pending payment requests can be cancelled.'],

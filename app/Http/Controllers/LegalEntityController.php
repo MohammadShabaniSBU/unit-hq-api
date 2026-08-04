@@ -13,11 +13,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class LegalEntityController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
@@ -42,6 +46,8 @@ class LegalEntityController extends Controller
 
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceView->value);
+
         $options = LegalEntity::query()->active()->orderBy('legal_name')->get(['id', 'legal_name'])
             ->map(fn (LegalEntity $entity) => [
                 'value' => $entity->id,
@@ -53,6 +59,8 @@ class LegalEntityController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value);
+
         $validated = $this->validatedPayload($request, creating: true);
 
         $entity = LegalEntity::query()->create($validated);
@@ -66,6 +74,8 @@ class LegalEntityController extends Controller
 
     public function show(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         $legalEntity->loadCount('sites');
 
         return $this->success(
@@ -76,6 +86,8 @@ class LegalEntityController extends Controller
 
     public function update(Request $request, LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         $validated = $this->validatedPayload($request, creating: false, entity: $legalEntity);
 
         if ($legalEntity->hasIssuedInvoices()) {
@@ -100,6 +112,8 @@ class LegalEntityController extends Controller
 
     public function archive(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         if ($legalEntity->isArchived()) {
             return $this->success(
                 LegalEntityResource::make($legalEntity->loadCount('sites')),
@@ -119,6 +133,8 @@ class LegalEntityController extends Controller
 
     public function unarchive(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         if (! $legalEntity->isArchived()) {
             return $this->success(
                 LegalEntityResource::make($legalEntity->loadCount('sites')),
@@ -136,6 +152,8 @@ class LegalEntityController extends Controller
 
     public function destroy(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         if (! $legalEntity->isArchived()) {
             $this->assertCanArchive($legalEntity);
             $legalEntity->update(['archived_at' => now()]);

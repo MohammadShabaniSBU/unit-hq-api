@@ -19,6 +19,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class OfferOptionController extends Controller
 {
@@ -26,6 +28,8 @@ class OfferOptionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         $validated = $request->validate([
             'offer_id'           => ['required', 'integer', 'exists:offers,id'],
             'unit_class_rate_id' => ['required', 'integer', 'exists:unit_class_rates,id'],
@@ -49,6 +53,8 @@ class OfferOptionController extends Controller
 
     public function update(Request $request, OfferOption $offerOption): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $offerOption);
+
         $validated = $request->validate([
             'unit_class_rate_id' => ['sometimes', 'required', 'integer', 'exists:unit_class_rates,id'],
             'discount_id'        => ['sometimes', 'nullable', 'integer', 'exists:discounts,id'],
@@ -73,6 +79,8 @@ class OfferOptionController extends Controller
 
     public function destroy(OfferOption $offerOption): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $offerOption);
+
         $offerOption->delete();
 
         return $this->noContent('Offer option deleted successfully.');

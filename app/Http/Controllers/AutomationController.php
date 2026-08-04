@@ -27,11 +27,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class AutomationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::AutomationView->value);
+
         $validated = $request->validate([
             'search' => ['nullable', 'string'],
             'status' => ['nullable', Rule::in(['draft', 'active', 'inactive', 'archived', 'all'])],
@@ -68,6 +72,8 @@ class AutomationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -105,6 +111,8 @@ class AutomationController extends Controller
 
     public function show(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationView->value, $automation);
+
         return $this->success(
             AutomationResource::make($automation->load(['nodes', 'edges.sourceNode', 'edges.targetNode'])),
             'Automation retrieved successfully.',
@@ -113,6 +121,8 @@ class AutomationController extends Controller
 
     public function update(Request $request, Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -214,6 +224,8 @@ class AutomationController extends Controller
 
     public function destroy(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         if (! $automation->isArchived()) {
             $automation->update(['archived_at' => now(), 'status' => AutomationStatus::Inactive]);
             AutomationWatchCache::flushAll();
@@ -224,6 +236,8 @@ class AutomationController extends Controller
 
     public function archive(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         if ($automation->isArchived()) {
             return $this->success(
                 AutomationResource::make($automation->load(['nodes', 'edges.sourceNode', 'edges.targetNode'])),
@@ -245,6 +259,8 @@ class AutomationController extends Controller
 
     public function unarchive(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         if (! $automation->isArchived()) {
             return $this->success(
                 AutomationResource::make($automation->load(['nodes', 'edges.sourceNode', 'edges.targetNode'])),
@@ -263,6 +279,8 @@ class AutomationController extends Controller
 
     public function activate(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         if ($automation->isArchived()) {
             throw ValidationException::withMessages([
                 'status' => 'Cannot activate an archived automation. Unarchive it first.',
@@ -284,6 +302,8 @@ class AutomationController extends Controller
 
     public function triggerFields(string $objectType): JsonResponse
     {
+        Gate::authorize(Permission::AutomationView->value);
+
         if (! TriggerableFields::supports($objectType)) {
             throw ValidationException::withMessages([
                 'objectType' => "Unknown trigger object type [{$objectType}].",
@@ -298,6 +318,8 @@ class AutomationController extends Controller
 
     public function deactivate(Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value, $automation);
+
         $automation->update(['status' => AutomationStatus::Inactive]);
         AutomationWatchCache::flushAll();
 
@@ -309,6 +331,8 @@ class AutomationController extends Controller
 
     public function runs(Request $request, Automation $automation): JsonResponse
     {
+        Gate::authorize(Permission::AutomationView->value, $automation);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::enum(AutomationRunStatus::class)],
             'subject_type' => ['nullable', 'string'],
@@ -353,6 +377,8 @@ class AutomationController extends Controller
 
     public function showRun(Automation $automation, AutomationRun $run): JsonResponse
     {
+        Gate::authorize(Permission::AutomationView->value, $automation);
+
         if ((int) $run->automation_id !== (int) $automation->id) {
             return $this->notFound('Automation run not found.');
         }
@@ -375,6 +401,8 @@ class AutomationController extends Controller
 
     public function cancelRun(Request $request, AutomationRun $run): JsonResponse
     {
+        Gate::authorize(Permission::AutomationManage->value);
+
         /** @var Employee $employee */
         $employee = $request->user();
 

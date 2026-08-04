@@ -10,12 +10,13 @@ use App\Http\Resources\SiteSenderIdentityResource;
 use App\Models\CommunicationAccount;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
-use App\Support\Auth\SiteAccess;
+use App\Support\Auth\Permission;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Site Integrations tab — sender identity fields only (no secrets).
@@ -25,6 +26,8 @@ class SiteSenderIdentityController extends Controller
 {
     public function index(Site $site): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value, $site);
+
         $identities = $site->senderIdentities()->get()
             ->keyBy(fn (SiteSenderIdentity $identity) => $identity->channel->value);
 
@@ -42,7 +45,7 @@ class SiteSenderIdentityController extends Controller
 
     public function update(Request $request, Site $site, Channel $channel): JsonResponse
     {
-        abort_unless(SiteAccess::canManageSite($request->user(), $site), 403);
+        Gate::authorize(Permission::CredentialManage->value, $site);
 
         if (! $channel->isImplemented()) {
             abort(404);

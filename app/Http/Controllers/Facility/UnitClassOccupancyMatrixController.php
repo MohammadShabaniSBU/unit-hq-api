@@ -11,11 +11,15 @@ use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitClassOccupancyMatrixController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $sites = Site::query()
             ->orderBy('name')
             ->get(['id', 'name', 'timezone']);

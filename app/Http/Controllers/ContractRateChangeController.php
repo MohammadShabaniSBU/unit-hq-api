@@ -10,11 +10,15 @@ use App\Models\Employee;
 use App\Support\Contracts\ScheduleRateChange;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContractRateChangeController extends Controller
 {
     public function store(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractRateChange->value, $contract);
+
         $validated = $request->validate([
             'contract_item_id' => ['required', 'integer', 'exists:contract_items,id'],
             'new_amount' => ['required', 'numeric', 'min:0'],

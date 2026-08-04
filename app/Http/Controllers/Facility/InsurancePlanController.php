@@ -7,11 +7,15 @@ use App\Http\Resources\InsurancePlanResource;
 use App\Models\Insurance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InsurancePlanController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         return $this->paginated(
             Insurance::query()
                 ->orderBy('name')
@@ -23,6 +27,8 @@ class InsurancePlanController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'name'          => ['required', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],
@@ -41,6 +47,8 @@ class InsurancePlanController extends Controller
 
     public function update(Request $request, Insurance $insurance): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $insurance);
+
         $validated = $request->validate([
             'name'          => ['sometimes', 'required', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],

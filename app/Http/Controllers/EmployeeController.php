@@ -6,11 +6,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class EmployeeController extends Controller
 {
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value);
+
         $options = Employee::query()->orderBy('name')->get(['id', 'name'])
             ->map(fn (Employee $employee) => [
                 'value' => $employee->id,

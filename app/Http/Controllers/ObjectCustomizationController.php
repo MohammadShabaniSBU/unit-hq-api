@@ -21,11 +21,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ObjectCustomizationController extends Controller
 {
     public function show(string $entityType): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $type = $this->resolveEntityType($entityType);
 
         $groups = AttributeGroup::query()
@@ -75,6 +79,8 @@ class ObjectCustomizationController extends Controller
 
     public function storeGroup(Request $request, string $entityType): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $type = $this->resolveEntityType($entityType);
 
         $validated = $request->validate([
@@ -129,6 +135,8 @@ class ObjectCustomizationController extends Controller
 
     public function updateGroup(Request $request, AttributeGroup $group): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'label' => ['sometimes', 'required', 'string', 'max:255'],
         ]);
@@ -161,6 +169,8 @@ class ObjectCustomizationController extends Controller
 
     public function reorderGroups(Request $request, string $entityType): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $type = $this->resolveEntityType($entityType);
 
         $validated = $request->validate([
@@ -215,6 +225,8 @@ class ObjectCustomizationController extends Controller
 
     public function destroyGroup(Request $request, AttributeGroup $group): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         if ($group->is_system) {
             throw ValidationException::withMessages([
                 'group' => ['System cards cannot be deleted.'],
@@ -248,6 +260,8 @@ class ObjectCustomizationController extends Controller
 
     public function storeField(Request $request, AttributeGroup $group): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'field_type' => ['required', Rule::enum(LayoutFieldType::class)],
             'native_field_key' => ['required_if:field_type,native', 'nullable', 'string'],
@@ -367,6 +381,8 @@ class ObjectCustomizationController extends Controller
 
     public function updateField(Request $request, LayoutField $field): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'group_id' => ['sometimes', 'required', 'integer', 'exists:attribute_groups,id'],
             'display_order' => ['sometimes', 'required', 'integer', 'min:0'],
@@ -423,6 +439,8 @@ class ObjectCustomizationController extends Controller
 
     public function reorderFields(Request $request, AttributeGroup $group): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'ids' => ['required', 'array'],
             'ids.*' => ['integer', 'distinct'],
@@ -466,6 +484,8 @@ class ObjectCustomizationController extends Controller
 
     public function destroyField(Request $request, LayoutField $field): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         DB::transaction(function () use ($field, $request) {
             RecordsActivity::log(
                 LogChannel::Facility,

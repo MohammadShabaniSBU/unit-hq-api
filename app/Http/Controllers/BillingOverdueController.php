@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Overdue contracts list + failed-autopay attention count (S06-04 stand-in for S07 dunning).
@@ -21,6 +23,8 @@ class BillingOverdueController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceView->value);
+
         $validated = $request->validate([
             'failed_autopay' => ['sometimes', 'boolean'],
         ]);

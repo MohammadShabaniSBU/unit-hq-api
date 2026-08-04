@@ -19,11 +19,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class PaymentController extends Controller
 {
     public function store(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $contract);
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', Rule::in([
@@ -89,6 +93,8 @@ class PaymentController extends Controller
 
     public function reverse(Request $request, Payment $payment): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRefund->value, $payment);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:1000'],
         ]);

@@ -9,11 +9,15 @@ use App\Http\Resources\UnitClassRateResource;
 use App\Models\UnitClassRate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitClassRateController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'site_id'       => ['nullable', 'integer', 'exists:sites,id'],
             'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
@@ -37,6 +41,8 @@ class UnitClassRateController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'unit_class_id' => ['required', 'integer', 'exists:unit_classes,id'],
             'site_id'       => ['required', 'integer', 'exists:sites,id'],

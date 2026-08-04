@@ -53,6 +53,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Inbox read surface + reply/compose writes (S11-00 / S11-01).
@@ -63,6 +65,8 @@ class InboxController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value);
+
         $validated = $request->validate([
             'channel' => ['sometimes', 'nullable', Rule::in(['email', 'sms', 'call', 'whatsapp'])],
             'filter' => ['sometimes', Rule::in(['mine', 'unassigned', 'all'])],
@@ -114,6 +118,8 @@ class InboxController extends Controller
 
     public function show(Request $request, MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         $validated = $request->validate([
             'before' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
@@ -172,6 +178,8 @@ class InboxController extends Controller
 
     public function badge(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value);
+
         /** @var Employee $employee */
         $employee = $request->user();
 
@@ -185,6 +193,8 @@ class InboxController extends Controller
 
     public function read(MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         // Zero — never arithmetic decrement (benign race with inbound increments).
         MessageThread::query()
             ->whereKey($messageThread->id)
@@ -200,6 +210,8 @@ class InboxController extends Controller
 
     public function unread(MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         // Honest hack — thread-level model owns read state; per-message is out of scope.
         MessageThread::query()
             ->whereKey($messageThread->id)
@@ -215,6 +227,8 @@ class InboxController extends Controller
 
     public function moveTargets(MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         $targets = MessageThread::query()
             ->where('contact_id', $messageThread->contact_id)
             ->where('channel', $messageThread->channel)
@@ -250,6 +264,8 @@ class InboxController extends Controller
 
     public function assign(Request $request, MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value, $messageThread);
+
         $validated = $request->validate([
             'employee_id' => ['present', 'nullable', 'integer', 'exists:employees,id'],
         ]);
@@ -285,6 +301,8 @@ class InboxController extends Controller
 
     public function context(MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         $messageThread->load(['contact.channels']);
 
         return $this->success(
@@ -295,6 +313,8 @@ class InboxController extends Controller
 
     public function composeContext(MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $messageThread);
+
         $messageThread->load(['contact.channels']);
 
         $channel = $messageThread->channel instanceof Channel
@@ -393,6 +413,8 @@ class InboxController extends Controller
 
     public function reply(Request $request, MessageThread $messageThread): JsonResponse
     {
+        Gate::authorize(Permission::InboxSend->value, $messageThread);
+
         $channel = $messageThread->channel instanceof Channel
             ? $messageThread->channel
             : Channel::from((string) $messageThread->channel);
@@ -494,6 +516,8 @@ class InboxController extends Controller
 
     public function compose(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InboxSend->value);
+
         $validated = $request->validate([
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
             'channel' => ['required', Rule::in(['email', 'sms'])],

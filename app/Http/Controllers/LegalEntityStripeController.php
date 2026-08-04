@@ -18,6 +18,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Per-entity Stripe credentials — legal entity is the merchant of record
@@ -35,6 +37,8 @@ class LegalEntityStripeController extends Controller
 
     public function show(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value, $legalEntity);
+
         $account = $this->activeAccount($legalEntity) ?? new PaymentProviderAccount([
             'legal_entity_id' => $legalEntity->id,
             'provider' => self::PROVIDER,
@@ -51,6 +55,8 @@ class LegalEntityStripeController extends Controller
 
     public function update(Request $request, LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value, $legalEntity);
+
         $validated = $request->validate([
             'publishable_key' => ['nullable', 'string', 'max:255'],
             'secret_key' => ['nullable', 'string'],
@@ -137,6 +143,8 @@ class LegalEntityStripeController extends Controller
 
     public function createWebhook(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value, $legalEntity);
+
         $account = $this->activeAccount($legalEntity);
         $secretKey = $account !== null ? CredentialMasker::readSafely($account, 'secret_key') : null;
 
@@ -183,6 +191,8 @@ class LegalEntityStripeController extends Controller
 
     public function destroy(LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value, $legalEntity);
+
         $account = $this->activeAccount($legalEntity);
 
         if ($account === null) {

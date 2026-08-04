@@ -10,6 +10,8 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Mark-sent for contract notices (S02-04 / S07-04). Send fields only — append-only otherwise.
@@ -18,6 +20,8 @@ class ContractNoticeController extends Controller
 {
     public function markSent(Request $request, ContractNotice $contractNotice): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $contractNotice);
+
         $validated = $request->validate([
             'channel' => ['required', Rule::in(['email', 'sms', 'post', 'in_person'])],
             'sent_at' => ['sometimes', 'nullable', 'date'],

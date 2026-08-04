@@ -24,11 +24,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class PlaybookController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value);
+
         $validated = $request->validate([
             'kind' => ['nullable', Rule::enum(PlaybookKind::class)],
             'search' => ['nullable', 'string'],
@@ -57,6 +61,8 @@ class PlaybookController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value);
+
         $validated = $this->validatedPayload($request, creating: true);
 
         $playbook = DB::transaction(function () use ($validated): Playbook {
@@ -81,6 +87,8 @@ class PlaybookController extends Controller
 
     public function show(Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         $activeCount = AutomationRun::query()
             ->whereIn(
                 'automation_id',
@@ -99,6 +107,8 @@ class PlaybookController extends Controller
 
     public function enrolments(Request $request, Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         $validated = $request->validate([
             'status' => ['nullable', 'string', Rule::in(['active', 'exited'])],
         ]);
@@ -128,6 +138,8 @@ class PlaybookController extends Controller
 
     public function update(Request $request, Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         if ($playbook->isArchived()) {
             throw ValidationException::withMessages([
                 'playbook' => 'Cannot update an archived playbook.',
@@ -170,6 +182,8 @@ class PlaybookController extends Controller
 
     public function destroy(Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         if (! $playbook->isArchived()) {
             DB::transaction(function () use ($playbook): void {
                 $playbook->update([
@@ -190,6 +204,8 @@ class PlaybookController extends Controller
 
     public function activate(Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         if ($playbook->isArchived()) {
             throw ValidationException::withMessages([
                 'status' => 'Cannot activate an archived playbook.',
@@ -219,6 +235,8 @@ class PlaybookController extends Controller
 
     public function deactivate(Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         DB::transaction(function () use ($playbook): void {
             $playbook->update(['is_active' => false]);
 
@@ -237,6 +255,8 @@ class PlaybookController extends Controller
 
     public function exitEnrolments(Playbook $playbook): JsonResponse
     {
+        Gate::authorize(Permission::PlaybookManage->value, $playbook);
+
         $automationIds = Automation::query()
             ->where('playbook_id', $playbook->id)
             ->pluck('id')

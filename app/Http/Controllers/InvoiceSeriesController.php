@@ -13,11 +13,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InvoiceSeriesController extends Controller
 {
     public function index(Request $request, LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
@@ -44,6 +48,8 @@ class InvoiceSeriesController extends Controller
 
     public function store(Request $request, LegalEntity $legalEntity): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value, $legalEntity);
+
         $validated = $request->validate([
             'code' => [
                 'required',
@@ -83,6 +89,8 @@ class InvoiceSeriesController extends Controller
 
     public function update(Request $request, InvoiceSeries $invoiceSeries): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value);
+
         if ($request->exists('next_number') || $request->exists('starting_number')) {
             throw ValidationException::withMessages([
                 'next_number' => [__('errors.invoice_series.next_number_immutable')],
@@ -125,6 +133,8 @@ class InvoiceSeriesController extends Controller
 
     public function archive(InvoiceSeries $invoiceSeries): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value);
+
         if ($invoiceSeries->isArchived()) {
             return $this->success(
                 InvoiceSeriesResource::make($invoiceSeries),
@@ -144,6 +154,8 @@ class InvoiceSeriesController extends Controller
 
     public function unarchive(InvoiceSeries $invoiceSeries): JsonResponse
     {
+        Gate::authorize(Permission::LegalEntityManage->value);
+
         if (! $invoiceSeries->isArchived()) {
             return $this->success(
                 InvoiceSeriesResource::make($invoiceSeries),

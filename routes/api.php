@@ -67,7 +67,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('messages/{message}/wrapup', [Controllers\MessageController::class, 'upsertWrapup']);
     Route::get('messages/{message}/recording', [Controllers\MessageController::class, 'recording']);
 
-    // Inbox (S11-00/01) — any authenticated Employee until S17 RBAC (10-open-decisions.md).
     Route::get('employees/options', [Controllers\EmployeeController::class, 'options']);
     Route::get('inbox/threads', [Controllers\InboxController::class, 'index']);
     Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
@@ -124,19 +123,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('legal-entities/{legal_entity}/stripe-settings/webhook', [Controllers\LegalEntityStripeController::class, 'createWebhook']);
     Route::delete('legal-entities/{legal_entity}/stripe-settings', [Controllers\LegalEntityStripeController::class, 'destroy']);
 
-    // Sender identities carry no secrets, but `update` authorizes via
-    // SiteAccess::canManageSite($request->user(), ...) which needs an
-    // authenticated request to resolve — must live behind auth:sanctum too.
+    // Sender identities — CredentialManage against the site (no secrets on the row).
     Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
     Route::put('sites/{site}/sender-identities/{channel}', [Facility\SiteSenderIdentityController::class, 'update']);
 
-    // Billing runs — any authenticated Employee until S17 RBAC (10-open-decisions.md).
     Route::get('billing-runs', [Controllers\BillingRunController::class, 'index']);
     Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
     Route::get('billing/overdue', [Controllers\BillingOverdueController::class, 'index']);
 
-    // Insights reports — any authenticated Employee until S17 RBAC (10-open-decisions.md).
     Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
 
     // Delinquency collections desk (S07-04)

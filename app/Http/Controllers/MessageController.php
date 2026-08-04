@@ -16,11 +16,15 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class MessageController extends Controller
 {
     public function moveThread(Request $request, Message $message): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value, $message);
+
         $validated = $request->validate([
             'message_thread_id' => ['sometimes', 'nullable', 'integer', 'exists:message_threads,id'],
             'new_thread' => ['sometimes', 'boolean'],
@@ -57,6 +61,8 @@ class MessageController extends Controller
 
     public function showWrapup(Message $message): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $message);
+
         if (! $this->isCallMessage($message)) {
             return $this->error('Wrap-up is only available on call messages.', statusCode: 422);
         }
@@ -71,6 +77,8 @@ class MessageController extends Controller
 
     public function upsertWrapup(Request $request, Message $message): JsonResponse
     {
+        Gate::authorize(Permission::InboxSend->value, $message);
+
         if (! $this->isCallMessage($message)) {
             return $this->error('Wrap-up is only available on call messages.', statusCode: 422);
         }
@@ -116,6 +124,8 @@ class MessageController extends Controller
 
     public function recording(Message $message): StreamedResponse|JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $message);
+
         if (! $this->isCallMessage($message)) {
             return $this->notFound('Recording unavailable');
         }

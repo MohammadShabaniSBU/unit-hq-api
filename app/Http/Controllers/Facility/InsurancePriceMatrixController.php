@@ -9,11 +9,15 @@ use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Site;
 use Illuminate\Http\JsonResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InsurancePriceMatrixController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $sites = Site::query()
             ->orderBy('name')
             ->get(['id', 'name']);

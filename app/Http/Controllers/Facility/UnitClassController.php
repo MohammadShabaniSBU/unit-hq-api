@@ -10,11 +10,15 @@ use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitClassController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         return $this->paginated(
             UnitClass::query()->latest()->paginate($this->perPage())->through(fn (UnitClass $unitClass) => UnitClassResource::make($unitClass)),
             'Unit classes retrieved successfully.'
@@ -23,6 +27,8 @@ class UnitClassController extends Controller
 
     public function options(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         $validated = $request->validate([
             'site_id' => ['nullable', 'integer', 'exists:sites,id'],
         ]);
@@ -49,6 +55,8 @@ class UnitClassController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'code'          => ['required', 'string', 'max:255', 'unique:unit_classes,code'],
             'label'         => ['required', 'string', 'max:255'],
@@ -66,6 +74,8 @@ class UnitClassController extends Controller
 
     public function show(UnitClass $unitClass): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $unitClass);
+
         return $this->success(
             UnitClassResource::make($unitClass),
             'Unit class retrieved successfully.'
@@ -74,6 +84,8 @@ class UnitClassController extends Controller
 
     public function update(Request $request, UnitClass $unitClass): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $unitClass);
+
         $validated = $request->validate([
             'code'          => ['sometimes', 'required', 'string', 'max:255', Rule::unique('unit_classes', 'code')->ignore($unitClass->id)],
             'label'         => ['sometimes', 'required', 'string', 'max:255'],
@@ -91,6 +103,8 @@ class UnitClassController extends Controller
 
     public function destroy(UnitClass $unitClass): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $unitClass);
+
         $unitClass->delete();
 
         return $this->noContent('Unit class deleted successfully.');

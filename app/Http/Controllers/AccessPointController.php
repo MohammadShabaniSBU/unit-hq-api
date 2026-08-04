@@ -14,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Access point mapping workflow (S15-04).
@@ -22,6 +24,8 @@ class AccessPointController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value);
+
         $account = $this->activeAccount();
 
         return $this->success([
@@ -31,6 +35,8 @@ class AccessPointController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value);
+
         $account = $this->requireActiveAccount();
 
         $validated = $request->validate([
@@ -86,6 +92,8 @@ class AccessPointController extends Controller
 
     public function update(Request $request, AccessPoint $accessPoint): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value, $accessPoint);
+
         if ($accessPoint->isArchived()) {
             throw ValidationException::withMessages([
                 'access_point' => ['Archived points cannot be updated.'],
@@ -163,6 +171,8 @@ class AccessPointController extends Controller
 
     public function archive(AccessPoint $accessPoint): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value, $accessPoint);
+
         $siteId = (int) $accessPoint->site_id;
         $accessPoint->archive();
         AccessSync::nudgeSite($siteId);
@@ -177,6 +187,8 @@ class AccessPointController extends Controller
 
     public function suggest(): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value);
+
         $account = $this->activeAccount();
 
         return $this->success([
@@ -186,6 +198,8 @@ class AccessPointController extends Controller
 
     public function bulkAssign(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value);
+
         $account = $this->requireActiveAccount();
 
         $validated = $request->validate([

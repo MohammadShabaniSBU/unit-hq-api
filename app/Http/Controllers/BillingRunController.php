@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Billing-run list/detail + manual trigger. Auth: any authenticated Employee
@@ -24,6 +26,8 @@ class BillingRunController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::BillingRunExecute->value);
+
         $paginator = BillingRun::query()
             ->with(['createdBy', 'items'])
             ->latest('started_at')
@@ -36,6 +40,8 @@ class BillingRunController extends Controller
 
     public function show(Request $request, BillingRun $billingRun): JsonResponse
     {
+        Gate::authorize(Permission::BillingRunExecute->value, $billingRun);
+
         $validated = $request->validate([
             'outcome' => ['nullable', Rule::enum(BillingRunItemOutcome::class)],
         ]);
@@ -72,6 +78,8 @@ class BillingRunController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::BillingRunExecute->value);
+
         $validated = $request->validate([
             'dry_run' => ['sometimes', 'boolean'],
         ]);

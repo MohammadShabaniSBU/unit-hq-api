@@ -22,11 +22,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class AttributeValueController extends Controller
 {
     public function index(string $entityType, int $entityId): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $type = $this->resolveEntityType($entityType);
         $this->resolveEntity($type, $entityId);
 
@@ -48,6 +52,8 @@ class AttributeValueController extends Controller
 
     public function upsert(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'entity_type' => ['required', Rule::enum(AttributeEntityType::class)],
             'entity_id' => ['required', 'integer'],

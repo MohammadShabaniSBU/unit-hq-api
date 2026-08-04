@@ -13,6 +13,8 @@ use App\Models\Unit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class AccessEventController extends Controller
 {
@@ -22,16 +24,22 @@ class AccessEventController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::AccessView->value);
+
         return $this->list($request);
     }
 
     public function forContact(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::AccessView->value, $contact);
+
         return $this->list($request, contactId: (int) $contact->id);
     }
 
     public function forUnit(Request $request, Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::AccessView->value, $unit);
+
         $pointIds = AccessPoint::query()
             ->where('unit_id', $unit->id)
             ->pluck('id')

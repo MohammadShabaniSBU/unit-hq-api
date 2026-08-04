@@ -15,11 +15,15 @@ use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class SiteMapController extends Controller
 {
     public function index(Request $request, Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         $columns = ['id', 'site_id', 'floor_name', 'sort_order', 'created_at', 'updated_at'];
 
         if ($request->boolean('with_svg')) {
@@ -36,6 +40,8 @@ class SiteMapController extends Controller
 
     public function store(Request $request, Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         $validated = $request->validate([
             'floor_name' => ['required', 'string', 'max:255'],
             'svg_map'    => ['required', 'string'],
@@ -69,6 +75,8 @@ class SiteMapController extends Controller
 
     public function show(SiteMap $siteMap): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $siteMap);
+
         return $this->success(
             SiteMapResource::make($siteMap),
             'Site map retrieved successfully.'
@@ -77,6 +85,8 @@ class SiteMapController extends Controller
 
     public function update(Request $request, SiteMap $siteMap): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $siteMap);
+
         $validated = $request->validate([
             'floor_name' => ['sometimes', 'required', 'string', 'max:255'],
             'svg_map'    => ['sometimes', 'required', 'string'],
@@ -116,6 +126,8 @@ class SiteMapController extends Controller
 
     public function destroy(SiteMap $siteMap): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $siteMap);
+
         DB::transaction(function () use ($siteMap): void {
             RecordsActivity::log(LogChannel::Facility, 'site_map.deleted', $siteMap, [
                 'floor_name' => $siteMap->floor_name,
@@ -132,6 +144,8 @@ class SiteMapController extends Controller
      */
     public function validateSvg(Request $request, Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         $validated = $request->validate([
             'svg_map' => ['required', 'string'],
         ]);

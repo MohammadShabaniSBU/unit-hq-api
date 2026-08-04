@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class OfferController extends Controller
 {
@@ -23,6 +25,8 @@ class OfferController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         $query = Offer::query()->with([
             'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
             'contact',
@@ -44,11 +48,15 @@ class OfferController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Offer);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Offer,
@@ -68,6 +76,8 @@ class OfferController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         $validated = $request->validate([
             'deal_id'         => ['required', 'integer', 'exists:deals,id'],
             'contact_id'      => ['required', 'integer', 'exists:contacts,id'],
@@ -141,6 +151,8 @@ class OfferController extends Controller
 
     public function show(Offer $offer): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $offer);
+
         $offer->load([
             'deal',
             'contact',
@@ -157,6 +169,8 @@ class OfferController extends Controller
 
     public function update(Request $request, Offer $offer): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $offer);
+
         $validated = $request->validate([
             'deal_id'         => ['sometimes', 'required', 'integer', 'exists:deals,id'],
             'contact_id'      => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
@@ -180,6 +194,13 @@ class OfferController extends Controller
 
     public function updateStatus(Request $request, Offer $offer): JsonResponse
     {
+        // Sending requires OfferSend; other status edits use OfferManage.
+        if ($request->input('status') === 'sent') {
+            Gate::authorize(Permission::OfferSend->value, $offer);
+        } else {
+            Gate::authorize(Permission::OfferManage->value, $offer);
+        }
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(Offer::STATUSES)],
         ]);
@@ -194,6 +215,8 @@ class OfferController extends Controller
 
     public function destroy(Offer $offer): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $offer);
+
         $offer->delete();
 
         return $this->noContent('Offer deleted successfully.');

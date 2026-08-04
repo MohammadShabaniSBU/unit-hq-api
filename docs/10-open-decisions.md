@@ -113,9 +113,5 @@
 - Contact transactions
 - Invoice / payment resources polish
 - Recurring billing job (consume `billed_through`)
-- **Panel `canEdit` stopgap:** overview inline edit ignores role/site-scope (always editable when `NativeFields.editable` / definition present). Gaps against the site-scoping rule in `07-people-and-auth.md` until panel auth UX ships. API still authenticates. Callers also include automation run cancel (S08-04) via panel `useCanEdit()`.
-- **Site credential authorization stopgap:** `App\Support\Auth\SiteAccess::canManageSite()` lets every authenticated Employee manage every site's comms/Stripe credentials — there is no `Employee`↔`Site` assignment table yet to distinguish site-level staff from company-level roles. Controllers already call through this single helper so wiring real scoping later is a one-file change.
-- **Manual billing-run authorization stopgap:** `POST /api/billing-runs` accepts any authenticated Employee (auth:sanctum only). Tighten to a real capability in S17 RBAC alongside the `canEdit` / `SiteAccess` stopgaps.
-- **Inbox assign authorization stopgap:** `POST /api/inbox/threads/{id}/assign` accepts any authenticated Employee (auth:sanctum only). Same S17 RBAC tightening as billing-runs / `canEdit` / `SiteAccess`.
-- **Reports authorization stopgap (S16):** `GET /api/reports/*` accepts any authenticated Employee (auth:sanctum only). Tighten the whole reports namespace in S17 RBAC alongside billing-runs / `canEdit` / `SiteAccess` / inbox assign.
+- **Panel `canEdit` stopgap:** overview inline edit ignores role/site-scope (always editable when `NativeFields.editable` / definition present). Gaps against the site-scoping rule in `07-people-and-auth.md` until panel RBAC (task 05) ships. The API already denies via permissions (task 03).
 - **S10 schema defect (fixed in S11-01):** `message_attachments.message_id` is nullable so outbound compose can stage files before send; orphans are swept daily. Not an S11 schema expansion.

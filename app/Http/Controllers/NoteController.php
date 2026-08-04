@@ -12,6 +12,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class NoteController extends Controller
 {
@@ -24,6 +26,8 @@ class NoteController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value);
+
         $validated = $request->validate([
             'type'    => ['required', 'string', Rule::in(array_keys(self::TYPE_MAP))],
             'id'      => ['required', 'integer'],

@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class TemplateAssetController extends Controller
 {
@@ -25,6 +27,8 @@ class TemplateAssetController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $request->validate([
             'file' => ['required', 'file', 'max:'.(int) ceil(self::MAX_BYTES / 1024), 'mimes:jpg,jpeg,png,gif,webp'],
         ]);
@@ -92,6 +96,8 @@ class TemplateAssetController extends Controller
 
     public function destroy(TemplateAsset $templateAsset): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         if ($templateAsset->isReferenced()) {
             return $this->error(__('errors.templates.asset_in_use'), [
                 'asset' => [__('errors.templates.asset_in_use')],

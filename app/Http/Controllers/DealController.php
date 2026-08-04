@@ -14,6 +14,8 @@ use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class DealController extends Controller
 {
@@ -21,6 +23,8 @@ class DealController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         $query = Deal::query()->with(['desiredUnitClass', 'contact'])->latest();
 
         if ($request->filled('contact_id')) {
@@ -39,11 +43,15 @@ class DealController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Deal);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Deal,
@@ -60,6 +68,8 @@ class DealController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         $validated = $request->validate([
             'contact_id'            => ['required', 'integer', 'exists:contacts,id'],
             'site_id'               => ['nullable', 'integer', 'exists:sites,id'],
@@ -86,6 +96,8 @@ class DealController extends Controller
 
     public function show(Deal $deal): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         $deal->load([
             'contact',
             'desiredUnitClass',
@@ -110,6 +122,8 @@ class DealController extends Controller
 
     public function update(Request $request, Deal $deal): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         $validated = $request->validate([
             'contact_id'            => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
             'site_id'               => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
@@ -153,6 +167,8 @@ class DealController extends Controller
 
     public function updateStatus(Request $request, Deal $deal): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         $validated = $request->validate([
             'status' => ['required', Rule::enum(DealStatus::class)],
         ]);
@@ -185,6 +201,8 @@ class DealController extends Controller
 
     public function destroy(Deal $deal): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         $deal->delete();
 
         return $this->noContent('Deal deleted successfully.');
@@ -192,6 +210,8 @@ class DealController extends Controller
 
     public function options(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         $request->validate([
             'search' => ['nullable', 'string'],
         ]);

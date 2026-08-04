@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Support\Communications\AircallUserDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Settings → Communications → Aircall Users: sync, map, unlink.
@@ -15,6 +17,8 @@ class AircallUserLinkController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         return $this->success(
             AircallUserDirectory::list(),
             'Aircall users retrieved successfully.'
@@ -23,6 +27,8 @@ class AircallUserLinkController extends Controller
 
     public function sync(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         return $this->success(
             AircallUserDirectory::sync(),
             'Aircall users synced successfully.'
@@ -31,6 +37,8 @@ class AircallUserLinkController extends Controller
 
     public function map(Request $request, string $aircallUserId): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
         ]);
@@ -47,6 +55,8 @@ class AircallUserLinkController extends Controller
 
     public function unlink(string $aircallUserId): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         AircallUserDirectory::unlink($aircallUserId);
 
         return $this->success(

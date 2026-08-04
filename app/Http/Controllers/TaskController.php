@@ -11,11 +11,15 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class TaskController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $query = Task::query()
             ->with(['assignee', 'taskable'])
             ->orderByRaw('due_at IS NULL')
@@ -42,6 +46,8 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, Task $task): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value);
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(Task::STATUSES)],
         ]);

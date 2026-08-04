@@ -37,6 +37,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContractController extends Controller
 {
@@ -47,6 +49,8 @@ class ContractController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value);
+
         $validated = $request->validate([
             'attention' => ['nullable', Rule::in(['declined', 'post_cancellation', 'failed_grants', 'drift_denied_but_granted'])],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
@@ -103,11 +107,15 @@ class ContractController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Contract);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value);
+
         $validated = $request->validate([
             'filter' => ['nullable', 'array'],
             'sort' => ['nullable', 'array'],
@@ -191,6 +199,21 @@ class ContractController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Authorize against the unit (site carrier) before validation/transaction.
+        $unitId = null;
+        foreach ((array) $request->input('items', []) as $item) {
+            if (($item['item_type'] ?? null) === 'unit' && isset($item['item_id'])) {
+                $unitId = (int) $item['item_id'];
+                break;
+            }
+        }
+        $unit = $unitId !== null ? Unit::query()->find($unitId) : null;
+        if ($unit instanceof Unit) {
+            Gate::authorize(Permission::ContractSign->value, $unit);
+        } else {
+            Gate::authorize(Permission::ContractSign->value);
+        }
+
         $validated = $request->validate([
             'contact_id'         => ['required', 'integer', 'exists:contacts,id'],
             'reservation_id'     => ['nullable', 'integer', 'exists:reservations,id'],
@@ -360,6 +383,8 @@ class ContractController extends Controller
 
     public function cancel(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         DB::transaction(function () use ($contract): void {
             ContractSigning::cancel($contract);
         });
@@ -375,6 +400,8 @@ class ContractController extends Controller
 
     public function destroyDiscount(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
         ]);
@@ -406,6 +433,8 @@ class ContractController extends Controller
 
     public function show(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $validated = $request->validate([
             'as_of' => ['nullable', 'date'],
         ]);
@@ -422,6 +451,8 @@ class ContractController extends Controller
 
     public function nextBill(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         return $this->success(
             RecurringBilling::nextBillEstimate($contract),
             'Next bill estimate retrieved successfully.',
@@ -430,6 +461,8 @@ class ContractController extends Controller
 
     public function update(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         $validated = $request->validate([
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date'   => ['sometimes', 'nullable', 'date'],
@@ -449,6 +482,8 @@ class ContractController extends Controller
 
     public function destroy(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         $contract->delete();
 
         return $this->noContent('Contract deleted successfully.');
@@ -456,6 +491,8 @@ class ContractController extends Controller
 
     public function suspendAccess(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value, $contract);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
         ]);
@@ -481,6 +518,8 @@ class ContractController extends Controller
 
     public function restoreAccess(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value, $contract);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
         ]);

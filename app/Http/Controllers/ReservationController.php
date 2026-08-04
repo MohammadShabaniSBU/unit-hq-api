@@ -45,6 +45,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ReservationController extends Controller
 {
@@ -54,6 +56,8 @@ class ReservationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         $query = Reservation::query()
             ->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price'])
             ->latest();
@@ -82,11 +86,15 @@ class ReservationController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Reservation);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Reservation,
@@ -109,6 +117,8 @@ class ReservationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         $validated = $request->validate([
             'site_id'         => ['required', 'integer', 'exists:sites,id'],
             'unit_class_id'   => ['required', 'integer', 'exists:unit_classes,id'],
@@ -206,6 +216,8 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value, $reservation);
+
         $reservation->load(['unit.site', 'unit.unitClass', 'contact', 'contract', 'notes']);
 
         return $this->success(
@@ -216,6 +228,8 @@ class ReservationController extends Controller
 
     public function update(Request $request, Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value, $reservation);
+
         $validated = $request->validate([
             'unit_id'    => ['sometimes', 'required', 'integer', 'exists:units,id'],
             'status'     => ['sometimes', 'required', Rule::enum(ReservationStatus::class)],
@@ -249,6 +263,8 @@ class ReservationController extends Controller
 
     public function updateStatus(Request $request, Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value, $reservation);
+
         $validated = $request->validate([
             'status' => ['required', Rule::enum(ReservationStatus::class)],
         ]);
@@ -278,6 +294,8 @@ class ReservationController extends Controller
 
     public function destroy(Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value, $reservation);
+
         $reservation->delete();
 
         return $this->noContent('Reservation deleted successfully.');
@@ -289,6 +307,8 @@ class ReservationController extends Controller
      */
     public function convertPreview(Request $request, Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $reservation);
+
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([
@@ -464,6 +484,8 @@ class ReservationController extends Controller
      */
     public function convert(Request $request, Reservation $reservation): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $reservation);
+
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([

@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ActivityController extends Controller
 {
@@ -32,6 +34,12 @@ class ActivityController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        // Platform User (superadmin) may audit all channels; employees need ActivityView.
+        if (! $user instanceof User) {
+            Gate::authorize(Permission::ActivityView->value);
+        }
+
         $validated = $request->validate([
             'subject_type' => ['nullable', 'string', Rule::in(array_keys(self::SUBJECT_MAP))],
             'subject_id' => ['nullable', 'integer', 'required_with:subject_type'],
@@ -46,7 +54,6 @@ class ActivityController extends Controller
 
         $settings = Setting::activityLog();
         $includeDisabled = (bool) ($validated['include_disabled'] ?? false);
-        $user = $request->user();
         $canIncludeDisabled = $includeDisabled && $user instanceof User;
 
         $query = Activity::query()->with('causer')->latest('id');

@@ -159,22 +159,22 @@ unhandled toasts and do not "fix" them by widening permissions.
 
 ## Acceptance criteria
 
-- [ ] `RoutePermissions` covers every route in `routes/api.php`; no route is absent.
-- [ ] Every exemption carries a reason string and falls in the `self` or `reference`
+- [x] `RoutePermissions` covers every route in `routes/api.php`; no route is absent.
+- [x] Every exemption carries a reason string and falls in the `self` or `reference`
       category.
-- [ ] Every authenticated controller action calls `authorize()` or `Gate::authorize()`
+- [x] Every authenticated controller action calls `authorize()` or `Gate::authorize()`
       before validation and before opening a transaction.
-- [ ] `app/Support/Auth/SiteAccess.php` is deleted; grep returns no references.
-- [ ] No `auth()->user()` / `Auth::id()` remains on any path reachable from a command, job
+- [x] `app/Support/Auth/SiteAccess.php` is deleted; grep returns no references.
+- [x] No `auth()->user()` / `Auth::id()` remains on any path reachable from a command, job
       or webhook.
-- [ ] An `owner` employee can exercise every endpoint the panel uses — full panel walk with
+- [x] An `owner` employee can exercise every endpoint the panel uses — full panel walk with
       no 403s.
-- [ ] A `leasing_agent` at site A gets 403 signing a contract on a site B unit.
-- [ ] An `accountant` gets 403 on `POST /contracts` and 200 on `POST /invoices/{id}/issue`.
-- [ ] Scheduler dry-run (`billing:run`, `contracts:activate`, `delinquency:run`,
+- [x] A `leasing_agent` at site A gets 403 signing a contract on a site B unit.
+- [x] An `accountant` gets 403 on `POST /contracts` and 200 on `POST /invoices/{id}/issue`.
+- [x] Scheduler dry-run (`billing:run`, `contracts:activate`, `delinquency:run`,
       `access:sync`, `automations:run-scheduled`) completes with no employee authenticated.
-- [ ] Docs `05`, `06`, `07`, `10` corrected in this PR.
-- [ ] `php artisan test` green; every pre-existing test still passes (they authenticate as
+- [x] Docs `05`, `06`, `07`, `10` corrected in this PR.
+- [x] `php artisan test` green; every pre-existing test still passes (they authenticate as
       an employee who, post-backfill, holds `owner`).
 
 ## Tests required

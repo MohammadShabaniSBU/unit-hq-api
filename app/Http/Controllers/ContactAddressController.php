@@ -9,11 +9,15 @@ use App\Models\ContactAddress;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContactAddressController extends Controller
 {
     public function store(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $validated = $request->validate([
             'type'        => ['required', Rule::enum(ContactAddressType::class)],
             'line1'       => ['nullable', 'string', 'max:255'],
@@ -36,6 +40,8 @@ class ContactAddressController extends Controller
 
     public function update(Request $request, Contact $contact, ContactAddress $address): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         if ($address->contact_id !== $contact->id) {
             return $this->notFound('Contact address not found.');
         }
@@ -62,6 +68,8 @@ class ContactAddressController extends Controller
 
     public function destroy(Contact $contact, ContactAddress $address): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         if ($address->contact_id !== $contact->id) {
             return $this->notFound('Contact address not found.');
         }

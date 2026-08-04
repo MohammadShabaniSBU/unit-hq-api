@@ -14,11 +14,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class DealTaskController extends Controller
 {
     public function store(Request $request, Deal $deal): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -51,6 +55,8 @@ class DealTaskController extends Controller
 
     public function update(Request $request, Deal $deal, Task $task): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value, $deal);
+
         if ($task->taskable_type !== Deal::class || $task->taskable_id !== $deal->id) {
             return $this->notFound('Task not found.');
         }

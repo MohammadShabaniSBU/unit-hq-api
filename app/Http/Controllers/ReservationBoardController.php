@@ -9,11 +9,15 @@ use App\Http\Resources\ReservationCardResource;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ReservationBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Reservation::statusCounts($search);
@@ -40,6 +44,8 @@ class ReservationBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::ReservationManage->value);
+
         $statusEnum = ReservationStatus::tryFrom($status);
 
         if ($statusEnum === null) {

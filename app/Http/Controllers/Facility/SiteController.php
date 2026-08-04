@@ -10,11 +10,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class SiteController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
@@ -37,6 +41,8 @@ class SiteController extends Controller
 
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         $options = Site::query()->active()->orderBy('name')->get(['id', 'name'])
             ->map(fn (Site $site) => ['value' => $site->id, 'label' => $site->name]);
 
@@ -45,6 +51,8 @@ class SiteController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value);
+
         $validated = $this->validatedPayload($request, creating: true);
 
         $site = Site::query()->create($validated);
@@ -57,6 +65,8 @@ class SiteController extends Controller
 
     public function show(Site $site): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value, $site);
+
         return $this->success(
             SiteResource::make($site->load(['country', 'legalEntity'])),
             'Site retrieved successfully.'
@@ -65,6 +75,8 @@ class SiteController extends Controller
 
     public function update(Request $request, Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         $validated = $this->validatedPayload($request, creating: false);
 
         $site->update($validated);
@@ -77,6 +89,8 @@ class SiteController extends Controller
 
     public function archive(Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         if ($site->isArchived()) {
             return $this->success(
                 SiteResource::make($site->load(['country', 'legalEntity'])),
@@ -96,6 +110,8 @@ class SiteController extends Controller
 
     public function unarchive(Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         if (! $site->isArchived()) {
             return $this->success(
                 SiteResource::make($site->load(['country', 'legalEntity'])),
@@ -113,6 +129,8 @@ class SiteController extends Controller
 
     public function destroy(Site $site): JsonResponse
     {
+        Gate::authorize(Permission::SiteManage->value, $site);
+
         if (! $site->isArchived()) {
             $this->assertCanArchive($site);
             $site->update(['archived_at' => now()]);

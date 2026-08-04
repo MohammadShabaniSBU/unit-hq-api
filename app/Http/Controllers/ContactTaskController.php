@@ -12,11 +12,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContactTaskController extends Controller
 {
     public function store(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $validated = $request->validate([
             'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -49,6 +53,8 @@ class ContactTaskController extends Controller
 
     public function update(Request $request, Contact $contact, Task $task): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         if ($task->taskable_type !== Contact::class || $task->taskable_id !== $contact->id) {
             return $this->notFound('Task not found.');
         }

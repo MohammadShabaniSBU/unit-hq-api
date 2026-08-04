@@ -19,6 +19,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Company-level e-sign credentials (S14-02). One active account per install v1.
@@ -33,6 +35,8 @@ class EsignProviderAccountController extends Controller
 
     public function show(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $accounts = EsignProviderAccount::query()->orderBy('id')->get();
 
         return $this->success([
@@ -44,6 +48,8 @@ class EsignProviderAccountController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $providerValues = $this->registry->providers();
 
         $validated = $request->validate([
@@ -133,6 +139,8 @@ class EsignProviderAccountController extends Controller
 
     public function createWebhook(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = EsignProviderAccount::query()
             ->where('is_active', true)
             ->first();
@@ -167,6 +175,8 @@ class EsignProviderAccountController extends Controller
 
     public function destroy(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = EsignProviderAccount::query()
             ->where('is_active', true)
             ->first()

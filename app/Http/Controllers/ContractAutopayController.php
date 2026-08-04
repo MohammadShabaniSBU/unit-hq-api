@@ -18,6 +18,8 @@ use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Per-contract autopay enable/disable and manual retry (S06-04).
@@ -26,6 +28,8 @@ class ContractAutopayController extends Controller
 {
     public function update(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $contract);
+
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
             'payment_method_id' => ['sometimes', 'nullable', 'integer'],
@@ -74,6 +78,8 @@ class ContractAutopayController extends Controller
 
     public function retry(Contract $contract, AutopayCollector $collector): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $contract);
+
         if (! $contract->autopay_enabled || $contract->payment_method_id === null) {
             throw ValidationException::withMessages([
                 'autopay' => ['Autopay is not enabled for this contract.'],
@@ -121,6 +127,8 @@ class ContractAutopayController extends Controller
 
     public function show(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::PaymentView->value, $contract);
+
         $contract->load(['paymentMethod', 'autopayAttempts' => fn ($q) => $q->latest('id')->limit(1)]);
 
         return $this->success(

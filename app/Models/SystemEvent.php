@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Auth\Actor;
 use App\Support\RequestId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +56,8 @@ class SystemEvent extends Model
     {
         $write = function () use ($event, $subject, $payload): void {
             try {
-                $causer = auth()->user();
+                $actor = Actor::current();
+                $causer = $actor instanceof Employee ? $actor : null;
 
                 static::query()->create([
                     'event' => $event,

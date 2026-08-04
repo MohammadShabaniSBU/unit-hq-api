@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitController extends Controller
 {
@@ -24,6 +26,8 @@ class UnitController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         $validated = $request->validate([
             'site_id'      => ['nullable', 'integer', 'exists:sites,id'],
             'for_map'      => ['nullable', 'boolean'],
@@ -81,11 +85,15 @@ class UnitController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Unit);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Unit,
@@ -145,6 +153,8 @@ class UnitController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitManage->value);
+
         $validated = $request->validate([
             'site_id'       => ['required', 'integer', 'exists:sites,id'],
             'unit_class_id' => ['required', 'integer', 'exists:unit_classes,id'],
@@ -171,6 +181,8 @@ class UnitController extends Controller
 
     public function show(Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value, $unit);
+
         $unit->load(['site', 'unitClass', 'currentOccupancy.contract.contact', 'currentOccupancy.contract.items']);
         Availability::hydrateState(collect([$unit]));
 
@@ -182,6 +194,8 @@ class UnitController extends Controller
 
     public function update(Request $request, Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::UnitManage->value, $unit);
+
         $siteId = $request->filled('site_id') ? $request->integer('site_id') : $unit->site_id;
 
         $validated = $request->validate([
@@ -213,6 +227,8 @@ class UnitController extends Controller
 
     public function destroy(Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::UnitManage->value, $unit);
+
         $unit->delete();
 
         return $this->noContent('Unit deleted successfully.');
@@ -220,6 +236,8 @@ class UnitController extends Controller
 
     public function options(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value);
+
         $validated = $request->validate([
             'site_id' => ['nullable', 'integer', 'exists:sites,id'],
             'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],

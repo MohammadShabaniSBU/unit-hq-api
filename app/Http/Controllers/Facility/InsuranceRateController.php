@@ -18,11 +18,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InsuranceRateController extends Controller
 {
     public function store(Request $request, Insurance $insurance): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $insurance);
+
         if ($request->filled('currency')) {
             $request->merge([
                 'currency' => SupportedCurrencies::normalize((string) $request->input('currency')),

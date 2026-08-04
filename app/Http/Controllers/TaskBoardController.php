@@ -8,11 +8,15 @@ use App\Http\Resources\TaskCardResource;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class TaskBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Task::statusCounts($search);
@@ -39,6 +43,8 @@ class TaskBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         if (! in_array($status, Task::STATUSES, true)) {
             return $this->notFound('Unknown task status.');
         }

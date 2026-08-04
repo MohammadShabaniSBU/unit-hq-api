@@ -10,11 +10,15 @@ use App\Models\Interaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContactInteractionController extends Controller
 {
     public function index(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value, $contact);
+
         $interactions = $contact->interactions()
             ->orderByDesc('occurred_at')
             ->orderByDesc('id')
@@ -29,6 +33,8 @@ class ContactInteractionController extends Controller
 
     public function store(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $validated = $request->validate([
             'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
             'channel' => ['required', 'string', Rule::in(Interaction::CHANNELS)],

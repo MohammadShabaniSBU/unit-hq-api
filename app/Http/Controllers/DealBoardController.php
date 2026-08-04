@@ -9,11 +9,15 @@ use App\Http\Resources\DealCardResource;
 use App\Models\Deal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class DealBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Deal::statusCounts($search);
@@ -40,6 +44,8 @@ class DealBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::DealManage->value);
+
         $statusEnum = DealStatus::tryFrom($status);
 
         if ($statusEnum === null) {

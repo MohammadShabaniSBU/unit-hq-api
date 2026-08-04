@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Support\Auth\Permission;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
 class RbacController extends Controller
 {
@@ -15,6 +16,8 @@ class RbacController extends Controller
      */
     public function permissions(): JsonResponse
     {
+        Gate::authorize(Permission::RbacManage->value);
+
         $grouped = [];
 
         foreach (Permission::cases() as $permission) {
@@ -36,6 +39,8 @@ class RbacController extends Controller
      */
     public function roles(): JsonResponse
     {
+        Gate::authorize(Permission::RbacManage->value);
+
         $roles = Role::query()
             ->active()
             ->with('rolePermissions')

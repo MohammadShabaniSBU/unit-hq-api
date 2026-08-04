@@ -10,11 +10,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class SettingController extends Controller
 {
     public function showGeneral(): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         return $this->success(
             Setting::general()->toArray(),
             'General settings retrieved successfully.'
@@ -23,6 +27,8 @@ class SettingController extends Controller
 
     public function updateGeneral(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'company_name'          => ['sometimes', 'required', 'string', 'max:255'],
             'company_contact_email' => ['sometimes', 'required', 'email', 'max:255'],
@@ -47,6 +53,8 @@ class SettingController extends Controller
 
     public function showBilling(): JsonResponse
     {
+        Gate::authorize(Permission::BillingSettingsManage->value);
+
         return $this->success(
             Setting::billing()->toArray(),
             'Billing settings retrieved successfully.'
@@ -55,6 +63,8 @@ class SettingController extends Controller
 
     public function updateBilling(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::BillingSettingsManage->value);
+
         if ($request->filled('default_currency')) {
             $request->merge([
                 'default_currency' => SupportedCurrencies::normalize((string) $request->input('default_currency')),
@@ -122,6 +132,8 @@ class SettingController extends Controller
 
     public function showLeasing(): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         return $this->success(
             Setting::leasing()->toArray(),
             'Leasing settings retrieved successfully.'
@@ -130,6 +142,8 @@ class SettingController extends Controller
 
     public function updateLeasing(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'default_offer_expiration_value'       => ['sometimes', 'required', 'integer', 'min:1'],
             'default_offer_expiration_unit'        => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
@@ -158,6 +172,8 @@ class SettingController extends Controller
 
     public function showActivityLog(): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         return $this->success(
             Setting::activityLog()->toArray(),
             'Activity log settings retrieved successfully.'
@@ -166,6 +182,8 @@ class SettingController extends Controller
 
     public function updateActivityLog(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'channels' => ['sometimes', 'required', 'array'],
             'channels.*' => ['string', Rule::in(LogChannel::optionalValues())],

@@ -15,11 +15,15 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class DiscountController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
@@ -44,6 +48,8 @@ class DiscountController extends Controller
 
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         $options = Discount::query()->active()->orderBy('name')->get(['id', 'name', 'kind'])
             ->map(fn (Discount $discount) => [
                 'value' => $discount->id,
@@ -56,6 +62,8 @@ class DiscountController extends Controller
 
     public function resolve(Request $request, Discount $discount): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value, $discount);
+
         $validated = $request->validate([
             'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
             'commitment_weeks' => ['nullable', 'integer', 'min:1'],
@@ -97,6 +105,8 @@ class DiscountController extends Controller
 
     public function show(Discount $discount): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $discount);
+
         $discount->loadCount(['offerOptions', 'contractItems']);
 
         return $this->success(
@@ -107,6 +117,8 @@ class DiscountController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $this->validatedPayload($request, creating: true);
 
         $discount = Discount::query()->create([
@@ -128,6 +140,8 @@ class DiscountController extends Controller
 
     public function update(Request $request, Discount $discount): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $discount);
+
         $validated = $this->validatedPayload($request, creating: false, discount: $discount);
 
         $attributes = [];
@@ -161,6 +175,8 @@ class DiscountController extends Controller
 
     public function archive(Discount $discount): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $discount);
+
         if ($discount->isArchived()) {
             $discount->loadCount(['offerOptions', 'contractItems']);
 
@@ -183,6 +199,8 @@ class DiscountController extends Controller
 
     public function unarchive(Discount $discount): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value, $discount);
+
         if (! $discount->isArchived()) {
             $discount->loadCount(['offerOptions', 'contractItems']);
 

@@ -17,11 +17,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitHoldController extends Controller
 {
     public function index(Request $request, Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::UnitView->value, $unit);
+
         $request->validate([
             'active' => ['nullable', 'boolean'],
         ]);
@@ -50,6 +54,8 @@ class UnitHoldController extends Controller
 
     public function store(Request $request, Unit $unit): JsonResponse
     {
+        Gate::authorize(Permission::UnitHoldManage->value, $unit);
+
         $validated = $request->validate([
             'hold_type' => ['required', Rule::enum(HoldType::class)],
             'starts_on' => ['nullable', 'date'],
@@ -116,6 +122,8 @@ class UnitHoldController extends Controller
 
     public function destroy(Unit $unit, UnitHold $hold): JsonResponse
     {
+        Gate::authorize(Permission::UnitHoldManage->value, $unit);
+
         if ($hold->unit_id !== $unit->id) {
             return $this->notFound('Unit hold not found.');
         }

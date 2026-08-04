@@ -9,11 +9,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\StreamableAgentResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class CopilotController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $conversations = AgentConversation::orderByDesc('updated_at')
             ->get(['id', 'title', 'created_at', 'updated_at']);
 
@@ -22,6 +26,8 @@ class CopilotController extends Controller
 
     public function store(): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $conversation = AgentConversation::create([
             'id' => (string) Str::uuid(),
             'title' => 'New conversation',
@@ -32,6 +38,8 @@ class CopilotController extends Controller
 
     public function show(string $id): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $conversation = AgentConversation::with(['messages' => function ($query) {
             $query->select('id', 'conversation_id', 'role', 'content', 'created_at');
         }])->findOrFail($id);
@@ -41,6 +49,8 @@ class CopilotController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $conversation = AgentConversation::findOrFail($id);
         $conversation->messages()->delete();
         $conversation->delete();
@@ -50,6 +60,8 @@ class CopilotController extends Controller
 
     public function syncMessages(Request $request, string $id): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'messages' => 'required|array',
@@ -85,6 +97,8 @@ class CopilotController extends Controller
 
     public function chat(Request $request): StreamableAgentResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $validated = $request->validate([
             'messages' => 'required|array',
             'messages.*.role' => 'required|in:user,assistant',

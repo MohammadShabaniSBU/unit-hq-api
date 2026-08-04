@@ -9,11 +9,15 @@ use App\Http\Resources\ContactCardResource;
 use App\Models\Contact;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContactBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Contact::statusCounts($search);
@@ -40,6 +44,8 @@ class ContactBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $statusEnum = ContactLifecycleStatus::tryFrom($status);
 
         if ($statusEnum === null) {

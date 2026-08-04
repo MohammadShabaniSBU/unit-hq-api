@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Authenticated private-disk stream + staging upload for message attachments.
@@ -19,6 +21,8 @@ class MessageAttachmentController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InboxSend->value);
+
         $maxBytes = (int) config('communications.inbound.max_attachment_bytes');
 
         $request->validate([
@@ -65,6 +69,8 @@ class MessageAttachmentController extends Controller
 
     public function download(MessageAttachment $messageAttachment): StreamedResponse|JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value);
+
         $path = $messageAttachment->disk_path;
 
         if ($path === null || $path === '' || $messageAttachment->oversize) {

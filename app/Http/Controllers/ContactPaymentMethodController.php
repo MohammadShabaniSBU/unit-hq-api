@@ -17,6 +17,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Saved payment instruments for a contact (S06-01).
@@ -30,6 +32,8 @@ class ContactPaymentMethodController extends Controller
 
     public function index(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::PaymentView->value, $contact);
+
         $query = $contact->paymentMethods()->active()->orderByDesc('is_default')->orderByDesc('id');
 
         if ($request->filled('payment_provider_account_id')) {
@@ -47,6 +51,8 @@ class ContactPaymentMethodController extends Controller
 
     public function setup(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $contact);
+
         $validated = $request->validate([
             'contract_id' => ['required', 'integer', 'exists:contracts,id'],
         ]);
@@ -101,6 +107,8 @@ class ContactPaymentMethodController extends Controller
 
     public function update(Request $request, PaymentMethod $paymentMethod): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $paymentMethod);
+
         if ($paymentMethod->isArchived()) {
             return $this->error('Payment method is archived.', [], 422);
         }
@@ -119,6 +127,8 @@ class ContactPaymentMethodController extends Controller
 
     public function destroy(PaymentMethod $paymentMethod): JsonResponse
     {
+        Gate::authorize(Permission::PaymentRecord->value, $paymentMethod);
+
         if ($paymentMethod->isArchived()) {
             return $this->noContent('Payment method already removed.');
         }

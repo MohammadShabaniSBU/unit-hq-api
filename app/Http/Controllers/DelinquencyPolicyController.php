@@ -12,11 +12,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class DelinquencyPolicyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyView->value);
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
@@ -45,6 +49,8 @@ class DelinquencyPolicyController extends Controller
 
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyView->value);
+
         $options = DelinquencyPolicy::query()->active()->orderBy('name')->get(['id', 'name'])
             ->map(fn (DelinquencyPolicy $policy) => [
                 'value' => $policy->id,
@@ -56,6 +62,8 @@ class DelinquencyPolicyController extends Controller
 
     public function show(DelinquencyPolicy $delinquencyPolicy): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyView->value);
+
         $delinquencyPolicy->load('steps')->loadCount('sites');
 
         return $this->success(
@@ -66,6 +74,8 @@ class DelinquencyPolicyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $this->validatedPayload($request, creating: true);
 
         $policy = DB::transaction(function () use ($validated) {
@@ -88,6 +98,8 @@ class DelinquencyPolicyController extends Controller
 
     public function update(Request $request, DelinquencyPolicy $delinquencyPolicy): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $this->validatedPayload($request, creating: false);
 
         $policy = DB::transaction(function () use ($delinquencyPolicy, $validated) {
@@ -120,6 +132,8 @@ class DelinquencyPolicyController extends Controller
 
     public function archive(DelinquencyPolicy $delinquencyPolicy): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         if ($delinquencyPolicy->isArchived()) {
             return $this->success(
                 DelinquencyPolicyResource::make($delinquencyPolicy->load('steps')->loadCount('sites')),
@@ -139,6 +153,8 @@ class DelinquencyPolicyController extends Controller
 
     public function unarchive(DelinquencyPolicy $delinquencyPolicy): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         if (! $delinquencyPolicy->isArchived()) {
             return $this->success(
                 DelinquencyPolicyResource::make($delinquencyPolicy->load('steps')->loadCount('sites')),

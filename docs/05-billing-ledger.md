@@ -175,6 +175,8 @@ Credentials live on `payment_provider_accounts` scoped to `legal_entity_id`
 `stripe_webhook_events` is per account. Credential handling rules
 (create/rotate/remove logging, masking, blank-unchanged) stay shared with
 `communication_accounts` — see `06-communications.md` and `App\Support\Credentials`.
+Entity Stripe settings and other credential routes authorize with
+`Permission::CredentialManage` (policies / ability gates — not a SiteAccess helper).
 
 **Invariant 11 — Payment confirmation is rail-specific, and never optimistic from the client.**
 
@@ -218,7 +220,8 @@ Per-contract failure isolation; cancelled-pending never activates.
 **Scheduler** (`bootstrap/app.php`): both commands run hourly; activation is registered
 **before** billing so same-tick runs activate move-ins before eligibility is evaluated.
 Manual trigger: authenticated `POST /api/billing-runs` `{ dry_run?: bool }` with
-`trigger=manual` and `created_by` = the employee (RBAC stopgap until S17).
+`trigger=manual` and `created_by` = the employee; requires
+`Permission::BillingRunExecute`.
 
 **Panel read APIs (S05-04):** authenticated `GET /api/billing-runs` (paginated list with
 per-currency billed totals), `GET /api/billing-runs/{id}` (detail + items; optional

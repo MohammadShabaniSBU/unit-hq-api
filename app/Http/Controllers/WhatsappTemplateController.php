@@ -19,6 +19,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class WhatsappTemplateController extends Controller
 {
@@ -29,6 +31,8 @@ class WhatsappTemplateController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $validated = $request->validate([
             'status' => ['sometimes', 'nullable', 'string'],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -58,6 +62,8 @@ class WhatsappTemplateController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $validated = WhatsAppTemplateValidator::validate($request->all(), requireSamples: false);
         $account = $this->activeAccount();
 
@@ -89,6 +95,8 @@ class WhatsappTemplateController extends Controller
 
     public function show(WhatsappTemplate $whatsappTemplate): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $whatsappTemplate);
+
         return $this->success(
             WhatsappTemplateResource::make($whatsappTemplate),
             'WhatsApp template retrieved successfully.'
@@ -97,6 +105,8 @@ class WhatsappTemplateController extends Controller
 
     public function update(Request $request, WhatsappTemplate $whatsappTemplate): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $whatsappTemplate);
+
         if (! $whatsappTemplate->isEditable()) {
             return $this->error(
                 'Only draft or rejected templates can be edited. Clone an approved template to revise it.',
@@ -142,6 +152,8 @@ class WhatsappTemplateController extends Controller
 
     public function submit(WhatsappTemplate $whatsappTemplate): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $whatsappTemplate);
+
         if (! in_array($whatsappTemplate->status, [
             WhatsappTemplate::STATUS_DRAFT,
             WhatsappTemplate::STATUS_REJECTED,
@@ -201,6 +213,8 @@ class WhatsappTemplateController extends Controller
 
     public function clone(WhatsappTemplate $whatsappTemplate): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $whatsappTemplate);
+
         if ($whatsappTemplate->status === WhatsappTemplate::STATUS_ARCHIVED) {
             return $this->error('Archived templates cannot be cloned.', statusCode: 422);
         }
@@ -233,6 +247,8 @@ class WhatsappTemplateController extends Controller
 
     public function archive(WhatsappTemplate $whatsappTemplate): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $whatsappTemplate);
+
         if ($whatsappTemplate->status === WhatsappTemplate::STATUS_ARCHIVED) {
             return $this->success(
                 WhatsappTemplateResource::make($whatsappTemplate),
@@ -252,6 +268,8 @@ class WhatsappTemplateController extends Controller
 
     public function sync(): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $updated = $this->sync->pollAll();
 
         return $this->success(

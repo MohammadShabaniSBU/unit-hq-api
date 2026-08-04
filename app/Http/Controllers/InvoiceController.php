@@ -18,11 +18,15 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InvoiceController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceView->value);
+
         $validated = $request->validate([
             'legal_entity_id' => ['nullable', 'integer', 'exists:legal_entities,id'],
             'invoice_series_id' => ['nullable', 'integer', 'exists:invoice_series,id'],
@@ -70,6 +74,8 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceView->value, $invoice);
+
         $invoice->load(['contact', 'contract', 'lines', 'rectifiesInvoice', 'rectificatives']);
 
         return $this->success(
@@ -80,6 +86,8 @@ class InvoiceController extends Controller
 
     public function pdf(Invoice $invoice): Response
     {
+        Gate::authorize(Permission::InvoiceView->value, $invoice);
+
         $invoice->load('lines');
         $payload = InvoiceRenderer::payloadFromInvoice($invoice);
         $pdf = InvoiceRenderer::pdf($payload);
@@ -92,6 +100,8 @@ class InvoiceController extends Controller
 
     public function storeForContract(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceIssue->value, $contract);
+
         $validated = $request->validate([
             'charge_ids' => ['required', 'array', 'min:1'],
             'charge_ids.*' => ['integer', 'exists:charges,id'],
@@ -152,6 +162,8 @@ class InvoiceController extends Controller
 
     public function rectify(Request $request, Invoice $invoice): JsonResponse
     {
+        Gate::authorize(Permission::InvoiceRectify->value, $invoice);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', Rule::in([
                 InvoiceIssuer::REASON_OPERATOR_CORRECTION,

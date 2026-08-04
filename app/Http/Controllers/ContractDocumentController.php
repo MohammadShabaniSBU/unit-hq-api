@@ -21,11 +21,15 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContractDocumentController extends Controller
 {
     public function index(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $documents = $contract->documents()
             ->with('templateVariant')
             ->latest('id')
@@ -39,6 +43,8 @@ class ContractDocumentController extends Controller
 
     public function store(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         $validated = $request->validate([
             'template_family_id' => ['sometimes', 'nullable', 'integer', 'exists:template_families,id'],
             'template_variant_id' => ['sometimes', 'nullable', 'integer', 'exists:template_variants,id'],
@@ -69,6 +75,8 @@ class ContractDocumentController extends Controller
 
     public function regenerate(Request $request, Contract $contract, ContractDocument $document): JsonResponse
     {
+        Gate::authorize(Permission::ContractSign->value, $contract);
+
         $this->assertBelongs($contract, $document);
 
         if ($document->status !== ContractDocumentStatus::Draft) {
@@ -109,6 +117,8 @@ class ContractDocumentController extends Controller
 
     public function pdf(Contract $contract, ContractDocument $document): Response
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $this->assertBelongs($contract, $document);
 
         $disk = Storage::disk('local');
@@ -124,6 +134,8 @@ class ContractDocumentController extends Controller
 
     public function preview(Request $request, Contract $contract): Response
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $validated = $request->validate([
             'template_family_id' => ['sometimes', 'nullable', 'integer', 'exists:template_families,id'],
             'template_variant_id' => ['sometimes', 'nullable', 'integer', 'exists:template_variants,id'],

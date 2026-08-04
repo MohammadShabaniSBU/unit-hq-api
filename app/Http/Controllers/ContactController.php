@@ -20,6 +20,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContactController extends Controller
 {
@@ -27,6 +29,8 @@ class ContactController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $query = Contact::query()->latest();
 
         if ($request->filled('search')) {
@@ -49,11 +53,15 @@ class ContactController extends Controller
 
     public function filterSchema(): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         return $this->respondFilterSchema(AttributeEntityType::Contact);
     }
 
     public function search(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Contact,
@@ -70,6 +78,8 @@ class ContactController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value);
+
         $validated = $request->validate([
             'first_name'           => ['required', 'string', 'max:255'],
             'last_name'            => ['required', 'string', 'max:255'],
@@ -97,6 +107,8 @@ class ContactController extends Controller
 
     public function show(Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value, $contact);
+
         $contact->load([
             'channels',
             'addresses.country',
@@ -117,6 +129,8 @@ class ContactController extends Controller
 
     public function update(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $validated = $request->validate([
             'first_name'           => ['sometimes', 'required', 'string', 'max:255'],
             'last_name'            => ['sometimes', 'required', 'string', 'max:255'],
@@ -197,6 +211,8 @@ class ContactController extends Controller
 
     public function updateStatus(Request $request, Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $validated = $request->validate([
             'status' => ['required', Rule::enum(ContactLifecycleStatus::class)],
         ]);
@@ -211,6 +227,8 @@ class ContactController extends Controller
 
     public function destroy(Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::ContactManage->value, $contact);
+
         $contact->delete();
 
         return $this->noContent('Contact deleted successfully.');
@@ -218,6 +236,8 @@ class ContactController extends Controller
 
     public function transactions(Contact $contact): JsonResponse
     {
+        Gate::authorize(Permission::PaymentView->value, $contact);
+
         $contractScope = fn ($query) => $query->where('contact_id', $contact->id);
 
         $billingPeriods = BillingPeriod::query()
@@ -240,6 +260,8 @@ class ContactController extends Controller
 
     public function options(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContactView->value);
+
         $request->validate([
             'search' => ['required', 'string', 'min:2'],
         ]);

@@ -141,6 +141,11 @@ Indexes (company path): unique `(scope, site_id, channel, provider)`; partial un
 - **Webhook creation is refused** if the configured public base URL (`communications.public_base_url` / `APP_URL`) is missing, `localhost`, or a private/loopback address — `App\Support\Http\PublicUrlGuard`.
 - Removing a provider deletes the remote webhook endpoint first (when `AutoRegistersWebhooks`) via stored `webhook_endpoint_id`.
 
-### Authorization gap
+### Authorization
 
-Site-level identity routes call `App\Support\Auth\SiteAccess::canManageSite()`. Since `Employee` has no site-assignment table yet (`07-people-and-auth.md`), every authenticated employee is currently treated as company-level and can manage any site's integrations. This is a structural placeholder — once Employee↔Site assignment ships, only `SiteAccess` needs to change.
+Site sender-identity routes (`GET/PUT /api/sites/{site}/sender-identities…`) and
+company communication-account credential routes authorize with
+`Permission::CredentialManage`. Site-bearing subjects resolve through
+`SubjectSite` and the employee's grants (`employee_roles`); company-level
+credential surfaces use the same permission without a site. There is no separate
+`SiteAccess` helper — grants are the choke point (see `07-people-and-auth.md`).

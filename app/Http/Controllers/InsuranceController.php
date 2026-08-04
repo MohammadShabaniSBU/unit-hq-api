@@ -8,11 +8,15 @@ use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class InsuranceController extends Controller
 {
     public function options(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $validated = $request->validate([
             'site_id' => ['required', 'integer', 'exists:sites,id'],
         ]);

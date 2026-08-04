@@ -9,11 +9,15 @@ use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use Illuminate\Http\JsonResponse;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class UnitClassPriceMatrixController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CatalogueManage->value);
+
         $sites = Site::query()
             ->orderBy('name')
             ->get(['id', 'name']);

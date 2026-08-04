@@ -37,6 +37,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Collections desk: board aggregate, case timeline, manual actions (S07-04).
@@ -45,6 +47,8 @@ class DelinquencyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyView->value);
+
         $validated = $request->validate([
             'status' => ['sometimes', Rule::in(['open', 'cured'])],
             'site_id' => ['sometimes', 'integer', 'exists:sites,id'],
@@ -218,6 +222,8 @@ class DelinquencyController extends Controller
 
     public function show(Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyView->value, $delinquency);
+
         $delinquency->load([
             'policy.steps',
             'pausedBy',
@@ -261,6 +267,8 @@ class DelinquencyController extends Controller
 
     public function assessFee(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $this->assertOpen($delinquency);
 
         $validated = $request->validate([
@@ -285,6 +293,8 @@ class DelinquencyController extends Controller
 
     public function overlock(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $this->assertOpen($delinquency);
 
         $validated = $request->validate([
@@ -323,6 +333,8 @@ class DelinquencyController extends Controller
 
     public function releaseOverlock(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $validated = $request->validate([
             'unit_id' => ['sometimes', 'nullable', 'integer', 'exists:units,id'],
             'reason' => ['sometimes', 'string', 'max:2000'],
@@ -340,6 +352,8 @@ class DelinquencyController extends Controller
 
     public function suspendAccess(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $this->assertOpen($delinquency);
 
         $validated = $request->validate([
@@ -381,6 +395,8 @@ class DelinquencyController extends Controller
 
     public function restoreAccess(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
         ]);
@@ -414,6 +430,8 @@ class DelinquencyController extends Controller
 
     public function recordNotice(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $this->assertOpen($delinquency);
 
         $validated = $request->validate([
@@ -453,6 +471,8 @@ class DelinquencyController extends Controller
 
     public function pause(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
         ]);
@@ -471,6 +491,8 @@ class DelinquencyController extends Controller
 
     public function resume(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyAct->value, $delinquency);
+
         /** @var Employee $employee */
         $employee = $request->user();
 
@@ -490,6 +512,8 @@ class DelinquencyController extends Controller
 
     public function writeOff(Request $request, Delinquency $delinquency): JsonResponse
     {
+        Gate::authorize(Permission::DelinquencyWriteOff->value, $delinquency);
+
         $this->assertOpen($delinquency);
 
         $validated = $request->validate([

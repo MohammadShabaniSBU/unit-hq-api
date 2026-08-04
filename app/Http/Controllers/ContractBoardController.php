@@ -9,11 +9,15 @@ use App\Http\Resources\ContractCardResource;
 use App\Models\Contract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class ContractBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Contract::statusCounts($search);
@@ -40,6 +44,8 @@ class ContractBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value);
+
         $statusEnum = ContractStatus::tryFrom($status);
 
         if ($statusEnum === null) {

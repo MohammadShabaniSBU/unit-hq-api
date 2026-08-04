@@ -21,11 +21,13 @@ use App\Support\Contracts\ContractTransition;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
+use App\Support\Auth\Permission;
 use App\Support\RecordsActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -37,6 +39,8 @@ trait TransfersContracts
 {
     public function transferPreview(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractTransfer->value, $contract);
+
         $validated = $this->validateTransferBody($request);
         $plan = $this->buildTransferPlan($contract, $validated);
         $plan['invoices_to_issue'] = $this->previewTransferInvoices($plan);
@@ -46,6 +50,8 @@ trait TransfersContracts
 
     public function transfer(Request $request, Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractTransfer->value, $contract);
+
         $validated = $this->validateTransferBody($request);
 
         DB::transaction(function () use ($contract, $validated): void {

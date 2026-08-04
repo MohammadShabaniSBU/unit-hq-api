@@ -10,11 +10,15 @@ use App\Models\AccessGrant;
 use App\Support\Access\AccessSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class AccessGrantController extends Controller
 {
     public function retry(AccessGrant $accessGrant): JsonResponse
     {
+        Gate::authorize(Permission::AccessManage->value, $accessGrant);
+
         $state = $accessGrant->state instanceof AccessGrantState
             ? $accessGrant->state
             : AccessGrantState::from((string) $accessGrant->state);

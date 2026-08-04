@@ -38,4 +38,30 @@ final class ContractPolicy extends BasePolicy
     {
         return $this->allows($employee, Permission::ContractRateChange, $contract);
     }
+
+    /** Autopay enable/disable/retry — PaymentRecord (no ContractManage in the enum). */
+    public function recordPayment(Employee $employee, Contract $contract): bool
+    {
+        return $this->allows($employee, Permission::PaymentRecord, $contract);
+    }
+
+    public function viewPayment(Employee $employee, Contract $contract): bool
+    {
+        return $this->allows($employee, Permission::PaymentView, $contract);
+    }
+
+    public function issueInvoice(Employee $employee, Contract $contract): bool
+    {
+        return $this->allows($employee, Permission::InvoiceIssue, $contract);
+    }
+
+    public function manageAccess(Employee $employee, Contract $contract): bool
+    {
+        return $this->allows($employee, Permission::AccessManage, $contract);
+    }
+
+    public function esign(Employee $employee, Contract $contract): bool
+    {
+        return $this->allows($employee, Permission::EsignSend, $contract);
+    }
 }

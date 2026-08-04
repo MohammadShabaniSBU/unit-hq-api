@@ -7,6 +7,8 @@ namespace App\Models\Concerns;
 use App\Events\ModelCreated;
 use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
+use App\Models\Employee;
+use App\Support\Auth\Actor;
 use App\Support\Automation\AutomationContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -91,7 +93,8 @@ trait HasAutomationTriggers
             return;
         }
 
-        $causer = auth()->user();
+        $actor = Actor::current();
+        $causer = $actor instanceof Employee ? $actor : null;
         $causerType = $causer?->getMorphClass();
         $causerId = $causer?->getKey();
 

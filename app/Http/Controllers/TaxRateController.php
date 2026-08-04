@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Tax rates are a selectable catalog with history, mirroring Price
@@ -27,6 +29,8 @@ class TaxRateController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TaxRateManage->value);
+
         $validated = $request->validate([
             'code' => ['nullable', 'string'],
         ]);
@@ -48,6 +52,8 @@ class TaxRateController extends Controller
     /** Current versions as {value, label} pairs for select inputs. */
     public function options(): JsonResponse
     {
+        Gate::authorize(Permission::TaxRateManage->value);
+
         $options = TaxRate::query()
             ->current()
             ->orderBy('name')
@@ -63,6 +69,8 @@ class TaxRateController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TaxRateManage->value);
+
         $validated = $request->validate([
             'name'           => ['required', 'string', 'max:255'],
             'code'           => ['required', 'string', 'max:100'],
@@ -114,6 +122,8 @@ class TaxRateController extends Controller
      */
     public function update(Request $request, TaxRate $taxRate): JsonResponse
     {
+        Gate::authorize(Permission::TaxRateManage->value, $taxRate);
+
         $validated = $request->validate([
             'name'           => ['sometimes', 'required', 'string', 'max:255'],
             'rate'           => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
@@ -173,6 +183,8 @@ class TaxRateController extends Controller
      */
     public function setDefault(TaxRate $taxRate): JsonResponse
     {
+        Gate::authorize(Permission::TaxRateManage->value, $taxRate);
+
         DB::transaction(function () use ($taxRate) {
             TaxRate::query()
                 ->where('is_default', true)

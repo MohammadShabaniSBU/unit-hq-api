@@ -16,11 +16,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class AttributeDefinitionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $request->validate([
             'entity_type' => ['nullable', Rule::enum(AttributeEntityType::class)],
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
@@ -52,6 +56,8 @@ class AttributeDefinitionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value);
+
         $validated = $this->validateDefinition($request);
 
         $definition = DB::transaction(function () use ($validated, $request) {
@@ -92,6 +98,8 @@ class AttributeDefinitionController extends Controller
 
     public function show(AttributeDefinition $attributeDefinition): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value, $attributeDefinition);
+
         $attributeDefinition->load('options');
 
         return $this->success(
@@ -102,6 +110,8 @@ class AttributeDefinitionController extends Controller
 
     public function update(Request $request, AttributeDefinition $attributeDefinition): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value, $attributeDefinition);
+
         $validated = $this->validateDefinition($request, isUpdate: true, definition: $attributeDefinition);
 
         $definition = DB::transaction(function () use ($validated, $attributeDefinition, $request) {
@@ -143,6 +153,8 @@ class AttributeDefinitionController extends Controller
 
     public function archive(Request $request, AttributeDefinition $attributeDefinition): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value, $attributeDefinition);
+
         if ($attributeDefinition->isArchived()) {
             return $this->success(
                 AttributeDefinitionResource::make($attributeDefinition->load('options')),
@@ -178,6 +190,8 @@ class AttributeDefinitionController extends Controller
 
     public function unarchive(Request $request, AttributeDefinition $attributeDefinition): JsonResponse
     {
+        Gate::authorize(Permission::SettingsManage->value, $attributeDefinition);
+
         if (! $attributeDefinition->isArchived()) {
             return $this->success(
                 AttributeDefinitionResource::make($attributeDefinition->load('options')),

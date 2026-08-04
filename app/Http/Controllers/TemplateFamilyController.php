@@ -29,11 +29,15 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class TemplateFamilyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $validated = $request->validate([
             'channel' => ['sometimes', 'nullable', Rule::enum(TemplateChannel::class)],
             'purpose' => ['sometimes', 'nullable', Rule::enum(TemplatePurpose::class)],
@@ -73,6 +77,8 @@ class TemplateFamilyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $validated = $request->validate([
             'channel' => ['required', Rule::enum(TemplateChannel::class)],
             'name' => ['required', 'string', 'max:128'],
@@ -126,6 +132,8 @@ class TemplateFamilyController extends Controller
 
     public function show(TemplateFamily $templateFamily): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         return $this->success(
             TemplateFamilyResource::make($templateFamily->load('variants')),
             'Template family retrieved successfully.'
@@ -134,6 +142,8 @@ class TemplateFamilyController extends Controller
 
     public function update(Request $request, TemplateFamily $templateFamily): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:128'],
             'purpose' => ['sometimes', Rule::enum(TemplatePurpose::class)],
@@ -150,6 +160,8 @@ class TemplateFamilyController extends Controller
 
     public function archive(TemplateFamily $templateFamily): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         if ($templateFamily->archived_at !== null) {
             return $this->error('Template family is already archived.', [], 422);
         }
@@ -164,6 +176,8 @@ class TemplateFamilyController extends Controller
 
     public function destroy(TemplateFamily $templateFamily): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         if ($templateFamily->archived_at === null) {
             $templateFamily->update(['archived_at' => now()]);
         }
@@ -173,6 +187,8 @@ class TemplateFamilyController extends Controller
 
     public function storeVariant(Request $request, TemplateFamily $templateFamily): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $validated = $this->variantRules($request, updating: false);
 
         if ($templateFamily->variants()->where('locale', $validated['locale'])->exists()) {
@@ -218,6 +234,8 @@ class TemplateFamilyController extends Controller
         TemplateFamily $templateFamily,
         TemplateVariant $variant,
     ): JsonResponse {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $this->assertVariantBelongs($templateFamily, $variant);
         $validated = $this->variantRules($request, updating: true);
 
@@ -243,6 +261,8 @@ class TemplateFamilyController extends Controller
 
     public function destroyVariant(TemplateFamily $templateFamily, TemplateVariant $variant): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $this->assertVariantBelongs($templateFamily, $variant);
 
         if ($templateFamily->variants()->count() <= 1) {
@@ -261,6 +281,8 @@ class TemplateFamilyController extends Controller
         TemplateFamily $templateFamily,
         TemplateVariant $variant,
     ): Response {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $this->assertVariantBelongs($templateFamily, $variant);
 
         $validated = $request->validate([
@@ -307,6 +329,8 @@ class TemplateFamilyController extends Controller
         TemplateVariant $variant,
         EmailSender $sender,
     ): JsonResponse {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
         $this->assertVariantBelongs($templateFamily, $variant);
 
         if ($templateFamily->channel === TemplateChannel::Document) {
@@ -377,6 +401,8 @@ class TemplateFamilyController extends Controller
 
     public function sampleContexts(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::TemplateManage->value);
+
         $contacts = Contact::query()
             ->orderByDesc('updated_at')
             ->limit(25)

@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Company-level communication credentials, keyed by channel.
@@ -40,6 +42,8 @@ class CommunicationAccountController extends Controller
 
     public function index(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $accounts = CommunicationAccount::query()
             ->where('scope', AccountScope::Company)
             ->get()
@@ -68,6 +72,8 @@ class CommunicationAccountController extends Controller
 
     public function update(Request $request, Channel $channel): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         if (! $channel->isImplemented()) {
             throw ValidationException::withMessages([
                 'channel' => ['This channel is not available yet.'],
@@ -186,6 +192,8 @@ class CommunicationAccountController extends Controller
 
     public function createWebhook(Channel $channel): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = $this->activeCompanyAccount($channel);
 
         if ($account === null) {
@@ -240,6 +248,8 @@ class CommunicationAccountController extends Controller
 
     public function deleteWebhook(Channel $channel): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = $this->activeCompanyAccount($channel);
 
         if ($account === null || $account->webhook_endpoint_id === null) {
@@ -273,6 +283,8 @@ class CommunicationAccountController extends Controller
 
     public function destroy(Channel $channel, Provider $provider): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         if (! $this->registry->supports($channel, $provider)) {
             return $this->notFound('Provider not supported for this channel.');
         }

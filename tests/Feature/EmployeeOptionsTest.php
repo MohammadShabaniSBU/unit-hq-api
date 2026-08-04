@@ -20,7 +20,7 @@ class EmployeeOptionsTest extends TestCase
 
     public function test_lists_employees_ordered_by_name(): void
     {
-        $viewer = Employee::factory()->manager()->create();
+        $viewer = Employee::factory()->manager()->create(['name' => 'Viewer Employee']);
         Sanctum::actingAs($viewer);
 
         $zoe = Employee::factory()->staff()->create(['name' => 'Zoe Staff']);

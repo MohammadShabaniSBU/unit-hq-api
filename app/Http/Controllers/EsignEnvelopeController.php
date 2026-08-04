@@ -15,11 +15,15 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class EsignEnvelopeController extends Controller
 {
     public function index(Contract $contract): JsonResponse
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $envelopes = $contract->esignEnvelopes()
             ->with('contractDocument')
             ->latest('id')
@@ -33,6 +37,8 @@ class EsignEnvelopeController extends Controller
 
     public function store(Request $request, Contract $contract, EnvelopeOrchestrator $orchestrator): JsonResponse
     {
+        Gate::authorize(Permission::EsignSend->value, $contract);
+
         $validated = $request->validate([
             'contract_document_id' => ['sometimes', 'nullable', 'integer', 'exists:contract_documents,id'],
             'expires_at' => ['sometimes', 'nullable', 'date'],
@@ -61,6 +67,8 @@ class EsignEnvelopeController extends Controller
         EsignEnvelope $envelope,
         EnvelopeOrchestrator $orchestrator,
     ): JsonResponse {
+        Gate::authorize(Permission::EsignSend->value, $contract);
+
         $this->assertBelongs($contract, $envelope);
 
         $validated = $request->validate([
@@ -92,6 +100,8 @@ class EsignEnvelopeController extends Controller
         EsignEnvelope $envelope,
         EnvelopeOrchestrator $orchestrator,
     ): JsonResponse {
+        Gate::authorize(Permission::EsignSend->value, $contract);
+
         $this->assertBelongs($contract, $envelope);
 
         $cancelled = $orchestrator->cancel(
@@ -108,6 +118,8 @@ class EsignEnvelopeController extends Controller
 
     public function signedPdf(Contract $contract, EsignEnvelope $envelope): Response
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $this->assertBelongs($contract, $envelope);
 
         return $this->streamArtifact($envelope->signed_pdf_path, 'signed.pdf');
@@ -115,6 +127,8 @@ class EsignEnvelopeController extends Controller
 
     public function certificate(Contract $contract, EsignEnvelope $envelope): Response
     {
+        Gate::authorize(Permission::ContractView->value, $contract);
+
         $this->assertBelongs($contract, $envelope);
 
         return $this->streamArtifact($envelope->certificate_path, 'certificate.pdf');

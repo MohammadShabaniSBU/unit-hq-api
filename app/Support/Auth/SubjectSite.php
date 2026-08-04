@@ -10,18 +10,29 @@ use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
 use App\Models\AccessSuspension;
 use App\Models\Allocation;
+use App\Models\AttributeDefinition;
+use App\Models\AttributeGroup;
+use App\Models\Automation;
+use App\Models\AutomationRun;
 use App\Models\AutopayAttempt;
 use App\Models\BillingRun;
+use App\Models\CommsTriage;
+use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\ContractNotice;
 use App\Models\Deal;
 use App\Models\Delinquency;
+use App\Models\DelinquencyPolicy;
 use App\Models\Discount;
+use App\Models\EsignEnvelope;
+use App\Models\EsignProviderAccount;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Invoice;
+use App\Models\InvoiceSeries;
+use App\Models\LayoutField;
 use App\Models\LegalEntity;
 use App\Models\Message;
 use App\Models\MessageThread;
@@ -29,16 +40,25 @@ use App\Models\Note;
 use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
+use App\Models\PaymentProviderAccount;
+use App\Models\PaymentRequest;
+use App\Models\Playbook;
 use App\Models\Reservation;
 use App\Models\Role;
 use App\Models\Site;
+use App\Models\SiteMap;
 use App\Models\SiteSenderIdentity;
 use App\Models\Task;
 use App\Models\TaxRate;
+use App\Models\TemplateAsset;
+use App\Models\TemplateFamily;
 use App\Models\Unit;
+use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Models\WhatsappTemplate;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -98,13 +118,72 @@ final class SubjectSite
             MessageThread::class => $subject instanceof MessageThread
                 ? self::messageThreadSite($subject)
                 : null,
+            Message::class => $subject instanceof Message ? self::messageSite($subject) : null,
+            CommsTriage::class => null,
             TaxRate::class => null,
             Discount::class => null,
             LegalEntity::class => null,
             Role::class => null,
             Site::class => $subject instanceof Site ? $subject : null,
+            SiteMap::class => $subject instanceof SiteMap ? self::siteMapSite($subject) : null,
+            SiteSenderIdentity::class => $subject instanceof SiteSenderIdentity
+                ? self::siteSenderIdentitySite($subject)
+                : null,
+            UnitClass::class => null,
+            PaymentMethod::class => null,
+            PaymentRequest::class => $subject instanceof PaymentRequest
+                ? self::viaContract($subject->contract)
+                : null,
+            PaymentProviderAccount::class => null,
+            InvoiceSeries::class => null,
+            Automation::class => null,
+            AutomationRun::class => null,
+            Playbook::class => null,
+            AttributeDefinition::class => null,
+            AttributeGroup::class => null,
+            LayoutField::class => null,
+            TemplateFamily::class => null,
+            TemplateAsset::class => null,
+            WhatsappTemplate::class => null,
+            DelinquencyPolicy::class => null,
+            CommunicationAccount::class => null,
+            EsignProviderAccount::class => null,
+            EsignEnvelope::class => $subject instanceof EsignEnvelope
+                ? self::viaContract($subject->contract)
+                : null,
             default => throw new UnresolvableSubjectSite($subject),
         };
+    }
+
+    private static function messageSite(Message $message): ?Site
+    {
+        $thread = $message->relationLoaded('thread')
+            ? $message->thread
+            : $message->thread()->first();
+
+        return $thread instanceof MessageThread ? self::messageThreadSite($thread) : null;
+    }
+
+    private static function siteMapSite(SiteMap $map): ?Site
+    {
+        if ($map->site_id === null) {
+            return null;
+        }
+
+        return $map->relationLoaded('site')
+            ? $map->site
+            : Site::query()->find($map->site_id);
+    }
+
+    private static function siteSenderIdentitySite(SiteSenderIdentity $identity): ?Site
+    {
+        if ($identity->site_id === null) {
+            return null;
+        }
+
+        return $identity->relationLoaded('site')
+            ? $identity->site
+            : Site::query()->find($identity->site_id);
     }
 
     private static function dealSite(Deal $deal): ?Site

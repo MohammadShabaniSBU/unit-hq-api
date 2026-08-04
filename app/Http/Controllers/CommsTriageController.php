@@ -18,11 +18,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 use RuntimeException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class CommsTriageController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value);
+
         $validated = $request->validate([
             'cursor' => ['sometimes', 'nullable', 'string'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
@@ -50,6 +54,8 @@ class CommsTriageController extends Controller
 
     public function show(CommsTriage $commsTriage, ProviderRegistry $registry): JsonResponse
     {
+        Gate::authorize(Permission::InboxView->value, $commsTriage);
+
         if ($commsTriage->status !== 'pending') {
             return $this->error('Triage row is not pending.', statusCode: 422);
         }
@@ -62,6 +68,8 @@ class CommsTriageController extends Controller
 
     public function attach(Request $request, CommsTriage $commsTriage, ProviderRegistry $registry): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value, $commsTriage);
+
         $validated = $request->validate([
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
         ]);
@@ -101,6 +109,8 @@ class CommsTriageController extends Controller
 
     public function createAndAttach(Request $request, CommsTriage $commsTriage, ProviderRegistry $registry): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value, $commsTriage);
+
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],
@@ -141,6 +151,8 @@ class CommsTriageController extends Controller
 
     public function discard(Request $request, CommsTriage $commsTriage): JsonResponse
     {
+        Gate::authorize(Permission::InboxAssign->value, $commsTriage);
+
         $validated = $request->validate([
             'reason' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);

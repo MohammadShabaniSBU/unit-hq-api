@@ -8,11 +8,15 @@ use App\Http\Resources\OfferCardResource;
 use App\Models\Offer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 class OfferBoardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $counts = Offer::statusCounts($search);
@@ -39,6 +43,8 @@ class OfferBoardController extends Controller
 
     public function column(Request $request, string $status): JsonResponse
     {
+        Gate::authorize(Permission::OfferManage->value);
+
         if (! in_array($status, Offer::STATUSES, true)) {
             return $this->notFound('Unknown offer status.');
         }

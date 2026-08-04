@@ -22,6 +22,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Company-level access-control credentials (S15-01). One active account per install v1.
@@ -36,11 +38,15 @@ class AccessProviderAccountController extends Controller
 
     public function show(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         return $this->success($this->payload(), 'Access control settings retrieved successfully.');
     }
 
     public function update(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $providerValues = $this->registry->providers();
 
         $validated = $request->validate([
@@ -130,6 +136,8 @@ class AccessProviderAccountController extends Controller
 
     public function createWebhook(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = AccessProviderAccount::query()
             ->where('is_active', true)
             ->first();
@@ -164,6 +172,8 @@ class AccessProviderAccountController extends Controller
 
     public function refreshPoints(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = AccessProviderAccount::query()
             ->where('is_active', true)
             ->first();
@@ -195,6 +205,8 @@ class AccessProviderAccountController extends Controller
      */
     public function revokeUnknownGrant(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $validated = $request->validate([
             'grant_ref' => ['required', 'string', 'max:128'],
         ]);
@@ -246,6 +258,8 @@ class AccessProviderAccountController extends Controller
 
     public function destroy(): JsonResponse
     {
+        Gate::authorize(Permission::CredentialManage->value);
+
         $account = AccessProviderAccount::query()
             ->where('is_active', true)
             ->first()
