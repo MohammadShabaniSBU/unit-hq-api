@@ -47,7 +47,7 @@ final class AccessState
         $active = AccessSuspension::query()
             ->active()
             ->where('contract_id', $contract->id)
-            ->with('createdBy:id,name')
+            ->with('createdBy:id,first_name,last_name')
             ->first();
 
         if ($active === null) {

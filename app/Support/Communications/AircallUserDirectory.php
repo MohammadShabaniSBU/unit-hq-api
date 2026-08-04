@@ -207,7 +207,7 @@ final class AircallUserDirectory
     private static function withMappings(array $users): array
     {
         $links = AircallUserLink::query()
-            ->with('employee:id,name')
+            ->with('employee:id,first_name,last_name')
             ->get()
             ->keyBy('aircall_user_id');
 

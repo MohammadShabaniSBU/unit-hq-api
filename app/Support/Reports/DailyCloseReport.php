@@ -63,7 +63,7 @@ final class DailyCloseReport extends AbstractReport
             ? []
             : Employee::query()
                 ->whereIn('id', $employeeIds)
-                ->get(['id', 'name'])
+                ->get(['id', 'first_name', 'last_name'])
                 ->mapWithKeys(static function (Employee $e): array {
                     return [(int) $e->id => (string) $e->name];
                 })

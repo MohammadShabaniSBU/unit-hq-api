@@ -31,7 +31,8 @@ class RbacBackfillTest extends TestCase
         });
 
         $managerId = DB::table('employees')->insertGetId([
-            'name' => 'Legacy Manager',
+            'first_name' => 'Legacy',
+            'last_name' => 'Manager',
             'email' => 'legacy-manager@example.com',
             'password' => bcrypt('password'),
             'role' => 'manager',
@@ -39,7 +40,8 @@ class RbacBackfillTest extends TestCase
             'updated_at' => now(),
         ]);
         $staffId = DB::table('employees')->insertGetId([
-            'name' => 'Legacy Staff',
+            'first_name' => 'Legacy',
+            'last_name' => 'Staff',
             'email' => 'legacy-staff@example.com',
             'password' => bcrypt('password'),
             'role' => 'staff',
@@ -83,7 +85,8 @@ class RbacBackfillTest extends TestCase
         });
 
         $firstId = DB::table('employees')->insertGetId([
-            'name' => 'Only Staff A',
+            'first_name' => 'Only',
+            'last_name' => 'Staff A',
             'email' => 'staff-a@example.com',
             'password' => bcrypt('password'),
             'role' => 'staff',
@@ -91,7 +94,8 @@ class RbacBackfillTest extends TestCase
             'updated_at' => now(),
         ]);
         DB::table('employees')->insert([
-            'name' => 'Only Staff B',
+            'first_name' => 'Only',
+            'last_name' => 'Staff B',
             'email' => 'staff-b@example.com',
             'password' => bcrypt('password'),
             'role' => 'staff',
