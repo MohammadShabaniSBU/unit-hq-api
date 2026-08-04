@@ -12,10 +12,19 @@ use App\Models\PlaybookStep;
 use App\Support\Playbooks\PlaybookCompiler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class EditorProtectionTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_compiled_graphs_read_only(): void
     {

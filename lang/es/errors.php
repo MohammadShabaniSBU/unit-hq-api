@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'forbidden' => 'No tiene permiso para realizar esta acción.',
     'currency' => [
         'mixed_contract_items' => 'Los conceptos del contrato deben compartir la misma moneda.',
         'ledger_mismatch' => 'La moneda del asiento debe coincidir con la moneda del contrato.',
@@ -132,6 +133,12 @@ return [
         'window_closed' => 'La ventana de atención de WhatsApp está cerrada. Envíe una plantilla aprobada.',
         'consent_floor' => 'Este contacto no tiene un canal de WhatsApp registrado. Un teléfono no implica opt-in de WhatsApp.',
         'template_not_approved' => 'Esa plantilla de WhatsApp no está aprobada y no se puede enviar.',
+    ],
+    'rbac' => [
+        'last_owner' => 'No se puede eliminar la última concesión de propietario a nivel de empresa.',
+        'company_role_rejects_site' => 'Este rol es de ámbito empresa y no se puede conceder para un sitio.',
+        'site_role_requires_site' => 'Este rol es de ámbito sitio y requiere un sitio.',
+        'role_missing' => 'El rol seleccionado no existe.',
     ],
 ];
 

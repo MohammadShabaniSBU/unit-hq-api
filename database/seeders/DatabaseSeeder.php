@@ -45,11 +45,12 @@ class DatabaseSeeder extends Seeder
 
         $this->call(CountrySeeder::class);
         $this->call(DefaultAttributeLayoutSeeder::class);
+        $this->call(RbacSystemRoleSeeder::class);
 
         Employee::factory()->manager()->create();
         Employee::factory()->staff()->count(4)->create();
 
-        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
+        $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
 
         $spain = Country::query()->where('code', 'ES')->firstOrFail();
         $uk = Country::query()->where('code', 'GB')->firstOrFail();

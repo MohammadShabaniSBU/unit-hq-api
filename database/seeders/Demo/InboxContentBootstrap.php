@@ -49,9 +49,8 @@ final class InboxContentBootstrap
             return null;
         }
 
-        return $employees->first(
-            static fn (Employee $e): bool => $e->role === 'manager' || $e->role === 'Manager'
-        ) ?? $employees->first();
+        return Employee::query()->withCompanyRole('owner')->orderBy('id')->first()
+            ?? $employees->first();
     }
 
     /**

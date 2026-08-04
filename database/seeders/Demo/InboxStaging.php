@@ -23,9 +23,8 @@ final class InboxStaging
             return;
         }
 
-        $operator = $employees->first(
-            static fn (Employee $e): bool => $e->role === 'manager' || $e->role === 'Manager'
-        ) ?? $employees->first();
+        $operator = Employee::query()->withCompanyRole('owner')->orderBy('id')->first()
+            ?? $employees->first();
 
         $staff = $employees->where('id', '!=', $operator->id)->values();
 

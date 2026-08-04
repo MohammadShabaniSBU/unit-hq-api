@@ -13,10 +13,19 @@ use App\Support\RecordsActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class CoreActivityEventsTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_deal_store_logs_core_created_event(): void
     {

@@ -5,17 +5,40 @@
 | Model | Who | Auth |
 |---|---|---|
 | `User` | Deployment superadmin | Yes |
-| `Employee` | Manager / staff | Yes (dashboard, Sanctum) |
+| `Employee` | Company staff (dashboard) | Yes (Sanctum); grants via `employee_roles` |
 | `Contact` | Prospect / tenant (renter) | **No login** — offer token links only |
+
+## Grant model (RBAC data)
+
+Authorization is expressed as **role grants**, not a scalar `employees.role` column:
+
+| Table | Purpose |
+|---|---|
+| `roles` | Named bundles (`owner`, `site_manager`, …); `scope_level` = `company` \| `site` \| `any`; system roles are archive-only |
+| `role_permissions` | Enum values from `App\Support\Auth\Permission` (never invent permissions as rows) |
+| `employee_roles` | Grant of a role to an employee; `site_id NULL` = company-wide, non-null = that site only |
+
+`employee_roles.site_id` scopes **authorization**, not data ownership — never a global scope, middleware context, or queue payload key (same discipline as invariant 34 for `legal_entity_id`).
+
+System roles are seeded by `RbacSystemRoleSeeder` (`is_system = true`). At least one company-wide `owner` grant must always exist (invariant 44 / `OwnerFloor`).
+
+Permission vocabulary and grant tables are live. Resolution machinery
+(`Employee::can` / `allowsPermission`, `SubjectSite`, `SystemActor`,
+`ContractPolicy` template, 403 `errors.forbidden`) lives under `App\Support\Auth\`
+and `app/Policies/`. **Route-level `authorize()` rollout is task 03**; list
+`visibleTo` scoping is task 04. Until controllers are wired, every authenticated
+employee remains capable of every HTTP action.
 
 ## Site scoping in the panel (UX rule)
 
 A **global site selector** scopes the portal context, with two carve-outs:
 
-1. **Site-level staff** see only their assigned site(s).
-2. **Company-level roles** get an **"All Sites"** option.
+1. **Site-level staff** (grants with a non-null `employee_roles.site_id`) see only their assigned site(s).
+2. **Company-level roles** (company-wide grants) get an **"All Sites"** option.
 
 **Exception:** Contact and Deal detail views show activity **across all sites regardless of the selector** — a Contact is not inherently site-scoped.
+
+`GET /api/user` returns `roles`, `permissions`, and `company_permissions` (plus deprecated scalar `role` for one sprint).
 
 ## Extensibility models
 

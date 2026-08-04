@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Support\Auth\EmployeeAuthPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -31,12 +32,7 @@ class EmployeeAuthController extends Controller
 
         return $this->success([
             'token' => $token,
-            'employee' => [
-                'id' => $employee->id,
-                'name' => $employee->name,
-                'email' => $employee->email,
-                'role' => $employee->role,
-            ],
+            'employee' => EmployeeAuthPayload::for($employee),
         ], 'Logged in.');
     }
 
@@ -59,11 +55,6 @@ class EmployeeAuthController extends Controller
             return $this->unauthorized();
         }
 
-        return $this->success([
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role' => $user->role,
-        ]);
+        return $this->success(EmployeeAuthPayload::for($user));
     }
 }

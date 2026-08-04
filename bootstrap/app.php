@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Support\Auth\DenialContext;
+use App\Support\Auth\PermissionDeniedException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -56,4 +60,30 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->is('broadcasting/*'),
         );
+
+        // PermissionDeniedException::render handles direct throws. Gate::authorize
+        // converts policy denials into AccessDeniedHttpException — use DenialContext.
+        $exceptions->render(function (AccessDeniedHttpException $e, Request $request): ?JsonResponse {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            $previous = $e->getPrevious();
+            if ($previous instanceof PermissionDeniedException) {
+                return response()->json([
+                    'message' => 'errors.forbidden',
+                    'data' => $previous->data(),
+                ], 403);
+            }
+
+            $data = DenialContext::pull();
+            if ($data === null) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'errors.forbidden',
+                'data' => $data,
+            ], 403);
+        });
     })->create();

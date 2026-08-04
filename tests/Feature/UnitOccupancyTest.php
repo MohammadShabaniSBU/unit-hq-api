@@ -17,11 +17,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class UnitOccupancyTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private static bool $failChargeCreate = false;
 
@@ -34,6 +36,8 @@ class UnitOccupancyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         // Re-register each test — RefreshDatabase reboots the app and clears listeners.
         Charge::creating(function (): void {

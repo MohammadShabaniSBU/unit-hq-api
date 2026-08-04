@@ -17,10 +17,12 @@ use App\Models\UnitOccupancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class UnitStateFilterTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Site $site;
 
@@ -29,6 +31,8 @@ class UnitStateFilterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         Employee::factory()->manager()->create();
         $country = Country::factory()->create(['code' => 'ES']);

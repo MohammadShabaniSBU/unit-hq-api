@@ -11,6 +11,7 @@ use App\Models\Contact;
 use App\Support\RecordsActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 /**
  * Contact fiscal identity (S03-01).
@@ -21,6 +22,14 @@ use Tests\TestCase;
 class ContactFiscalTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_fiscal_complete_logic(): void
     {

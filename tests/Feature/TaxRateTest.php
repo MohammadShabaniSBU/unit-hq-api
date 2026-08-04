@@ -8,14 +8,18 @@ use App\Models\Employee;
 use App\Support\Billing\JurisdictionCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class TaxRateTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         Employee::factory()->manager()->create();
     }

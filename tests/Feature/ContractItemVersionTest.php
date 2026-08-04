@@ -21,11 +21,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class ContractItemVersionTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Employee $employee;
 
@@ -44,6 +46,8 @@ class ContractItemVersionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         $this->employee = Employee::factory()->manager()->create();
         $country = Country::factory()->create(['code' => 'ES']);

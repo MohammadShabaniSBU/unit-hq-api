@@ -10,10 +10,19 @@ use App\Models\Site;
 use App\Models\UnitClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class RateCurrencyTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_site_currency_mismatch_on_rate_junction(): void
     {

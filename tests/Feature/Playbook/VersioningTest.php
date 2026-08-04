@@ -27,14 +27,18 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class VersioningTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
         Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00', 'UTC'));
         Mail::fake();
         Queue::fake([ExecuteAutomationRun::class, ResumeAutomationRun::class]);

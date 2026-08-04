@@ -24,11 +24,20 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class EligibilityAuditTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_five_systems_exclude_awaiting(): void
     {

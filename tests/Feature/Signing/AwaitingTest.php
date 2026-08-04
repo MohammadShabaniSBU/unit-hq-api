@@ -25,11 +25,13 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class AwaitingTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Employee $employee;
 
@@ -42,6 +44,8 @@ class AwaitingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-07-10 10:00:00', 'Europe/Madrid'));
 

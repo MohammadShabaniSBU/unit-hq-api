@@ -19,6 +19,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 /**
  * Walk-in create must stay byte-identical after extracting ContractSigning::complete.
@@ -27,6 +28,14 @@ class SigningExtractionTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_walkin_byte_identical(): void
     {

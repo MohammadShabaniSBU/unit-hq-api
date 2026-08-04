@@ -20,17 +20,21 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class TaxResolverTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Employee $employee;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         $this->employee = Employee::factory()->manager()->create();
     }

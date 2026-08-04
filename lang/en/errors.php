@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'forbidden' => 'You do not have permission to perform this action.',
     'currency' => [
         'mixed_contract_items' => 'Contract items must all share the same currency.',
         'ledger_mismatch' => 'Ledger row currency must match the contract currency.',
@@ -132,6 +133,12 @@ return [
         'window_closed' => 'The WhatsApp customer-service window is closed. Send an approved template instead.',
         'consent_floor' => 'This contact has no WhatsApp channel on file. A phone number alone is not WhatsApp opt-in.',
         'template_not_approved' => 'That WhatsApp template is not approved and cannot be sent.',
+    ],
+    'rbac' => [
+        'last_owner' => 'Cannot remove the last company-wide owner grant.',
+        'company_role_rejects_site' => 'This role is company-scoped and cannot be granted for a site.',
+        'site_role_requires_site' => 'This role is site-scoped and requires a site.',
+        'role_missing' => 'The selected role does not exist.',
     ],
 ];
 

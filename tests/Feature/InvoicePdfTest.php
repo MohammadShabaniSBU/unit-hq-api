@@ -11,10 +11,19 @@ use App\Models\InvoiceLine;
 use App\Support\Fiscal\InvoiceRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class InvoicePdfTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_renders_from_snapshot_arrays_only(): void
     {

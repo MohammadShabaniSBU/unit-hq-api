@@ -32,11 +32,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class TransferTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Employee $employee;
 
@@ -53,6 +55,8 @@ class TransferTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Madrid'));
 

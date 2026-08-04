@@ -84,7 +84,7 @@ class StageSeeder extends Seeder
         ]);
         Employee::factory()->staff()->count(4)->create();
 
-        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
+        $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
 
         $spain = Country::query()->where('code', 'ES')->firstOrFail();
         $uk = Country::query()->where('code', 'GB')->firstOrFail();
@@ -496,7 +496,7 @@ class StageSeeder extends Seeder
             );
         }
 
-        $manager = Employee::query()->where('role', 'manager')->orderBy('id')->first();
+        $manager = Employee::query()->withCompanyRole('owner')->orderBy('id')->first();
         if ($manager !== null) {
             AircallUserLink::query()->firstOrCreate(
                 ['employee_id' => $manager->id],

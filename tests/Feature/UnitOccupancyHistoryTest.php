@@ -14,16 +14,20 @@ use App\Models\UnitClass;
 use App\Models\UnitOccupancy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class UnitOccupancyHistoryTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Unit $unit;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         Employee::factory()->manager()->create();
         $country = Country::factory()->create(['code' => 'ES']);

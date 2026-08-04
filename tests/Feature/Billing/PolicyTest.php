@@ -10,14 +10,18 @@ use App\Models\Employee;
 use App\Models\Site;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class PolicyTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         Employee::factory()->manager()->create();
     }

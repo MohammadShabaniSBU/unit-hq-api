@@ -11,10 +11,19 @@ use App\Support\Fiscal\InvoiceNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class InvoiceSeriesTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_starting_number_create_only(): void
     {

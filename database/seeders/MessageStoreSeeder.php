@@ -37,7 +37,7 @@ class MessageStoreSeeder extends Seeder
     public function run(): void
     {
         $contacts = Contact::query()->orderBy('id')->limit(5)->get();
-        $manager = Employee::query()->where('role', 'manager')->first();
+        $manager = Employee::query()->withCompanyRole('owner')->first();
 
         foreach ($contacts as $index => $contact) {
             $email = ContactChannel::query()

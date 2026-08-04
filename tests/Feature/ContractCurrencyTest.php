@@ -21,11 +21,13 @@ use App\Support\Time\SiteClock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class ContractCurrencyTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Employee $employee;
 
@@ -36,6 +38,8 @@ class ContractCurrencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         $this->employee = Employee::factory()->manager()->create();
 

@@ -18,11 +18,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class AutoAssignTest extends TestCase
 {
     use CreatesCataloguePrices;
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
 
     private Site $site;
 
@@ -38,6 +40,8 @@ class AutoAssignTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authenticateAsEmployee();
 
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-07-15 12:00:00', 'Europe/Madrid'));
 

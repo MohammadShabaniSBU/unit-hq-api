@@ -11,10 +11,19 @@ use App\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class BillingPeriodRenameTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_display_grouping_is_billing_periods_alongside_fiscal_invoices(): void
     {

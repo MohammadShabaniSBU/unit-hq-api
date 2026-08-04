@@ -96,7 +96,7 @@ class OccupancySeeder extends Seeder
 
     public function run(): void
     {
-        $manager = Employee::query()->where('role', 'manager')->firstOrFail();
+        $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
         $contacts = Contact::query()->get();
         $billing = Setting::billing();
         $sites = Site::query()->with('country')->orderBy('id')->get();

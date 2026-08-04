@@ -61,7 +61,7 @@
 22. **`attribute_definitions.group_name` is not a layout group** — free-text catalog metadata only. Overview cards are `attribute_groups`; placement is via `layout_fields`. Never treat `group_name` as an FK to `AttributeGroup`.
 23. **Automations are archive-only** — never hard-delete an automation with run history. `archived_at` + `POST …/archive` / `…/unarchive`; `DELETE` aliases archive.
 24. **Automation runs / run steps are append-only** — no update/delete API. Retry = new `automation_runs` row (optionally `root_run_id` → original). Log skipped branch paths as `status=skipped` steps, not silence.
-25. **Automation-originated model writes do not re-trigger automations** — `AutomationContext` suppresses `Model*` event dispatch from `HasAutomationTriggers`. Tier-2 activity diffs still log. Causer morph is stamped at event dispatch (request lifecycle), never re-resolved inside queue workers.
+25. **Automation-originated model writes do not re-trigger automations** — `AutomationContext` suppresses `Model*` event dispatch from `HasAutomationTriggers`. Tier-2 activity diffs still log. Causer morph is stamped at event dispatch (request lifecycle), never re-resolved inside queue workers. **Authorization:** while `AutomationContext` is active, `Actor::current()` is `SystemActor` (Gate allows). An automation that vacates a contract does not need `contract.vacate` — the operator authorised the automation graph, not each of its writes.
 25b. **Automation run transitions are single-funnel and claim-based.** Every status change goes through `RunLifecycle::transition()`; executors and cancellers race via conditional updates on the status column, never checks-then-writes. A parked wait is `waiting`, never `running`. Cancelled runs record cause and a synthetic step; unexecuted nodes are not marked skipped.
 26. **Credentials are encrypted at rest and never returned in API responses** — secrets serialize as masked last-4 (`••••••ab12`); a blank submitted field means unchanged, never wipe. Shared via `App\Support\Credentials\CredentialMasker` (masking + `DecryptException` handling) and `CredentialField` (blank-means-unchanged), used by both comms provider accounts and per-entity `payment_provider_accounts`.
 27. **Credential lifecycle events are Tier-3 `RecordsActivity::core`** — create / rotate / remove only; properties limited to site/provider identifiers, masked last-4, and result — never the secret. Shared via `App\Support\Credentials\CredentialAudit`.
@@ -124,6 +124,22 @@
     signing/convert transaction. No code in billing runs, settlements, or reports may
     branch on discount presence. Removal and rate-change recompute emit versions
     through the same rate-change path.
+42. **Every API route is authenticated unless it appears in the public allowlist
+    in `routes/api.php` with a comment naming what authenticates it instead.**
+    Enforced by `RouteAuthCoverageTest`, which fails on any route that is neither
+    inside the `auth:sanctum` group nor on the allowlist.
+43. **Permissions are a PHP enum, never database rows.** `role_permissions` stores
+    `App\Support\Auth\Permission` enum values. A permission that does not exist as
+    an enum case is a defect, not data.
+44. **At least one employee holds a company-wide `owner` grant at all times.**
+    Revocation that would empty the set is refused inside the transaction (via
+    `OwnerFloor` + `SELECT … FOR UPDATE`), not by UI affordance alone.
+45. **Authorization failure is fail-closed.** An unmapped subject in
+    `SubjectSite` throws; it never resolves to `null` and never resolves to
+    "allowed". Adding a model to the morph map without adding it to
+    `SubjectSite` fails `SubjectSiteCoverageTest`. System-actor writes
+    (`Actor::current()` / `Gate::before`) authorize headless paths; they do not
+    change activity causer stamping (invariant 25).
 
 ## Code conventions
 

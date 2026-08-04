@@ -16,6 +16,9 @@ No new node types beyond finishing `logic.wait`. No playbook UI. Hardening only.
 `AutomationExecutor` + handler map, `ConditionEvaluator`, `TriggerMatcher`,
 `AutomationContext` loop suppression, `TokenResolver`, append-only runs/steps with
 `root_run_id` retry idiom, skipped-branch logging — all present.
+**RBAC (sprint 18):** while `AutomationContext` is active, `Actor::current()` resolves
+to `SystemActor` — automation-originated writes do not require per-action permissions;
+the operator authorised the automation graph. Causer stamping is unchanged (invariant 25).
 `AutomationRunStatus`: pending/running/succeeded/failed/cancelled — **no `waiting`**.
 `WaitHandler`: explicit stub. Branching: owner-reported "still has problems" — task 01
 treats the evaluator as untrusted until the golden suite says otherwise.

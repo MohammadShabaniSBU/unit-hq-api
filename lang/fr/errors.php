@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'forbidden' => 'Vous n’avez pas la permission d’effectuer cette action.',
     'currency' => [
         'mixed_contract_items' => 'Les lignes du contrat doivent partager la même devise.',
         'ledger_mismatch' => 'La devise de l’écriture doit correspondre à celle du contrat.',
@@ -118,6 +119,12 @@ return [
         'envelope_not_live' => 'Cette enveloppe n’est plus ouverte pour annulation ou renvoi.',
         'artifact_missing' => 'L’artefact signé n’est pas disponible.',
         'live_envelope_exists' => 'Ce contrat a déjà une enveloppe ouverte. Renvoyez-la ou annulez-la d’abord.',
+    ],
+    'rbac' => [
+        'last_owner' => 'Impossible de retirer la dernière attribution de propriétaire à l’échelle de l’entreprise.',
+        'company_role_rejects_site' => 'Ce rôle est limité à l’entreprise et ne peut pas être attribué à un site.',
+        'site_role_requires_site' => 'Ce rôle est limité à un site et nécessite un site.',
+        'role_missing' => 'Le rôle sélectionné n’existe pas.',
     ],
 ];
 

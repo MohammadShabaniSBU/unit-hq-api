@@ -13,10 +13,19 @@ use App\Settings\ActivityLogSettings;
 use App\Support\RecordsActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\AuthenticatesAsEmployee;
 
 class ActivityApiTest extends TestCase
 {
     use RefreshDatabase;
+    use AuthenticatesAsEmployee;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->authenticateAsEmployee();
+    }
 
     public function test_settings_validation_rejects_core_channel(): void
     {
