@@ -114,5 +114,4 @@
 - Contact transactions
 - Invoice / payment resources polish
 - Recurring billing job (consume `billed_through`)
-- **Panel `canEdit` stopgap:** overview inline edit ignores role/site-scope (always editable when `NativeFields.editable` / definition present). Gaps against the site-scoping rule in `07-people-and-auth.md` until panel RBAC (task 05) ships. The API already denies via permissions (task 03).
 - **S10 schema defect (fixed in S11-01):** `message_attachments.message_id` is nullable so outbound compose can stage files before send; orphans are swept daily. Not an S11 schema expansion.

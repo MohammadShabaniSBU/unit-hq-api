@@ -54,6 +54,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('user', [Controllers\EmployeeAuthController::class, 'me']);
     Route::get('permissions', [Controllers\RbacController::class, 'permissions']);
     Route::get('roles', [Controllers\RbacController::class, 'roles']);
+    Route::post('roles', [Controllers\RbacController::class, 'store']);
+    Route::patch('roles/{role}', [Controllers\RbacController::class, 'update']);
+    Route::post('roles/{role}/archive', [Controllers\RbacController::class, 'archive']);
+    Route::post('roles/{role}/unarchive', [Controllers\RbacController::class, 'unarchive']);
     Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
     Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
 
@@ -67,7 +71,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('messages/{message}/wrapup', [Controllers\MessageController::class, 'upsertWrapup']);
     Route::get('messages/{message}/recording', [Controllers\MessageController::class, 'recording']);
 
+    Route::get('employees', [Controllers\EmployeeController::class, 'index']);
     Route::get('employees/options', [Controllers\EmployeeController::class, 'options']);
+    Route::get('employees/{employee}/roles', [Controllers\EmployeeController::class, 'roles']);
+    Route::post('employees/{employee}/roles', [Controllers\EmployeeController::class, 'storeRole']);
+    Route::delete('employees/{employee}/roles/{grant}', [Controllers\EmployeeController::class, 'destroyRole']);
     Route::get('inbox/threads', [Controllers\InboxController::class, 'index']);
     Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
     Route::get('inbox/badge', [Controllers\InboxController::class, 'badge']);

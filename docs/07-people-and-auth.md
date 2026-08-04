@@ -49,7 +49,7 @@ A **global site selector** scopes the portal context, with two carve-outs:
 
 **Exception (D-RBAC-1):** Contact and Deal **detail** views show activity across all sites regardless of the selector — a Contact is not inherently site-scoped as a subject. **Lists** are narrower: site-scoped agents see contacts/deals related to granted sites, plus unassigned leads (no site relation / null `deals.site_id`). Company-wide grants see the full roster. Row visibility is applied via explicit `visibleTo($employee, $permission)` on the query — never a global scope.
 
-`GET /api/user` returns `roles`, `permissions`, and `company_permissions` (plus deprecated scalar `role` for one sprint).
+`GET /api/user` returns `roles`, `permissions`, and `company_permissions`.
 
 ## Extensibility models
 

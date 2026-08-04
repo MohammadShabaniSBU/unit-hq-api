@@ -125,6 +125,9 @@ return [
         'company_role_rejects_site' => 'Ce rôle est limité à l’entreprise et ne peut pas être attribué à un site.',
         'site_role_requires_site' => 'Ce rôle est limité à un site et nécessite un site.',
         'role_missing' => 'Le rôle sélectionné n’existe pas.',
+        'system_role_immutable' => 'Les rôles système sont maintenus par l’application et ne peuvent pas être modifiés.',
+        'system_role_archive' => 'Les rôles système ne peuvent pas être archivés.',
+        'grant_mismatch' => 'Cette attribution n’appartient pas à cet employé.',
     ],
 ];
 

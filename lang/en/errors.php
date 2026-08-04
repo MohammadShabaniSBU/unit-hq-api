@@ -139,6 +139,9 @@ return [
         'company_role_rejects_site' => 'This role is company-scoped and cannot be granted for a site.',
         'site_role_requires_site' => 'This role is site-scoped and requires a site.',
         'role_missing' => 'The selected role does not exist.',
+        'system_role_immutable' => 'System roles are maintained by the application and cannot be edited.',
+        'system_role_archive' => 'System roles cannot be archived.',
+        'grant_mismatch' => 'That grant does not belong to this employee.',
     ],
 ];
 

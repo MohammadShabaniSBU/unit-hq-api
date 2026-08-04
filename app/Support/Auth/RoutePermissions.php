@@ -408,11 +408,19 @@ final class RoutePermissions
     'PUT /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
     'PUT /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@update — provider account
 
-    // ===== RBAC (4) =====
+    // ===== RBAC =====
+    'DELETE /api/employees/{employee}/roles/{grant}' => Permission::RbacManage, // EmployeeController@destroyRole
+    'GET /api/employees' => Permission::RbacManage, // EmployeeController@index
+    'GET /api/employees/{employee}/roles' => Permission::RbacManage, // EmployeeController@roles
     'GET /api/permissions' => Permission::RbacManage, // RbacController@permissions — role editor
     'GET /api/roles' => Permission::RbacManage, // RbacController@roles — role editor
     'GET /api/user' => Exempt::self('own identity'), // EmployeeAuthController@me
+    'PATCH /api/roles/{role}' => Permission::RbacManage, // RbacController@update
+    'POST /api/employees/{employee}/roles' => Permission::RbacManage, // EmployeeController@storeRole
     'POST /api/logout' => Exempt::self('own session'), // EmployeeAuthController@logout
+    'POST /api/roles' => Permission::RbacManage, // RbacController@store
+    'POST /api/roles/{role}/archive' => Permission::RbacManage, // RbacController@archive
+    'POST /api/roles/{role}/unarchive' => Permission::RbacManage, // RbacController@unarchive
 
         ];
     }

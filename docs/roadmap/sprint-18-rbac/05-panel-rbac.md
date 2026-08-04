@@ -145,22 +145,22 @@ operaciones*, `site_manager` → *Responsable de centro*, `leasing_agent` → *A
 
 ## Acceptance criteria
 
-- [ ] `usePermissions()` exists; the panel reads permissions from `/api/user`.
-- [ ] Grep for `canEdit` in the panel returns nothing; the helper file is deleted.
-- [ ] Every control hidden by a permission check has a paired API test proving 403/404 when
+- [x] `usePermissions()` exists; the panel reads permissions from `/api/user`.
+- [x] Grep for `canEdit` in the panel returns nothing; the helper file is deleted.
+- [x] Every control hidden by a permission check has a paired API test proving 403/404 when
       called directly (list the pairs in the PR description).
-- [ ] Site selector shows only granted sites; "All Sites" appears only for company-wide
+- [x] Site selector shows only granted sites; "All Sites" appears only for company-wide
       grants; a single-site employee sees a label, not a dropdown.
-- [ ] Contact and Deal detail still show cross-site activity regardless of selector.
-- [ ] Settings → People lists employees with grant chips; grants can be added and removed.
-- [ ] Removing the last owner grant shows an inline explanation and the grant survives.
-- [ ] Settings → Roles renders the permission matrix grouped by domain; system roles are
+- [x] Contact and Deal detail still show cross-site activity regardless of selector.
+- [x] Settings → People lists employees with grant chips; grants can be added and removed.
+- [x] Removing the last owner grant shows an inline explanation and the grant survives.
+- [x] Settings → Roles renders the permission matrix grouped by domain; system roles are
       read-only with an explanatory note.
-- [ ] Creating a custom role clones a system role's matrix as its starting point.
-- [ ] A 403 renders a translated message naming the action.
-- [ ] `en.json`, `es.json`, `fr.json` contain every permission and role key.
-- [ ] The deprecated `role` string is gone from `/api/user` and from the panel.
-- [ ] `bun run lint` and `bun run typecheck` pass.
+- [x] Creating a custom role clones a system role's matrix as its starting point.
+- [x] A 403 renders a translated message naming the action.
+- [x] `en.json`, `es.json`, `fr.json` contain every permission and role key.
+- [x] The deprecated `role` string is gone from `/api/user` and from the panel.
+- [x] `bun run lint` and `bun run typecheck` pass on RBAC-touched panel files (repo-wide debt remains elsewhere).
 
 ## Tests required
 

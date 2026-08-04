@@ -59,6 +59,12 @@ class Role extends Model
         $query->whereNull('archived_at');
     }
 
+    /** @param Builder<Role> $query */
+    public function scopeArchived(Builder $query): void
+    {
+        $query->whereNotNull('archived_at');
+    }
+
     /** @return HasMany<RolePermission, $this> */
     public function rolePermissions(): HasMany
     {
@@ -69,22 +75,5 @@ class Role extends Model
     public function employeeRoles(): HasMany
     {
         return $this->hasMany(EmployeeRole::class);
-    }
-
-    /**
-     * System role rank for deprecated scalar `role` on /api/user (highest wins).
-     *
-     * @return array<string, int>
-     */
-    public static function systemKeyRank(): array
-    {
-        return [
-            'owner' => 100,
-            'operations_manager' => 90,
-            'site_manager' => 80,
-            'leasing_agent' => 70,
-            'accountant' => 60,
-            'read_only' => 50,
-        ];
     }
 }

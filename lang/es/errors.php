@@ -139,6 +139,9 @@ return [
         'company_role_rejects_site' => 'Este rol es de ámbito empresa y no se puede conceder para un sitio.',
         'site_role_requires_site' => 'Este rol es de ámbito sitio y requiere un sitio.',
         'role_missing' => 'El rol seleccionado no existe.',
+        'system_role_immutable' => 'Los roles del sistema los mantiene la aplicación y no se pueden editar.',
+        'system_role_archive' => 'Los roles del sistema no se pueden archivar.',
+        'grant_mismatch' => 'Esa concesión no pertenece a este empleado.',
     ],
 ];
 
