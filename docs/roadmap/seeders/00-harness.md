@@ -66,5 +66,6 @@ not ID bookkeeping.
 
 ## Tests required
 
-`DemoHarnessTest::{clock_activation_billing_cure, five_injector_smokes,
-no_raw_inserts_grep, production_guard}`.
+None in PHPUnit. Exercise via `php artisan demo:seed` (production guard,
+timings, injectors, clock). Product behaviour (billing, cure, webhooks, etc.)
+stays in domain Feature tests.

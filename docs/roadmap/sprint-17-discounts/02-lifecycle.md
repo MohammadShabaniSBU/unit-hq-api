@@ -66,4 +66,4 @@ gets ~15 discounted contracts across kinds.
 | `RecomputeTest::tracking_nontracking_multiplier_promise` | D-DISC #3 pinned |
 | `RemovalTest::boundary_collapse_audit` | The button's semantics |
 | `EdgeTest::transfer_vacate_notice_zero_new_code` | Composition |
-| `DemoWorldVerificationTest` (extended) | Discounts present + true |
+| Manual `demo:seed` (Nadia / Amara) | Discount cast end-states present for demos |

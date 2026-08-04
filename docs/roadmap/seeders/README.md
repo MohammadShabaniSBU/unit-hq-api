@@ -45,7 +45,7 @@ history* — the cross-surface fixtures pass on the demo data by construction.
 
 Deterministic RNG throughout (the house rule); `DEMO_SEED` env overrides for variety.
 
-## Target state matrix (post-seed, asserted by task 04)
+## Target state matrix (post-seed; verified manually via `demo:seed` + presenter script)
 
 | Domain | Distribution |
 |---|---|

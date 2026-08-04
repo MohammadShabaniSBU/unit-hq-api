@@ -57,5 +57,6 @@ final timings in the PR.
 
 ## Tests required
 
-`SimulationTest::{matrix_bands, determinism_twice, trend_and_buckets}`,
-runtime assertion soft (warn > 5 min, fail > 10).
+None in PHPUnit. Matrix bands, determinism, trends, and wall-clock budget are
+checked manually on `php artisan demo:seed` (timings print; two runs with the
+same `DEMO_SEED` should match). Soft target under 5 min; investigate if over 10.

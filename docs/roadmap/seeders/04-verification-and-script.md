@@ -2,46 +2,39 @@
 
 ## Context
 
-Two closers: the test that proves the seeded world is *true* (every count in range,
-every invariant holding, every cross-surface figure agreeing — on this data, not
-just fixtures), and the printed **demo script** that turns 350 contacts into a
-guided tour: which persona shows which story, where to click, what number to point
-at.
+Two closers: a **manual** check that the seeded world matches the target matrix
+(counts in range, stories present, cross-surface figures agreeing on this data),
+and the printed **demo script** that turns 350 contacts into a guided tour: which
+persona shows which story, where to click, what number to point at.
+
+There is **no** PHPUnit suite for the demo world (`DemoHarnessTest`,
+`PersonaSmokeTest`, `SimulationTest`, and `DemoWorldVerificationTest` are all
+gone). CI covers product features one-by-one; `demo:seed` is a presenter/dev tool.
 
 ## Scope
 
-**In:** `DemoWorldVerificationTest`, invariant sweeps over the seeded set, runtime
-budget, command ergonomics (`demo:seed --fresh`, production guard), the script
-printer, docs. **Out:** any new world content — this task only proves and narrates
-what 00–03 built.
+**In:** command ergonomics (`demo:seed --fresh`, production guard), the script
+printer, docs, manual verification walk. **Out:** any new world content — this
+task only proves and narrates what 00–03 built. **Out:** any demo-world PHPUnit
+class.
 
 ## Verification
 
-**The matrix, asserted.** Every row of the README target table becomes a
-range-assertion (`~180 active` → `170..190`); every *status/state enum in the
-product* gets an existence assertion — contracts (all 7 statuses), offers, deals,
-delinquency buckets (each of the 5 non-empty), holds (all types incl. 1+ live
-overlock), envelope states, grant states, message statuses, triage/suppression
-counts. A status with zero rows is a demo page with an empty tab — the S01 seeder
-philosophy at world scale. DISC-02 also asserts ≥15 discounted contracts with both
-`percent` and `free_time` provenance present (Nadia / Amara end-states cover the
-cast stories).
+**The matrix (manual).** Every row of the README target table is a presenter
+check after `demo:seed` (`~180 active` → eyeball the band; every status/state
+that should be non-empty has rows). DISC-02 discounts (Nadia / Amara) are walked
+from the cast index; product discount rules stay in `tests/Feature/Discounts/*`.
 
-**Invariant sweeps (reused patterns, new scope):** no overlapping occupancies or
-blocking holds anywhere; every non-awaiting contract has its occupancy; ageing's
-two views reconcile and equal the board chip **on the demo data**; the three
-occupancy surfaces agree; every dashboard card equals its report; balance identities
-(Σ charges − Σ payments = Σ computed balances) to the cent across ~250 contracts'
-history; every message has provenance; every playbook enrolment's guard state is
-consistent with its subject. These are the S16 consistency fixtures re-run against
-the big world — the strongest single claim the seeder makes.
+**Invariant sweeps (manual / presenter):** no overlapping occupancies or
+blocking holds; ageing views reconcile with the board chip; the three occupancy
+surfaces agree; dashboard cards equal reports; balance identities to the cent.
+Walk them from the script — do not re-run as a multi-minute PHPUnit class.
 
 **Ergonomics.** `php artisan demo:seed {--fresh}`: `--fresh` runs
 `migrate:fresh` first; refuses in production (`app()->isProduction()` hard stop);
-deterministic by default (`DEMO_SEED` env varies); **runtime budget: < 5 minutes**
-asserted in CI-adjacent test (the day loop is ~420 iterations of mostly-cheap
-work — if it creeps, the budget test names the slow day). The per-sprint test
-seeders remain untouched and independent (grep: `DatabaseSeeder` unchanged).
+deterministic by default (`DEMO_SEED` env varies); **runtime budget: under 5
+minutes** (timings print — if it creeps, name the slow phase). The per-sprint
+test seeders remain untouched and independent (grep: `DatabaseSeeder` unchanged).
 
 ## The demo script
 
@@ -62,12 +55,11 @@ Seed end prints (and writes `storage/demo-script.md`):
 
 ## Acceptance criteria
 
-- [ ] Verification test green on a fresh seed: matrix ranges, existence sweep,
-      every invariant/consistency assertion; budget under 5 minutes.
+- [ ] Fresh `demo:seed`: matrix bands look right, cast stories present, budget
+      under 5 minutes (timings printed). No demo-world PHPUnit class in the suite.
 - [ ] Production guard + `--fresh` + determinism (two runs, identical script
       output); `DEMO_SEED` varies the crowd, never the cast.
 - [ ] Script prints + persists; every cast entry's click-path manually walked once
       (PR checklist with the 15-minute tour timed).
 - [ ] Docs: `README.md` (repo) quickstart gains the demo command;
       `10-open-decisions.md` notes the seeder as the demo baseline.
-

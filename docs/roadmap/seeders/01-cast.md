@@ -56,5 +56,6 @@ state — the matrix rows below are assertions in 04.
 
 ## Tests required
 
-`PersonaSmokeTest` (parameterised over the eighteen), per-persona `assertEndState()`
-methods consumed by 04.
+None in PHPUnit. Per-persona `assertEndState()` methods remain for manual /
+`demo:seed` debugging; cast stories are verified by walking the demo script (04),
+not by a suite that clocks each journey.
