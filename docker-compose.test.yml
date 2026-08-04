@@ -13,8 +13,10 @@ services:
       DB_USERNAME: laravel
       DB_PASSWORD: secret
       COMPOSER_HOME: /tmp/composer
+      UNIT_HQ_PANEL_PATH: /panel
     volumes:
       - .:/app
+      - ../unit-hq-panel:/panel:ro
     depends_on:
       test-db:
         condition: service_healthy

@@ -146,6 +146,20 @@ final class DemoScript
 
         $lines = array_merge($lines, [
             '',
+            '## Employee grants',
+            '',
+            '| Email | Name | Role | Site |',
+            '|---|---|---|---|',
+        ]);
+
+        foreach (DemoRbacGrants::grantTableRows() as $row) {
+            $lines[] = '| `'.$row['email'].'` | '.$row['name'].' | `'.$row['role'].'` | '.$row['site'].' |';
+        }
+
+        $lines = array_merge($lines, [
+            '',
+            'Password for every demo employee: `password`.',
+            '',
             '## 15-minute tour',
             '',
             '1. **Dashboard** — point at the economic vs unit occupancy gap (unit rate '.$numbers['unit_rate'].' vs economic '.$numbers['economic_rate'].').',
@@ -179,6 +193,7 @@ final class DemoScript
             '- [ ] Time the 15-minute tour end-to-end',
             '- [ ] Confirm the three occupancy numbers agree while presenting',
             '- [ ] Confirm open-case ageing equals the delinquency board chip',
+            '- [ ] Log in as `agent-mad@example.com` and confirm the contract list is a site slice of the owner view',
             '',
         ]);
 

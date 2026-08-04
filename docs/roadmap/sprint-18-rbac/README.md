@@ -67,20 +67,20 @@ Recorded as Decided in `10-open-decisions.md` by task 01 so it does not resurfac
 
 ## Exit criteria
 
-- [ ] Every route in `routes/api.php` is either inside the authenticated group or on an
+- [x] Every route in `routes/api.php` is either inside the authenticated group or on an
       explicit public allowlist with a written reason; a test enumerates the router and
       fails on any route that is neither.
-- [ ] Every authenticated route reaches an authorization decision — a policy, a gate, or an
+- [x] Every authenticated route reaches an authorization decision — a policy, a gate, or an
       explicit `Permission::None` allowlist entry with a reason. Proven by test, not review.
-- [ ] An employee granted `leasing_agent` at one site can sign a contract there, receives
+- [x] An employee granted `leasing_agent` at one site can sign a contract there, receives
       403 at another site, and does not see the other site's contracts in any list.
-- [ ] Scheduled commands, queued jobs, webhooks and automation-originated writes all run
+- [x] Scheduled commands, queued jobs, webhooks and automation-originated writes all run
       green with no authenticated employee (the 03:00 billing-run test).
-- [ ] `employees.role` is gone; grants live in `employee_roles`; the last company-wide
+- [x] `employees.role` is gone; grants live in `employee_roles`; the last company-wide
       `owner` grant cannot be removed.
-- [ ] The `canEdit` panel stopgap is deleted, not widened. Panel reads permissions from
+- [x] The `canEdit` panel stopgap is deleted, not widened. Panel reads permissions from
       `/api/user`; every hidden control has a matching API-side denial.
-- [ ] `SiteAccess` is deleted and its two call sites go through policies. Docs `05`, `06`,
+- [x] `SiteAccess` is deleted and its two call sites go through policies. Docs `05`, `06`,
       `07`, `10` corrected in the same PR.
 
 ## Task order

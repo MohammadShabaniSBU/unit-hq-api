@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\PublicApiAllowlist;
 use Tests\TestCase;
 
 /**
@@ -15,28 +16,6 @@ use Tests\TestCase;
 class RouteAuthCoverageTest extends TestCase
 {
     use RefreshDatabase;
-
-    /**
-     * URI patterns (Laravel route URI, no leading slash) that may omit Sanctum.
-     * Each entry must still exist on the router (see allowlist_entries_still_exist).
-     *
-     * @var list<string>
-     */
-    private const PUBLIC_ALLOWLIST = [
-        'api/login',
-        'api/webhooks/stripe/{accountToken}',
-        'api/webhooks/esign/{webhookToken}',
-        'api/webhooks/access/{webhookToken}',
-        'api/webhooks/{provider}/{webhookUrlToken}',
-        'api/webhooks/{provider}/{webhookUrlToken}/inbound',
-        'api/comms/unsubscribe/{token}',
-        'api/public/template-assets/{hash}/{filename}',
-        'api/offers/token/{token}',
-        'api/offer-options/{offerOption}/select',
-        'api/pay/{token}',
-        'api/pay/{token}/intent',
-        'api/legal-entities/{legal_entity}/stripe/public-key',
-    ];
 
     public function test_every_route_is_authenticated_or_allowlisted(): void
     {
@@ -52,7 +31,7 @@ class RouteAuthCoverageTest extends TestCase
                 continue;
             }
 
-            if (in_array($uri, self::PUBLIC_ALLOWLIST, true)) {
+            if (PublicApiAllowlist::contains($uri)) {
                 continue;
             }
 
@@ -74,7 +53,7 @@ class RouteAuthCoverageTest extends TestCase
             ->all();
 
         $missing = array_values(array_filter(
-            self::PUBLIC_ALLOWLIST,
+            PublicApiAllowlist::URIS,
             fn (string $uri): bool => ! in_array($uri, $uris, true),
         ));
 
@@ -99,7 +78,7 @@ class RouteAuthCoverageTest extends TestCase
         );
 
         $this->assertFalse(
-            in_array('api/definitely-not-a-real-route', self::PUBLIC_ALLOWLIST, true),
+            PublicApiAllowlist::contains('api/definitely-not-a-real-route'),
         );
     }
 

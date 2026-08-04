@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Database\Seeders\Demo\DemoPipeline;
+use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoScript;
 use Database\Seeders\Demo\DemoWorld;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Throwable;
 
 /**
  * Opt-in demo world seeder. Replays history through the real schedule + injectors.
@@ -75,11 +77,29 @@ class DemoSeedCommand extends Command
             $this->warn(sprintf('Wall-clock %.1f min exceeds 5-minute target.', $totalMs / 60_000));
         }
 
+        try {
+            DemoRbacGrants::verifyOrFail();
+        } catch (Throwable $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
         $script = DemoScript::render();
         $scriptPath = DemoScript::write(contents: $script);
         $this->newLine();
         $this->info('Demo script written to '.$scriptPath);
         $this->line($script);
+
+        $this->newLine();
+        $this->info('Employee grants:');
+        $this->table(
+            ['Email', 'Name', 'Role', 'Site'],
+            array_map(
+                static fn (array $row): array => [$row['email'], $row['name'], $row['role'], $row['site']],
+                DemoRbacGrants::grantTableRows(),
+            ),
+        );
 
         return self::SUCCESS;
     }

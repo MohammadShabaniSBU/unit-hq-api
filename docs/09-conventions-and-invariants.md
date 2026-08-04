@@ -127,10 +127,17 @@
 42. **Every API route is authenticated unless it appears in the public allowlist
     in `routes/api.php` with a comment naming what authenticates it instead.**
     Enforced by `RouteAuthCoverageTest`, which fails on any route that is neither
-    inside the `auth:sanctum` group nor on the allowlist.
+    inside the `auth:sanctum` group nor on the allowlist. Every authenticated
+    route must also reach an authorization decision — enforced by
+    `PermissionCoverageTest` against `RoutePermissions` (Permission or reasoned
+    Exempt). A manifest entry naming a Permission without a matching
+    `authorize()` / `Gate::authorize()` call also fails that test.
 43. **Permissions are a PHP enum, never database rows.** `role_permissions` stores
     `App\Support\Auth\Permission` enum values. A permission that does not exist as
-    an enum case is a defect, not data.
+    an enum case is a defect, not data. Every enum case must appear in a
+    manifest entry, policy, or system role (`PermissionCoverageTest`); the panel
+    mirror in `app/types/permissions.ts` must match both ways
+    (`PanelPermissionMirrorTest`).
 44. **At least one employee holds a company-wide `owner` grant at all times.**
     Revocation that would empty the set is refused inside the transaction (via
     `OwnerFloor` + `SELECT … FOR UPDATE`), not by UI affordance alone.

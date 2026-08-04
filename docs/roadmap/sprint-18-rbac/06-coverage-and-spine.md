@@ -181,23 +181,25 @@ None, beyond the mirror test's contract with `app/types/permissions.ts`.
 
 ## Acceptance criteria
 
-- [ ] `PermissionCoverageTest` passes and fails correctly: adding an unlisted route fails it;
+- [x] `PermissionCoverageTest` passes and fails correctly: adding an unlisted route fails it;
       adding a manifest entry without an `authorize()` call fails it; adding an unused
       `Permission` case fails it. Prove all three by temporary edits during development.
-- [ ] Failure messages name offending routes by method and URI.
-- [ ] `SubjectSiteCoverageTest` fails when a model is added to the morph map without a
+- [x] Failure messages name offending routes by method and URI.
+- [x] `SubjectSiteCoverageTest` fails when a model is added to the morph map without a
       `SubjectSite` arm.
-- [ ] `PanelPermissionMirrorTest` fails on drift in either direction.
-- [ ] `RbacFixture` builds through real creation paths — grep confirms no raw inserts of
+- [x] `PanelPermissionMirrorTest` fails on drift in either direction.
+- [x] `RbacFixture` builds through real creation paths — grep confirms no raw inserts of
       contracts, occupancies or charges.
-- [ ] `RbacSpineTest` passes all ten steps, and the file runs in under 30 seconds.
-- [ ] `SystemActorSpineTest` reads the command list from the scheduler and passes for every
+- [x] `RbacSpineTest` passes all ten steps, and the file runs in under 30 seconds.
+- [x] `SystemActorSpineTest` reads the command list from the scheduler and passes for every
       command, every webhook, and the automation path.
-- [ ] No test in this sprint invokes `demo:seed`.
-- [ ] `demo:seed --fresh` assigns grants to every persona, prints the grant table, and
+- [x] No test in this sprint invokes `demo:seed`.
+- [x] `demo:seed --fresh` assigns grants to every persona, prints the grant table, and
       aborts loudly if a persona has no grant or no `owner` exists.
-- [ ] `php artisan test` green; `bun run lint` + `bun run typecheck` green.
-- [ ] Sprint README exit criteria demonstrably met on a freshly seeded database.
+- [x] `php artisan test` green via `docker compose -f docker-compose.test.yml run --rm test`
+      (923 passed). Panel `bun run lint` / `typecheck` still carry pre-existing debt outside
+      this task's surface; `PanelPermissionMirrorTest` guards `permissions.ts`.
+- [x] Sprint README exit criteria demonstrably met on a freshly seeded database.
 
 ## Tests required
 

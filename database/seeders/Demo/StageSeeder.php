@@ -82,7 +82,8 @@ class StageSeeder extends Seeder
             'name' => 'Demo Manager',
             'email' => 'manager@example.com',
         ]);
-        Employee::factory()->staff()->count(4)->create();
+        // Remaining cast (ops / site managers / agents / accountant / read_only)
+        // is assigned in DemoRbacGrants after sites exist.
 
         $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
 
@@ -323,6 +324,8 @@ class StageSeeder extends Seeder
 
         $this->seedFakeProviders($sites);
         $this->activateDemoPlaybooks();
+
+        DemoRbacGrants::assign($sites);
 
         $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
     }
