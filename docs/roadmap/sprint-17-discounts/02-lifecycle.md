@@ -52,12 +52,12 @@ gets ~15 discounted contracts across kinds.
 
 ## Acceptance criteria
 
-- [ ] Tracking recompute exact across a seeded rate change; non-tracking stays;
+- [x] Tracking recompute exact across a seeded rate change; non-tracking stays;
       free-time multiplier-promise fixture green.
-- [ ] Removal: next-boundary list, mid-free collapse, audit, reason required.
-- [ ] Transfer both modes + vacate-in-free + notice fixtures green with **zero new
+- [x] Removal: next-boundary list, mid-free collapse, audit, reason required.
+- [x] Transfer both modes + vacate-in-free + notice fixtures green with **zero new
       billing/settlement code** (the grep extends).
-- [ ] Demo world: the two personas + crowd, verification matrix updated.
+- [x] Demo world: the two personas + crowd, verification matrix updated.
 
 ## Tests required
 

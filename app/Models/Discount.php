@@ -101,25 +101,6 @@ class Discount extends Model
         return $this->belongsTo(Employee::class, 'created_by');
     }
 
-    /**
-     * Compat bridge until DISC-01 compiler: percent reduces rate; free_time is a no-op.
-     */
-    public function applyTo(float $amount): float
-    {
-        if ($this->kind !== DiscountKind::Percent) {
-            return round($amount, 2);
-        }
-
-        $percent = (string) ($this->params['percent'] ?? '0');
-        if (bccomp($percent, '0', 2) <= 0) {
-            return round($amount, 2);
-        }
-
-        $factor = bcsub('1', bcdiv($percent, '100', 6), 6);
-
-        return (float) bcmul((string) $amount, $factor, 2);
-    }
-
     /** @return array<int, string> */
     public function alignmentWarnings(): array
     {

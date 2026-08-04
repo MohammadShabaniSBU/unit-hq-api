@@ -201,10 +201,26 @@ trait VacatesContracts
                 'ended_reason' => ContractEndedReason::Vacated->value,
             ])->save();
 
+            // Close open versions that have already started. Future-dated tips
+            // (e.g. free_time list segment) get zero-length windows — never
+            // write effective_to < effective_from (Postgres daterange).
+            $moveOut = $moveOutOn->toDateString();
             ContractItem::query()
                 ->where('contract_id', $contract->id)
                 ->whereNull('effective_to')
-                ->update(['effective_to' => $moveOutOn->toDateString()]);
+                ->where('effective_from', '<=', $moveOut)
+                ->update(['effective_to' => $moveOut]);
+
+            ContractItem::query()
+                ->where('contract_id', $contract->id)
+                ->whereNull('effective_to')
+                ->where('effective_from', '>', $moveOut)
+                ->orderBy('id')
+                ->each(static function (ContractItem $item): void {
+                    $item->forceFill([
+                        'effective_to' => $item->effective_from?->toDateString(),
+                    ])->save();
+                });
 
             $chargeIdsBefore = Charge::query()
                 ->where('contract_id', $contract->id)

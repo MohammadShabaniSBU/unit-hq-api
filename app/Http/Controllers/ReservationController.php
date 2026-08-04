@@ -31,6 +31,9 @@ use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\ResolvesItemCurrency;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\Contracts\ContractSigning;
+use App\Support\Discounts\AttachesDiscount;
+use App\Support\Discounts\CommitmentWeeks;
+use App\Support\Discounts\VersionPlan;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Fiscal\TaxResolver;
 use App\Support\RecordsActivity;
@@ -289,12 +292,13 @@ class ReservationController extends Controller
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([
-            'start_date'     => ['nullable', 'date'],
-            'move_in_date'   => ['nullable', 'date'],
-            'unit_rate'      => ['nullable', 'numeric', 'min:0'],
-            'insurance_id'   => ['nullable', 'integer', 'exists:insurances,id'],
-            'insurance_rate' => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
-            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'start_date'        => ['nullable', 'date'],
+            'move_in_date'      => ['nullable', 'date'],
+            'unit_rate'         => ['nullable', 'numeric', 'min:0'],
+            'insurance_id'      => ['nullable', 'integer', 'exists:insurances,id'],
+            'insurance_rate'    => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'deposit_amount'    => ['nullable', 'numeric', 'min:0'],
+            'commitment_weeks'  => ['nullable', 'integer', 'min:1'],
         ]);
 
         $reservation->load([
@@ -302,6 +306,7 @@ class ReservationController extends Controller
             'unit.unitClass',
             'contact',
             'price',
+            'deal',
             'offerOption.discount',
             'offerOption.unitClassRate.price',
         ]);
@@ -309,21 +314,35 @@ class ReservationController extends Controller
         $billing = Setting::billing();
         $startDate = Carbon::parse($validated['start_date'] ?? now()->toDateString())->startOfDay();
         $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $startDate->toDateString())->startOfDay();
-        $pricing = $this->resolveConvertPricing($reservation, $startDate);
+        $pricing = $this->resolveConvertPricing($reservation, $validated['commitment_weeks'] ?? null);
 
-        $suggestedUnitRate = $pricing['suggested_unit_rate'];
+        $listRate = $pricing['base_rate'];
         $unitRate = array_key_exists('unit_rate', $validated) && $validated['unit_rate'] !== null
             ? round((float) $validated['unit_rate'], 2)
-            : $suggestedUnitRate;
+            : $listRate;
+
+        $currency = $reservation->price?->currency
+            ?? $reservation->offerOption?->unitClassRate?->price?->currency
+            ?? null;
+
+        $versionPlan = null;
+        if ($pricing['discount'] !== null) {
+            $versionPlan = AttachesDiscount::previewPlan(
+                $pricing['discount'],
+                BillingMath::round2((string) $unitRate),
+                (string) ($currency ?? 'EUR'),
+                (string) $billing->defaultBillingInterval,
+                (int) $billing->defaultBillingIntervalCount,
+                $moveIn->toDateString(),
+                $pricing['commitment_weeks'],
+            );
+        }
+        $periodAmount = $versionPlan?->firstAmount() ?? BillingMath::round2((string) $unitRate);
 
         $insuranceRate = null;
         if (! empty($validated['insurance_id'])) {
             $insuranceRate = round((float) ($validated['insurance_rate'] ?? 0), 2);
         }
-
-        $currency = $reservation->price?->currency
-            ?? $reservation->offerOption?->unitClassRate?->price?->currency
-            ?? null;
 
         $depositAmount = $validated['deposit_amount'] ?? $billing->defaultDepositAmount;
 
@@ -360,14 +379,14 @@ class ReservationController extends Controller
         $firstPeriod = $this->buildFirstPeriodPreview(
             $plan,
             $billing->prorationMethod,
-            (string) $unitRate,
+            $periodAmount,
             $unitTaxRate,
             $insuranceRate !== null ? (string) $insuranceRate : null,
             $insuranceTaxRate,
         );
 
         $rateOverridden = $pricing['discount'] !== null
-            && abs($unitRate - $suggestedUnitRate) > 0.001;
+            && abs($unitRate - $listRate) > 0.001;
 
         $invoicePreview = InvoiceIssuer::previewForContact(
             $reservation->contact,
@@ -383,6 +402,16 @@ class ReservationController extends Controller
                     'gross' => (string) $firstPeriod['total_gross'],
                 ])],
             ]);
+        }
+
+        $discountEndsAt = null;
+        if ($versionPlan !== null && ! $versionPlan->noop) {
+            foreach ($versionPlan->segments as $segment) {
+                if ($segment['to'] === null) {
+                    $discountEndsAt = count($versionPlan->segments) > 1 ? $segment['from'] : null;
+                    break;
+                }
+            }
         }
 
         return $this->success([
@@ -408,7 +437,7 @@ class ReservationController extends Controller
             'billing_anchor_model'   => $billing->billingAnchorModel,
             'currency'            => $currency,
             'base_rate'           => $this->formatMoney($pricing['base_rate']),
-            'suggested_unit_rate' => $this->formatMoney($suggestedUnitRate),
+            'suggested_unit_rate' => $this->formatMoney((float) $periodAmount),
             'unit_rate'           => $this->formatMoney($unitRate),
             'unit_tax_rate'       => $this->formatTaxRate($unitTaxRate),
             'insurance_id'        => $validated['insurance_id'] ?? null,
@@ -419,7 +448,9 @@ class ReservationController extends Controller
             'discount'            => $pricing['discount'] !== null
                 ? DiscountResource::make($pricing['discount'])->resolve()
                 : null,
-            'discount_ends_at'    => $pricing['discount_ends_at'],
+            'discount_ends_at'    => $discountEndsAt,
+            'discount_schedule'   => $versionPlan?->toArray(),
+            'commitment_weeks'    => $pricing['commitment_weeks'],
             'rate_overridden'     => $rateOverridden,
             'first_period'        => $firstPeriod,
             ...$invoicePreview,
@@ -447,6 +478,7 @@ class ReservationController extends Controller
             'insurance_rate'        => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
             'insurance_tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
             'deposit_amount'        => ['nullable', 'numeric', 'min:0'],
+            'commitment_weeks'      => ['nullable', 'integer', 'min:1'],
         ]);
 
         $signatureMode = $validated['signature_mode'] ?? 'immediate';
@@ -454,6 +486,7 @@ class ReservationController extends Controller
         $contract = DB::transaction(function () use ($reservation, $validated, $request, $signatureMode) {
             $reservation->load([
                 'unit.unitClass',
+                'deal',
                 'offerOption.discount',
                 'offerOption.unitClassRate.price',
             ]);
@@ -465,8 +498,9 @@ class ReservationController extends Controller
             $endedOn = isset($validated['end_date'])
                 ? CarbonImmutable::parse($validated['end_date'])->startOfDay()
                 : null;
-            $pricing = $this->resolveConvertPricing($reservation, $startDate);
-            $unitRate = round((float) $validated['unit_rate'], 2);
+            $pricing = $this->resolveConvertPricing($reservation, $validated['commitment_weeks'] ?? null);
+            // Confirmed list price — compiler materializes the schedule from this.
+            $listRate = round((float) $validated['unit_rate'], 2);
 
             $unitPrice = $reservation->price
                 ?? $reservation->offerOption?->unitClassRate?->price;
@@ -523,13 +557,13 @@ class ReservationController extends Controller
             $resolvedUnitPrice = ResolvesContractItemPrice::forSigning(
                 'unit',
                 $reservation->unit_id,
-                (string) $unitRate,
+                (string) $listRate,
                 $reservation->unit?->site_id,
                 $request->user()?->id,
                 $unitPrice,
             );
 
-            $unitItemData = [
+            $contractItems = collect([$contract->items()->create([
                 'item_type'         => 'unit',
                 'item_id'           => $reservation->unit_id,
                 'price_id'          => $resolvedUnitPrice->id,
@@ -538,15 +572,21 @@ class ReservationController extends Controller
                 'change_reason'     => null,
                 'tax_rate_id'       => $unitTaxRate?->id,
                 'tax_rate_snapshot' => $unitTaxRate?->rate,
-            ];
+            ])]);
+
+            $createdBy = $request->user()?->id;
 
             if ($pricing['discount'] !== null) {
-                $unitItemData['base_rate'] = $pricing['base_rate'];
-                $unitItemData['discount_id'] = $pricing['discount']->id;
-                $unitItemData['discount_ends_at'] = $pricing['discount_ends_at'];
+                AttachesDiscount::compileAndApply(
+                    $contract,
+                    $pricing['discount'],
+                    (string) $listRate,
+                    (string) $unitCurrency,
+                    $moveIn->toDateString(),
+                    $pricing['commitment_weeks'],
+                    $createdBy,
+                );
             }
-
-            $contractItems = collect([$contract->items()->create($unitItemData)]);
 
             if (! empty($validated['insurance_id'])) {
                 $insuranceTaxRate = $this->resolveContractItemTaxRate(
@@ -566,7 +606,7 @@ class ReservationController extends Controller
                     $request->user()?->id,
                 );
 
-                $contractItems->push($contract->items()->create([
+                $contract->items()->create([
                     'item_type'         => 'insurance',
                     'item_id'           => $validated['insurance_id'],
                     'price_id'          => $resolvedInsurancePrice->id,
@@ -575,10 +615,10 @@ class ReservationController extends Controller
                     'change_reason'     => null,
                     'tax_rate_id'       => $insuranceTaxRate?->id,
                     'tax_rate_snapshot' => $insuranceTaxRate?->rate,
-                ]));
+                ]);
             }
 
-            $contractItems->each->load('price');
+            $contractItems = $contract->items()->whereNull('effective_to')->with('price')->get();
             $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
             $contract->forceFill(['currency' => $agreedCurrency])->save();
 
@@ -586,7 +626,6 @@ class ReservationController extends Controller
             // same TX; half-open ranges allow occupancy to start on the release day.
             $this->releaseReservationHold($reservation);
 
-            $createdBy = $request->user()?->id;
             if ($remote) {
                 ContractSigning::writeSignatureHolds($contract, $contractItems, $createdBy);
             } else {
@@ -627,12 +666,12 @@ class ReservationController extends Controller
     /**
      * @return array{
      *     base_rate: float,
-     *     suggested_unit_rate: float,
      *     discount: Discount|null,
-     *     discount_ends_at: string|null
+     *     commitment_weeks: int|null,
+     *     version_plan: VersionPlan|null
      * }
      */
-    private function resolveConvertPricing(Reservation $reservation, Carbon $_startDate): array
+    private function resolveConvertPricing(Reservation $reservation, ?int $commitmentWeeksOverride = null): array
     {
         $offerOption = $reservation->offerOption;
         $discount = $offerOption?->discount;
@@ -642,16 +681,30 @@ class ReservationController extends Controller
             ? (float) $offerPrice->amount
             : (float) ($reservation->price?->amount ?? 0);
 
-        // Compat until DISC-01: percent reduces rate; free_time is a no-op here.
-        $suggestedUnitRate = $discount !== null && $baseRate > 0
-            ? $discount->applyTo($baseRate)
-            : $baseRate;
+        $commitmentWeeks = $commitmentWeeksOverride ?? CommitmentWeeks::fromDeal($reservation->deal);
+        $versionPlan = null;
+
+        if ($discount !== null && $baseRate > 0) {
+            $billing = Setting::billing();
+            $currency = (string) ($offerPrice?->currency
+                ?? $reservation->price?->currency
+                ?? 'EUR');
+            $versionPlan = AttachesDiscount::previewPlan(
+                $discount,
+                BillingMath::round2((string) $baseRate),
+                $currency,
+                (string) $billing->defaultBillingInterval,
+                (int) $billing->defaultBillingIntervalCount,
+                now()->toDateString(),
+                $commitmentWeeks,
+            );
+        }
 
         return [
-            'base_rate'           => round($baseRate, 2),
-            'suggested_unit_rate' => round($suggestedUnitRate, 2),
-            'discount'            => $discount,
-            'discount_ends_at'    => null,
+            'base_rate'         => round($baseRate, 2),
+            'discount'          => $discount,
+            'commitment_weeks'  => $commitmentWeeks,
+            'version_plan'      => $versionPlan,
         ];
     }
 

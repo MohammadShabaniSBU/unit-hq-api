@@ -22,8 +22,12 @@ final class ConsideredSignerCompiler
     /**
      * @return array<int, callable(DemoWorld): void>
      */
-    public static function compile(string $handle, DemoRng $rng, bool $withScheduledRate = false): array
-    {
+    public static function compile(
+        string $handle,
+        DemoRng $rng,
+        bool $withScheduledRate = false,
+        bool $withDiscount = false,
+    ): array {
         $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60);
         $viewDay = $enrol + $rng->int(3, 10);
         $reply1 = $viewDay + 1;
@@ -32,6 +36,7 @@ final class ConsideredSignerCompiler
         $remote = $rng->bool(0.45);
         $negotiator = $rng->bool(0.55);
         $library = new ContentLibrary($rng);
+        $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;
 
         $script = [
             $enrol => static function (DemoWorld $world) use ($handle, $rng): void {
@@ -65,7 +70,7 @@ final class ConsideredSignerCompiler
         }
 
         if ($remote) {
-            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay): void {
+            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
                 $deal = $world->get("{$handle}.deal");
                 $site = Site::query()->findOrFail((int) $deal->site_id);
                 $unit = CrowdSupport::vacantUnit($site, $rng);
@@ -75,6 +80,8 @@ final class ConsideredSignerCompiler
                     $unit,
                     CrowdSupport::dateOn($signDay),
                     mode: 'remote',
+                    discountId: $discountPick['discount_id'] ?? null,
+                    commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::sendEnvelope($world, $handle);
             };
@@ -92,7 +99,7 @@ final class ConsideredSignerCompiler
                 JourneySupport::markSteadyPayer($world, $handle);
             };
         } else {
-            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay): void {
+            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
                 $deal = $world->get("{$handle}.deal");
                 $site = Site::query()->findOrFail((int) $deal->site_id);
                 $unit = CrowdSupport::vacantUnit($site, $rng);
@@ -101,6 +108,8 @@ final class ConsideredSignerCompiler
                     $handle,
                     $unit,
                     CrowdSupport::dateOn($signDay),
+                    discountId: $discountPick['discount_id'] ?? null,
+                    commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::markSteadyPayer($world, $handle);
             };
@@ -118,7 +127,8 @@ final class ConsideredSignerCompiler
                 if ($item?->price === null) {
                     return;
                 }
-                $newAmount = bcadd((string) $item->price->amount, (string) $rng->int(8, 30), 2);
+                $list = (string) ($item->base_rate ?? $item->price->amount);
+                $newAmount = bcadd($list, (string) $rng->int(8, 30), 2);
                 JourneySupport::scheduleRateChange(
                     $world,
                     $handle,

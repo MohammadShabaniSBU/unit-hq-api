@@ -15,6 +15,7 @@ use App\Models\InvoiceLine;
 use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\Site;
+use App\Models\SystemEvent;
 use App\Models\Unit;
 use App\Support\Communications\SiteLocale;
 use App\Support\RecordsActivity;
@@ -59,6 +60,17 @@ final class InvoiceIssuer
 
         $kind = self::determineKind($contact);
         $grossTotal = self::sumGross($eligible);
+
+        if (bccomp($grossTotal, '0.00', 2) === 0
+            && ! (bool) config('fiscal.invoice_zero_periods', false)) {
+            SystemEvent::record('invoice.zero_period_skipped', $contract, [
+                'charge_ids' => $eligible->pluck('id')->values()->all(),
+                'gross_total' => $grossTotal,
+            ]);
+
+            return null;
+        }
+
         self::assertSimplifiedLimit($kind, $grossTotal);
 
         $series ??= self::defaultSeries($entity, $kind);

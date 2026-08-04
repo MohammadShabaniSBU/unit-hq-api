@@ -63,13 +63,19 @@ final class CrowdGenerator
                 $handle,
                 $this->rng,
                 withRateChange: $index < 17, // ~17 applied historical rate changes
+                withDiscount: $index < 10, // ~10 discounted quick signers (DISC-02)
             ),
             Archetype::ConsideredSigner => ConsideredSignerCompiler::compile(
                 $handle,
                 $this->rng,
                 withScheduledRate: $index < 3, // ~3 scheduled ahead of seed-end
+                withDiscount: $index < 2,
             ),
-            Archetype::SlowPayer => SlowPayerCompiler::compile($handle, $this->rng),
+            Archetype::SlowPayer => SlowPayerCompiler::compile(
+                $handle,
+                $this->rng,
+                withDiscount: $index < 3,
+            ),
             Archetype::SeriousDelinquent => SeriousDelinquentCompiler::compile(
                 $handle,
                 $this->rng,

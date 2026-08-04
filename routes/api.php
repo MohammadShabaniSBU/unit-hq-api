@@ -150,6 +150,7 @@ Route::apiResource('insurances', Facility\InsurancePlanController::class)->only(
 Route::get('discounts/options', [Controllers\DiscountController::class, 'options']);
 Route::get('discounts', [Controllers\DiscountController::class, 'index']);
 Route::post('discounts', [Controllers\DiscountController::class, 'store']);
+Route::get('discounts/{discount}/resolve', [Controllers\DiscountController::class, 'resolve']);
 Route::get('discounts/{discount}', [Controllers\DiscountController::class, 'show']);
 Route::patch('discounts/{discount}', [Controllers\DiscountController::class, 'update']);
 Route::post('discounts/{discount}/archive', [Controllers\DiscountController::class, 'archive']);
@@ -304,6 +305,7 @@ Route::post('contracts/{contract}/restore-access', [Controllers\ContractControll
 Route::post('contracts/{contract}/transfer-preview', [Controllers\ContractController::class, 'transferPreview']);
 Route::post('contracts/{contract}/transfer', [Controllers\ContractController::class, 'transfer']);
 Route::post('contracts/{contract}/rate-changes', [Controllers\ContractRateChangeController::class, 'store']);
+Route::delete('contracts/{contract}/discount', [Controllers\ContractController::class, 'destroyDiscount']);
 Route::post('contracts/{contract}/invoices', [Controllers\InvoiceController::class, 'storeForContract']);
 Route::post('contracts/{contract}/payments', [Controllers\PaymentController::class, 'store']);
 Route::get('contracts/{contract}/payment-requests', [Controllers\PaymentRequestController::class, 'index']);

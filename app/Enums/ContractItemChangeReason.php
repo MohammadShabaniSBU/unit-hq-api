@@ -9,4 +9,5 @@ enum ContractItemChangeReason: string
     case RateChange = 'rate_change';
     case Transfer = 'transfer';
     case Correction = 'correction';
+    case DiscountRemoved = 'discount_removed';
 }

@@ -7,14 +7,15 @@ namespace App\Support\Contracts;
 use App\Enums\ContractItemChangeReason;
 use App\Enums\ContractNoticeType;
 use App\Enums\ContractStatus;
+use App\Enums\DiscountKind;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\ContractNotice;
+use App\Models\Discount;
 use App\Models\Employee;
-use App\Models\Unit;
 use App\Support\Billing\BillingMath;
-use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Delinquency\DelinquencyState;
+use App\Support\Discounts\RecomputesDiscountedAmount;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -23,7 +24,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Minimal S02 rate-change store: supersede item version + write contract_notice.
- * Amend/cancel/mark-sent remain out of scope for S07-01.
+ * When the open version carries a discount, new_amount is the new list and the
+ * contract amount is recomputed (DISC-02).
  *
  * @return array{item: ContractItem, notice: ContractNotice, previous: ContractItem}
  */
@@ -101,43 +103,35 @@ final class ScheduleRateChange
                 ]);
             }
 
-            $amount = BillingMath::round2($newAmount);
-            $item->loadMissing(['price', 'item']);
-            $subject = $item->item;
-            $itemSiteId = $subject instanceof Unit
-                ? (int) $subject->site_id
-                : $site->id;
+            $item->loadMissing(['price', 'discount']);
+            $listAmount = BillingMath::round2($newAmount);
+            $currentAmount = BillingMath::round2((string) ($item->price?->amount ?? '0'));
 
-            $price = ResolvesContractItemPrice::forSigning(
-                (string) $item->item_type,
-                (int) $item->item_id,
+            /** @var Discount|null $discount */
+            $discount = $item->discount_id !== null ? $item->discount : null;
+
+            $recomputed = RecomputesDiscountedAmount::recompute(
+                $discount,
+                $listAmount,
+                $currentAmount,
+                $item->base_rate !== null ? (string) $item->base_rate : null,
+            );
+            $amount = $recomputed['amount'];
+            $baseRateOverride = $discount !== null ? $recomputed['list_amount'] : null;
+
+            $written = WritesContractItemVersion::supersede(
+                $item,
                 $amount,
-                $itemSiteId,
+                $effective->toDateString(),
+                $site->id,
                 $createdBy?->id,
-                $item->price,
+                ContractItemChangeReason::RateChange,
+                WritesContractItemVersion::PROVENANCE_CARRY,
+                $baseRateOverride,
             );
 
-            $item->forceFill([
-                'effective_to' => $effective->toDateString(),
-            ])->save();
-
-            $successor = ContractItem::query()->create([
-                'contract_id' => $contract->id,
-                'item_type' => $item->item_type,
-                'item_id' => $item->item_id,
-                'price_id' => $price->id,
-                'discount_id' => $item->discount_id,
-                'base_rate' => $item->base_rate,
-                'discount_ends_at' => $item->discount_ends_at,
-                'tax_rate_id' => $item->tax_rate_id,
-                'tax_rate_snapshot' => $item->tax_rate_snapshot,
-                'declared_goods_value' => $item->declared_goods_value,
-                'description' => $item->description,
-                'effective_from' => $effective->toDateString(),
-                'effective_to' => null,
-                'supersedes_id' => $item->id,
-                'change_reason' => ContractItemChangeReason::RateChange,
-            ]);
+            $successor = $written['item'];
+            $previous = $written['previous'];
 
             $notice = ContractNotice::query()->create([
                 'contract_id' => $contract->id,
@@ -149,19 +143,32 @@ final class ScheduleRateChange
                 'created_by' => $createdBy?->id,
             ]);
 
-            RecordsActivity::core('contract.rate_scheduled', $contract, [
+            $properties = [
                 'contract_item_id' => $successor->id,
-                'previous_item_id' => $item->id,
+                'previous_item_id' => $previous->id,
                 'effective_date' => $effective->toDateString(),
                 'new_amount' => $amount,
                 'notice_id' => $notice->id,
                 'short_notice' => $effective->lt($requiredBy),
-            ], causer: $createdBy);
+            ];
+
+            if ($discount !== null) {
+                $properties['list_amount'] = $recomputed['list_amount'];
+                $properties['contract_amount'] = $amount;
+                if ($recomputed['percent'] !== null
+                    && $discount->kind === DiscountKind::Percent
+                    && $discount->tracks_rate_changes
+                ) {
+                    $properties['percent'] = $recomputed['percent'];
+                }
+            }
+
+            RecordsActivity::core('contract.rate_scheduled', $contract, $properties, causer: $createdBy);
 
             return [
-                'item' => $successor->load('price'),
+                'item' => $successor,
                 'notice' => $notice,
-                'previous' => $item->fresh() ?? $item,
+                'previous' => $previous,
             ];
         });
     }

@@ -6,18 +6,20 @@ namespace Database\Seeders\Demo\Journeys;
 
 use App\Enums\ContractStatus;
 use App\Enums\DealStatus;
-use App\Enums\EsignEnvelopeStatus;
-use App\Models\EsignEnvelope;
+use App\Enums\DiscountKind;
+use App\Models\ContractItem;
+use App\Models\Discount;
+use App\Support\Billing\BillingMath;
 use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Amara Okafor — remote signer.
+ * Amara Okafor — long-stay free-time promo (DISC-02).
  *
- * Offer → awaiting envelope → viewed → signed via e-sign injector → active.
- * End state: active contract with signed PDF + certificate on file.
+ * Walk-in signed ~3 weeks before seed-end; still inside the €0 free window
+ * (rent-roll visible). Remote-signer coverage remains on Jean-Luc / Sofía.
  */
 final class AmaraOkafor extends Journey
 {
@@ -29,35 +31,32 @@ final class AmaraOkafor extends Journey
     public static function script(): array
     {
         $end = self::endOffset();
-        $startDay = $end - 40;
-        $viewDay = $end - 38;
-        $signDay = $end - 36;
+        $signDay = $end - 21;
 
         return [
-            $startDay => static function (DemoWorld $world) use ($startDay): void {
+            $signDay => static function (DemoWorld $world) use ($signDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'amara', 'Amara', 'Okafor', [
                     'email' => 'amara.okafor@demo.unit-hq.test',
                 ]);
-                JourneySupport::openDeal($world, 'amara', $site, DealStatus::OfferSent);
-                JourneySupport::createOffer($world, 'amara', $site, 'SS5', 'sent');
-
+                JourneySupport::openDeal($world, 'amara', $site, DealStatus::Qualified);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');
                 $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
+                    ->addDays($signDay)
                     ->toDateString();
-                JourneySupport::walkInSign($world, 'amara', $unit, $date, mode: 'remote');
-                JourneySupport::sendEnvelope($world, 'amara');
-            },
-            $viewDay => static function (DemoWorld $world): void {
-                /** @var EsignEnvelope $envelope */
-                $envelope = $world->get('amara.envelope');
-                $world->esign()->viewed($envelope->fresh() ?? $envelope);
-            },
-            $signDay => static function (DemoWorld $world): void {
-                /** @var EsignEnvelope $envelope */
-                $envelope = $world->get('amara.envelope');
-                $world->esign()->signed($envelope->fresh() ?? $envelope);
+                $discountId = Discount::query()
+                    ->where('kind', DiscountKind::FreeTime)
+                    ->where('name', 'Long-stay promo')
+                    ->value('id');
+                // 12w commitment → 6 free weeks → at least one full €0 period on monthly cadence.
+                JourneySupport::walkInSign(
+                    $world,
+                    'amara',
+                    $unit,
+                    $date,
+                    discountId: $discountId !== null ? (int) $discountId : null,
+                    commitmentWeeks: 12,
+                );
                 JourneySupport::markSteadyPayer($world, 'amara');
             },
         ];
@@ -69,16 +68,18 @@ final class AmaraOkafor extends Journey
         Assert::assertContains(
             $contract->status,
             [ContractStatus::Active, ContractStatus::Pending],
-            'Amara should be pending or active after remote sign',
+            'Amara should be pending or active',
         );
 
-        $envelope = EsignEnvelope::query()
-            ->where('contract_id', $contract->id)
-            ->latest('id')
-            ->first();
-        Assert::assertNotNull($envelope);
-        Assert::assertSame(EsignEnvelopeStatus::Signed, $envelope->status);
-        Assert::assertNotNull($envelope->signed_pdf_path);
+        $onSeedEnd = $contract->itemsOn(CarbonImmutable::parse(CastExecutor::SIM_END))
+            ->first(fn (ContractItem $i): bool => $i->item_type === 'unit');
+        Assert::assertNotNull($onSeedEnd, 'Amara should have a unit version on seed-end');
+        Assert::assertNotNull($onSeedEnd->discount_id, 'Amara should carry long-stay discount provenance');
+        Assert::assertSame(
+            '0.00',
+            BillingMath::round2((string) $onSeedEnd->price?->amount),
+            'Amara should still be inside the free (€0) window at seed-end',
+        );
     }
 
     private static function endOffset(): int

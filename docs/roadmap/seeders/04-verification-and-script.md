@@ -23,7 +23,9 @@ product* gets an existence assertion — contracts (all 7 statuses), offers, dea
 delinquency buckets (each of the 5 non-empty), holds (all types incl. 1+ live
 overlock), envelope states, grant states, message statuses, triage/suppression
 counts. A status with zero rows is a demo page with an empty tab — the S01 seeder
-philosophy at world scale.
+philosophy at world scale. DISC-02 also asserts ≥15 discounted contracts with both
+`percent` and `free_time` provenance present (Nadia / Amara end-states cover the
+cast stories).
 
 **Invariant sweeps (reused patterns, new scope):** no overlapping occupancies or
 blocking holds anywhere; every non-awaiting contract has its occupancy; ageing's

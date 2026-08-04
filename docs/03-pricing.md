@@ -97,8 +97,26 @@ for provenance. Settings → Facility → Discounts. Decisions: **D-DISC** in
   billing cadence length; misaligned tiers save with `alignment_warnings`.
 - **Compile-at-signing (DISC-01):** a picked discount materializes as contract-
   scoped `contract_items` price versions (+ `discount_id` provenance). Billing
-  never branches on discount presence. Catalogue CRUD is DISC-00; compiler /
-  surfaces follow in the sprint.
+  never branches on discount presence. `convert-preview` returns the same
+  compiled `discount_schedule` the convert path writes.
+- **Lifecycle (DISC-02):**
+  - Rate change: API `new_amount` is the **new list**. Tracking percent recomputes
+    `round2(list × (1−p))`; non-tracking writes plain list; free-time open tip uses
+    `new_list × (amount/base_rate)` (the multiplier is the promise). Pre-written free
+    windows are left alone. Provenance (`discount_id`, `base_rate`) carries forward.
+  - Removal: `DELETE /api/contracts/{id}/discount` with required `reason` → list price
+    from the **next period boundary**; future free segments collapse; linkage closed via
+    `discount_removed_at/by/reason`; Tier-3 `contract.discount_removed`.
+  - Transfer `retain_rate` keeps the discounted price; `destination_rate` closes
+    provenance with reason `transfer` (new unit = new deal).
+- **Surfaces (DISC-03):**
+  - `GET /api/discounts/{id}/resolve` — tier resolution + `promo_line` + optional
+    `discount_schedule` for the offer-option and walk-in pickers (honest
+    `no_stay_length` warning when free-time has no commitment).
+  - Public token offer (`GET /api/offers/token/{token}`) eager-loads discount and
+    returns localized `promo_line` / `discount_resolution` per option (contact locale).
+  - Panel: offer option + walk-in discount select; convert-preview schedule rows;
+    contract billing card chip / computed schedule / remove modal. i18n `discounts.*`.
 - Seeded menu: **10% off**, **20% off**, and **Long-stay promo**
   (`4→2`, `8→4`, `12→6` weeks).
 

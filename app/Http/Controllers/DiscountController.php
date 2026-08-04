@@ -6,9 +6,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\DiscountKind;
 use App\Http\Resources\DiscountResource;
+use App\Models\Deal;
 use App\Models\Discount;
+use App\Support\Discounts\DiscountSurface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -49,6 +52,47 @@ class DiscountController extends Controller
             ]);
 
         return $this->success($options, 'Discount options retrieved successfully.');
+    }
+
+    public function resolve(Request $request, Discount $discount): JsonResponse
+    {
+        $validated = $request->validate([
+            'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
+            'commitment_weeks' => ['nullable', 'integer', 'min:1'],
+            'list_amount' => ['nullable', 'numeric', 'min:0'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'locale' => ['nullable', 'string', 'max:16'],
+            'anchor_date' => ['nullable', 'date'],
+        ]);
+
+        $deal = isset($validated['deal_id'])
+            ? Deal::query()->find($validated['deal_id'])
+            : null;
+
+        $locale = DiscountSurface::normalizeLocale(
+            $validated['locale'] ?? $request->getPreferredLanguage(['en', 'es', 'fr'])
+        );
+        App::setLocale($locale);
+
+        $listAmount = isset($validated['list_amount'])
+            ? number_format((float) $validated['list_amount'], 2, '.', '')
+            : null;
+
+        $payload = DiscountSurface::resolve(
+            discount: $discount,
+            deal: $deal,
+            commitmentWeeks: isset($validated['commitment_weeks'])
+                ? (int) $validated['commitment_weeks']
+                : null,
+            listAmount: $listAmount,
+            currency: isset($validated['currency'])
+                ? strtoupper($validated['currency'])
+                : null,
+            locale: $locale,
+            anchorDate: $validated['anchor_date'] ?? null,
+        );
+
+        return $this->success($payload, 'Discount resolution retrieved successfully.');
     }
 
     public function show(Discount $discount): JsonResponse

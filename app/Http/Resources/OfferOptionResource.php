@@ -2,13 +2,51 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Deal;
+use App\Support\Discounts\DiscountSurface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 
 class OfferOptionResource extends BaseResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        $discountPayload = null;
+        $resolution = null;
+        $promoLine = null;
+
+        if ($this->relationLoaded('discount') && $this->discount !== null) {
+            $discount = $this->discount;
+            $discountPayload = [
+                'id' => $discount->id,
+                'name' => $discount->name,
+                'kind' => $discount->kind instanceof \BackedEnum
+                    ? $discount->kind->value
+                    : $discount->kind,
+                'params' => $discount->params ?? [],
+                'tracks_rate_changes' => (bool) $discount->tracks_rate_changes,
+            ];
+
+            $this->loadMissing('offer.deal', 'unitClassRate.price');
+
+            /** @var Deal|null $deal */
+            $deal = $this->offer?->deal;
+            $price = $this->unitClassRate?->price;
+            $listAmount = $price?->amount !== null
+                ? (string) $price->amount
+                : null;
+
+            $resolution = DiscountSurface::resolve(
+                discount: $discount,
+                deal: $deal,
+                listAmount: $listAmount,
+                currency: $price?->currency !== null ? (string) $price->currency : null,
+                locale: App::getLocale(),
+            );
+            $promoLine = $resolution['promo_line'];
+        }
+
         return [
             'id'                 => $this->id,
             'offer_id'           => $this->offer_id,
@@ -23,14 +61,9 @@ class OfferOptionResource extends BaseResource
             'updated_at'         => $this->datetime($this->updated_at),
             'unit_class_rate'    => UnitClassRateResource::make($this->whenLoaded('unitClassRate')),
             'unit'               => UnitResource::make($this->whenLoaded('unit')),
-            'discount'           => $this->whenLoaded('discount', fn () => [
-                'id' => $this->discount->id,
-                'name' => $this->discount->name,
-                'kind' => $this->discount->kind instanceof \BackedEnum
-                    ? $this->discount->kind->value
-                    : $this->discount->kind,
-                'params' => $this->discount->params ?? [],
-            ]),
+            'discount'           => $discountPayload,
+            'discount_resolution' => $resolution,
+            'promo_line'         => $promoLine,
         ];
     }
 }

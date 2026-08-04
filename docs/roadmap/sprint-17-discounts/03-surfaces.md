@@ -52,12 +52,12 @@ semanas gratis*, *Compromiso de estancia*. Operator-review — promo language se
 
 ## Acceptance criteria
 
-- [ ] Both granting moments attach with the tier shown pre-commit; the no-stay
+- [x] Both granting moments attach with the tier shown pre-commit; the no-stay
       warning honest; option card + public page render the promo per locale.
-- [ ] Preview schedule = billed reality on the seeded personas (fixture reuse).
-- [ ] Contract card schedule + chip + removal flow end-to-end with the modal copy.
-- [ ] Provenance/history visible; activity entries translated.
-- [ ] `lint`+`typecheck`; `en/es/fr`; es reviewed; docs (`03-pricing.md` cross-link,
+- [x] Preview schedule = billed reality on the seeded personas (fixture reuse).
+- [x] Contract card schedule + chip + removal flow end-to-end with the modal copy.
+- [x] Provenance/history visible; activity entries translated.
+- [x] `lint`+`typecheck`; `en/es/fr`; es reviewed; docs (`03-pricing.md` cross-link,
       panel map) updated.
 
 ## Tests required

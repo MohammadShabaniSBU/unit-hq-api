@@ -44,8 +44,8 @@ final class DemoScript
         ],
         'amara' => [
             'name' => 'Amara Okafor',
-            'story' => 'Remote signer: offer → viewed → signed → active; PDF + certificate on file',
-            'path' => 'Contacts → Amara Okafor → contract documents / signed envelope',
+            'story' => 'Long-stay free weeks: walk-in ~3w before seed-end, still in €0 window on rent roll',
+            'path' => 'Contacts → Amara Okafor → contract / rent roll',
         ],
         'jean_luc' => [
             'name' => 'Jean-Luc Perrin',
@@ -104,7 +104,7 @@ final class DemoScript
         ],
         'nadia' => [
             'name' => 'Nadia Rahal',
-            'story' => 'One applied rate change + one scheduled ~2 months out',
+            'story' => '20% tracking discount across an applied rate change + one scheduled ~2 months out',
             'path' => 'Contacts → Nadia → rate-change / notices',
         ],
         'kellys' => [

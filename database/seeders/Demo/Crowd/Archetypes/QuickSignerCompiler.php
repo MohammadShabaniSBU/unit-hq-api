@@ -19,10 +19,15 @@ final class QuickSignerCompiler
     /**
      * @return array<int, callable(DemoWorld): void>
      */
-    public static function compile(string $handle, DemoRng $rng, bool $withRateChange = false): array
-    {
+    public static function compile(
+        string $handle,
+        DemoRng $rng,
+        bool $withRateChange = false,
+        bool $withDiscount = false,
+    ): array {
         $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60);
         $signDay = $enrol + $rng->int(1, 5);
+        $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;
 
         $script = [
             $enrol => static function (DemoWorld $world) use ($handle, $rng): void {
@@ -37,7 +42,7 @@ final class QuickSignerCompiler
                     'sent',
                 );
             },
-            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay): void {
+            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
                 $deal = $world->get("{$handle}.deal");
                 $site = Site::query()->findOrFail((int) $deal->site_id);
                 $unit = CrowdSupport::vacantUnit($site, $rng);
@@ -46,6 +51,8 @@ final class QuickSignerCompiler
                     $handle,
                     $unit,
                     CrowdSupport::dateOn($signDay),
+                    discountId: $discountPick['discount_id'] ?? null,
+                    commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::markSteadyPayer($world, $handle);
             },
@@ -56,13 +63,13 @@ final class QuickSignerCompiler
             if ($changeDay < CrowdSupport::simSpanDays() - 7) {
                 $script[$changeDay] = static function (DemoWorld $world) use ($handle, $rng, $changeDay): void {
                     $contract = JourneySupport::contract($world, $handle);
-                    $item = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->first();
+                    $item = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->with('price')->first();
                     if ($item === null || $item->price === null) {
                         return;
                     }
-                    $current = (string) $item->price->amount;
+                    $list = (string) ($item->base_rate ?? $item->price->amount);
                     $bump = $rng->int(5, 25);
-                    $newAmount = bcadd($current, (string) $bump, 2);
+                    $newAmount = bcadd($list, (string) $bump, 2);
                     JourneySupport::scheduleRateChange(
                         $world,
                         $handle,

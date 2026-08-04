@@ -36,6 +36,13 @@ Tier-1 (system_events): `billing.contract.failed` — per-contract failure insid
 - Tier 1: `domain.action.phase` — e.g. `offer.accept.started`, `offer.accept.committed`
 - Tier 2/3 `description`: machine key — e.g. `deal.stage_changed`, `contract.signed`. Panel translates via i18n. Money in properties as strings.
 
+### Contract discount / rate-change (Tier-3)
+
+| Event | Subject | Properties (money as strings) |
+|---|---|---|
+| `contract.rate_scheduled` | Contract | `new_amount`, `effective_date`, …; when discounted also `list_amount`, `contract_amount`, optional `percent` |
+| `contract.discount_removed` | Contract | `list_amount`, `previous_amount`, `effective_date` (next boundary), `reason`, `discount_id` |
+
 ### Custom attributes & object customization (Tier-2)
 
 | Event | Channel | Subject | Notes |

@@ -58,17 +58,19 @@ final class ContractSigning
             'unitItem.item.site.legalEntity',
         ]);
 
-        /** @var Collection<int, ContractItem> $contractItems */
-        $contractItems = $contract->items()->whereNull('effective_to')->with('price')->get();
-        if ($contractItems->isEmpty()) {
-            $contractItems = $contract->items->whereNull('effective_to')->values();
-        }
-
-        CurrencyGuard::assertItemsAgree($contractItems);
-
         $moveIn = CarbonImmutable::parse(
             (string) ($contract->move_in_date ?? $contract->start_date)
         )->startOfDay();
+
+        // Charge / occupy from versions effective on move-in — not merely the
+        // open-ended tip. Discount compile schedules close early segments.
+        /** @var Collection<int, ContractItem> $contractItems */
+        $contractItems = $contract->itemsOn($moveIn);
+        if ($contractItems->isEmpty()) {
+            $contractItems = $contract->items()->whereNull('effective_to')->with('price')->get();
+        }
+
+        CurrencyGuard::assertItemsAgree($contractItems);
 
         $from = $contract->status instanceof ContractStatus
             ? $contract->status

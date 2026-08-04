@@ -135,6 +135,9 @@ class ContractResource extends BaseResource
             'discount_id'           => $contractItem->discount_id,
             'base_rate'             => $contractItem->base_rate,
             'discount_ends_at'      => $this->date($contractItem->discount_ends_at),
+            'discount_removed_at'   => $contractItem->discount_removed_at?->toIso8601String(),
+            'discount_removed_by'   => $contractItem->discount_removed_by,
+            'discount_removed_reason' => $contractItem->discount_removed_reason,
             'tax_rate_id'           => $contractItem->tax_rate_id,
             'tax_rate_snapshot'     => $contractItem->tax_rate_snapshot,
             'declared_goods_value'  => $contractItem->declared_goods_value,
@@ -164,6 +167,7 @@ class ContractResource extends BaseResource
                     ? $discount->kind->value
                     : $discount->kind,
                 'params' => $discount->params ?? [],
+                'tracks_rate_changes' => (bool) $discount->tracks_rate_changes,
             ] : null;
         }
 

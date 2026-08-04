@@ -54,6 +54,7 @@ Deterministic RNG throughout (the house rule); `DEMO_SEED` env overrides for var
 | Offers | draft / sent / viewed / accepted / expired all present; ~2 declined-ish paths |
 | Contracts | ~180 active · 8 notice · 5 pending · 6 awaiting-signature (1 declined, 1 expiring ≤3d, 1 viewed) · ~60 ended (mix vacated/non-payment) · 5 cancelled |
 | Transfers | ~12 historical (up/down/same mix) · rate changes ~20 applied + 3 scheduled |
+| Discounts | ≥15 contracts with provenance (percent + free_time); Nadia 20% veteran; Amara in €0 free window |
 | Delinquency | open cases in every bucket 1-7…60+; ~6 overlocked; 3 suspended; 2 paused; promise-flags present; cured history |
 | Messages | 450–600 across email/SMS/WhatsApp/call; ≥40 threads with inbound; triage 4; suppressed 3 |
 | Payments | all three rails represented; reversals; failed autopay; pending payment links |

@@ -94,6 +94,27 @@ trait TransfersContracts
                 'ended_reason' => ContractEndedReason::TransferredOut->value,
             ])->save();
 
+            $retainDiscount = $mode === TransferPricingMode::RetainRate
+                && $originItem->discount_id !== null
+                && $originItem->discount_removed_at === null;
+
+            if (! $retainDiscount
+                && $originItem->discount_id !== null
+                && $originItem->discount_removed_at === null
+            ) {
+                ContractItem::query()
+                    ->where('contract_id', $contract->id)
+                    ->where('item_type', 'unit')
+                    ->whereNotNull('discount_id')
+                    ->whereNull('discount_removed_at')
+                    ->update([
+                        'discount_removed_at' => now(),
+                        'discount_removed_by' => auth()->id(),
+                        'discount_removed_reason' => 'transfer',
+                    ]);
+                $originItem->refresh();
+            }
+
             $originItem->forceFill([
                 'effective_to' => $transferDate->toDateString(),
             ])->save();
@@ -103,9 +124,9 @@ trait TransfersContracts
                 'item_type' => 'unit',
                 'item_id' => $destination->id,
                 'price_id' => $plan['destination_item']['price_id'],
-                'discount_id' => $originItem->discount_id,
-                'base_rate' => $originItem->base_rate,
-                'discount_ends_at' => $originItem->discount_ends_at,
+                'discount_id' => $retainDiscount ? $originItem->discount_id : null,
+                'base_rate' => $retainDiscount ? $originItem->base_rate : null,
+                'discount_ends_at' => $retainDiscount ? $originItem->discount_ends_at : null,
                 'tax_rate_id' => $plan['destination_item']['tax_rate_id'],
                 'tax_rate_snapshot' => $plan['destination_item']['tax_rate_snapshot'],
                 'declared_goods_value' => $originItem->declared_goods_value,

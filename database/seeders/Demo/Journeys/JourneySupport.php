@@ -43,6 +43,7 @@ use App\Models\Deal;
 use App\Models\Delinquency;
 use App\Models\DepositSettlement;
 use App\Models\DepositSettlementLine;
+use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\EsignEnvelope;
 use App\Models\Message;
@@ -68,6 +69,7 @@ use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\TransferSettlement;
 use App\Support\Billing\VacateSettlement;
+use App\Support\Discounts\AttachesDiscount;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Exceptions\SendRefused;
 use App\Support\Communications\Messages\EmailAddress;
@@ -254,6 +256,8 @@ final class JourneySupport
         ?string $amount = null,
         ?float $deposit = null,
         string $mode = 'immediate',
+        ?int $discountId = null,
+        ?int $commitmentWeeks = null,
     ): Contract {
         $contact = $world->contact("{$handle}.contact");
         $deal = $world->has("{$handle}.deal") ? $world->get("{$handle}.deal") : null;
@@ -286,6 +290,8 @@ final class JourneySupport
             $remote,
             $status,
             $site,
+            $discountId,
+            $commitmentWeeks,
         ): Contract {
             $contract = Contract::query()->create([
                 'contact_id' => $contact->id,
@@ -331,11 +337,28 @@ final class JourneySupport
             ]);
             $item->load('price');
 
+            if ($discountId !== null) {
+                /** @var Discount $discount */
+                $discount = Discount::query()->findOrFail($discountId);
+                AttachesDiscount::compileAndApply(
+                    $contract,
+                    $discount,
+                    BillingMath::round2($amount),
+                    (string) $item->price->currency,
+                    $moveIn->toDateString(),
+                    $commitmentWeeks,
+                    $createdBy !== null ? (int) $createdBy : null,
+                );
+                $item = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->with('price')->firstOrFail();
+            }
+
             $agreed = CurrencyGuard::assertItemsAgree(collect([$item]));
             $contract->forceFill(['currency' => $agreed])->save();
 
+            $items = $contract->items()->whereNull('effective_to')->with('price')->get();
+
             if ($remote) {
-                ContractSigning::writeSignatureHolds($contract, collect([$item]), $createdBy !== null ? (int) $createdBy : null);
+                ContractSigning::writeSignatureHolds($contract, $items, $createdBy !== null ? (int) $createdBy : null);
             } else {
                 ContractSigning::complete(
                     $contract,
@@ -718,6 +741,27 @@ final class JourneySupport
                 'ended_reason' => ContractEndedReason::TransferredOut->value,
             ])->save();
 
+            $retainDiscount = $mode === TransferPricingMode::RetainRate
+                && $originItem->discount_id !== null
+                && $originItem->discount_removed_at === null;
+
+            if (! $retainDiscount
+                && $originItem->discount_id !== null
+                && $originItem->discount_removed_at === null
+            ) {
+                ContractItem::query()
+                    ->where('contract_id', $contract->id)
+                    ->where('item_type', 'unit')
+                    ->whereNotNull('discount_id')
+                    ->whereNull('discount_removed_at')
+                    ->update([
+                        'discount_removed_at' => now(),
+                        'discount_removed_by' => Employee::query()->value('id'),
+                        'discount_removed_reason' => 'transfer',
+                    ]);
+                $originItem->refresh();
+            }
+
             $originItem->forceFill(['effective_to' => $date->toDateString()])->save();
 
             $newItem = ContractItem::query()->create([
@@ -725,9 +769,9 @@ final class JourneySupport
                 'item_type' => 'unit',
                 'item_id' => $destination->id,
                 'price_id' => $plan['destination_item']['price_id'],
-                'discount_id' => $originItem->discount_id,
-                'base_rate' => $originItem->base_rate,
-                'discount_ends_at' => $originItem->discount_ends_at,
+                'discount_id' => $retainDiscount ? $originItem->discount_id : null,
+                'base_rate' => $retainDiscount ? $originItem->base_rate : null,
+                'discount_ends_at' => $retainDiscount ? $originItem->discount_ends_at : null,
                 'tax_rate_id' => $plan['destination_item']['tax_rate_id'],
                 'tax_rate_snapshot' => $plan['destination_item']['tax_rate_snapshot'],
                 'declared_goods_value' => $originItem->declared_goods_value,

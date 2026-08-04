@@ -13,14 +13,18 @@ use App\Http\Controllers\Concerns\VacatesContracts;
 use App\Http\Resources\ContractResource;
 use App\Models\AccessSuspension;
 use App\Models\Contract;
+use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
+use App\Support\Billing\BillingMath;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Contracts\ContractSigning;
+use App\Support\Discounts\AttachesDiscount;
+use App\Support\Discounts\RemovesDiscount;
 use App\Support\Filtering\FilterBuilder;
 use App\Support\Filtering\FilterTreeValidator;
 use App\Support\Time\SiteClock;
@@ -32,6 +36,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ContractController extends Controller
 {
@@ -187,16 +192,18 @@ class ContractController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'contact_id'     => ['required', 'integer', 'exists:contacts,id'],
-            'reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
-            'deal_id'        => ['nullable', 'integer', 'exists:deals,id'],
-            'start_date'     => ['required', 'date'],
-            'end_date'       => ['nullable', 'date', 'after:start_date'],
-            'move_in_date'   => ['nullable', 'date'],
-            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
-            'signed_at'      => ['nullable', 'date'],
-            'signature_mode' => ['nullable', Rule::in(['immediate', 'remote'])],
-            'items'          => ['required', 'array', 'min:1'],
+            'contact_id'         => ['required', 'integer', 'exists:contacts,id'],
+            'reservation_id'     => ['nullable', 'integer', 'exists:reservations,id'],
+            'deal_id'            => ['nullable', 'integer', 'exists:deals,id'],
+            'start_date'         => ['required', 'date'],
+            'end_date'           => ['nullable', 'date', 'after:start_date'],
+            'move_in_date'       => ['nullable', 'date'],
+            'deposit_amount'     => ['nullable', 'numeric', 'min:0'],
+            'signed_at'          => ['nullable', 'date'],
+            'signature_mode'     => ['nullable', Rule::in(['immediate', 'remote'])],
+            'discount_id'        => ['nullable', 'integer', 'exists:discounts,id'],
+            'commitment_weeks'   => ['nullable', 'integer', 'min:1'],
+            'items'              => ['required', 'array', 'min:1'],
             'items.*.item_type'             => ['required', 'string', Rule::in(['unit', 'insurance'])],
             'items.*.item_id'               => ['required', 'integer'],
             'items.*.amount'                => ['required', 'numeric', 'min:0'],
@@ -301,6 +308,33 @@ class ContractController extends Controller
 
             $contractItems->each->load('price');
 
+            if (! empty($validated['discount_id'])) {
+                $unitCount = $contractItems->where('item_type', 'unit')->count();
+                if ($unitCount !== 1) {
+                    throw ValidationException::withMessages([
+                        'discount_id' => ['A unit item is required to attach a discount.'],
+                    ]);
+                }
+
+                $unitItemPayload = collect($validated['items'])->firstWhere('item_type', 'unit');
+                /** @var Discount $discount */
+                $discount = Discount::query()->findOrFail($validated['discount_id']);
+                $unitItem = $contractItems->firstWhere('item_type', 'unit');
+                $listAmount = BillingMath::round2((string) ($unitItemPayload['amount'] ?? $unitItem->price->amount));
+
+                AttachesDiscount::compileAndApply(
+                    $contract,
+                    $discount,
+                    $listAmount,
+                    (string) $unitItem->price->currency,
+                    $moveIn->toDateString(),
+                    isset($validated['commitment_weeks']) ? (int) $validated['commitment_weeks'] : null,
+                    $createdBy,
+                );
+
+                $contractItems = $contract->items()->whereNull('effective_to')->with('price')->get();
+            }
+
             $agreedCurrency = CurrencyGuard::assertItemsAgree($contractItems);
             $contract->forceFill(['currency' => $agreedCurrency])->save();
 
@@ -337,6 +371,37 @@ class ContractController extends Controller
             ContractResource::make($contract),
             'Contract cancelled successfully.'
         );
+    }
+
+    public function destroyDiscount(Request $request, Contract $contract): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $user = $request->user();
+        $employee = $user instanceof Employee ? $user : null;
+
+        $result = RemovesDiscount::run(
+            $contract,
+            (string) $validated['reason'],
+            $employee,
+        );
+
+        $contract->refresh();
+        $this->loadDetailRelations($contract);
+
+        return $this->success([
+            'contract' => ContractResource::make($contract),
+            'item' => [
+                'id' => $result['item']->id,
+                'amount' => $result['item']->price?->amount,
+                'effective_from' => $result['item']->effective_from?->toDateString(),
+                'change_reason' => $result['item']->change_reason?->value,
+            ],
+            'previous_item_id' => $result['previous']->id,
+            'boundary' => $result['boundary'],
+        ], 'Discount removed successfully.');
     }
 
     public function show(Request $request, Contract $contract): JsonResponse

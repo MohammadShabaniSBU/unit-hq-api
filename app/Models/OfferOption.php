@@ -68,6 +68,7 @@ class OfferOption extends Model
             'unitClassRate.site',
             'unitClassRate.price',
             'unit',
+            'discount',
         ];
     }
 

@@ -9,8 +9,10 @@ use App\Http\Resources\OfferResource;
 use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Unit;
+use App\Support\Discounts\DiscountSurface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -126,6 +128,11 @@ class OfferController extends Controller
             ]);
         }
 
+        $locale = DiscountSurface::normalizeLocale($offer->contact?->locale);
+        App::setLocale($locale);
+
+        $offer->options->each(fn (OfferOption $option) => $option->setRelation('offer', $offer));
+
         return $this->success(
             OfferResource::make($offer),
             'Offer retrieved successfully.'
@@ -134,13 +141,16 @@ class OfferController extends Controller
 
     public function show(Offer $offer): JsonResponse
     {
+        $offer->load([
+            'deal',
+            'contact',
+            'notes',
+            'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+        ]);
+        $offer->options->each(fn (OfferOption $option) => $option->setRelation('offer', $offer));
+
         return $this->success(
-            OfferResource::make($offer->load([
-                'deal',
-                'contact',
-                'notes',
-                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
-            ])),
+            OfferResource::make($offer),
             'Offer retrieved successfully.'
         );
     }

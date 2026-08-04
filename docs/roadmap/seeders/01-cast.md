@@ -29,7 +29,7 @@ state — the matrix rows below are assertions in 04.
 | **Marcus Webb** | The mockup conversation: 8 m² tenant, 14 months, asks bigger → transfer +€40 | Active, transferred, SMS thread with the size question |
 | Lucía Ferrer | Full delinquency ladder: fee d5, notice d8, suspension d8, overlock d12, **denied door event**, still owing | Open case 15-30 bucket, overlocked, timeline complete |
 | Tom Bradley | Promise-keeper: called (wrap-up `payment_promised`), paid day 4 | Cured history; feeds promise-kept rate |
-| Amara Okafor | Remote signer: offer → awaiting → viewed → signed via e-sign → active | Active; signed PDF + certificate on file |
+| Amara Okafor | Long-stay free-time walk-in (signed ~3w before seed-end) | Active; still in €0 window on rent roll |
 | Jean-Luc Perrin | Awaiting-declined: envelope declined with reason | Awaiting, declined attention chip |
 | Sofía Marín | Awaiting-expiring: sent 12 days ago, 14-day expiry | The amber ≤3d row |
 | Derek Hoyle | Non-payment vacate: 60+ bucket → write-off → ended | The involuntary line + write-off cure |
@@ -41,7 +41,7 @@ state — the matrix rows below are assertions in 04.
 | Grace Lin | Deal in negotiation, offer viewed not accepted, lead-chase step 3 of 4 | Open funnel mid-stage + live enrolment |
 | Bea Torres | Suppression story: hard bounce → suppressed email, SMS fallback thread | Suppressed badge, sequence skipped-with-reason |
 | Viktor Palenik | Cancelled contract (never moved in) + lost deal | The cancelled + lost rows |
-| Nadia Rahal | Scheduled rate change 2 months out + one applied historically | Rate-change surfaces |
+| Nadia Rahal | 20% tracking discount; applied rate change + one scheduled 2 months out | Rate-change recompute visible in history |
 | The Kellys | Two units, one contact; one unit vacated last month with deposit deduction | Multi-contract panel + settlement with deduction |
 | Front-desk misc | Voicemail persona, triage stranger ×2, wrong-number call | Triage queue + call textures |
 

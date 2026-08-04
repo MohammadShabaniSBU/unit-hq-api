@@ -41,14 +41,14 @@ never hears the word.
 
 ## Exit criteria
 
-- [ ] Both client schemes end-to-end: a 20%-menu contract bills 80% of list forever
+- [x] Both client schemes end-to-end: a 20%-menu contract bills 80% of list forever
       and survives a rate change at 80% of the *new* list; a 2-month free-time
       signing bills €0, €0(? per cadence), then list — previews, ledger, invoices
       (skipping €0), rent roll, and economic occupancy all consistent by
       construction.
-- [ ] The public offer page says "First 4 weeks free" where earned; the operator saw
+- [x] The public offer page says "First 4 weeks free" where earned; the operator saw
       the resolved tier before sending.
-- [ ] Remove button versions back to list next boundary, audited with reason.
+- [x] Remove button versions back to list next boundary, audited with reason.
 - [ ] Grep: zero discount references outside catalogue/compiler/surfaces.
 
 ## Task order

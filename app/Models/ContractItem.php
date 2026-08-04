@@ -30,6 +30,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null                         $discount_id
  * @property string|null                      $base_rate
  * @property Carbon|null                      $discount_ends_at
+ * @property Carbon|null                      $discount_removed_at
+ * @property int|null                         $discount_removed_by
+ * @property string|null                      $discount_removed_reason
  * @property int|null                         $tax_rate_id
  * @property string|null                      $tax_rate_snapshot
  * @property string|null                      $declared_goods_value
@@ -42,6 +45,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Contract         $contract
  * @property-read Price            $price
  * @property-read Discount|null    $discount
+ * @property-read Employee|null    $discountRemovedBy
  * @property-read TaxRate|null     $taxRate
  * @property-read Unit|Insurance   $item
  * @property-read ContractItem|null $supersedes
@@ -60,6 +64,9 @@ class ContractItem extends Model
         'discount_id',
         'base_rate',
         'discount_ends_at',
+        'discount_removed_at',
+        'discount_removed_by',
+        'discount_removed_reason',
         'tax_rate_id',
         'tax_rate_snapshot',
         'declared_goods_value',
@@ -75,6 +82,7 @@ class ContractItem extends Model
         return [
             'base_rate'             => 'decimal:2',
             'discount_ends_at'      => 'date',
+            'discount_removed_at'   => 'datetime',
             'tax_rate_snapshot'     => 'decimal:2',
             'declared_goods_value'  => 'decimal:2',
             'effective_from'        => 'date',
@@ -99,6 +107,12 @@ class ContractItem extends Model
     public function discount(): BelongsTo
     {
         return $this->belongsTo(Discount::class);
+    }
+
+    /** @return BelongsTo<Employee, ContractItem> */
+    public function discountRemovedBy(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'discount_removed_by');
     }
 
     /** @return BelongsTo<TaxRate, ContractItem> */

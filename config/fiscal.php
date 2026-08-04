@@ -50,4 +50,16 @@ return [
     */
     'invoice_late_fees' => (bool) env('FISCAL_INVOICE_LATE_FEES', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice zero-total periods
+    |--------------------------------------------------------------------------
+    |
+    | Free-time discount periods write €0 charges (ledger + cursor) but skip
+    | invoice issuance by default (D-DISC #2). Flip true only if the gestor
+    | requires a zero-total factura for those periods.
+    |
+    */
+    'invoice_zero_periods' => (bool) env('FISCAL_INVOICE_ZERO_PERIODS', false),
+
 ];

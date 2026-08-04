@@ -19,11 +19,12 @@ final class SlowPayerCompiler
     /**
      * @return array<int, callable(DemoWorld): void>
      */
-    public static function compile(string $handle, DemoRng $rng): array
+    public static function compile(string $handle, DemoRng $rng, bool $withDiscount = false): array
     {
         $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 90);
         $signDay = $enrol + $rng->int(1, 6);
         $lag = $rng->int(1, 14);
+        $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;
 
         return [
             $enrol => static function (DemoWorld $world) use ($handle, $rng): void {
@@ -31,7 +32,7 @@ final class SlowPayerCompiler
                 $site = CrowdSupport::pickSite($world, $rng);
                 JourneySupport::openDeal($world, $handle, $site, DealStatus::Qualified);
             },
-            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay, $lag): void {
+            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay, $lag, $discountPick): void {
                 $deal = $world->get("{$handle}.deal");
                 $site = Site::query()->findOrFail((int) $deal->site_id);
                 $unit = CrowdSupport::vacantUnit($site, $rng);
@@ -40,6 +41,8 @@ final class SlowPayerCompiler
                     $handle,
                     $unit,
                     CrowdSupport::dateOn($signDay),
+                    discountId: $discountPick['discount_id'] ?? null,
+                    commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::markLatePayer($world, $handle, $lag);
             },

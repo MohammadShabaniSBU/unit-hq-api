@@ -6,6 +6,8 @@ namespace Database\Seeders\Demo\Crowd;
 
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\DealStatus;
+use App\Enums\DiscountKind;
+use App\Models\Discount;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -67,6 +69,46 @@ final class CrowdSupport
     public static function pickSite(DemoWorld $world, DemoRng $rng): Site
     {
         return $world->site($rng->pick(self::SITE_HANDLES));
+    }
+
+    /**
+     * Pick a seeded catalogue discount for crowd variety (DISC-02).
+     *
+     * @return array{discount_id: int, commitment_weeks: int|null}|null
+     */
+    public static function pickDiscount(DemoRng $rng): ?array
+    {
+        if ($rng->bool(0.55)) {
+            $named = Discount::query()
+                ->where('kind', DiscountKind::Percent)
+                ->whereIn('name', ['10% off', '20% off'])
+                ->orderBy('id')
+                ->get();
+            if ($named->isEmpty()) {
+                return null;
+            }
+            $discount = $named[$rng->int(0, $named->count() - 1)];
+
+            return [
+                'discount_id' => (int) $discount->id,
+                'commitment_weeks' => null,
+            ];
+        }
+
+        $discount = Discount::query()
+            ->where('kind', DiscountKind::FreeTime)
+            ->where('name', 'Long-stay promo')
+            ->orderBy('id')
+            ->first();
+
+        if ($discount === null) {
+            return null;
+        }
+
+        return [
+            'discount_id' => (int) $discount->id,
+            'commitment_weeks' => (int) $rng->pick([4, 8, 12]),
+        ];
     }
 
     public static function vacantUnit(Site $site, DemoRng $rng): Unit
