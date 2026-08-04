@@ -6,6 +6,7 @@ use App\Enums\LogChannel;
 use App\Enums\UnitState;
 use App\Enums\UnitStatus;
 use App\Models\Concerns\LogsDirtyActivity;
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use App\Support\Occupancy\Availability;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonInterface;
@@ -51,7 +52,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Unit extends Model
 {
-    use HasFactory, LogsDirtyActivity;
+    use HasFactory, LogsDirtyActivity, VisibleToEmployee;
 
     protected function activityLogChannel(): LogChannel
     {

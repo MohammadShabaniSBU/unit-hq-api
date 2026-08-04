@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
 class UnitHold extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'unit_id',

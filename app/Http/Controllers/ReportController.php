@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
+use App\Support\Auth\Permission;
 use App\Support\Reports\CsvExporter;
 use App\Support\Reports\ReportFilters;
 use App\Support\Reports\ReportRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -29,17 +30,21 @@ class ReportController extends Controller
 
     public function show(Request $request, string $name): JsonResponse|Response
     {
-        if (in_array($name, self::FINANCIAL_REPORTS, true)) {
-            Gate::authorize(Permission::ReportFinancialView->value);
-        } else {
-            Gate::authorize(Permission::ReportView->value);
-        }
+        $permission = in_array($name, self::FINANCIAL_REPORTS, true)
+            ? Permission::ReportFinancialView
+            : Permission::ReportView;
+
+        Gate::authorize($permission->value);
 
         if (! ReportRegistry::has($name)) {
             return $this->notFound('Report not found.');
         }
 
-        $filters = ReportFilters::fromValidated($request->validate(ReportFilters::rules()));
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        $filters = ReportFilters::fromValidated($request->validate(ReportFilters::rules()))
+            ->constrainToGranted($employee->siteIdsFor($permission));
         $report = ReportRegistry::make($name);
         $result = $report->run($filters);
 

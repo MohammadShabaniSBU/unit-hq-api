@@ -9,6 +9,7 @@ use App\Models\UnitClass;
 use App\Models\UnitOccupancy;
 use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Support\Auth\Permission;
@@ -16,11 +17,15 @@ use Illuminate\Support\Facades\Gate;
 
 class UnitClassOccupancyMatrixController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::CatalogueManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $sites = Site::query()
+            ->visibleTo($employee, Permission::CatalogueManage)
             ->orderBy('name')
             ->get(['id', 'name', 'timezone']);
 
@@ -30,6 +35,7 @@ class UnitClassOccupancyMatrixController extends Controller
 
         // Totals: one grouped query for enabled units per site × class.
         $totals = Unit::query()
+            ->visibleTo($employee, Permission::CatalogueManage)
             ->where('enabled', true)
             ->select('site_id', 'unit_class_id', DB::raw('COUNT(*) as total'))
             ->groupBy('site_id', 'unit_class_id')

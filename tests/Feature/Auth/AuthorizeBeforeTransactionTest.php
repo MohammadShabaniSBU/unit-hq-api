@@ -126,11 +126,13 @@ class AuthorizeBeforeTransactionTest extends TestCase
 
         Sanctum::actingAs($this->agent);
 
+        // Out-of-scope contract: binding 404s before the vacate policy can 403
+        // (enumeration defence — S17-04).
         $vacate = $this->postJson("/api/contracts/{$contractId}/vacate", [
             'move_out_on' => '2026-07-20',
             'deposit' => ['outcome' => 'released'],
         ]);
-        $vacate->assertForbidden();
+        $vacate->assertNotFound();
 
         $sign = $this->postJson('/api/contracts', [
             'contact_id' => Contact::factory()->create()->id,

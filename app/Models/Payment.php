@@ -43,6 +43,7 @@ class Payment extends Model
 {
     use HasFactory;
     use HasAutomationTriggers;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     const UPDATED_AT = null;
 

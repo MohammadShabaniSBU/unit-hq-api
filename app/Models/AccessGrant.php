@@ -35,6 +35,7 @@ use Illuminate\Support\Carbon;
 class AccessGrant extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'access_point_id',

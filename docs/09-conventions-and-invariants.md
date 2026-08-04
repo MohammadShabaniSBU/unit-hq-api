@@ -140,6 +140,10 @@
     `SubjectSite` fails `SubjectSiteCoverageTest`. System-actor writes
     (`Actor::current()` / `Gate::before`) authorize headless paths; they do not
     change activity causer stamping (invariant 25).
+46. **Authorization scoping is explicit and local.** Row visibility is applied
+    via an explicit `visibleTo()` call at the query site. It must never be a
+    global scope, middleware-set context, or queue payload key. A company-wide
+    grant applies no filter at all.
 
 ## Code conventions
 

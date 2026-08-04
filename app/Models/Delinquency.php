@@ -42,6 +42,7 @@ class Delinquency extends Model
 {
     use HasFactory;
     use HasAutomationTriggers;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'contract_id',

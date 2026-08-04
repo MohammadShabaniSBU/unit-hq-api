@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Resources\OfferCardResource;
+use App\Models\Employee;
 use App\Models\Offer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,12 +18,16 @@ class OfferBoardController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Offer::statusCounts($search);
+        $base = Offer::query()->visibleTo($employee, Permission::OfferManage);
+        $counts = Offer::statusCounts($search, clone $base);
 
-        $columns = collect(Offer::STATUSES)->map(function (string $status) use ($search, $perColumn, $counts) {
-            $page = Offer::query()
+        $columns = collect(Offer::STATUSES)->map(function (string $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -45,20 +50,24 @@ class OfferBoardController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         if (! in_array($status, Offer::STATUSES, true)) {
             return $this->notFound('Unknown offer status.');
         }
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Offer::query()->visibleTo($employee, Permission::OfferManage);
 
-        $page = Offer::query()
+        $page = (clone $base)
             ->forBoardColumn($status, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $status,
-            'total' => Offer::statusCounts($search)[$status],
+            'total' => Offer::statusCounts($search, clone $base)[$status],
             'cards' => OfferCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

@@ -9,20 +9,30 @@ use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Site;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
 
 class InsurancePriceMatrixController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::CatalogueManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $sites = Site::query()
+            ->visibleTo($employee, Permission::CatalogueManage)
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        // InsuranceRate has no registered SitePath — filter manually by the
+        // same granted site ids (null = company-wide, no filter added).
+        $scopedSiteIds = $employee->siteIdsFor(Permission::CatalogueManage);
+
         $rates = InsuranceRate::query()
+            ->when($scopedSiteIds !== null, fn ($q) => $q->whereIn('site_id', $scopedSiteIds))
             ->with('price')
             ->get();
 

@@ -31,7 +31,10 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
-        $query = Contact::query()->latest();
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
+        $query = Contact::query()->visibleTo($employee, Permission::ContactView)->latest();
 
         if ($request->filled('search')) {
             $query->search($request->string('search')->trim()->value());
@@ -62,10 +65,13 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Contact,
-            Contact::query(),
+            Contact::query()->visibleTo($employee, Permission::ContactView),
             fn (Contact $contact) => ContactResource::make($contact),
             'Contacts retrieved successfully.',
             function ($query, Request $request): void {
@@ -262,6 +268,9 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $request->validate([
             'search' => ['required', 'string', 'min:2'],
         ]);
@@ -269,9 +278,12 @@ class ContactController extends Controller
         $search = $request->string('search')->trim()->value();
 
         $options = Contact::query()
-            ->where('first_name', 'ilike', "%{$search}%")
-            ->orWhere('last_name', 'ilike', "%{$search}%")
-            ->orWhere('email', 'ilike', "%{$search}%")
+            ->visibleTo($employee, Permission::ContactView)
+            ->where(function ($q) use ($search): void {
+                $q->where('first_name', 'ilike', "%{$search}%")
+                    ->orWhere('last_name', 'ilike', "%{$search}%")
+                    ->orWhere('email', 'ilike', "%{$search}%");
+            })
             ->orderBy('first_name')
             ->limit(20)
             ->get(['id', 'first_name', 'last_name'])

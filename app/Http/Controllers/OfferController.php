@@ -27,7 +27,10 @@ class OfferController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
-        $query = Offer::query()->with([
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
+        $query = Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
             'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
             'contact',
         ])->latest();
@@ -57,10 +60,13 @@ class OfferController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Offer,
-            Offer::query()->with([
+            Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
                 'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
                 'contact',
             ]),

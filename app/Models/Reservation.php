@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ReservationStatus;
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,7 +41,7 @@ use Illuminate\Support\Carbon;
  */
 class Reservation extends Model
 {
-    use HasFactory, HasNotes;
+    use HasFactory, HasNotes, VisibleToEmployee;
 
     protected $fillable = [
         'unit_id',
@@ -95,9 +96,9 @@ class Reservation extends Model
      *
      * @return array<string, int>
      */
-    public static function statusCounts(?string $search = null): array
+    public static function statusCounts(?string $search = null, ?Builder $base = null): array
     {
-        $raw = static::query()
+        $raw = ($base ?? static::query())
             ->when($search, fn (Builder $q) => $q->search($search))
             ->groupBy('status')
             ->selectRaw('status, COUNT(*) as aggregate')

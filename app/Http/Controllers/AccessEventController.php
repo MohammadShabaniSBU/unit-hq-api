@@ -56,6 +56,9 @@ class AccessEventController extends Controller
         ?int $contactId = null,
         ?array $accessPointIds = null,
     ): JsonResponse {
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'cursor' => ['sometimes', 'nullable', 'string'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
@@ -71,6 +74,7 @@ class AccessEventController extends Controller
         $perPage = min(max($perPage, 1), self::MAX_PER_PAGE);
 
         $query = AccessEvent::query()
+            ->visibleTo($employee, Permission::AccessView)
             ->with([
                 'accessPoint:id,label,point_type,site_id,unit_id',
                 'contact:id,first_name,last_name',

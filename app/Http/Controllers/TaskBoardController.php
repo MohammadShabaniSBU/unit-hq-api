@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Resources\TaskCardResource;
+use App\Models\Employee;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,12 +18,18 @@ class TaskBoardController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Task::statusCounts($search);
+        // Task is company-level (no site path) — visibleTo is a no-op unless the
+        // permission is held nowhere, kept here for scoping consistency.
+        $base = Task::query()->visibleTo($employee, Permission::ContactView);
+        $counts = Task::statusCounts($search, clone $base);
 
-        $columns = collect(Task::STATUSES)->map(function (string $status) use ($search, $perColumn, $counts) {
-            $page = Task::query()
+        $columns = collect(Task::STATUSES)->map(function (string $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -45,20 +52,24 @@ class TaskBoardController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         if (! in_array($status, Task::STATUSES, true)) {
             return $this->notFound('Unknown task status.');
         }
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Task::query()->visibleTo($employee, Permission::ContactView);
 
-        $page = Task::query()
+        $page = (clone $base)
             ->forBoardColumn($status, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $status,
-            'total' => Task::statusCounts($search)[$status],
+            'total' => Task::statusCounts($search, clone $base)[$status],
             'cards' => TaskCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

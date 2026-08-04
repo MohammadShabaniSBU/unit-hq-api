@@ -7,7 +7,9 @@ namespace App\Support\Access;
 use App\Enums\AccessPointType;
 use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
+use App\Models\Employee;
 use App\Models\Unit;
+use App\Support\Auth\Permission;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,7 +23,7 @@ final class AccessPointMapping
     /**
      * @return list<array<string, mixed>>
      */
-    public static function rows(?AccessProviderAccount $account): array
+    public static function rows(?AccessProviderAccount $account, Employee $employee, Permission $permission): array
     {
         if ($account === null) {
             return [];
@@ -31,6 +33,7 @@ final class AccessPointMapping
         $discoveredIds = collect($discovered)->pluck('provider_point_id')->all();
 
         $assigned = AccessPoint::query()
+            ->visibleTo($employee, $permission)
             ->active()
             ->where('access_provider_account_id', $account->id)
             ->with(['site:id,name', 'unit:id,unit_number,site_id'])
@@ -38,6 +41,9 @@ final class AccessPointMapping
             ->get();
 
         $assignedByProviderId = $assigned->keyBy('provider_point_id');
+        // Unassigned discovered points carry no site yet — only a company-wide
+        // grant may triage them; site-scoped employees never see them here.
+        $companyWide = $employee->siteIdsFor($permission) === null;
 
         $rows = [];
 
@@ -47,6 +53,10 @@ final class AccessPointMapping
 
             if ($existing instanceof AccessPoint) {
                 $rows[] = self::assignedRow($existing, $point['kind_hint'], 'assigned');
+                continue;
+            }
+
+            if (! $companyWide) {
                 continue;
             }
 

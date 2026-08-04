@@ -27,6 +27,9 @@ class InvoiceController extends Controller
     {
         Gate::authorize(Permission::InvoiceView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'legal_entity_id' => ['nullable', 'integer', 'exists:legal_entities,id'],
             'invoice_series_id' => ['nullable', 'integer', 'exists:invoice_series,id'],
@@ -38,6 +41,7 @@ class InvoiceController extends Controller
         ]);
 
         $query = Invoice::query()
+            ->visibleTo($employee, Permission::InvoiceView)
             ->with(['contact', 'contract', 'lines', 'rectifiesInvoice', 'rectificatives'])
             ->latest('issue_date')
             ->latest('id');

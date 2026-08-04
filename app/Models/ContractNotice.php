@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
 class ContractNotice extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'contract_id',

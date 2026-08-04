@@ -9,20 +9,26 @@ use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
 
 class UnitClassPriceMatrixController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::CatalogueManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $sites = Site::query()
+            ->visibleTo($employee, Permission::CatalogueManage)
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $rates = UnitClassRate::query()
+            ->visibleTo($employee, Permission::CatalogueManage)
             ->with('price')
             ->get();
 

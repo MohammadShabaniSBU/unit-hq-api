@@ -28,6 +28,9 @@ class UnitController extends Controller
     {
         Gate::authorize(Permission::UnitView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'site_id'      => ['nullable', 'integer', 'exists:sites,id'],
             'for_map'      => ['nullable', 'boolean'],
@@ -38,6 +41,7 @@ class UnitController extends Controller
         ]);
 
         $query = Unit::query()
+            ->visibleTo($employee, Permission::UnitView)
             ->with(['site', 'unitClass'])
             ->latest();
 
@@ -94,10 +98,13 @@ class UnitController extends Controller
     {
         Gate::authorize(Permission::UnitView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Unit,
-            Unit::query()->with(['site', 'unitClass']),
+            Unit::query()->visibleTo($employee, Permission::UnitView)->with(['site', 'unitClass']),
             function (Unit $unit) {
                 return UnitResource::make($unit);
             },
@@ -238,12 +245,16 @@ class UnitController extends Controller
     {
         Gate::authorize(Permission::UnitView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'site_id' => ['nullable', 'integer', 'exists:sites,id'],
             'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
         ]);
 
         $query = Unit::query()
+            ->visibleTo($employee, Permission::UnitView)
             ->with(['site', 'unitClass'])
             ->where('enabled', true)
             ->limit(100);

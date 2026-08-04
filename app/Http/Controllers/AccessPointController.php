@@ -22,14 +22,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class AccessPointController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::AccessManage->value);
+
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
 
         $account = $this->activeAccount();
 
         return $this->success([
-            'rows' => AccessPointMapping::rows($account),
+            'rows' => AccessPointMapping::rows($account, $employee, Permission::AccessView),
         ], 'Access points retrieved successfully.');
     }
 

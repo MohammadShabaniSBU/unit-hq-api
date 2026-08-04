@@ -101,6 +101,22 @@ class Employee extends Authenticatable
         $this->permissionMapCache = null;
     }
 
+    /**
+     * Site ids granted for a permission.
+     *
+     * @return list<int>|null  null = company-wide; [] = nowhere; list = allowed sites
+     */
+    public function siteIdsFor(Permission $permission): ?array
+    {
+        $map = $this->permissionMapCache ??= PermissionMap::for($this);
+
+        if (! array_key_exists($permission->value, $map)) {
+            return [];
+        }
+
+        return $map[$permission->value];
+    }
+
     /** @return HasMany<Price, $this> */
     public function createdPrices(): HasMany
     {

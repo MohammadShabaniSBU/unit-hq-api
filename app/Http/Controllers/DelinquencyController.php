@@ -49,6 +49,9 @@ class DelinquencyController extends Controller
     {
         Gate::authorize(Permission::DelinquencyView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'status' => ['sometimes', Rule::in(['open', 'cured'])],
             'site_id' => ['sometimes', 'integer', 'exists:sites,id'],
@@ -61,6 +64,7 @@ class DelinquencyController extends Controller
         $status = $validated['status'] ?? 'open';
 
         $query = Delinquency::query()
+            ->visibleTo($employee, Permission::DelinquencyView)
             ->with([
                 'policy.steps',
                 'steps',
@@ -104,6 +108,7 @@ class DelinquencyController extends Controller
 
         // Chips always reflect open cases (with same site/paused/overlocked/days filters).
         $chipBase = Delinquency::query()
+            ->visibleTo($employee, Permission::DelinquencyView)
             ->whereNull('cured_on')
             ->with([
                 'contract.charges.allocations',

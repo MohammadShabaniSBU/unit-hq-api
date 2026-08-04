@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\ContactLifecycleStatus;
 use App\Http\Resources\ContactCardResource;
 use App\Models\Contact;
+use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\Auth\Permission;
@@ -18,12 +19,16 @@ class ContactBoardController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Contact::statusCounts($search);
+        $base = Contact::query()->visibleTo($employee, Permission::ContactView);
+        $counts = Contact::statusCounts($search, clone $base);
 
-        $columns = collect(ContactLifecycleStatus::cases())->map(function (ContactLifecycleStatus $status) use ($search, $perColumn, $counts) {
-            $page = Contact::query()
+        $columns = collect(ContactLifecycleStatus::cases())->map(function (ContactLifecycleStatus $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -46,6 +51,9 @@ class ContactBoardController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $statusEnum = ContactLifecycleStatus::tryFrom($status);
 
         if ($statusEnum === null) {
@@ -54,14 +62,15 @@ class ContactBoardController extends Controller
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Contact::query()->visibleTo($employee, Permission::ContactView);
 
-        $page = Contact::query()
+        $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $statusEnum->value,
-            'total' => Contact::statusCounts($search)[$statusEnum->value],
+            'total' => Contact::statusCounts($search, clone $base)[$statusEnum->value],
             'cards' => ContactCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

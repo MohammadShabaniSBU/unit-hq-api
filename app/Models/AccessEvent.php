@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
 class AccessEvent extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     public $timestamps = false;
 

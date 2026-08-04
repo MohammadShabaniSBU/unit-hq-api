@@ -82,6 +82,42 @@ final readonly class ReportFilters
         );
     }
 
+    /**
+     * Intersect client site_ids with the employee's grant.
+     * null grant = company-wide (unchanged); [] = nowhere; list = site-scoped.
+     *
+     * @param  list<int>|null  $grantedSiteIds
+     */
+    public function constrainToGranted(?array $grantedSiteIds): self
+    {
+        if ($grantedSiteIds === null) {
+            return $this;
+        }
+
+        if ($grantedSiteIds === []) {
+            return new self(
+                siteIds: [],
+                from: $this->from,
+                to: $this->to,
+                asOf: $this->asOf,
+                locale: $this->locale,
+            );
+        }
+
+        $requested = $this->siteIds;
+        $siteIds = $requested === null
+            ? $grantedSiteIds
+            : array_values(array_intersect($grantedSiteIds, $requested));
+
+        return new self(
+            siteIds: $siteIds,
+            from: $this->from,
+            to: $this->to,
+            asOf: $this->asOf,
+            locale: $this->locale,
+        );
+    }
+
     private static function nullableDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {

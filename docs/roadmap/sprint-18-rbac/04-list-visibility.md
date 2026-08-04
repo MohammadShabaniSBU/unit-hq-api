@@ -149,21 +149,21 @@ option appears only for employees with a company-wide grant, per `07-people-and-
 
 ## Acceptance criteria
 
-- [ ] Every list, board, matrix, options and search endpoint applies `visibleTo`.
-- [ ] Board counts equal the scoped list totals on every board.
-- [ ] `GET /api/sites/options` returns only granted sites; company-wide grants return all.
-- [ ] A site-scoped employee's `POST /api/contracts/search` cannot return an out-of-scope
+- [x] Every list, board, matrix, options and search endpoint applies `visibleTo`.
+- [x] Board counts equal the scoped list totals on every board.
+- [x] `GET /api/sites/options` returns only granted sites; company-wide grants return all.
+- [x] A site-scoped employee's `POST /api/contracts/search` cannot return an out-of-scope
       contract regardless of filter tree.
-- [ ] Unit Class matrix and Rates matrix render scoped columns, still one grouped query.
-- [ ] A site-scoped employee's Ageing report reconciles exactly to their delinquency board
+- [x] Unit Class matrix and Rates matrix render scoped columns, still one grouped query.
+- [x] A site-scoped employee's Ageing report reconciles exactly to their delinquency board
       chip (S16 property preserved under scoping).
-- [ ] Inbox threads scope inside the aggregate query; cursor pagination skips no pages.
-- [ ] Out-of-scope record by id returns 404 on both read and action endpoints.
-- [ ] A company-wide employee executes the same number of queries as before this task
+- [x] Inbox threads scope inside the aggregate query; cursor pagination skips no pages.
+- [x] Out-of-scope record by id returns 404 on both read and action endpoints.
+- [x] A company-wide employee executes the same number of queries as before this task
       (assert on two heavy endpoints).
-- [ ] No global scope was added anywhere — grep for `addGlobalScope` returns pre-existing
+- [x] No global scope was added anywhere — grep for `addGlobalScope` returns pre-existing
       uses only.
-- [ ] D-RBAC-1 recorded in `10-open-decisions.md`; `07-people-and-auth.md` updated.
+- [x] D-RBAC-1 recorded in `10-open-decisions.md`; `07-people-and-auth.md` updated.
 
 ## Tests required
 

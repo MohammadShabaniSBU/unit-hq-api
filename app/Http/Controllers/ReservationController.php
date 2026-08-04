@@ -58,7 +58,11 @@ class ReservationController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $query = Reservation::query()
+            ->visibleTo($employee, Permission::ReservationManage)
             ->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price'])
             ->latest();
 
@@ -95,10 +99,13 @@ class ReservationController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Reservation,
-            Reservation::query()->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price']),
+            Reservation::query()->visibleTo($employee, Permission::ReservationManage)->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price']),
             fn (Reservation $r) => ReservationResource::make($r),
             'Reservations retrieved successfully.',
             function ($query, Request $request): void {

@@ -32,6 +32,8 @@ use Illuminate\Support\Carbon;
  */
 class MessageThread extends Model
 {
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
+
     protected $fillable = [
         'contact_id',
         'channel',

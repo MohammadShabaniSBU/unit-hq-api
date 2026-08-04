@@ -59,6 +59,7 @@ use Illuminate\Support\Carbon;
 class Invoice extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'legal_entity_id',

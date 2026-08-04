@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ReservationStatus;
 use App\Http\Resources\ReservationCardResource;
+use App\Models\Employee;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,12 +19,16 @@ class ReservationBoardController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Reservation::statusCounts($search);
+        $base = Reservation::query()->visibleTo($employee, Permission::ReservationManage);
+        $counts = Reservation::statusCounts($search, clone $base);
 
-        $columns = collect(ReservationStatus::cases())->map(function (ReservationStatus $status) use ($search, $perColumn, $counts) {
-            $page = Reservation::query()
+        $columns = collect(ReservationStatus::cases())->map(function (ReservationStatus $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -46,6 +51,9 @@ class ReservationBoardController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $statusEnum = ReservationStatus::tryFrom($status);
 
         if ($statusEnum === null) {
@@ -54,14 +62,15 @@ class ReservationBoardController extends Controller
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Reservation::query()->visibleTo($employee, Permission::ReservationManage);
 
-        $page = Reservation::query()
+        $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $statusEnum->value,
-            'total' => Reservation::statusCounts($search)[$statusEnum->value],
+            'total' => Reservation::statusCounts($search, clone $base)[$statusEnum->value],
             'cards' => ReservationCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

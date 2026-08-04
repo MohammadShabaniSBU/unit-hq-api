@@ -27,7 +27,8 @@ Permission vocabulary and grant tables are live. Resolution machinery
 policies, 403 `errors.forbidden`) lives under `App\Support\Auth\` and
 `app/Policies/`. **Every authenticated route** reaches a permission decision via
 `Gate::authorize` / `$this->authorize` and the `RoutePermissions` manifest
-(task 03). List `visibleTo` scoping is task 04.
+(task 03). List `visibleTo` scoping (task 04) filters rows via
+`App\Support\Auth\Concerns\VisibleToEmployee` + `SitePath` at each list call site.
 
 **Release note:** the task-01 backfill grants every pre-existing employee a
 company-wide `owner` role, so deployments see **no behaviour change** until an
@@ -46,7 +47,7 @@ A **global site selector** scopes the portal context, with two carve-outs:
 1. **Site-level staff** (grants with a non-null `employee_roles.site_id`) see only their assigned site(s).
 2. **Company-level roles** (company-wide grants) get an **"All Sites"** option.
 
-**Exception:** Contact and Deal detail views show activity **across all sites regardless of the selector** — a Contact is not inherently site-scoped.
+**Exception (D-RBAC-1):** Contact and Deal **detail** views show activity across all sites regardless of the selector — a Contact is not inherently site-scoped as a subject. **Lists** are narrower: site-scoped agents see contacts/deals related to granted sites, plus unassigned leads (no site relation / null `deals.site_id`). Company-wide grants see the full roster. Row visibility is applied via explicit `visibleTo($employee, $permission)` on the query — never a global scope.
 
 `GET /api/user` returns `roles`, `permissions`, and `company_permissions` (plus deprecated scalar `role` for one sprint).
 

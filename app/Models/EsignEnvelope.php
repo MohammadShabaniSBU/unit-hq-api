@@ -43,6 +43,8 @@ use RuntimeException;
  */
 class EsignEnvelope extends Model
 {
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
+
     /** @var list<string> */
     private const IMMUTABLE_ONCE_SET = [
         'signed_pdf_path',

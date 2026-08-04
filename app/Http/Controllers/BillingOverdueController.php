@@ -25,6 +25,9 @@ class BillingOverdueController extends Controller
     {
         Gate::authorize(Permission::InvoiceView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'failed_autopay' => ['sometimes', 'boolean'],
         ]);
@@ -55,6 +58,7 @@ class BillingOverdueController extends Controller
         }
 
         $paginator = Contract::query()
+            ->visibleTo($employee, Permission::InvoiceView)
             ->whereIn('id', $ids)
             ->with([
                 'contact',

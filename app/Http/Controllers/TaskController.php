@@ -20,7 +20,11 @@ class TaskController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $query = Task::query()
+            ->visibleTo($employee, Permission::ContactView)
             ->with(['assignee', 'taskable'])
             ->orderByRaw('due_at IS NULL')
             ->orderBy('due_at')

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\ContractStatus;
 use App\Http\Resources\ContractCardResource;
 use App\Models\Contract;
+use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\Auth\Permission;
@@ -18,12 +19,16 @@ class ContractBoardController extends Controller
     {
         Gate::authorize(Permission::ContractView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Contract::statusCounts($search);
+        $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $counts = Contract::statusCounts($search, clone $base);
 
-        $columns = collect(ContractStatus::cases())->map(function (ContractStatus $status) use ($search, $perColumn, $counts) {
-            $page = Contract::query()
+        $columns = collect(ContractStatus::cases())->map(function (ContractStatus $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -46,6 +51,9 @@ class ContractBoardController extends Controller
     {
         Gate::authorize(Permission::ContractView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $statusEnum = ContractStatus::tryFrom($status);
 
         if ($statusEnum === null) {
@@ -54,14 +62,15 @@ class ContractBoardController extends Controller
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Contract::query()->visibleTo($employee, Permission::ContractView);
 
-        $page = Contract::query()
+        $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $statusEnum->value,
-            'total' => Contract::statusCounts($search)[$statusEnum->value],
+            'total' => Contract::statusCounts($search, clone $base)[$statusEnum->value],
             'cards' => ContractCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

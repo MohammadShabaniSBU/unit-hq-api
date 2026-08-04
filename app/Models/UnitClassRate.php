@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
 class UnitClassRate extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     const UPDATED_AT = null;
 

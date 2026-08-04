@@ -39,6 +39,7 @@ use App\Support\Auth\DenialContext;
 use App\Support\Auth\Permission;
 use App\Support\Auth\SubjectSite;
 use App\Support\Auth\SystemActor;
+use App\Support\Auth\VisibleRouteBindings;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -80,6 +81,8 @@ class AuthServiceProvider extends ServiceProvider
         foreach (self::POLICIES as $model => $policy) {
             Gate::policy($model, $policy);
         }
+
+        VisibleRouteBindings::register();
 
         // Every Permission is an ability gate. Optional Model subject carries site scope.
         foreach (Permission::cases() as $permission) {

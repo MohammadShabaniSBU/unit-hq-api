@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ContractStatus;
 use App\Enums\ReservationStatus;
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -50,7 +51,7 @@ use Illuminate\Support\Carbon;
  */
 class Site extends Model
 {
-    use HasFactory;
+    use HasFactory, VisibleToEmployee;
 
     protected $fillable = [
         'name',

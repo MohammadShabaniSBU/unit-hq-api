@@ -51,6 +51,9 @@ class ContractController extends Controller
     {
         Gate::authorize(Permission::ContractView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'attention' => ['nullable', Rule::in(['declined', 'post_cancellation', 'failed_grants', 'drift_denied_but_granted'])],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
@@ -59,9 +62,10 @@ class ContractController extends Controller
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
         ]);
 
-        $chips = Contract::attentionCounts();
+        $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $chips = Contract::attentionCounts(clone $base);
 
-        $query = Contract::query()
+        $query = (clone $base)
             ->with([
                 'items' => fn ($q) => $q->whereNull('effective_to')->with(['item', 'price']),
                 'contact',
@@ -116,6 +120,9 @@ class ContractController extends Controller
     {
         Gate::authorize(Permission::ContractView->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'filter' => ['nullable', 'array'],
             'sort' => ['nullable', 'array'],
@@ -131,9 +138,10 @@ class ContractController extends Controller
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
         ]);
 
-        $chips = Contract::attentionCounts();
+        $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $chips = Contract::attentionCounts(clone $base);
 
-        $query = Contract::query()->with(['items.item', 'contact', 'reservation']);
+        $query = (clone $base)->with(['items.item', 'contact', 'reservation']);
 
         if (isset($validated['contact_id'])) {
             $query->where('contact_id', $validated['contact_id']);

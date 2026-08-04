@@ -13,6 +13,7 @@ use App\Enums\MoveOutSettlement;
 use App\Enums\ProrationMethod;
 use App\Enums\TransferBilling;
 use App\Models\Concerns\HasNotes;
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -94,7 +95,7 @@ use Illuminate\Support\Carbon;
  */
 class Contract extends Model
 {
-    use HasFactory, HasNotes;
+    use HasFactory, HasNotes, VisibleToEmployee;
 
     protected $fillable = [
         'contact_id',
@@ -190,9 +191,9 @@ class Contract extends Model
      *
      * @return array<string, int>
      */
-    public static function statusCounts(?string $search = null): array
+    public static function statusCounts(?string $search = null, ?Builder $base = null): array
     {
-        $raw = static::query()
+        $raw = ($base ?? static::query())
             ->when($search, fn (Builder $q) => $q->search($search))
             ->groupBy('status')
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -296,13 +297,19 @@ class Contract extends Model
      *     drift_denied_but_granted_count: int
      * }
      */
-    public static function attentionCounts(): array
+    public static function attentionCounts(?Builder $base = null): array
     {
+        $base ??= static::query();
+
+        $driftIds = self::driftDeniedContractIds();
+
         return [
-            'declined_count' => (int) static::query()->attentionDeclined()->count(),
-            'post_cancellation_count' => (int) static::query()->attentionPostCancellation()->count(),
-            'failed_grants_count' => (int) static::query()->attentionFailedGrants()->count(),
-            'drift_denied_but_granted_count' => count(self::driftDeniedContractIds()),
+            'declined_count' => (int) (clone $base)->attentionDeclined()->count(),
+            'post_cancellation_count' => (int) (clone $base)->attentionPostCancellation()->count(),
+            'failed_grants_count' => (int) (clone $base)->attentionFailedGrants()->count(),
+            'drift_denied_but_granted_count' => $driftIds === []
+                ? 0
+                : (int) (clone $base)->whereIn('id', $driftIds)->count(),
         ];
     }
 

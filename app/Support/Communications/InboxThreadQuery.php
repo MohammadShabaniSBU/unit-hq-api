@@ -8,6 +8,7 @@ use App\Enums\ContactChannelType;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\MessageThread;
+use App\Support\Auth\Permission;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -99,6 +100,11 @@ final class InboxThreadQuery
             })
             ->orderByDesc('last_message_at')
             ->orderByDesc('id');
+
+        // Site visibility inside the aggregate query (not post-filter) so cursors stay coherent.
+        if ($viewer !== null) {
+            $query->visibleTo($viewer, Permission::InboxView);
+        }
 
         return $query;
     }

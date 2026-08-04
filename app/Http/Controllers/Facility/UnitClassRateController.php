@@ -18,12 +18,15 @@ class UnitClassRateController extends Controller
     {
         Gate::authorize(Permission::CatalogueManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'site_id'       => ['nullable', 'integer', 'exists:sites,id'],
             'unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
         ]);
 
-        $query = UnitClassRate::query()->with('price');
+        $query = UnitClassRate::query()->visibleTo($employee, Permission::CatalogueManage)->with('price');
 
         if (isset($validated['site_id'])) {
             $query->where('site_id', $validated['site_id']);

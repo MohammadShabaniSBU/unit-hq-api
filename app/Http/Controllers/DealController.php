@@ -25,7 +25,10 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
-        $query = Deal::query()->with(['desiredUnitClass', 'contact'])->latest();
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
+        $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact'])->latest();
 
         if ($request->filled('contact_id')) {
             $query->where('contact_id', $request->integer('contact_id'));
@@ -52,10 +55,13 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Deal,
-            Deal::query()->with(['desiredUnitClass', 'contact']),
+            Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact']),
             fn (Deal $deal) => DealResource::make($deal),
             'Deals retrieved successfully.',
             function ($query, Request $request): void {
@@ -212,13 +218,16 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $request->validate([
             'search' => ['nullable', 'string'],
         ]);
 
         $search = $request->string('search')->trim()->value();
 
-        $query = Deal::query()->with('contact')->latest()->limit(20);
+        $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with('contact')->latest()->limit(20);
 
         if ($search) {
             $query->where(function ($q) use ($search) {

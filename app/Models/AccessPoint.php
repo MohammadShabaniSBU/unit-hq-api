@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
 class AccessPoint extends Model
 {
     use HasFactory;
+    use \App\Support\Auth\Concerns\VisibleToEmployee;
 
     protected $fillable = [
         'access_provider_account_id',

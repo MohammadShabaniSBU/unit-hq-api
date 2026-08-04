@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\DealStatus;
 use App\Http\Resources\DealCardResource;
 use App\Models\Deal;
+use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\Auth\Permission;
@@ -18,12 +19,16 @@ class DealBoardController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        $counts = Deal::statusCounts($search);
+        $base = Deal::query()->visibleTo($employee, Permission::DealManage);
+        $counts = Deal::statusCounts($search, clone $base);
 
-        $columns = collect(DealStatus::cases())->map(function (DealStatus $status) use ($search, $perColumn, $counts) {
-            $page = Deal::query()
+        $columns = collect(DealStatus::cases())->map(function (DealStatus $status) use ($base, $search, $perColumn, $counts) {
+            $page = (clone $base)
                 ->forBoardColumn($status, $search)
                 ->cursorPaginate($perColumn);
 
@@ -46,6 +51,9 @@ class DealBoardController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
+        /** @var Employee $employee */
+        $employee = $request->user();
+
         $statusEnum = DealStatus::tryFrom($status);
 
         if ($statusEnum === null) {
@@ -54,14 +62,15 @@ class DealBoardController extends Controller
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
+        $base = Deal::query()->visibleTo($employee, Permission::DealManage);
 
-        $page = Deal::query()
+        $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)
             ->cursorPaginate($perColumn);
 
         return $this->success([
             'status' => $statusEnum->value,
-            'total' => Deal::statusCounts($search)[$statusEnum->value],
+            'total' => Deal::statusCounts($search, clone $base)[$statusEnum->value],
             'cards' => DealCardResource::collection($page->items())->resolve(),
             'next_cursor' => optional($page->nextCursor())->encode(),
             'has_more' => $page->hasMorePages(),

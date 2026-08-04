@@ -19,11 +19,14 @@ class SiteController extends Controller
     {
         Gate::authorize(Permission::UnitView->value);
 
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
 
-        $query = Site::query()->with('country')->latest();
+        $query = Site::query()->visibleTo($employee, Permission::UnitView)->with('country')->latest();
 
         $status = $validated['status'] ?? 'active';
 
@@ -39,11 +42,14 @@ class SiteController extends Controller
         );
     }
 
-    public function options(): JsonResponse
+    public function options(Request $request): JsonResponse
     {
         Gate::authorize(Permission::UnitView->value);
 
-        $options = Site::query()->active()->orderBy('name')->get(['id', 'name'])
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
+        $options = Site::query()->visibleTo($employee, Permission::UnitView)->active()->orderBy('name')->get(['id', 'name'])
             ->map(fn (Site $site) => ['value' => $site->id, 'label' => $site->name]);
 
         return $this->success($options, 'Site options retrieved successfully.');
