@@ -106,6 +106,7 @@
 | Report nightly snapshots | **Escape hatch only.** Insights figures are live bounded queries from fact tables (S16 harvest principle). Nightly snapshot / rollup tables are sanctioned **only if** a report proves slow at real operator scale — design the cache then; do not invent rollups preemptively. Vocabulary: `docs/report-definitions.md`. |
 | Configurable Insights dashboards | S16-04 ships one fixed daily-glance layout (KPI cards + two trends + attention). Per-employee layouts / drag-and-drop widgets deferred. |
 | Scheduled email reports | S16 does not email report PDFs/CSVs on a cadence. Natural later playbook action once Insights figures are trusted. |
+| Panel idle timeout | S17-07 deliberately ships no idle session timeout. Shared front-desk machines rely on staff locking the workstation. Options later: soft idle warning + re-auth, hard logout after N minutes, or leave as OS-lock-only. |
 
 ## Active WIP
 

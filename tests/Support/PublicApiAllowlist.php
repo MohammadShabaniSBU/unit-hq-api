@@ -17,6 +17,7 @@ final class PublicApiAllowlist
      */
     public const URIS = [
         'api/login',
+        'api/branding',
         'api/webhooks/stripe/{accountToken}',
         'api/webhooks/esign/{webhookToken}',
         'api/webhooks/access/{webhookToken}',
@@ -29,6 +30,8 @@ final class PublicApiAllowlist
         'api/pay/{token}',
         'api/pay/{token}/intent',
         'api/legal-entities/{legal_entity}/stripe/public-key',
+        'api/invitations/{token}',
+        'api/invitations/{token}/accept',
     ];
 
     public static function contains(string $uri): bool

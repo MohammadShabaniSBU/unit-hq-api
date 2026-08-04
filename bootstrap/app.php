@@ -7,6 +7,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -85,5 +86,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'errors.forbidden',
                 'data' => $data,
             ], 403);
+        });
+
+        $exceptions->render(function (ThrottleRequestsException $e, Request $request): ?JsonResponse {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'errors.too_many_attempts',
+                'data' => null,
+            ], 429);
         });
     })->create();

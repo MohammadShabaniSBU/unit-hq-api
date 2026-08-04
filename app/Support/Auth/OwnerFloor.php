@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Auth;
 
+use App\Models\Employee;
 use App\Models\EmployeeRole;
 use App\Models\Role;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ use Illuminate\Validation\ValidationException;
  * At least one company-wide owner grant must always exist.
  * Call assertCanRevoke inside the deleting hook and again (with FOR UPDATE)
  * inside any controller transaction that revokes grants.
+ * Deactivating the last company-wide owner is refused the same way.
  */
 final class OwnerFloor
 {
@@ -75,6 +77,46 @@ final class OwnerFloor
             self::assertCanRevoke($grant);
             $grant->delete();
         });
+    }
+
+    /**
+     * Refuse deactivating the last active company-wide owner.
+     *
+     * @throws ValidationException
+     */
+    public static function assertCanDeactivate(Employee $employee): void
+    {
+        $ownerRoleId = self::ownerRoleId();
+        if ($ownerRoleId === null) {
+            return;
+        }
+
+        $isCompanyOwner = EmployeeRole::query()
+            ->where('employee_id', $employee->id)
+            ->where('role_id', $ownerRoleId)
+            ->whereNull('site_id')
+            ->exists();
+
+        if (! $isCompanyOwner) {
+            return;
+        }
+
+        $remaining = EmployeeRole::query()
+            ->where('role_id', $ownerRoleId)
+            ->whereNull('site_id')
+            ->where('employee_id', '!=', $employee->id)
+            ->whereHas('employee', static function ($q): void {
+                $q->whereNull('deactivated_at');
+            })
+            ->lockForUpdate()
+            ->get(['id'])
+            ->count();
+
+        if ($remaining === 0) {
+            throw ValidationException::withMessages([
+                'employee' => [__('errors.rbac.last_owner')],
+            ]);
+        }
     }
 
     private static function ownerRoleId(): ?int

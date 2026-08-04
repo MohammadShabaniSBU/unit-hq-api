@@ -35,6 +35,7 @@ class PerimeterTest extends TestCase
     {
         return [
             ['POST', '/api/login'],
+            ['GET', '/api/branding'],
             ['POST', '/api/webhooks/stripe/test-token'],
             ['POST', '/api/webhooks/esign/test-token'],
             ['POST', '/api/webhooks/access/test-token'],

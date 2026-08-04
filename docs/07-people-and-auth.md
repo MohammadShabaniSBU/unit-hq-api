@@ -8,6 +8,20 @@
 | `Employee` | Company staff (dashboard) | Yes (Sanctum); grants via `employee_roles` |
 | `Contact` | Prospect / tenant (renter) | **No login** — offer token links only |
 
+## Employee lifecycle
+
+Employees are created without a password. An `employee_invitations` row holds a
+sha256 of a crypto-random token (raw token shown once). The invitee sets their
+own password via public `GET/POST /api/invitations/{token}` (panel `/invite/:token`).
+Expiry is read-time (invariant 13); no sweeper. Resend revokes the previous token.
+
+Deactivation sets `deactivated_at`, revokes all Sanctum tokens and open invites in
+the same transaction (invariant 47), and keeps grants for reactivation. The last
+company-wide `owner` cannot be deactivated (`OwnerFloor`). Login folds deactivated
+and null-password accounts into the same generic credential error.
+
+Self-service: `PATCH /api/user` and `POST /api/user/password` are `Exempt::self`.
+
 ## Grant model (RBAC data)
 
 Authorization is expressed as **role grants**, not a scalar `employees.role` column:

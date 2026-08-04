@@ -36,12 +36,16 @@ use App\Support\Communications\ProviderResolver;
 use App\Support\Access\AccessProviderRegistry;
 use App\Support\ESign\ESignProviderRegistry;
 use App\Support\RequestId;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,6 +65,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('login', function (Request $request) {
+            $email = Str::lower((string) $request->input('email', ''));
+
+            return Limit::perMinute(5)->by($email.'|'.$request->ip());
+        });
+
+        RateLimiter::for('invitation', function (Request $request) {
+            $token = (string) $request->route('token', '');
+
+            return Limit::perMinute(10)->by($token.'|'.$request->ip());
+        });
+
         Relation::morphMap([
             'contact'          => Contact::class,
             'deal'             => Deal::class,

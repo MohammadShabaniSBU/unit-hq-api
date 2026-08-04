@@ -14,6 +14,8 @@ final class EmployeeAuthPayload
     /**
      * @return array{
      *     id: int,
+     *     first_name: string,
+     *     last_name: string,
      *     name: string,
      *     email: string,
      *     roles: list<array{key: string, label: string, site_id: int|null}>,
@@ -60,6 +62,8 @@ final class EmployeeAuthPayload
 
         return [
             'id' => $employee->id,
+            'first_name' => $employee->first_name,
+            'last_name' => $employee->last_name,
             'name' => $employee->name,
             'email' => $employee->email,
             'roles' => $roles,

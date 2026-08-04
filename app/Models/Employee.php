@@ -9,6 +9,7 @@ use App\Support\Auth\PermissionMap;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,20 +24,34 @@ use Laravel\Sanctum\HasApiTokens;
  *
  * Authorization grants live on employee_roles (not a scalar role column).
  *
- * @property int    $id
- * @property string $name
- * @property string $email
- * @property string $password
- * @property Carbon $created_at
- * @property Carbon $updated_at
+ * @property int         $id
+ * @property string      $first_name
+ * @property string      $last_name
+ * @property string      $email
+ * @property string|null $password
+ * @property Carbon|null $deactivated_at
+ * @property Carbon|null $last_login_at
+ * @property Carbon      $created_at
+ * @property Carbon      $updated_at
+ * @property-read string $name
+ * @property-read string $status  invited|active|deactivated
  *
- * @property-read Collection<int, Price>        $createdPrices
- * @property-read Collection<int, Task>         $assignedTasks
- * @property-read Collection<int, Task>         $createdTasks
- * @property-read Collection<int, Note>         $notes
- * @property-read Collection<int, EmployeeRole> $employeeRoles
+ * @property-read Collection<int, Price>              $createdPrices
+ * @property-read Collection<int, Task>               $assignedTasks
+ * @property-read Collection<int, Task>               $createdTasks
+ * @property-read Collection<int, Note>               $notes
+ * @property-read Collection<int, EmployeeRole>       $employeeRoles
+ * @property-read Collection<int, EmployeeInvitation> $invitations
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable([
+    'first_name',
+    'last_name',
+    'name',
+    'email',
+    'password',
+    'deactivated_at',
+    'last_login_at',
+])]
 #[Hidden(['password', 'remember_token'])]
 class Employee extends Authenticatable
 {
@@ -53,7 +68,53 @@ class Employee extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'deactivated_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Computed full name. Setter splits on first space so legacy factory/seeder
+     * `'name' => '…'` assignments keep working after the column split.
+     *
+     * @return Attribute<string, string>
+     */
+    protected function name(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => trim($this->first_name.' '.$this->last_name),
+            set: function (string $value): array {
+                $parts = explode(' ', trim($value), 2);
+
+                return [
+                    'first_name' => $parts[0] !== '' ? $parts[0] : 'Unknown',
+                    'last_name' => $parts[1] ?? '',
+                ];
+            },
+        );
+    }
+
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    public function isInvited(): bool
+    {
+        return ! $this->isDeactivated() && $this->password === null;
+    }
+
+    public function status(): string
+    {
+        if ($this->isDeactivated()) {
+            return 'deactivated';
+        }
+
+        if ($this->isInvited()) {
+            return 'invited';
+        }
+
+        return 'active';
     }
 
     /**
@@ -145,6 +206,12 @@ class Employee extends Authenticatable
     public function employeeRoles(): HasMany
     {
         return $this->hasMany(EmployeeRole::class);
+    }
+
+    /** @return HasMany<EmployeeInvitation, $this> */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(EmployeeInvitation::class);
     }
 
     /**

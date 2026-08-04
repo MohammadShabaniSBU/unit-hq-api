@@ -142,6 +142,15 @@ return [
         'system_role_immutable' => 'System roles are maintained by the application and cannot be edited.',
         'system_role_archive' => 'System roles cannot be archived.',
         'grant_mismatch' => 'That grant does not belong to this employee.',
+        'email_taken' => 'An employee with that email already exists.',
+        'already_deactivated' => 'This employee is already deactivated.',
+        'not_deactivated' => 'This employee is not deactivated.',
+        'deactivated' => 'This employee is deactivated.',
+        'invitation_mismatch' => 'That invitation does not belong to this employee.',
+        'current_password_incorrect' => 'The current password is incorrect.',
+    ],
+    'invitation' => [
+        'unavailable' => 'This invitation link is no longer valid. Ask your administrator for a new invite.',
     ],
 ];
 

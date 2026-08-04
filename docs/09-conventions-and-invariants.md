@@ -151,6 +151,10 @@
     via an explicit `visibleTo()` call at the query site. It must never be a
     global scope, middleware-set context, or queue payload key. A company-wide
     grant applies no filter at all.
+47. **Deactivating an employee revokes their Sanctum access tokens in the same
+    transaction.** An account that cannot sign in but whose issued tokens still
+    authenticate is not deactivated. Employees are archive-only (`deactivated_at`);
+    never hard-deleted — they are causers on append-only history.
 
 ## Code conventions
 

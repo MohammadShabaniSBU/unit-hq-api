@@ -409,18 +409,26 @@ final class RoutePermissions
     'PUT /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@update — provider account
 
     // ===== RBAC =====
+    'DELETE /api/employees/{employee}/invitations/{invitation}' => Permission::RbacManage, // EmployeeController@destroyInvitation
     'DELETE /api/employees/{employee}/roles/{grant}' => Permission::RbacManage, // EmployeeController@destroyRole
     'GET /api/employees' => Permission::RbacManage, // EmployeeController@index
     'GET /api/employees/{employee}/roles' => Permission::RbacManage, // EmployeeController@roles
     'GET /api/permissions' => Permission::RbacManage, // RbacController@permissions — role editor
     'GET /api/roles' => Permission::RbacManage, // RbacController@roles — role editor
     'GET /api/user' => Exempt::self('own identity'), // EmployeeAuthController@me
+    'PATCH /api/employees/{employee}' => Permission::RbacManage, // EmployeeController@update
     'PATCH /api/roles/{role}' => Permission::RbacManage, // RbacController@update
+    'PATCH /api/user' => Exempt::self('own profile'), // EmployeeAuthController@updateProfile
+    'POST /api/employees' => Permission::RbacManage, // EmployeeController@store
+    'POST /api/employees/{employee}/deactivate' => Permission::RbacManage, // EmployeeController@deactivate
+    'POST /api/employees/{employee}/invitations' => Permission::RbacManage, // EmployeeController@storeInvitation
+    'POST /api/employees/{employee}/reactivate' => Permission::RbacManage, // EmployeeController@reactivate
     'POST /api/employees/{employee}/roles' => Permission::RbacManage, // EmployeeController@storeRole
     'POST /api/logout' => Exempt::self('own session'), // EmployeeAuthController@logout
     'POST /api/roles' => Permission::RbacManage, // RbacController@store
     'POST /api/roles/{role}/archive' => Permission::RbacManage, // RbacController@archive
     'POST /api/roles/{role}/unarchive' => Permission::RbacManage, // RbacController@unarchive
+    'POST /api/user/password' => Exempt::self('own password'), // EmployeeAuthController@updatePassword
 
         ];
     }

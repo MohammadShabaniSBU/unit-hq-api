@@ -14,7 +14,11 @@ use Illuminate\Support\Facades\Route;
 // ---------------------------------------------------------------------------
 
 // Issues the Sanctum personal-access token used by the panel.
-Route::post('login', [Controllers\EmployeeAuthController::class, 'login']);
+Route::post('login', [Controllers\EmployeeAuthController::class, 'login'])
+    ->middleware('throttle:login');
+
+// Pre-auth display name only — no business content (panel login brand panel).
+Route::get('branding', [Controllers\BrandingController::class, 'show']);
 
 // Inbound webhooks — provider signature / per-account URL token.
 Route::post('webhooks/stripe/{accountToken}', Webhooks\StripeWebhookController::class);
@@ -45,6 +49,12 @@ Route::post('pay/{token}/intent', [Controllers\PublicPaymentController::class, '
 // Stripe publishable key — not a secret; documented public by decision.
 Route::get('legal-entities/{legal_entity}/stripe/public-key', [Controllers\LegalEntityStripeController::class, 'publicKey']);
 
+// Employee invitation — crypto-random token hashed at rest (invariant 6).
+Route::get('invitations/{token}', [Controllers\EmployeeInvitationController::class, 'show'])
+    ->middleware('throttle:invitation');
+Route::post('invitations/{token}/accept', [Controllers\EmployeeInvitationController::class, 'accept'])
+    ->middleware('throttle:invitation');
+
 // ---------------------------------------------------------------------------
 // AUTHENTICATED — everything else. No route may be added below without being
 // inside this group. RouteAuthCoverageTest enforces it.
@@ -52,6 +62,8 @@ Route::get('legal-entities/{legal_entity}/stripe/public-key', [Controllers\Legal
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [Controllers\EmployeeAuthController::class, 'logout']);
     Route::get('user', [Controllers\EmployeeAuthController::class, 'me']);
+    Route::patch('user', [Controllers\EmployeeAuthController::class, 'updateProfile']);
+    Route::post('user/password', [Controllers\EmployeeAuthController::class, 'updatePassword']);
     Route::get('permissions', [Controllers\RbacController::class, 'permissions']);
     Route::get('roles', [Controllers\RbacController::class, 'roles']);
     Route::post('roles', [Controllers\RbacController::class, 'store']);
@@ -72,7 +84,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('messages/{message}/recording', [Controllers\MessageController::class, 'recording']);
 
     Route::get('employees', [Controllers\EmployeeController::class, 'index']);
+    Route::post('employees', [Controllers\EmployeeController::class, 'store']);
     Route::get('employees/options', [Controllers\EmployeeController::class, 'options']);
+    Route::patch('employees/{employee}', [Controllers\EmployeeController::class, 'update']);
+    Route::post('employees/{employee}/deactivate', [Controllers\EmployeeController::class, 'deactivate']);
+    Route::post('employees/{employee}/reactivate', [Controllers\EmployeeController::class, 'reactivate']);
+    Route::post('employees/{employee}/invitations', [Controllers\EmployeeController::class, 'storeInvitation']);
+    Route::delete('employees/{employee}/invitations/{invitation}', [Controllers\EmployeeController::class, 'destroyInvitation']);
     Route::get('employees/{employee}/roles', [Controllers\EmployeeController::class, 'roles']);
     Route::post('employees/{employee}/roles', [Controllers\EmployeeController::class, 'storeRole']);
     Route::delete('employees/{employee}/roles/{grant}', [Controllers\EmployeeController::class, 'destroyRole']);

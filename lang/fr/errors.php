@@ -128,6 +128,15 @@ return [
         'system_role_immutable' => 'Les rôles système sont maintenus par l’application et ne peuvent pas être modifiés.',
         'system_role_archive' => 'Les rôles système ne peuvent pas être archivés.',
         'grant_mismatch' => 'Cette attribution n’appartient pas à cet employé.',
+        'email_taken' => 'Un employé avec cet e-mail existe déjà.',
+        'already_deactivated' => 'Cet employé est déjà désactivé.',
+        'not_deactivated' => 'Cet employé n’est pas désactivé.',
+        'deactivated' => 'Cet employé est désactivé.',
+        'invitation_mismatch' => 'Cette invitation n’appartient pas à cet employé.',
+        'current_password_incorrect' => 'Le mot de passe actuel est incorrect.',
+    ],
+    'invitation' => [
+        'unavailable' => 'Ce lien d’invitation n’est plus valide. Demandez une nouvelle invitation à votre administrateur.',
     ],
 ];
 
