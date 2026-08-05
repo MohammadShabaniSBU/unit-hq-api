@@ -336,7 +336,7 @@ final class RoutePermissions
 
     // ===== Operations (72) =====
     'DELETE /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@destroy
-    'DELETE /api/copilot/conversations/{id}' => Permission::ContactView, // CopilotController@destroy — placeholder until enum case exists
+    'DELETE /api/copilot/conversations/{conversation}' => Permission::ContactView, // CopilotController@destroy — placeholder until enum case exists
     'DELETE /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@destroy
     'DELETE /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@destroy — provider account
     'DELETE /api/settings/object-customization/fields/{field}' => Permission::SettingsManage, // ObjectCustomizationController@destroyField
@@ -352,8 +352,10 @@ final class RoutePermissions
     'GET /api/automations/{automation}/runs/{run}' => Permission::AutomationView, // AutomationController@showRun
     'GET /api/contacts/{contact}/access-events' => Permission::AccessView, // AccessEventController@forContact
     'GET /api/copilot/conversations' => Permission::ContactView, // CopilotController@index — placeholder until enum case exists
-    'GET /api/copilot/conversations/{id}' => Permission::ContactView, // CopilotController@show — placeholder until enum case exists
+    'GET /api/copilot/conversations/{conversation}' => Permission::ContactView, // CopilotController@show — placeholder until enum case exists
     'GET /api/employees/options' => Permission::InboxAssign, // EmployeeController@options — assignee picker (inbox/tasks)
+    'GET /api/insights/ai-usage' => Permission::ReportView, // AiUsageInsightsController@index — aggregate AI usage (company report)
+    'GET /api/insights/ai-usage/me' => Exempt::self('own AI usage'), // AiUsageInsightsController@me
     'GET /api/playbooks' => Permission::PlaybookManage, // PlaybookController@index
     'GET /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@show
     'GET /api/playbooks/{playbook}/enrolments' => Permission::PlaybookManage, // PlaybookController@enrolments
@@ -386,8 +388,10 @@ final class RoutePermissions
     'POST /api/automations/{automation}/archive' => Permission::AutomationManage, // AutomationController@archive
     'POST /api/automations/{automation}/deactivate' => Permission::AutomationManage, // AutomationController@deactivate
     'POST /api/automations/{automation}/unarchive' => Permission::AutomationManage, // AutomationController@unarchive
-    'POST /api/copilot/chat' => Permission::ContactView, // CopilotController@chat — placeholder until enum case exists
     'POST /api/copilot/conversations' => Permission::ContactView, // CopilotController@store — placeholder until enum case exists
+    'POST /api/copilot/conversations/{conversation}/messages' => Permission::ContactView, // CopilotController@storeMessage — placeholder until enum case exists
+    'POST /api/copilot/conversations/{conversation}/decisions' => Permission::ContactView, // CopilotController@storeDecisions — placeholder until enum case exists
+
     'POST /api/playbooks' => Permission::PlaybookManage, // PlaybookController@store
     'POST /api/playbooks/{playbook}/activate' => Permission::PlaybookManage, // PlaybookController@activate
     'POST /api/playbooks/{playbook}/deactivate' => Permission::PlaybookManage, // PlaybookController@deactivate
@@ -404,7 +408,6 @@ final class RoutePermissions
     'POST /api/settings/object-customization/{entityType}/groups' => Permission::SettingsManage, // ObjectCustomizationController@storeGroup
     'POST /api/settings/object-customization/{entityType}/groups/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderGroups
     'PUT /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
-    'PUT /api/copilot/conversations/{id}/messages' => Permission::ContactView, // CopilotController@syncMessages — placeholder until enum case exists
     'PUT /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
     'PUT /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@update — provider account
 

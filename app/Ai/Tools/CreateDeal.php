@@ -1,19 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Ai\Tools;
 
 use App\Enums\DealStatus;
-use App\Enums\StayPeriod;
-use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Concerns\InteractsWithApprovals;
+use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Stringable;
 
-class CreateDeal implements Tool
+class CreateDeal implements Tool, Approvable
 {
+    use InteractsWithApprovals;
+
     public function description(): Stringable|string
     {
         return 'Create a new deal/opportunity for an existing contact, tracking their expected move-in date, stay period, and storage needs.';

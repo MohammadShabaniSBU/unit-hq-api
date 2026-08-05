@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Ai\Tools;
 
-use App\Enums\ContactRecordStatus;
-use App\Enums\ContactSource;
 use App\Models\Contact;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Concerns\InteractsWithApprovals;
+use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Stringable;
 
-class CreateContact implements Tool
+class CreateContact implements Tool, Approvable
 {
+    use InteractsWithApprovals;
+
     public function description(): Stringable|string
     {
         return 'Create a new contact in the CRM with name, email, and other details.';

@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('system-events:maintain')->daily();
         $schedule->command('activitylog:prune-tiers')->daily();
+        $schedule->command('ai-usage:prune')->daily();
+        $schedule->command('ai-usage:sweep')->everyFifteenMinutes();
         $schedule->command('automations:run-scheduled')->everyMinute();
         $schedule->command('automations:resume-waiting')->everyMinute();
 

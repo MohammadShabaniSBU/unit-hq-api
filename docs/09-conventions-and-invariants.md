@@ -155,6 +155,15 @@
     transaction.** An account that cannot sign in but whose issued tokens still
     authenticate is not deactivated. Employees are archive-only (`deactivated_at`);
     never hard-deleted — they are causers on append-only history.
+48. **`ai_usage_events` is operational telemetry, not the ledger.** It never produces a
+    charge, a payment, or a revenue figure, and never uses the `NUMERIC(10,2)` money path.
+    Its `status` is deliberately mutable — the reserve/settle lifecycle is not an
+    append-only ledger and invariant 3 does not apply to it. Estimated cost is derived at
+    read time from `ai_model_prices` (invariant 5 / 2 pattern: effective-dated catalogue,
+    never an in-place rate `UPDATE`). Estimated cost never reconciles to the provider
+    invoice — retries, failovers, cached tokens and rounding all diverge. The figure
+    attributes spend between employees; it is not an accounting record and must not be
+    presented as one. Never return a single summed cost across currencies (invariant 30).
 
 ## Code conventions
 

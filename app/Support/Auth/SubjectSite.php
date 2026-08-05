@@ -26,6 +26,7 @@ use App\Models\Deal;
 use App\Models\Delinquency;
 use App\Models\DelinquencyPolicy;
 use App\Models\Discount;
+use App\Models\Employee;
 use App\Models\EsignEnvelope;
 use App\Models\EsignProviderAccount;
 use App\Models\Insurance;
@@ -124,6 +125,7 @@ final class SubjectSite
             Discount::class => null,
             LegalEntity::class => null,
             Role::class => null,
+            Employee::class => null,
             Site::class => $subject instanceof Site ? $subject : null,
             SiteMap::class => $subject instanceof SiteMap ? self::siteMapSite($subject) : null,
             SiteSenderIdentity::class => $subject instanceof SiteSenderIdentity

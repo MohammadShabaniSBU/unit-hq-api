@@ -29,6 +29,11 @@ trait ApiResponsable
         return $this->success($data, $message, 201);
     }
 
+    protected function accepted(mixed $data = null, string $message = 'Accepted.'): JsonResponse
+    {
+        return $this->success($data, $message, 202);
+    }
+
     protected function noContent(string $message = 'No content.'): JsonResponse
     {
         return response()->json([

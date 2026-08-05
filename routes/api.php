@@ -160,6 +160,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
 
+    Route::get('insights/ai-usage', [Controllers\AiUsageInsightsController::class, 'index']);
+    Route::get('insights/ai-usage/me', [Controllers\AiUsageInsightsController::class, 'me']);
+
     // Delinquency collections desk (S07-04)
     Route::get('delinquencies', [Controllers\DelinquencyController::class, 'index']);
     Route::get('delinquencies/{delinquency}', [Controllers\DelinquencyController::class, 'show']);
@@ -297,10 +300,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
     Route::post('copilot/conversations', [Controllers\CopilotController::class, 'store']);
-    Route::get('copilot/conversations/{id}', [Controllers\CopilotController::class, 'show']);
-    Route::delete('copilot/conversations/{id}', [Controllers\CopilotController::class, 'destroy']);
-    Route::put('copilot/conversations/{id}/messages', [Controllers\CopilotController::class, 'syncMessages']);
-    Route::post('copilot/chat', [Controllers\CopilotController::class, 'chat']);
+    Route::get('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'show']);
+    Route::delete('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'destroy']);
+    Route::post('copilot/conversations/{conversation}/messages', [Controllers\CopilotController::class, 'storeMessage']);
+    Route::post('copilot/conversations/{conversation}/decisions', [Controllers\CopilotController::class, 'storeDecisions']);
+
 
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::get('deals/filters/schema', [Controllers\DealController::class, 'filterSchema']);

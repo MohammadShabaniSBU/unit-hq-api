@@ -128,7 +128,7 @@ class RbacBackfillTest extends TestCase
         $this->assertTrue(
             Activity::query()
                 ->where('description', 'rbac.owner.promoted')
-                ->where('subject_type', Employee::class)
+                ->where('subject_type', 'employee')
                 ->where('subject_id', $firstId)
                 ->exists(),
         );

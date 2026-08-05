@@ -1,119 +1,139 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Ai\Agents\CrmCopilotAgent;
-use App\Models\AgentConversation;
-use App\Models\AgentConversationMessage;
+use App\Models\CopilotConversation;
+use App\Models\Employee;
+use App\Support\Ai\CopilotDispatcher;
+use App\Support\Auth\Permission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Laravel\Ai\Responses\StreamableAgentResponse;
-use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use Laravel\Ai\Approvals\Decision;
+use Laravel\Ai\Approvals\Decisions;
 
 class CopilotController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
 
-        $conversations = AgentConversation::orderByDesc('updated_at')
-            ->get(['id', 'title', 'created_at', 'updated_at']);
+        /** @var Employee $employee */
+        $employee = $request->user();
 
-        return response()->json($conversations);
+        $conversations = $employee->conversations()
+            ->whereNull('deleted_at')
+            ->latest('updated_at')
+            ->paginate($this->perPage(20));
+
+        return $this->paginated($conversations, 'Conversations retrieved successfully.');
     }
 
-    public function store(): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
 
-        $conversation = AgentConversation::create([
-            'id' => (string) Str::uuid(),
-            'title' => 'New conversation',
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
-        return response()->json($conversation, 201);
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => $validated['title'] ?? 'New conversation',
+            'site_scope_snapshot' => $employee->siteIdsFor(Permission::ContactView),
+        ]);
+
+        return $this->created([
+            'id' => $conversation->id,
+            'title' => $conversation->title,
+            'created_at' => $conversation->created_at,
+            'updated_at' => $conversation->updated_at,
+        ], 'Conversation created successfully.');
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, CopilotConversation $conversation): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
+        Gate::authorize('view', $conversation);
 
-        $conversation = AgentConversation::with(['messages' => function ($query) {
-            $query->select('id', 'conversation_id', 'role', 'content', 'created_at');
-        }])->findOrFail($id);
+        $messages = $conversation->messages()
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->paginate($this->perPage(50));
 
-        return response()->json($conversation);
+        return $this->paginated($messages, 'Conversation messages retrieved successfully.');
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, CopilotConversation $conversation): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
+        Gate::authorize('delete', $conversation);
 
-        $conversation = AgentConversation::findOrFail($id);
-        $conversation->messages()->delete();
         $conversation->delete();
 
-        return response()->json(null, 204);
+        return $this->noContent('Conversation archived successfully.');
     }
 
-    public function syncMessages(Request $request, string $id): JsonResponse
+    public function storeMessage(Request $request, CopilotConversation $conversation): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
+        Gate::authorize('view', $conversation);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'messages' => 'required|array',
-            'messages.*.role' => 'required|in:user,assistant',
-            'messages.*.content' => 'required|string',
+            'message' => ['required', 'string', 'max:8000'],
+            'client_message_id' => ['required', 'uuid'],
         ]);
 
-        $conversation = AgentConversation::findOrFail($id);
-        $conversation->update(['title' => $validated['title']]);
+        if ($conversation->title === 'New conversation') {
+            $conversation->forceFill([
+                'title' => Str::limit($validated['message'], 50, '...'),
+            ])->save();
+        }
 
-        $conversation->messages()->delete();
-
-        $now = now();
-        $rows = collect($validated['messages'])->map(fn (array $m) => [
-            'id' => (string) Str::uuid(),
-            'conversation_id' => $id,
-            'role' => $m['role'],
-            'content' => $m['content'],
-            'agent' => 'CrmCopilotAgent',
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '{}',
-            'meta' => '{}',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->all();
-
-        AgentConversationMessage::insert($rows);
-
-        return response()->json(null, 204);
+        return $this->accepted(
+            CopilotDispatcher::dispatchTurn($conversation, $employee, $validated),
+            'Copilot turn accepted.',
+        );
     }
 
-    public function chat(Request $request): StreamableAgentResponse
+    public function storeDecisions(Request $request, CopilotConversation $conversation): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
+        Gate::authorize('view', $conversation);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
 
         $validated = $request->validate([
-            'messages' => 'required|array',
-            'messages.*.role' => 'required|in:user,assistant',
-            'messages.*.content' => 'required|string',
+            'decisions' => ['required', 'array', 'min:1'],
+            'decisions.*' => ['required', 'array'],
+            'decisions.*.action' => ['required', 'string', 'in:approve,reject'],
+            'decisions.*.result' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ]);
 
-        $messages = $validated['messages'];
+        $normalized = [];
+        foreach ($validated['decisions'] as $toolCallId => $decision) {
+            $normalized[$toolCallId] = $decision['action'] === 'approve'
+                ? Decision::approve()
+                : Decision::reject($decision['result'] ?? null);
+        }
 
-        $lastUserMessage = collect($messages)
-            ->last(fn (array $message) => $message['role'] === 'user')['content'] ?? null;
+        $decisions = Decisions::from($normalized)->rejectRemaining();
 
-        abort_if(! $lastUserMessage, 422, 'No user message found');
-
-        return (new CrmCopilotAgent($messages))
-            ->stream($lastUserMessage)
-            ->usingVercelDataProtocol();
+        return $this->accepted(
+            CopilotDispatcher::dispatchDecisions($conversation, $employee, $decisions),
+            'Copilot decisions accepted.',
+        );
     }
 }

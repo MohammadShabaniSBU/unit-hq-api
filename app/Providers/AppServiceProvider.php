@@ -14,6 +14,7 @@ use App\Models\Contract;
 use App\Models\ContractNotice;
 use App\Models\Deal;
 use App\Models\Delinquency;
+use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
 use App\Models\Invoice;
@@ -28,7 +29,13 @@ use App\Events\ChannelDeliveryFailed;
 use App\Events\ModelCreated;
 use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
+use App\Listeners\BroadcastCopilotFailed;
+use App\Listeners\BroadcastCopilotToolInvoking;
+use App\Listeners\IncrementAiUsageToolCalls;
 use App\Listeners\QueueAutomationMatching;
+use App\Listeners\RecordAgentFailoverUsage;
+use App\Listeners\RecordAgentUsage;
+use App\Listeners\SettleFailedAiUsage;
 use App\Listeners\WriteChannelSuppression;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Communications\ProviderRegistry;
@@ -39,6 +46,7 @@ use App\Support\RequestId;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -46,6 +54,11 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Ai\Events\AgentFailedOver;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\AgentStreamed;
+use Laravel\Ai\Events\InvokingTool;
+use Laravel\Ai\Events\ToolInvoked;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -78,6 +91,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Relation::morphMap([
+            'employee'         => Employee::class,
             'contact'          => Contact::class,
             'deal'             => Deal::class,
             'offer'            => Offer::class,
@@ -133,5 +147,12 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ModelUpdated::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ModelDeleted::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ChannelDeliveryFailed::class, [WriteChannelSuppression::class, 'handle']);
+        Event::listen(InvokingTool::class, [BroadcastCopilotToolInvoking::class, 'handle']);
+        Event::listen(JobFailed::class, [BroadcastCopilotFailed::class, 'handle']);
+        Event::listen(JobFailed::class, [SettleFailedAiUsage::class, 'handle']);
+        Event::listen(AgentPrompted::class, [RecordAgentUsage::class, 'handle']);
+        Event::listen(AgentStreamed::class, [RecordAgentUsage::class, 'handle']);
+        Event::listen(ToolInvoked::class, [IncrementAiUsageToolCalls::class, 'handle']);
+        Event::listen(AgentFailedOver::class, [RecordAgentFailoverUsage::class, 'handle']);
     }
 }
