@@ -22,7 +22,7 @@ The physical storage facility (also called "Center").
 
 SVG floor plans for the visual unit map. A site may have multiple floors (`floor_name` unique per site).
 
-- **Id-matching convention:** SVG element `id` attributes match `units.unit_number` for the same `site_id`. Upload validation reports three buckets — `matched`, `orphan_shapes` (id with no unit), `uncovered_units` (unit with no shape).
+- **Shape-matching convention:** SVG shapes carry `data-unit-number` matching `units.unit_number` for the same `site_id`. Maps with no `data-unit-number` anywhere fall back to matching element `id`, for plans drawn against the pre-S20 convention. Structural ids (layers, rows, groups) are never treated as shapes. Upload validation reports three buckets — `matched`, `orphan_shapes`, `uncovered_units`.
 - SVG is sanitized on write (scripts, event handlers, `foreignObject`, external hrefs stripped).
 
 ## UnitClass — the sellable product
@@ -71,7 +71,7 @@ facility hierarchy (S15).
 | `sites` | Facilities |
 | `unit_classes` | Sellable products |
 | `units` | Physical boxes |
-| `site_maps` | Visual facility maps (SVG; id ↔ `unit_number`) |
+| `site_maps` | Visual facility maps (SVG; `data-unit-number` ↔ `unit_number`) |
 | `unit_class_rates` | Site × class → price junction |
 | `access_points` | Mapped provider locks/gates/zones (S15) |
 | `payment_provider_accounts` | Per-entity Stripe (and future debit) credentials + webhook routing — see `05-billing-ledger.md` |

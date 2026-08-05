@@ -67,6 +67,9 @@ class UnitResource extends BaseResource
                 ],
             ),
             'overlock' => $this->formatOverlock($overlock instanceof UnitHold ? $overlock : null),
+            'is_overdue' => $state === UnitState::Occupied
+                ? (bool) ($unit?->getAttribute('is_overdue') ?? false)
+                : false,
             'access' => $unit !== null ? AccessState::forUnit($unit) : null,
             'created_at'    => $this->datetime($this->created_at),
             'updated_at'    => $this->datetime($this->updated_at),

@@ -33,6 +33,7 @@
    - Exception: `contracts.billed_through` is a **stored billing cursor** (date), not cached money — the recurring job advances it; balances stay computed.
    - Clarification: `unit_occupancies` and `unit_holds` are **fact tables** (who occupies / holds a unit over a date range). They are not cached derived state. Availability remains computed from those facts.
    - **Delinquency severity is computed; delinquency history is facts.** No stage/severity/amount column exists on cases. Cases and steps are append-only; ladder steps fire at most once per case (partial unique on `(delinquency_id, policy_step_id)`); every step references the artefact it produced.
+   - **Floor map shapes join on `data-unit-number`.** `id` is a fallback for legacy maps only. A map is never partially matched across both conventions in one document. Match buckets (`id_match`) are computed on read/upload, never stored.
 6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.
 7. **One selected option per offer** — enforced by partial unique index on `offer_id WHERE selected_at IS NOT NULL`.
 8. **One primary channel per type per contact** — partial unique index on `contact_channels`.
@@ -175,6 +176,7 @@
 - Response shape via `ApiResponsable`: `{ message, data }` / paginated `{ meta }`.
 - Morph map registered explicitly — e.g. `contact`, `deal`, `offer`, `reservation`, `unit`, `contract`, `insurance`.
 - Tests: PHPUnit + SQLite in-memory.
+- **Demo stage generation path performs no random draws.** Anything added to `StageSeeder` after unit creation must be deterministic (no `mt_rand()`, `fake()`, `shuffle()`, `Collection::random()`, `Str::random()`), or every cast persona downstream shifts. Floor assignment is a pure sort.
 
 ### Panel (Nuxt)
 

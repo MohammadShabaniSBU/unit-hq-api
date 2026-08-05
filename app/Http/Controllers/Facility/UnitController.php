@@ -10,15 +10,16 @@ use App\Http\Resources\UnitResource;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Auth\Permission;
+use App\Support\Billing\OverdueContracts;
 use App\Support\Occupancy\Availability;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class UnitController extends Controller
 {
@@ -68,6 +69,7 @@ class UnitController extends Controller
         if ($request->boolean('for_map') && ! empty($validated['site_id'])) {
             $units = $query->get();
             Availability::hydrateState($units, $hydrateOn);
+            $this->hydrateMapOverdue($units);
 
             return $this->success(
                 $units->map(fn (Unit $unit) => UnitResource::make($unit)),
@@ -155,6 +157,46 @@ class UnitController extends Controller
             Availability::scopeStateOn($query, $state, $explicitOn);
         } else {
             Availability::scopeStateTodayPerSite($query, $state);
+        }
+    }
+
+    /**
+     * Stamp derived is_overdue on each unit (query-time only — never stored).
+     *
+     * @param  \Illuminate\Support\Collection<int, Unit>|\Illuminate\Database\Eloquent\Collection<int, Unit>  $units
+     */
+    private function hydrateMapOverdue($units): void
+    {
+        $contractIds = [];
+
+        foreach ($units as $unit) {
+            if (! $unit->relationLoaded('coveringOccupancy')) {
+                continue;
+            }
+
+            $occupancy = $unit->getRelation('coveringOccupancy');
+            if ($occupancy !== null && $occupancy->contract_id !== null) {
+                $contractIds[] = (int) $occupancy->contract_id;
+            }
+        }
+
+        $overdueIds = array_fill_keys(
+            OverdueContracts::idsAmong(array_values(array_unique($contractIds))),
+            true,
+        );
+
+        foreach ($units as $unit) {
+            $occupancy = $unit->relationLoaded('coveringOccupancy')
+                ? $unit->getRelation('coveringOccupancy')
+                : null;
+            $contractId = $occupancy?->contract_id !== null
+                ? (int) $occupancy->contract_id
+                : null;
+
+            $unit->setAttribute(
+                'is_overdue',
+                $contractId !== null && isset($overdueIds[$contractId]),
+            );
         }
     }
 

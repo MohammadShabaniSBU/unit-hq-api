@@ -327,6 +327,9 @@ class StageSeeder extends Seeder
 
         DemoRbacGrants::assign($sites);
 
+        // Floor plans: deterministic only — must not consume the RNG stream.
+        FloorPlanStage::seed($sites);
+
         $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
     }
 

@@ -8,6 +8,7 @@ use Database\Seeders\Demo\DemoPipeline;
 use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoScript;
 use Database\Seeders\Demo\DemoWorld;
+use Database\Seeders\Demo\FloorPlanStage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Throwable;
@@ -99,6 +100,13 @@ class DemoSeedCommand extends Command
                 static fn (array $row): array => [$row['email'], $row['name'], $row['role'], $row['site']],
                 DemoRbacGrants::grantTableRows(),
             ),
+        );
+
+        $this->newLine();
+        $this->info('Floor plans:');
+        $this->table(
+            ['Site', 'Floor', 'Shapes', 'Matched', 'Orphans'],
+            FloorPlanStage::summaryRows(),
         );
 
         return self::SUCCESS;
