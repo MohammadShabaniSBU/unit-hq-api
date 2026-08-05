@@ -79,7 +79,7 @@ class InboundThreadingTest extends TestCase
         $originThread = MessageThread::query()->create([
             'contact_id' => $contact->id,
             'channel' => Channel::Email,
-            'subject' => 'Welcome to Unit HQ',
+            'subject' => 'Welcome to Keevaris',
             'channel_key' => null,
             'last_message_at' => now()->subDay(),
             'unread_count' => 0,
@@ -95,7 +95,7 @@ class InboundThreadingTest extends TestCase
             'to_address' => 'renter@example.com',
             'provider' => Provider::Postmark,
             'communication_account_id' => $this->postmark->id,
-            'provider_message_id' => 'outbound-playbook-msg-001@unit-hq.test',
+            'provider_message_id' => 'outbound-playbook-msg-001@keevaris.test',
             'source' => MessageSource::Playbook,
             'sent_at' => now()->subDay(),
         ]);
@@ -118,7 +118,7 @@ class InboundThreadingTest extends TestCase
         $subjectPayload['Headers'] = [
             ['Name' => 'Message-ID', 'Value' => '<00000000-0000-0000-0000-00000000in02@mtasv.net>'],
         ];
-        $subjectPayload['Subject'] = 'Re: Welcome to Unit HQ';
+        $subjectPayload['Subject'] = 'Re: Welcome to Keevaris';
 
         $this->postJson(
             "/api/webhooks/postmark/{$this->postmarkToken}/inbound",

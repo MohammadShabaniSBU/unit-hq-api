@@ -36,7 +36,7 @@ final class HannahCole extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'hannah', 'Hannah', 'Cole', [
-                    'email' => 'hannah.cole@demo.unit-hq.test',
+                    'email' => 'hannah.cole@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'hannah', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');

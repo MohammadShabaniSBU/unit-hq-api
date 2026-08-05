@@ -37,7 +37,7 @@ final class TheKellys extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'kellys', 'Pat', 'Kelly', [
-                    'email' => 'pat.kelly@demo.unit-hq.test',
+                    'email' => 'pat.kelly@demo.keevaris.test',
                     'company' => 'The Kellys',
                 ]);
                 JourneySupport::openDeal($world, 'kellys', $site);

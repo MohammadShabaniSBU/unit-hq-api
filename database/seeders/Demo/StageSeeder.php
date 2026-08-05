@@ -478,7 +478,7 @@ class StageSeeder extends Seeder
                 ['site_id' => $site->id, 'channel' => Channel::Email],
                 [
                     'account_id' => $email->id,
-                    'from_name' => 'Unit HQ',
+                    'from_name' => 'Keevaris',
                     'from_email' => 'desk@example.com',
                     'reply_to_email' => 'reply@example.com',
                 ]

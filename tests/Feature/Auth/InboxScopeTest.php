@@ -107,7 +107,7 @@ class InboxScopeTest extends TestCase
             'site_id' => $site->id,
             'channel' => Channel::Email,
             'account_id' => $account->id,
-            'from_name' => 'Unit HQ',
+            'from_name' => 'Keevaris',
             'from_email' => 'desk-'.$site->id.'@example.com',
             'reply_to_email' => 'reply-'.$site->id.'@example.com',
         ]);

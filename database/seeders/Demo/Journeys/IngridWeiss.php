@@ -32,7 +32,7 @@ final class IngridWeiss extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'ingrid', 'Ingrid', 'Weiss', [
-                    'email' => 'ingrid.weiss@demo.unit-hq.test',
+                    'email' => 'ingrid.weiss@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'ingrid', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');

@@ -35,7 +35,7 @@ final class EmployeeInviteMailer
             return false;
         }
 
-        $companyName = (string) config('app.name', 'Unit HQ');
+        $companyName = (string) config('app.name', 'Keevaris');
         $subject = "You're invited to {$companyName}";
         $text = "Hi {$employee->first_name},\n\n"
             ."You've been invited to {$companyName}. Set your password using this link:\n\n"

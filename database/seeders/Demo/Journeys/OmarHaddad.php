@@ -31,7 +31,7 @@ final class OmarHaddad extends Journey
             $signDay => static function (DemoWorld $world) use ($signDay, $end): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'omar', 'Omar', 'Haddad', [
-                    'email' => 'omar.haddad@demo.unit-hq.test',
+                    'email' => 'omar.haddad@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'omar', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');

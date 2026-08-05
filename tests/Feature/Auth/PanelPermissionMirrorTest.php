@@ -21,7 +21,7 @@ class PanelPermissionMirrorTest extends TestCase
         $this->assertFileExists(
             $path,
             "Panel permissions.ts not found at {$path}. "
-            .'Set UNIT_HQ_PANEL_PATH or mount ../unit-hq-panel in docker-compose.test.yml.',
+            .'Set KEEVARIS_PANEL_PATH or mount ../unit-hq-panel in docker-compose.test.yml.',
         );
 
         $tsValues = $this->parseTsPermissionValues((string) file_get_contents($path));
@@ -49,8 +49,8 @@ class PanelPermissionMirrorTest extends TestCase
 
     private function panelPermissionsPath(): string
     {
-        $root = env('UNIT_HQ_PANEL_PATH')
-            ?: getenv('UNIT_HQ_PANEL_PATH')
+        $root = env('KEEVARIS_PANEL_PATH')
+            ?: getenv('KEEVARIS_PANEL_PATH')
             ?: null;
 
         if (is_string($root) && $root !== '') {

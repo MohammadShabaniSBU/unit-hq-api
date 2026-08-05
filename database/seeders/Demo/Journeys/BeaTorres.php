@@ -36,7 +36,7 @@ final class BeaTorres extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'bea', 'Bea', 'Torres', [
-                    'email' => 'bea.torres@demo.unit-hq.test',
+                    'email' => 'bea.torres@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'bea', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');

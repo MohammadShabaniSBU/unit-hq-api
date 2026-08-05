@@ -1,8 +1,8 @@
-# unit-hq — Project Overview
+# Keevaris — Project Overview
 
 ## What it is
 
-unit-hq is a **mono-tenant** (single-company) self-storage operations platform. It is an all-in-one system for one storage operator — facility management, CRM/leasing pipeline, billing ledger, and Stripe payments scoped to legal entities — intended to replace a pile of separate tools so the operator never needs another application.
+Keevaris is a **mono-tenant** (single-company) self-storage operations platform. It is an all-in-one system for one storage operator — facility management, CRM/leasing pipeline, billing ledger, and Stripe payments scoped to legal entities — intended to replace a pile of separate tools so the operator never needs another application.
 
 > **Tenancy decision (final):** The application is **mono-tenant**. One database, one company. There is **no** `company_id` / `tenant_id` column anywhere, no tenancy package, no per-tenant database routing, and no tenant context in queued jobs. Any earlier notes describing multi-tenancy (database-per-company, tenant-aware migration runners) are superseded.
 

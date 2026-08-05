@@ -82,12 +82,12 @@ final class InboxContentBootstrap
         ?Employee $operator,
     ): void {
         $people = [
-            ['inbox_mail_a', 'Alicia', 'Mora', '+34600201001', 'inbox.mail.a@demo.unit-hq.test'],
-            ['inbox_mail_b', 'Bruno', 'Sanz', '+34600201002', 'inbox.mail.b@demo.unit-hq.test'],
-            ['inbox_mail_c', 'Carla', 'Ruiz', '+34600201003', 'inbox.mail.c@demo.unit-hq.test'],
-            ['inbox_mail_d', 'Diego', 'Vega', '+34600201004', 'inbox.mail.d@demo.unit-hq.test'],
-            ['inbox_mail_e', 'Elena', 'Nieto', '+34600201005', 'inbox.mail.e@demo.unit-hq.test'],
-            ['inbox_mail_f', 'Fiona', 'Cruz', '+34600201006', 'inbox.mail.f@demo.unit-hq.test'],
+            ['inbox_mail_a', 'Alicia', 'Mora', '+34600201001', 'inbox.mail.a@demo.keevaris.test'],
+            ['inbox_mail_b', 'Bruno', 'Sanz', '+34600201002', 'inbox.mail.b@demo.keevaris.test'],
+            ['inbox_mail_c', 'Carla', 'Ruiz', '+34600201003', 'inbox.mail.c@demo.keevaris.test'],
+            ['inbox_mail_d', 'Diego', 'Vega', '+34600201004', 'inbox.mail.d@demo.keevaris.test'],
+            ['inbox_mail_e', 'Elena', 'Nieto', '+34600201005', 'inbox.mail.e@demo.keevaris.test'],
+            ['inbox_mail_f', 'Fiona', 'Cruz', '+34600201006', 'inbox.mail.f@demo.keevaris.test'],
         ];
 
         $deskReplies = [
@@ -132,12 +132,12 @@ final class InboxContentBootstrap
         $site = $world->site('madrid');
 
         $people = [
-            ['inbox_call_a', 'Gina', 'Calle', '+34600202001', 'inbox.call.a@demo.unit-hq.test', 'answered_in'],
-            ['inbox_call_b', 'Hugo', 'Llano', '+34600202002', 'inbox.call.b@demo.unit-hq.test', 'answered_in'],
-            ['inbox_call_c', 'Irene', 'Paz', '+34600202003', 'inbox.call.c@demo.unit-hq.test', 'missed'],
-            ['inbox_call_d', 'Javi', 'Sol', '+34600202004', 'inbox.call.d@demo.unit-hq.test', 'missed'],
-            ['inbox_call_e', 'Karen', 'Río', '+34600202005', 'inbox.call.e@demo.unit-hq.test', 'voicemail'],
-            ['inbox_call_f', 'Luis', 'Mar', '+34600202006', 'inbox.call.f@demo.unit-hq.test', 'answered_out'],
+            ['inbox_call_a', 'Gina', 'Calle', '+34600202001', 'inbox.call.a@demo.keevaris.test', 'answered_in'],
+            ['inbox_call_b', 'Hugo', 'Llano', '+34600202002', 'inbox.call.b@demo.keevaris.test', 'answered_in'],
+            ['inbox_call_c', 'Irene', 'Paz', '+34600202003', 'inbox.call.c@demo.keevaris.test', 'missed'],
+            ['inbox_call_d', 'Javi', 'Sol', '+34600202004', 'inbox.call.d@demo.keevaris.test', 'missed'],
+            ['inbox_call_e', 'Karen', 'Río', '+34600202005', 'inbox.call.e@demo.keevaris.test', 'voicemail'],
+            ['inbox_call_f', 'Luis', 'Mar', '+34600202006', 'inbox.call.f@demo.keevaris.test', 'answered_out'],
         ];
 
         foreach ($people as $i => [$handle, $first, $last, $phone, $email, $kind]) {

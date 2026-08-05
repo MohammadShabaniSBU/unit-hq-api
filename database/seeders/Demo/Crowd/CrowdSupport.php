@@ -154,7 +154,7 @@ final class CrowdSupport
     {
         $first = fake()->firstName();
         $last = fake()->lastName();
-        $email = strtolower(str_replace('_', '.', $handle)).'.'.substr((string) $rng->int(1000, 9999), 0).'@demo.unit-hq.test';
+        $email = strtolower(str_replace('_', '.', $handle)).'.'.substr((string) $rng->int(1000, 9999), 0).'@demo.keevaris.test';
 
         return [
             'first' => $first,

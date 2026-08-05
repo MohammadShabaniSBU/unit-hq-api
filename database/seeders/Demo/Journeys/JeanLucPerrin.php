@@ -36,7 +36,7 @@ final class JeanLucPerrin extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('paris');
                 JourneySupport::createContact($world, 'jean_luc', 'Jean-Luc', 'Perrin', [
-                    'email' => 'jeanluc.perrin@demo.unit-hq.test',
+                    'email' => 'jeanluc.perrin@demo.keevaris.test',
                     'billing_country_code' => 'FR',
                     'billing_city' => 'Paris',
                     'billing_postal_code' => '75001',

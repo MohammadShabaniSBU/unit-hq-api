@@ -34,7 +34,7 @@ final class RafaNunez extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'rafa', 'Rafa', 'Núñez', [
-                    'email' => 'rafa.nunez@demo.unit-hq.test',
+                    'email' => 'rafa.nunez@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'rafa', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');

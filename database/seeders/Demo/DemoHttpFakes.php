@@ -23,7 +23,7 @@ final class DemoHttpFakes
                 $brevo++;
 
                 return Http::response([
-                    'messageId' => '<demo-brevo-'.$brevo.'.'.Str::uuid().'@unit-hq.test>',
+                    'messageId' => '<demo-brevo-'.$brevo.'.'.Str::uuid().'@keevaris.test>',
                 ], 201);
             },
             'api.twilio.com/*' => static function () use (&$twilio) {

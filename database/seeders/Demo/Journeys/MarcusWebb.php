@@ -37,7 +37,7 @@ final class MarcusWebb extends Journey
             0 => static function (DemoWorld $world): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'marcus', 'Marcus', 'Webb', [
-                    'email' => 'marcus.webb@demo.unit-hq.test',
+                    'email' => 'marcus.webb@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'marcus', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');

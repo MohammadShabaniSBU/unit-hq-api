@@ -37,7 +37,7 @@ final class GraceLin extends Journey
             $enrolDay => static function (DemoWorld $world): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'grace', 'Grace', 'Lin', [
-                    'email' => 'grace.lin@demo.unit-hq.test',
+                    'email' => 'grace.lin@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'grace', $site, DealStatus::Negotiating);
                 JourneySupport::createOffer($world, 'grace', $site, 'SS6', 'sent');

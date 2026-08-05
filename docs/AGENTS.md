@@ -1,6 +1,6 @@
 # AI Assistant Instructions (Cursor / Claude)
 
-You are working on **unit-hq**, a mono-tenant self-storage operations platform (Laravel 13 API + Nuxt 4 panel, two side-by-side repos).
+You are working on **Keevaris**, a mono-tenant self-storage operations platform (Laravel 13 API + Nuxt 4 panel, two side-by-side repos).
 
 Before writing code, consult the doc that matches the task:
 

@@ -160,10 +160,10 @@ final class DayTexture
                     $world,
                     $handle,
                     'Re: su mensaje',
-                    'Gracias por escribirnos. Quedamos atentos — Unit HQ.',
+                    'Gracias por escribirnos. Quedamos atentos — Keevaris.',
                 );
             } else {
-                JourneySupport::sendSms($world, $handle, 'Recibido, gracias. Unit HQ');
+                JourneySupport::sendSms($world, $handle, 'Recibido, gracias. Keevaris');
             }
         }
 

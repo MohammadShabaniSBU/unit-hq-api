@@ -36,7 +36,7 @@ final class FrontDeskMisc extends Journey
         return [
             $day => static function (DemoWorld $world): void {
                 JourneySupport::createContact($world, 'voicemail', 'Vera', 'Voicemail', [
-                    'email' => 'vera.voicemail@demo.unit-hq.test',
+                    'email' => 'vera.voicemail@demo.keevaris.test',
                     'phone' => '+34600111001',
                 ]);
                 JourneySupport::recordCallWrapup(
@@ -48,7 +48,7 @@ final class FrontDeskMisc extends Journey
                 );
 
                 JourneySupport::createContact($world, 'wrong_number', 'Walter', 'Wrong', [
-                    'email' => 'walter.wrong@demo.unit-hq.test',
+                    'email' => 'walter.wrong@demo.keevaris.test',
                     'phone' => '+34600111002',
                 ]);
                 JourneySupport::recordCallWrapup(
@@ -76,7 +76,7 @@ final class FrontDeskMisc extends Journey
             $finaleDay => static function (DemoWorld $world) use ($end): void {
                 $site = $world->site('barcelona');
                 JourneySupport::createContact($world, 'wa_closing', 'Carmen', 'Vega', [
-                    'email' => 'carmen.vega@demo.unit-hq.test',
+                    'email' => 'carmen.vega@demo.keevaris.test',
                     'phone' => '+34600111003',
                 ]);
                 JourneySupport::openDeal($world, 'wa_closing', $site);
@@ -90,7 +90,7 @@ final class FrontDeskMisc extends Journey
                 JourneySupport::sendWhatsAppTemplate(
                     $world,
                     'wa_closing',
-                    'Hola Carmen, le escribimos desde Unit HQ.',
+                    'Hola Carmen, le escribimos desde Keevaris.',
                 );
 
                 $closingInstant = CarbonImmutable::parse(CastExecutor::SIM_END)
@@ -113,11 +113,11 @@ final class FrontDeskMisc extends Journey
                 CarbonImmutable::setTestNow($noon);
 
                 $handles = [
-                    ['unread_a', 'Ana', 'Unread', '+34600112001', 'ana.unread@demo.unit-hq.test', 'sms'],
-                    ['unread_b', 'Bruno', 'Unread', '+34600112002', 'bruno.unread@demo.unit-hq.test', 'email'],
-                    ['unread_c', 'Clara', 'Unread', '+34600112003', 'clara.unread@demo.unit-hq.test', 'whatsapp'],
-                    ['unread_d', 'Diego', 'Unread', '+34600112004', 'diego.unread@demo.unit-hq.test', 'sms'],
-                    ['unread_e', 'Elena', 'Unread', '+34600112005', 'elena.unread@demo.unit-hq.test', 'email'],
+                    ['unread_a', 'Ana', 'Unread', '+34600112001', 'ana.unread@demo.keevaris.test', 'sms'],
+                    ['unread_b', 'Bruno', 'Unread', '+34600112002', 'bruno.unread@demo.keevaris.test', 'email'],
+                    ['unread_c', 'Clara', 'Unread', '+34600112003', 'clara.unread@demo.keevaris.test', 'whatsapp'],
+                    ['unread_d', 'Diego', 'Unread', '+34600112004', 'diego.unread@demo.keevaris.test', 'sms'],
+                    ['unread_e', 'Elena', 'Unread', '+34600112005', 'elena.unread@demo.keevaris.test', 'email'],
                 ];
 
                 foreach ($handles as [$handle, $first, $last, $phone, $email, $channel]) {
@@ -135,13 +135,13 @@ final class FrontDeskMisc extends Journey
 
                 JourneySupport::createContact($world, 'missed_a', 'Mia', 'Missed', [
                     'phone' => '+34600113001',
-                    'email' => 'mia.missed@demo.unit-hq.test',
+                    'email' => 'mia.missed@demo.keevaris.test',
                 ]);
                 $world->aircall()->missedInbound('+34600113001');
 
                 JourneySupport::createContact($world, 'missed_b', 'Nico', 'Missed', [
                     'phone' => '+34600113002',
-                    'email' => 'nico.missed@demo.unit-hq.test',
+                    'email' => 'nico.missed@demo.keevaris.test',
                 ]);
                 $world->aircall()->missedInbound('+34600113002');
             },

@@ -43,7 +43,7 @@ final class LuciaFerrer extends Journey
             0 => static function (DemoWorld $world): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'lucia', 'Lucía', 'Ferrer', [
-                    'email' => 'lucia.ferrer@demo.unit-hq.test',
+                    'email' => 'lucia.ferrer@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'lucia', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');

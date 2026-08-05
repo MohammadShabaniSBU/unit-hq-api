@@ -19,7 +19,7 @@
   "Bcc": "",
   "BccFull": [],
   "OriginalRecipient": "inbox@example.com",
-  "Subject": "Re: Welcome to Unit HQ",
+  "Subject": "Re: Welcome to Keevaris",
   "MessageID": "00000000-0000-0000-0000-00000000in01",
   "ReplyTo": "",
   "MailboxHash": "",
@@ -35,11 +35,11 @@
     },
     {
       "Name": "In-Reply-To",
-      "Value": "<outbound-playbook-msg-001@unit-hq.test>"
+      "Value": "<outbound-playbook-msg-001@keevaris.test>"
     },
     {
       "Name": "References",
-      "Value": "<outbound-playbook-msg-001@unit-hq.test>"
+      "Value": "<outbound-playbook-msg-001@keevaris.test>"
     }
   ],
   "Attachments": [

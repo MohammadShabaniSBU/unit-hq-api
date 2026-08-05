@@ -36,7 +36,7 @@ final class TomBradley extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'tom', 'Tom', 'Bradley', [
-                    'email' => 'tom.bradley@demo.unit-hq.test',
+                    'email' => 'tom.bradley@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'tom', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');

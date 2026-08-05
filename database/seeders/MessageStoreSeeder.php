@@ -58,7 +58,7 @@ class MessageStoreSeeder extends Seeder
             $emailThread = MessageThread::query()->create([
                 'contact_id' => $contact->id,
                 'channel' => Channel::Email,
-                'subject' => 'Welcome to Unit HQ',
+                'subject' => 'Welcome to Keevaris',
                 'channel_key' => null,
                 'last_message_at' => now()->subDays(3 - ($index % 3)),
                 'last_inbound_at' => now()->subDays(2),
@@ -102,8 +102,8 @@ class MessageStoreSeeder extends Seeder
                 sourceRef: ['seed' => true],
             );
 
-            $this->linkInteraction($contact, Channel::Email, $outbound, 'Welcome to Unit HQ');
-            $this->linkInteraction($contact, Channel::Email, $inbound, 'Welcome to Unit HQ', 'inbound');
+            $this->linkInteraction($contact, Channel::Email, $outbound, 'Welcome to Keevaris');
+            $this->linkInteraction($contact, Channel::Email, $inbound, 'Welcome to Keevaris', 'inbound');
 
             // One offer-sourced message so the conversation source badge
             // ("Offer #45") links back to the real offer (02's acceptance script).

@@ -117,7 +117,7 @@ final class JourneySupport
         string $lastName,
         array $attrs = [],
     ): Contact {
-        $email = $attrs['email'] ?? strtolower($handle).'@demo.unit-hq.test';
+        $email = $attrs['email'] ?? strtolower($handle).'@demo.keevaris.test';
         $phone = $attrs['phone'] ?? '+34600'.str_pad((string) (abs(crc32($handle)) % 1000000), 6, '0', STR_PAD_LEFT);
 
         // Ordinary invoices require fiscalComplete(); move-in / quarterly batches
@@ -1188,7 +1188,7 @@ final class JourneySupport
         $contact = $world->contact("{$handle}.contact");
         $email = (string) $world->get("{$handle}.email");
         $site = self::siteFor($world, $handle);
-        $body ??= 'Aquí tiene su oferta de Unit HQ. Ábrala con el enlace seguro del correo.';
+        $body ??= 'Aquí tiene su oferta de Keevaris. Ábrala con el enlace seguro del correo.';
 
         $delivery = OfferDelivery::query()->create([
             'offer_id' => $offer->id,
@@ -1201,7 +1201,7 @@ final class JourneySupport
         $result = app(EmailSender::class)->send(
             new EmailMessage(
                 to: [new EmailAddress($email)],
-                subject: 'Su oferta de Unit HQ',
+                subject: 'Su oferta de Keevaris',
                 html: '<p>'.e($body).'</p>',
                 text: $body,
             ),
@@ -1234,7 +1234,7 @@ final class JourneySupport
             [
                 'category' => 'UTILITY',
                 'status' => WhatsappTemplate::STATUS_APPROVED,
-                'body' => 'Hola {{1}}, le escribimos desde Unit HQ.',
+                'body' => 'Hola {{1}}, le escribimos desde Keevaris.',
                 'variables' => ['1'],
             ],
         );

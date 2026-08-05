@@ -352,7 +352,7 @@ final class AircallInjector
             'id' => 456,
             'direct_link' => 'https://api.aircall.io/v1/users/456',
             'name' => 'Demo Agent',
-            'email' => 'agent@demo.unit-hq.test',
+            'email' => 'agent@demo.keevaris.test',
             'available' => true,
         ];
     }

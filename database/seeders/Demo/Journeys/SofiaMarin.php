@@ -33,7 +33,7 @@ final class SofiaMarin extends Journey
             $sendDay => static function (DemoWorld $world) use ($sendDay, $end): void {
                 $site = $world->site('barcelona');
                 JourneySupport::createContact($world, 'sofia', 'Sofía', 'Marín', [
-                    'email' => 'sofia.marin@demo.unit-hq.test',
+                    'email' => 'sofia.marin@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'sofia', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');

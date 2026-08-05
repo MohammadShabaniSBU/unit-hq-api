@@ -39,7 +39,7 @@ final class PilarSantos extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'pilar', 'Pilar', 'Santos', [
-                    'email' => 'pilar.santos@demo.unit-hq.test',
+                    'email' => 'pilar.santos@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'pilar', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');
@@ -53,7 +53,7 @@ final class PilarSantos extends Journey
                 JourneySupport::sendWhatsAppTemplate(
                     $world,
                     'pilar',
-                    'Hola Pilar, le escribimos desde Unit HQ sobre su contrato.',
+                    'Hola Pilar, le escribimos desde Keevaris sobre su contrato.',
                 );
             },
             $replyDay => static function (DemoWorld $world): void {

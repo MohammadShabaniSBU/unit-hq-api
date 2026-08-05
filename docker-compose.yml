@@ -1,7 +1,7 @@
 services:
   app:
     image: webdevops/php-nginx:8.4-alpine
-    container_name: unit-hq-api
+    container_name: keevaris-api
     environment:
         - WEB_DOCUMENT_ROOT=/app/public
     networks:
@@ -16,12 +16,12 @@ services:
       - .docker/prod.supervisord.conf:/opt/docker/etc/supervisor.d/jobs.conf
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.unit-hq-api.rule=Host(`test2.unithq.local`)"
-      - "traefik.http.routers.unit-hq-api.service=unit-hq-api"
-      - "traefik.http.services.unit-hq-api.loadbalancer.server.port=80"
-      - "traefik.http.routers.unit-hq-ws.rule=Host(`ws.test2.unithq.local`)"
-      - "traefik.http.routers.unit-hq-ws.service=unit-hq-ws"
-      - "traefik.http.services.unit-hq-ws.loadbalancer.server.port=8080"
+      - "traefik.http.routers.keevaris-api.rule=Host(`test2.keevaris.local`)"
+      - "traefik.http.routers.keevaris-api.service=keevaris-api"
+      - "traefik.http.services.keevaris-api.loadbalancer.server.port=80"
+      - "traefik.http.routers.keevaris-ws.rule=Host(`ws.test2.keevaris.local`)"
+      - "traefik.http.routers.keevaris-ws.service=keevaris-ws"
+      - "traefik.http.services.keevaris-ws.loadbalancer.server.port=8080"
       - "traefik.docker.network=traefik-network"
     logging:
       driver: "json-file"

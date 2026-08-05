@@ -37,7 +37,7 @@ final class AmaraOkafor extends Journey
             $signDay => static function (DemoWorld $world) use ($signDay): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'amara', 'Amara', 'Okafor', [
-                    'email' => 'amara.okafor@demo.unit-hq.test',
+                    'email' => 'amara.okafor@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'amara', $site, DealStatus::Qualified);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');

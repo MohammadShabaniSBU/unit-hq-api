@@ -1,4 +1,4 @@
-# unit-hq — Delivery Roadmap
+# Keevaris — Delivery Roadmap
 
 > **Audience:** the solo maintainer + Cursor.
 > **Horizon:** 17 one-week sprints to a Spain-deployable product.

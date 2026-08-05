@@ -39,7 +39,7 @@ final class DerekHoyle extends Journey
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('london');
                 JourneySupport::createContact($world, 'derek', 'Derek', 'Hoyle', [
-                    'email' => 'derek.hoyle@demo.unit-hq.test',
+                    'email' => 'derek.hoyle@demo.keevaris.test',
                     'billing_country_code' => 'GB',
                     'billing_city' => 'London',
                     'billing_postal_code' => 'E1 1AA',

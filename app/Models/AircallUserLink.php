@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Maps a Unit HQ employee to an Aircall user for click-to-dial.
+ * Maps a Keevaris employee to an Aircall user for click-to-dial.
  *
  * @property int    $id
  * @property int    $employee_id
