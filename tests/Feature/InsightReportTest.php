@@ -139,6 +139,9 @@ class InsightReportTest extends TestCase
         $this->assertSame('Ops board', $embedded['label']);
         $this->assertSame('operator', $embedded['label_source']);
         $this->assertSame(CredentialStatus::Connected->value, $embedded['connection_status']);
+        $this->assertArrayHasKey('options', $embedded);
+        $this->assertArrayHasKey('validation_status', $embedded);
+        $this->assertSame($account->provider->value, $embedded['provider']);
     }
 
     #[Test]

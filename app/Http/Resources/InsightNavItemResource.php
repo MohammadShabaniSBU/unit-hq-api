@@ -27,11 +27,19 @@ class InsightNavItemResource extends BaseResource
             'section' => $this->section,
             'sort_order' => (int) $this->sort_order,
             'site_scope_mode' => $this->site_scope_mode->value,
+            'options' => $this->options ?? [],
+            'validation_status' => $this->validation_status->value,
             'connection_status' => $this->when(
                 $this->source->value === 'embedded'
                     && $this->relationLoaded('analyticsAccount')
                     && $this->analyticsAccount !== null,
                 fn () => $this->analyticsAccount->connection_status->value,
+            ),
+            'provider' => $this->when(
+                $this->source->value === 'embedded'
+                    && $this->relationLoaded('analyticsAccount')
+                    && $this->analyticsAccount !== null,
+                fn () => $this->analyticsAccount->provider->value,
             ),
         ];
     }
