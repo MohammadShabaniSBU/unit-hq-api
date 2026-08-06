@@ -30,6 +30,7 @@ use App\Support\Insights\Exceptions\UnknownDynamicParamKey;
 use App\Support\Insights\NativeReports;
 use App\Support\Insights\ReportValidator;
 use App\Support\Insights\Results\ValidationResult;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -735,9 +736,7 @@ class InsightReportController extends Controller
         $result = $validator->validate($provisional);
 
         if ($result->blocksSave()) {
-            throw ValidationException::withMessages([
-                'resource' => [__('errors.insights.'.$result->status->value)],
-            ])->errorBag(response()->json([
+            throw new HttpResponseException(response()->json([
                 'message' => $result->status->value,
                 'errors' => [
                     'validation_detail' => $result->detail,

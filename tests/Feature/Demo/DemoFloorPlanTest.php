@@ -12,6 +12,7 @@ use App\Support\Facility\SvgSanitizer;
 use Database\Seeders\Demo\FloorPlanStage;
 use Database\Seeders\Demo\StageSeeder;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Bootstrap\HandleExceptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -52,6 +53,7 @@ class DemoFloorPlanTest extends TestCase
             $app->make(Kernel::class)->bootstrap();
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$stageSeeded = false;
+            HandleExceptions::flushState();
         }
 
         parent::tearDownAfterClass();
