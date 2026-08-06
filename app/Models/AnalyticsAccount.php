@@ -9,8 +9,8 @@ use App\Enums\CredentialStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Company-scoped analytics provider credentials (S21-02).
@@ -85,21 +85,15 @@ class AnalyticsAccount extends Model
         return $this->archived_at !== null;
     }
 
-    /**
-     * Soft-gated until task 03 creates insight_reports.
-     */
     public function hasLiveReports(): bool
     {
-        if (! Schema::hasTable('insight_reports')) {
-            return false;
-        }
+        return $this->reports()->whereNull('archived_at')->exists();
+    }
 
-        return (bool) $this->newQuery()
-            ->getConnection()
-            ->table('insight_reports')
-            ->where('analytics_account_id', $this->id)
-            ->whereNull('archived_at')
-            ->exists();
+    /** @return HasMany<InsightReport, $this> */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(InsightReport::class);
     }
 
     /** @return BelongsTo<Employee, $this> */

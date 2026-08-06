@@ -45,6 +45,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call(CountrySeeder::class);
         $this->call(DefaultAttributeLayoutSeeder::class);
+        $this->call(InsightReportSeeder::class);
         $this->call(RbacSystemRoleSeeder::class);
 
         Employee::factory()->manager()->create();

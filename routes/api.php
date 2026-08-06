@@ -130,6 +130,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/analytics-accounts/{analyticsAccount}/unarchive', [Controllers\AnalyticsAccountController::class, 'unarchive']);
     Route::delete('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'destroy']);
 
+    Route::get('settings/insight-reports', [Controllers\InsightReportController::class, 'index']);
+    Route::post('settings/insight-reports', [Controllers\InsightReportController::class, 'store']);
+    Route::post('settings/insight-reports/reorder', [Controllers\InsightReportController::class, 'reorder']);
+    Route::get('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'show']);
+    Route::patch('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'update']);
+    Route::post('settings/insight-reports/{insightReport}/archive', [Controllers\InsightReportController::class, 'archive']);
+    Route::post('settings/insight-reports/{insightReport}/unarchive', [Controllers\InsightReportController::class, 'unarchive']);
+    Route::delete('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'destroy']);
+
     Route::get('settings/access', [Controllers\AccessProviderAccountController::class, 'show']);
     Route::put('settings/access', [Controllers\AccessProviderAccountController::class, 'update']);
     Route::post('settings/access/webhook', [Controllers\AccessProviderAccountController::class, 'createWebhook']);
@@ -170,6 +179,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
 
+    Route::get('insights', [Controllers\InsightReportController::class, 'nav']);
     Route::get('insights/ai-usage', [Controllers\AiUsageInsightsController::class, 'index']);
     Route::get('insights/ai-usage/me', [Controllers\AiUsageInsightsController::class, 'me']);
 

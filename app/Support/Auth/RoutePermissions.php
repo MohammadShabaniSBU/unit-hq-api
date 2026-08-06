@@ -271,6 +271,7 @@ final class RoutePermissions
 
     // ===== Comms (72) =====
     'DELETE /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@destroy
+    'DELETE /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@destroy — aliases archive
     'DELETE /api/settings/communications/call/aircall/users/{aircallUserId}' => Permission::CredentialManage, // AircallUserLinkController@unlink
     'DELETE /api/settings/communications/{channel}/webhook' => Permission::CredentialManage, // Facility\CommunicationAccountController@deleteWebhook
     'DELETE /api/settings/communications/{channel}/{provider}' => Permission::CredentialManage, // Facility\CommunicationAccountController@destroy
@@ -363,6 +364,7 @@ final class RoutePermissions
     'GET /api/copilot/conversations' => Permission::ContactView, // CopilotController@index — placeholder until enum case exists
     'GET /api/copilot/conversations/{conversation}' => Permission::ContactView, // CopilotController@show — placeholder until enum case exists
     'GET /api/employees/options' => Permission::InboxAssign, // EmployeeController@options — assignee picker (inbox/tasks)
+    'GET /api/insights' => Permission::ReportView, // InsightReportController@nav — registry-driven Insights nav feed
     'GET /api/insights/ai-usage' => Permission::ReportView, // AiUsageInsightsController@index — aggregate AI usage (company report)
     'GET /api/insights/ai-usage/me' => Exempt::self('own AI usage'), // AiUsageInsightsController@me
     'GET /api/playbooks' => Permission::PlaybookManage, // PlaybookController@index
@@ -373,6 +375,8 @@ final class RoutePermissions
     'GET /api/settings/access/points' => Permission::AccessManage, // AccessPointController@index — access point catalogue
     'GET /api/settings/activity-log' => Permission::SettingsManage, // Facility\SettingController@showActivityLog
     'GET /api/settings/general' => Permission::SettingsManage, // Facility\SettingController@showGeneral
+    'GET /api/settings/insight-reports' => Permission::SettingsManage, // InsightReportController@index
+    'GET /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@show
     'GET /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@showLeasing
     'GET /api/settings/object-customization/{entityType}' => Permission::SettingsManage, // ObjectCustomizationController@show
     'GET /api/units/{unit}/access-events' => Permission::AccessView, // AccessEventController@forUnit
@@ -384,6 +388,7 @@ final class RoutePermissions
     'PATCH /api/settings/access/points/{accessPoint}' => Permission::AccessManage, // AccessPointController@update — access point catalogue
     'PATCH /api/settings/activity-log' => Permission::SettingsManage, // Facility\SettingController@updateActivityLog
     'PATCH /api/settings/general' => Permission::SettingsManage, // Facility\SettingController@updateGeneral
+    'PATCH /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@update
     'PATCH /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@updateLeasing
     'PATCH /api/settings/object-customization/fields/{field}' => Permission::SettingsManage, // ObjectCustomizationController@updateField
     'PATCH /api/settings/object-customization/groups/{group}' => Permission::SettingsManage, // ObjectCustomizationController@updateGroup
@@ -412,6 +417,10 @@ final class RoutePermissions
     'POST /api/settings/access/points/{accessPoint}/archive' => Permission::AccessManage, // AccessPointController@archive — access point catalogue
     'POST /api/settings/access/unknown-grants/revoke' => Permission::CredentialManage, // AccessProviderAccountController@revokeUnknownGrant — provider account
     'POST /api/settings/access/webhook' => Permission::CredentialManage, // AccessProviderAccountController@createWebhook — provider account
+    'POST /api/settings/insight-reports' => Permission::SettingsManage, // InsightReportController@store
+    'POST /api/settings/insight-reports/reorder' => Permission::SettingsManage, // InsightReportController@reorder
+    'POST /api/settings/insight-reports/{insightReport}/archive' => Permission::SettingsManage, // InsightReportController@archive
+    'POST /api/settings/insight-reports/{insightReport}/unarchive' => Permission::SettingsManage, // InsightReportController@unarchive
     'POST /api/settings/object-customization/groups/{group}/fields' => Permission::SettingsManage, // ObjectCustomizationController@storeField
     'POST /api/settings/object-customization/groups/{group}/fields/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderFields
     'POST /api/settings/object-customization/{entityType}/groups' => Permission::SettingsManage, // ObjectCustomizationController@storeGroup

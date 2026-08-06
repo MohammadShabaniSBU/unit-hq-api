@@ -45,6 +45,7 @@ use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
 use Database\Seeders\DefaultAttributeLayoutSeeder;
+use Database\Seeders\InsightReportSeeder;
 use Database\Seeders\LeadChasePlaybookSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -77,6 +78,7 @@ class StageSeeder extends Seeder
 
         $this->call(CountrySeeder::class);
         $this->call(DefaultAttributeLayoutSeeder::class);
+        $this->call(InsightReportSeeder::class);
 
         Employee::factory()->manager()->create([
             'name' => 'Demo Manager',

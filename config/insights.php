@@ -18,4 +18,15 @@ return [
         explode(',', (string) env('INSIGHTS_IFRAME_HOST_ALLOWLIST', ''))
     ))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Operator label locales
+    |--------------------------------------------------------------------------
+    |
+    | Keys allowed in insight_reports.labels / description JSONB. At least one
+    | locale must be present when an operator supplies labels.
+    |
+    */
+    'locales' => ['en', 'es', 'fr'],
+
 ];
