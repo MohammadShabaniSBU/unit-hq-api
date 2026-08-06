@@ -152,5 +152,13 @@ return [
     'invitation' => [
         'unavailable' => 'Este enlace de invitación ya no es válido. Pida a su administrador una nueva invitación.',
     ],
+    'insights' => [
+        'archive_has_live_reports' => 'No se puede archivar la cuenta de analytics predeterminada mientras haya informes activos que la referencien. Reasigne o archive esos informes primero.',
+        'iframe_https_required' => 'Las plantillas de URL iframe deben usar https.',
+        'iframe_host_required' => 'La plantilla de URL iframe debe incluir un host.',
+        'iframe_host_not_allowlisted' => 'El host ":host" no está en la lista de permitidos de iframe.',
+        'already_archived' => 'Esta cuenta de analytics ya está archivada.',
+        'not_archived' => 'Esta cuenta de analytics no está archivada.',
+    ],
 ];
 

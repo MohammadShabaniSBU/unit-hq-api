@@ -269,7 +269,8 @@ final class RoutePermissions
     'POST /api/delinquency-policies/{delinquencyPolicy}/archive' => Permission::SettingsManage, // DelinquencyPolicyController@archive
     'POST /api/delinquency-policies/{delinquencyPolicy}/unarchive' => Permission::SettingsManage, // DelinquencyPolicyController@unarchive
 
-    // ===== Comms (63) =====
+    // ===== Comms (72) =====
+    'DELETE /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@destroy
     'DELETE /api/settings/communications/call/aircall/users/{aircallUserId}' => Permission::CredentialManage, // AircallUserLinkController@unlink
     'DELETE /api/settings/communications/{channel}/webhook' => Permission::CredentialManage, // Facility\CommunicationAccountController@deleteWebhook
     'DELETE /api/settings/communications/{channel}/{provider}' => Permission::CredentialManage, // Facility\CommunicationAccountController@destroy
@@ -289,6 +290,8 @@ final class RoutePermissions
     'GET /api/message-attachments/{messageAttachment}/download' => Permission::InboxView, // MessageAttachmentController@download
     'GET /api/messages/{message}/recording' => Permission::InboxView, // MessageController@recording
     'GET /api/messages/{message}/wrapup' => Permission::InboxView, // MessageController@showWrapup
+    'GET /api/settings/analytics-accounts' => Permission::CredentialManage, // AnalyticsAccountController@index
+    'GET /api/settings/analytics-providers' => Permission::CredentialManage, // AnalyticsAccountController@providers
     'GET /api/settings/communications' => Permission::CredentialManage, // Facility\CommunicationAccountController@index
     'GET /api/settings/communications/call/aircall/users' => Permission::CredentialManage, // AircallUserLinkController@index
     'GET /api/settings/esign' => Permission::CredentialManage, // EsignProviderAccountController@show
@@ -298,6 +301,7 @@ final class RoutePermissions
     'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
     'GET /api/whatsapp-templates' => Permission::TemplateManage, // WhatsappTemplateController@index
     'GET /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@show
+    'PATCH /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@update
     'PATCH /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@update
     'PATCH /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@update
     'POST /api/calls/dial' => Permission::CallPlace, // CallController@dial
@@ -311,6 +315,11 @@ final class RoutePermissions
     'POST /api/inbox/threads/{messageThread}/reply' => Permission::InboxSend, // InboxController@reply
     'POST /api/inbox/threads/{messageThread}/unread' => Permission::InboxView, // InboxController@unread
     'POST /api/messages/{message}/move-thread' => Permission::InboxAssign, // MessageController@moveThread
+    'POST /api/settings/analytics-accounts' => Permission::CredentialManage, // AnalyticsAccountController@store
+    'POST /api/settings/analytics-accounts/{analyticsAccount}/archive' => Permission::CredentialManage, // AnalyticsAccountController@archive
+    'POST /api/settings/analytics-accounts/{analyticsAccount}/default' => Permission::CredentialManage, // AnalyticsAccountController@setDefault
+    'POST /api/settings/analytics-accounts/{analyticsAccount}/unarchive' => Permission::CredentialManage, // AnalyticsAccountController@unarchive
+    'POST /api/settings/analytics-accounts/{analyticsAccount}/verify' => Permission::CredentialManage, // AnalyticsAccountController@verify
     'POST /api/settings/communications/call/aircall/users/sync' => Permission::CredentialManage, // AircallUserLinkController@sync
     'POST /api/settings/communications/{channel}/webhook' => Permission::CredentialManage, // Facility\CommunicationAccountController@createWebhook
     'POST /api/settings/esign/webhook' => Permission::CredentialManage, // EsignProviderAccountController@createWebhook

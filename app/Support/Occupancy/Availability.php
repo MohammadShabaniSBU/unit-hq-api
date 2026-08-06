@@ -21,6 +21,10 @@ use Illuminate\Support\Collection;
  * Canonical availability read path. Callers always pass an explicit civil date —
  * this helper never defaults to "today". Cross-site list filters must resolve
  * today per site via SiteClock (D8 / invariant 32).
+ *
+ * Precedence (occupancy wins over holds; earliest unreleased non-overlock hold;
+ * exclusive ends) is mirrored by the reporting unit-state daily materialized
+ * view (analytics schema). If this logic changes, update that view in lockstep.
  */
 final class Availability
 {

@@ -42,6 +42,7 @@ use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
 use App\Support\Access\AccessProviderRegistry;
 use App\Support\ESign\ESignProviderRegistry;
+use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -71,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProviderResolver::class);
         $this->app->singleton(ESignProviderRegistry::class);
         $this->app->singleton(AccessProviderRegistry::class);
+        $this->app->singleton(AnalyticsProviderRegistry::class);
     }
 
     /**

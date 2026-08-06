@@ -39,6 +39,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ai-usage:sweep')->everyFifteenMinutes();
         $schedule->command('automations:run-scheduled')->everyMinute();
         $schedule->command('automations:resume-waiting')->everyMinute();
+        // External reporting date spine; early daily, site-agnostic.
+        $schedule->command('analytics:refresh')->daily();
 
         // Activation must run at least as often as billing, and is registered
         // first so same-tick hourly runs activate move-ins before billing

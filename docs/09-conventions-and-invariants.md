@@ -32,6 +32,7 @@
    - Overdue = per-charge, by due date
    - Exception: `contracts.billed_through` is a **stored billing cursor** (date), not cached money — the recurring job advances it; balances stay computed.
    - Clarification: `unit_occupancies` and `unit_holds` are **fact tables** (who occupies / holds a unit over a date range). They are not cached derived state. Availability remains computed from those facts.
+   - Clarification: `analytics.mv_unit_state_daily` is an **external reporting projection** (refreshed materialized view in the `analytics` schema). It is never read by application write or read paths — only by external BI via `metabase_ro`. It does not breach this invariant for the same reason fact tables do not.
    - **Delinquency severity is computed; delinquency history is facts.** No stage/severity/amount column exists on cases. Cases and steps are append-only; ladder steps fire at most once per case (partial unique on `(delinquency_id, policy_step_id)`); every step references the artefact it produced.
    - **Floor map shapes join on `data-unit-number`.** `id` is a fallback for legacy maps only. A map is never partially matched across both conventions in one document. Match buckets (`id_match`) are computed on read/upload, never stored.
 6. **Offer token** — public offer links use the crypto-random `offers.token`, never the PK.

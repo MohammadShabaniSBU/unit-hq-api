@@ -152,5 +152,13 @@ return [
     'invitation' => [
         'unavailable' => 'This invitation link is no longer valid. Ask your administrator for a new invite.',
     ],
+    'insights' => [
+        'archive_has_live_reports' => 'Cannot archive the default analytics account while live reports still reference it. Repoint or archive those reports first.',
+        'iframe_https_required' => 'iframe URL templates must use https.',
+        'iframe_host_required' => 'iframe URL template must include a host.',
+        'iframe_host_not_allowlisted' => 'Host ":host" is not on the iframe allowlist.',
+        'already_archived' => 'This analytics account is already archived.',
+        'not_archived' => 'This analytics account is not archived.',
+    ],
 ];
 

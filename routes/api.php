@@ -120,6 +120,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/esign/webhook', [Controllers\EsignProviderAccountController::class, 'createWebhook']);
     Route::delete('settings/esign', [Controllers\EsignProviderAccountController::class, 'destroy']);
 
+    Route::get('settings/analytics-providers', [Controllers\AnalyticsAccountController::class, 'providers']);
+    Route::get('settings/analytics-accounts', [Controllers\AnalyticsAccountController::class, 'index']);
+    Route::post('settings/analytics-accounts', [Controllers\AnalyticsAccountController::class, 'store']);
+    Route::patch('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'update']);
+    Route::post('settings/analytics-accounts/{analyticsAccount}/verify', [Controllers\AnalyticsAccountController::class, 'verify']);
+    Route::post('settings/analytics-accounts/{analyticsAccount}/default', [Controllers\AnalyticsAccountController::class, 'setDefault']);
+    Route::post('settings/analytics-accounts/{analyticsAccount}/archive', [Controllers\AnalyticsAccountController::class, 'archive']);
+    Route::post('settings/analytics-accounts/{analyticsAccount}/unarchive', [Controllers\AnalyticsAccountController::class, 'unarchive']);
+    Route::delete('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'destroy']);
+
     Route::get('settings/access', [Controllers\AccessProviderAccountController::class, 'show']);
     Route::put('settings/access', [Controllers\AccessProviderAccountController::class, 'update']);
     Route::post('settings/access/webhook', [Controllers\AccessProviderAccountController::class, 'createWebhook']);

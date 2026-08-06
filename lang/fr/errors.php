@@ -138,5 +138,13 @@ return [
     'invitation' => [
         'unavailable' => 'Ce lien d’invitation n’est plus valide. Demandez une nouvelle invitation à votre administrateur.',
     ],
+    'insights' => [
+        'archive_has_live_reports' => 'Impossible d’archiver le compte analytics par défaut tant que des rapports actifs y font référence. Réaffectez ou archivez ces rapports d’abord.',
+        'iframe_https_required' => 'Les modèles d’URL iframe doivent utiliser https.',
+        'iframe_host_required' => 'Le modèle d’URL iframe doit inclure un hôte.',
+        'iframe_host_not_allowlisted' => 'L’hôte « :host » n’est pas dans la liste d’autorisation iframe.',
+        'already_archived' => 'Ce compte analytics est déjà archivé.',
+        'not_archived' => 'Ce compte analytics n’est pas archivé.',
+    ],
 ];
 
