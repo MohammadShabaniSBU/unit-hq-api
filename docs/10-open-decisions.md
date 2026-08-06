@@ -76,6 +76,10 @@
 - Automation TokenPicker UI (content-field token insertion). Run-log panel shipped.
 - **`action.create_object` for Contract / Reservation / Offer** — creation is not a plain insert (billing transaction, offer-acceptance atomicity, offer token/status flow). Needs dedicated nodes calling real transactional creation paths (`ContractBilling`, offer acceptance), not the generic handler.
 - **FK-shaped create/update field pickers** — later UI polish: TargetRecordPicker-style dropdown for FK fields that still stores a dynamic expression string underneath.
+- Writing to a customer's analytics instance (publishing dashboards, flipping embed params).
+- A generic expression language for dynamic insight params.
+- Cross-report filtering, favourites, dashboards-of-dashboards.
+- Tenant-facing analytics of any kind (contacts still do not log in).
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
 
@@ -116,6 +120,11 @@
 | Scheduled email reports | S16 does not email report PDFs/CSVs on a cadence. Natural later playbook action once Insights figures are trusted. |
 | Panel idle timeout | S17-07 deliberately ships no idle session timeout. Shared front-desk machines rely on staff locking the workstation. Options later: soft idle warning + re-auth, hard logout after N minutes, or leave as OS-lock-only. |
 | `site_map_shapes` join table | Resolve SVG shapes into a join table at upload so map endpoints stop re-parsing XML and renames surface instead of vanishing. Deferred from S20 — matching stays a computed `id_match` attribute for now. |
+| Report-level permissions | `visibility` enum ships as a stub; only `all` is honoured. Real enforcement lands with RBAC through the same helper as `canEdit`. |
+| Currency conversion in reporting | `analytics` views expose `currency` and never sum across it. A conversion layer needs an FX rate source and a policy on which date's rate applies — not started. |
+| Additional `analytics` views | Demand-driven. Five ship with the Insights pluggable surface; there is no target catalogue. |
+| Scheduled report delivery | Metabase has subscriptions; do we surface them, or build our own on the comms stack? Duplicating delivery is how two unsubscribe lists appear. |
+| Per-report caching | Provider-side caching only for now. |
 
 ## Active WIP
 

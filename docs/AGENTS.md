@@ -14,6 +14,7 @@ Before writing code, consult the doc that matches the task:
 | Contract billing (cadence / anchor / tax / deposit), charges / payments / billing periods | `05-billing-ledger.md` |
 | Payments, fiscal identity, invoice issuance (authoritative) | `roadmap/architecture-payments-and-fiscal.md` |
 | Messaging / timeline / offer sends | `06-communications.md` |
+| Insights, embedded analytics, reporting schema | `11-insights.md` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
 | **Always, before committing** | `09-conventions-and-invariants.md` |
@@ -32,5 +33,6 @@ Before writing code, consult the doc that matches the task:
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
 - Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.
+- Embed tokens are minted server-side only; dynamic params are always locked.
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

@@ -1,10 +1,12 @@
 # Report definitions
 
-Canonical vocabulary for Insights reports. Every report page footer links the
-section it uses. Figures are computed live from fact tables — nothing here is
-stored as a rollup.
+Canonical vocabulary for **native** Insights reports (keyed by `native_key` in
+the `insight_reports` registry). The Insights surface itself — registry, embeds,
+analytics accounts — is documented in `11-insights.md`. Every native report page
+footer links the section it uses. Figures are computed live from fact tables —
+nothing here is stored as a rollup.
 
-The Insights **dashboard** (`GET /api/reports/dashboard`) is card-zoom of these
+The native **dashboard** (`GET /api/reports/dashboard`) is card-zoom of these
 same definitions — one computation class, two zoom levels. It introduces no new
 terms.
 

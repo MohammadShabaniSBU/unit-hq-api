@@ -14,7 +14,7 @@ Keevaris is a **mono-tenant** (single-company) self-storage operations platform.
 | CRM / Leasing | Contacts → Deals → Offers → Reservations → Contracts |
 | Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
 | Payments | Stripe credentials per legal entity — each entity is the merchant of record (`architecture-payments-and-fiscal.md`) |
-| Insights | Daily-glance dashboard + live reports (rent roll, occupancy, ageing, collections, deposit liability, daily close, movement, funnel) from ledger/occupancy facts — see `report-definitions.md` |
+| Insights | Operator-ordered registry of native reports and embedded analytics (Metabase / iframe); native vocabulary in `report-definitions.md`, surface in `11-insights.md` |
 | Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automations, AI copilot, tasks/notes |
 
 ## Workspace layout
@@ -42,7 +42,7 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 | Comments | `Notes` (`HasNotes`) |
 | Pipeline end "Lease" | `/contracts` API + panel pages |
 
-**Always use `Contract` in code.** Domain docs live in this folder (`00`–`10`); there is no separate `product.md` / `erd.md` in-repo.
+**Always use `Contract` in code.** Domain docs live in this folder (`00`–`11`); there is no separate `product.md` / `erd.md` in-repo.
 
 ## Doc set index
 
@@ -56,4 +56,5 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 - `08-activity-logging.md` — activitylog + system_events
 - `09-conventions-and-invariants.md` — hard rules; read before writing code
 - `10-open-decisions.md` — decided vs undecided vs out of scope
+- `11-insights.md` — report registry, analytics accounts, embeds, `analytics` schema contract
 - `AGENTS.md` — short index for AI assistants

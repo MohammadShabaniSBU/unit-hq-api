@@ -29,8 +29,8 @@
 - **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount
 - **Facility** — units, unit classes, rates, discounts, insurance plans, access control
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
-- **Insights** — daily-glance dashboard (KPI cards, trends, attention row) plus live reports: rent roll, occupancy (unit/area/economic), ageing, collections, deposit liability, daily close, movement, funnel; CSV export + print
-- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
+- **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights
+- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), **Insights** (analytics connections + report builder), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
 - **Copilot** — AI conversations (sidebar), separate from Inbox
 
 ## Quick start
