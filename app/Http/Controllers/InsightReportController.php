@@ -16,8 +16,16 @@ use App\Models\AnalyticsAccount;
 use App\Models\Employee;
 use App\Models\InsightReport;
 use App\Models\InsightReportParam;
+use App\Models\Site;
+use App\Models\SystemEvent;
 use App\Support\Auth\Permission;
+use App\Support\Credentials\CredentialMasker;
+use App\Support\Insights\AnalyticsProviderRegistry;
+use App\Support\Insights\Contracts\SignsEmbedTokens;
+use App\Support\Insights\DynamicParamContext;
 use App\Support\Insights\DynamicParams;
+use App\Support\Insights\Exceptions\EmbedUrlException;
+use App\Support\Insights\Exceptions\UnknownDynamicParamKey;
 use App\Support\Insights\NativeReports;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,6 +58,122 @@ class InsightReportController extends Controller
             InsightNavItemResource::collection($reports)->resolve(),
             'Insights retrieved successfully.'
         );
+    }
+
+    public function embed(Request $request, string $key, AnalyticsProviderRegistry $registry): JsonResponse
+    {
+        Gate::authorize(Permission::ReportView->value);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        $report = InsightReport::query()
+            ->visibleTo($employee)
+            ->where('key', $key)
+            ->with(['params', 'analyticsAccount'])
+            ->first();
+
+        if ($report === null) {
+            return $this->notFound('Insight report not found.');
+        }
+
+        if ($report->source === InsightReportSource::Native) {
+            $this->recordEmbedFailed($report, 'report_is_native');
+
+            return $this->error('report_is_native', [], 400);
+        }
+
+        $account = $report->analyticsAccount;
+
+        if ($account === null || $account->isArchived()) {
+            $this->recordEmbedFailed($report, 'account_archived');
+
+            return $this->error('account_archived', [], 409);
+        }
+
+        if (CredentialMasker::isUnreadable($account, 'credentials')) {
+            $this->recordEmbedFailed($report, 'credentials_unreadable', $account->id);
+
+            return $this->error('credentials_unreadable', [], 409);
+        }
+
+        $provider = $registry->forAccount($account);
+
+        if (! $provider instanceof SignsEmbedTokens) {
+            $this->recordEmbedFailed($report, 'provider_not_embeddable', $account->id);
+
+            return $this->error('provider_not_embeddable', [], 409);
+        }
+
+        $validated = $request->validate([
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+        ]);
+
+        $requestedSiteId = array_key_exists('site_id', $validated)
+            ? ($validated['site_id'] !== null ? (int) $validated['site_id'] : null)
+            : null;
+
+        $applySiteScope = $report->site_scope_mode === InsightSiteScopeMode::Inherit;
+        $site = null;
+        $siteId = null;
+
+        if ($applySiteScope && $requestedSiteId !== null) {
+            $granted = $employee->siteIdsFor(Permission::ReportView);
+
+            if ($granted === [] || ($granted !== null && ! in_array($requestedSiteId, $granted, true))) {
+                throw ValidationException::withMessages([
+                    'site_id' => [__('errors.forbidden')],
+                ]);
+            }
+
+            $site = Site::query()->active()->find($requestedSiteId);
+            if ($site === null) {
+                throw ValidationException::withMessages([
+                    'site_id' => [__('errors.forbidden')],
+                ]);
+            }
+
+            $siteId = $site->id;
+        }
+
+        $context = new DynamicParamContext(
+            employee: $employee,
+            siteId: $siteId,
+            site: $site,
+            locale: app()->getLocale(),
+            applySiteScope: $applySiteScope,
+        );
+
+        try {
+            $resolved = $this->resolveEmbedParams($report, $context);
+            $ttl = (int) config('insights.embed_ttl_minutes', 10);
+            $expiresAt = now()->addMinutes($ttl);
+            $url = $provider->embedUrl($report, $resolved);
+        } catch (UnknownDynamicParamKey $e) {
+            $this->recordEmbedFailed($report, 'unknown_dynamic_key', $account->id, [$e->key]);
+
+            return $this->error('unknown_dynamic_key', ['dynamic_key' => $e->key], 422);
+        } catch (EmbedUrlException $e) {
+            $paramNames = isset($e->errors['param']) ? [(string) $e->errors['param']] : [];
+            $this->recordEmbedFailed($report, $e->reasonKey, $account->id, $paramNames);
+
+            return $this->error($e->reasonKey, $e->errors, $e->statusCode);
+        } catch (ValidationException $e) {
+            $this->recordEmbedFailed($report, 'iframe_host_rejected', $account->id);
+
+            throw $e;
+        }
+
+        SystemEvent::record('insights.embed.minted', $report, [
+            'report_key' => $report->key,
+            'account_id' => $account->id,
+            'param_names' => array_keys($resolved),
+        ]);
+
+        return $this->success([
+            'url' => $url,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ], 'Embed URL minted successfully.');
     }
 
     public function index(Request $request): JsonResponse
@@ -541,5 +665,58 @@ class InsightReportController extends Controller
                 'sort_order' => $param['sort_order'] ?? $index,
             ]);
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveEmbedParams(InsightReport $report, DynamicParamContext $context): array
+    {
+        $resolved = [];
+
+        foreach ($report->params->sortBy('sort_order') as $param) {
+            $value = match ($param->value_source) {
+                InsightParamValueSource::Static => $param->static_value,
+                InsightParamValueSource::Dynamic => DynamicParams::resolve(
+                    (string) $param->dynamic_key,
+                    $context
+                ),
+            };
+
+            if ($value === null && $param->is_required) {
+                if ($param->value_source === InsightParamValueSource::Dynamic
+                    && $param->dynamic_key === 'current_site_id'
+                ) {
+                    throw EmbedUrlException::siteRequired();
+                }
+
+                throw EmbedUrlException::paramUnresolved($param->name);
+            }
+
+            if ($value === null) {
+                continue;
+            }
+
+            $resolved[$param->name] = $value;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @param  list<string>  $paramNames
+     */
+    private function recordEmbedFailed(
+        InsightReport $report,
+        string $reason,
+        ?int $accountId = null,
+        array $paramNames = [],
+    ): void {
+        SystemEvent::record('insights.embed.failed', $report, [
+            'report_key' => $report->key,
+            'account_id' => $accountId ?? $report->analytics_account_id,
+            'param_names' => $paramNames,
+            'reason' => $reason,
+        ]);
     }
 }

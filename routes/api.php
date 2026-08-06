@@ -180,6 +180,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
 
     Route::get('insights', [Controllers\InsightReportController::class, 'nav']);
+    Route::post('insights/{key}/embed', [Controllers\InsightReportController::class, 'embed'])
+        ->middleware('throttle:insights-embed');
     Route::get('insights/ai-usage', [Controllers\AiUsageInsightsController::class, 'index']);
     Route::get('insights/ai-usage/me', [Controllers\AiUsageInsightsController::class, 'me']);
 

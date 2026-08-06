@@ -92,6 +92,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($token.'|'.$request->ip());
         });
 
+        RateLimiter::for('insights-embed', function (Request $request) {
+            $employeeId = (string) ($request->user()?->getAuthIdentifier() ?? 'guest');
+            $key = (string) $request->route('key', '');
+
+            return Limit::perMinute(1)->by('insights-embed|'.$employeeId.'|'.$key);
+        });
+
         Relation::morphMap([
             'employee'         => Employee::class,
             'contact'          => Contact::class,

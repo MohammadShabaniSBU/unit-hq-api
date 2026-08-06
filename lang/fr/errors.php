@@ -163,6 +163,12 @@ return [
         'dynamic_key_required' => 'Les paramètres dynamiques nécessitent une dynamic_key.',
         'unknown_dynamic_key' => 'Clé de paramètre dynamique inconnue.',
         'static_value_required' => 'Les paramètres statiques nécessitent une static_value.',
+        'report_is_native' => 'Les rapports natifs ne génèrent pas de jetons d’embed.',
+        'account_archived' => 'La connexion analytics de ce rapport est archivée.',
+        'credentials_unreadable' => 'Les identifiants analytics sont illisibles ; saisissez-les à nouveau dans les paramètres.',
+        'provider_not_embeddable' => 'Ce fournisseur analytics ne peut pas générer d’URL d’embed.',
+        'param_unresolved' => 'Un paramètre insights requis n’a pas pu être résolu.',
+        'site_required' => 'Ce rapport nécessite un seul site ; choisissez-en un.',
     ],
 ];
 

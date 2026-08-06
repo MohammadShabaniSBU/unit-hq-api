@@ -29,4 +29,15 @@ return [
     */
     'locales' => ['en', 'es', 'fr'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Embed token TTL
+    |--------------------------------------------------------------------------
+    |
+    | Minutes until a minted Metabase JWT expires. Configurable downward only
+    | (invariant 31): clamped to 1..10.
+    |
+    */
+    'embed_ttl_minutes' => max(1, min(10, (int) env('INSIGHTS_EMBED_TTL_MINUTES', 10))),
+
 ];

@@ -365,6 +365,7 @@ final class RoutePermissions
     'GET /api/copilot/conversations/{conversation}' => Permission::ContactView, // CopilotController@show — placeholder until enum case exists
     'GET /api/employees/options' => Permission::InboxAssign, // EmployeeController@options — assignee picker (inbox/tasks)
     'GET /api/insights' => Permission::ReportView, // InsightReportController@nav — registry-driven Insights nav feed
+    'POST /api/insights/{key}/embed' => Permission::ReportView, // InsightReportController@embed — server-side embed mint
     'GET /api/insights/ai-usage' => Permission::ReportView, // AiUsageInsightsController@index — aggregate AI usage (company report)
     'GET /api/insights/ai-usage/me' => Exempt::self('own AI usage'), // AiUsageInsightsController@me
     'GET /api/playbooks' => Permission::PlaybookManage, // PlaybookController@index

@@ -177,6 +177,12 @@ return [
         'dynamic_key_required' => 'Dynamic params require a dynamic_key.',
         'unknown_dynamic_key' => 'Unknown dynamic param key.',
         'static_value_required' => 'Static params require a static_value.',
+        'report_is_native' => 'Native insight reports do not mint embed tokens.',
+        'account_archived' => 'This report\'s analytics connection is archived.',
+        'credentials_unreadable' => 'Analytics credentials are unreadable; re-enter them in Settings.',
+        'provider_not_embeddable' => 'This analytics provider cannot mint embed URLs.',
+        'param_unresolved' => 'A required insight param could not be resolved.',
+        'site_required' => 'This report requires a single site; choose one.',
     ],
 ];
 
