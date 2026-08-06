@@ -40,4 +40,15 @@ return [
     */
     'embed_ttl_minutes' => max(1, min(10, (int) env('INSIGHTS_EMBED_TTL_MINUTES', 10))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Resource discovery cache
+    |--------------------------------------------------------------------------
+    |
+    | Seconds to cache Metabase dashboard/card lists and param descriptors.
+    | Keep short: operators edit the remote instance in another tab.
+    |
+    */
+    'discovery_cache_seconds' => max(1, (int) env('INSIGHTS_DISCOVERY_CACHE_SECONDS', 60)),
+
 ];

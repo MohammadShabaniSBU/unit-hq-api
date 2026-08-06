@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\InsightReportSource;
 use App\Enums\InsightResourceKind;
 use App\Enums\InsightSiteScopeMode;
+use App\Enums\InsightValidationStatus;
 use App\Enums\InsightVisibility;
 use App\Support\Insights\NativeReports;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,6 +38,9 @@ use Illuminate\Support\Collection;
  * @property array<string, mixed>    $options
  * @property bool                    $is_system
  * @property Carbon|null             $archived_at
+ * @property Carbon|null             $last_validated_at
+ * @property InsightValidationStatus $validation_status
+ * @property array<string, mixed>|null $validation_detail
  * @property int|null                $created_by
  * @property Carbon                  $created_at
  * @property Carbon                  $updated_at
@@ -64,6 +68,9 @@ class InsightReport extends Model
         'options',
         'is_system',
         'archived_at',
+        'last_validated_at',
+        'validation_status',
+        'validation_detail',
         'created_by',
     ];
 
@@ -79,6 +86,9 @@ class InsightReport extends Model
             'site_scope_mode' => InsightSiteScopeMode::class,
             'is_system' => 'boolean',
             'archived_at' => 'datetime',
+            'last_validated_at' => 'datetime',
+            'validation_status' => InsightValidationStatus::class,
+            'validation_detail' => 'array',
         ];
     }
 

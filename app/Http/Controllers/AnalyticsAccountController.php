@@ -13,13 +13,18 @@ use App\Support\Auth\Permission;
 use App\Support\Credentials\CredentialAudit;
 use App\Support\Credentials\CredentialMasker;
 use App\Support\Insights\AnalyticsProviderRegistry;
+use App\Support\Insights\Contracts\DescribesResourceParams;
+use App\Support\Insights\Contracts\ListsResources;
+use App\Support\Insights\Exceptions\DiscoveryException;
 use App\Support\Insights\IframeHostGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 /**
  * Company-level analytics provider credentials (S21-02).
@@ -235,6 +240,107 @@ class AnalyticsAccountController extends Controller
             AnalyticsAccountResource::make($analyticsAccount->fresh())->resolve(),
             'Analytics account updated successfully.'
         );
+    }
+
+    public function resources(Request $request, AnalyticsAccount $analyticsAccount): JsonResponse
+    {
+        Gate::authorize(Permission::CredentialManage->value);
+
+        if ($analyticsAccount->isArchived()) {
+            return $this->error('account_archived', [], 409);
+        }
+
+        if (CredentialMasker::isUnreadable($analyticsAccount, 'credentials')) {
+            return $this->error('credentials_unreadable', [], 409);
+        }
+
+        $kind = (string) $request->query('kind', '');
+        $refresh = $request->boolean('refresh');
+
+        try {
+            $adapter = $this->registry->forAccount($analyticsAccount);
+
+            if (! $adapter instanceof ListsResources) {
+                throw DiscoveryException::notDiscoverable();
+            }
+
+            if (! in_array($kind, $adapter->resourceKinds(), true)) {
+                throw ValidationException::withMessages([
+                    'kind' => ['The selected kind is invalid.'],
+                ]);
+            }
+
+            $cacheKey = 'insights.discovery.'.$analyticsAccount->id.'.'.$kind;
+            $ttl = (int) config('insights.discovery_cache_seconds', 60);
+
+            if ($refresh) {
+                Cache::forget($cacheKey);
+            }
+
+            $list = Cache::remember($cacheKey, $ttl, fn () => $adapter->resources($kind));
+        } catch (DiscoveryException $e) {
+            return $this->error($e->reasonKey, [], $e->statusCode);
+        } catch (InvalidArgumentException) {
+            throw ValidationException::withMessages([
+                'kind' => ['The selected kind is invalid.'],
+            ]);
+        }
+
+        return $this->success($list, 'Analytics resources retrieved successfully.');
+    }
+
+    public function resourceParams(
+        Request $request,
+        AnalyticsAccount $analyticsAccount,
+        string $kind,
+        string $ref,
+    ): JsonResponse {
+        Gate::authorize(Permission::CredentialManage->value);
+
+        if ($analyticsAccount->isArchived()) {
+            return $this->error('account_archived', [], 409);
+        }
+
+        if (CredentialMasker::isUnreadable($analyticsAccount, 'credentials')) {
+            return $this->error('credentials_unreadable', [], 409);
+        }
+
+        $refresh = $request->boolean('refresh');
+
+        try {
+            $adapter = $this->registry->forAccount($analyticsAccount);
+
+            if (! $adapter instanceof DescribesResourceParams) {
+                throw DiscoveryException::notDiscoverable();
+            }
+
+            if (! in_array($kind, $adapter->resourceKinds(), true)) {
+                throw ValidationException::withMessages([
+                    'kind' => ['The selected kind is invalid.'],
+                ]);
+            }
+
+            $cacheKey = 'insights.discovery-params.'.$analyticsAccount->id.'.'.$kind.'.'.$ref;
+            $ttl = (int) config('insights.discovery_cache_seconds', 60);
+
+            if ($refresh) {
+                Cache::forget($cacheKey);
+            }
+
+            $list = Cache::remember(
+                $cacheKey,
+                $ttl,
+                fn () => $adapter->resourceParams($kind, $ref),
+            );
+        } catch (DiscoveryException $e) {
+            return $this->error($e->reasonKey, [], $e->statusCode);
+        } catch (InvalidArgumentException) {
+            throw ValidationException::withMessages([
+                'kind' => ['The selected kind is invalid.'],
+            ]);
+        }
+
+        return $this->success($list, 'Analytics resource params retrieved successfully.');
     }
 
     public function verify(AnalyticsAccount $analyticsAccount): JsonResponse

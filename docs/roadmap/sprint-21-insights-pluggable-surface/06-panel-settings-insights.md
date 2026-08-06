@@ -65,8 +65,11 @@ Step-shaped, but a single form:
 1. **Source** — Built-in (pick from unused registry entries) or Embedded (pick an account).
 2. **Resource** — when the account supports discovery, a searchable select of dashboards and
    questions with an `enabled_for_embedding` indicator; unpublished resources are selectable
-   but flagged, so the operator learns *why* it will fail rather than not finding it. When the
-   provider returns `provider_not_discoverable`, fall back to kind + free-text ref.
+   but flagged, so the operator learns *why* it will fail rather than not finding it. When
+   discovery returns **409** with message `provider_not_discoverable` (adapter lacks
+   `ListsResources` — e.g. iframe), do **not** treat that as an empty catalogue: fall back to
+   kind select + free-text `resource_ref`. An empty **200** list means the instance has no
+   resources; a **409** means discovery is unavailable.
 3. **Parameters** — one row per provider-declared param:
    - slug + provider embedding mode, read-only
    - binding: **Locked** / **Editable filter**, disabled to Locked when the value is dynamic

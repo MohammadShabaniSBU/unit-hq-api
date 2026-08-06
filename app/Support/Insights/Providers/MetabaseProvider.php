@@ -11,10 +11,13 @@ use App\Support\Insights\Contracts\AnalyticsProvider;
 use App\Support\Insights\Contracts\DescribesResourceParams;
 use App\Support\Insights\Contracts\ListsResources;
 use App\Support\Insights\Contracts\SignsEmbedTokens;
+use App\Support\Insights\Exceptions\DiscoveryException;
 use App\Support\Insights\Exceptions\EmbedUrlException;
 use App\Support\Insights\Hs256Jwt;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use LogicException;
+use InvalidArgumentException;
 
 final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, ListsResources, DescribesResourceParams
 {
@@ -125,12 +128,157 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
 
     public function resources(string $kind): array
     {
-        throw new LogicException('Resource listing lands in task 05.');
+        $this->assertKnownKind($kind);
+
+        $path = $kind === 'dashboard' ? '/api/dashboard' : '/api/card';
+        $payload = $this->getJson($path);
+
+        if (! is_array($payload)) {
+            throw DiscoveryException::unreachable();
+        }
+
+        $items = array_is_list($payload) ? $payload : [];
+        $out = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item) || ! isset($item['id'])) {
+                continue;
+            }
+
+            $collection = null;
+            if (isset($item['collection']) && is_array($item['collection'])) {
+                $collection = isset($item['collection']['name'])
+                    ? (string) $item['collection']['name']
+                    : null;
+            }
+
+            $out[] = [
+                'ref' => (string) $item['id'],
+                'name' => (string) ($item['name'] ?? ''),
+                'collection' => $collection,
+                'enabled_for_embedding' => (bool) ($item['enable_embedding'] ?? false),
+            ];
+        }
+
+        return $out;
     }
 
     public function resourceParams(string $kind, string $ref): array
     {
-        throw new LogicException('Resource param discovery lands in task 05.');
+        $this->assertKnownKind($kind);
+
+        if ($ref === '' || ! ctype_digit($ref)) {
+            throw DiscoveryException::unreachable();
+        }
+
+        $path = $kind === 'dashboard'
+            ? '/api/dashboard/'.$ref
+            : '/api/card/'.$ref;
+
+        $payload = $this->getJson($path);
+
+        if (! is_array($payload)) {
+            throw DiscoveryException::unreachable();
+        }
+
+        $parameters = $payload['parameters'] ?? [];
+        if (! is_array($parameters)) {
+            $parameters = [];
+        }
+
+        $embeddingParams = $payload['embedding_params'] ?? [];
+        if (! is_array($embeddingParams)) {
+            $embeddingParams = [];
+        }
+
+        $out = [];
+
+        foreach ($parameters as $param) {
+            if (! is_array($param)) {
+                continue;
+            }
+
+            $slug = isset($param['slug']) ? (string) $param['slug'] : '';
+            if ($slug === '') {
+                continue;
+            }
+
+            $mode = $embeddingParams[$slug] ?? 'disabled';
+            $mode = is_string($mode) ? $mode : 'disabled';
+            if (! in_array($mode, ['disabled', 'enabled', 'locked'], true)) {
+                $mode = 'disabled';
+            }
+
+            $out[] = [
+                'slug' => $slug,
+                'name' => (string) ($param['name'] ?? $slug),
+                'type' => (string) ($param['type'] ?? 'string'),
+                'embedding_mode' => $mode,
+                'required' => (bool) ($param['required'] ?? false),
+            ];
+        }
+
+        return $out;
+    }
+
+    private function assertKnownKind(string $kind): void
+    {
+        if (! in_array($kind, $this->resourceKinds(), true)) {
+            throw new InvalidArgumentException('Unknown Metabase resource kind: '.$kind);
+        }
+    }
+
+    /**
+     * @return array<mixed>|null
+     */
+    private function getJson(string $path): ?array
+    {
+        $apiKey = $this->credentials['api_key'] ?? null;
+
+        if (! is_string($apiKey) || $apiKey === '') {
+            throw DiscoveryException::credentialsUnreadable();
+        }
+
+        if ($this->baseUrl === '') {
+            throw DiscoveryException::credentialsUnreadable();
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'X-API-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])
+                ->timeout(15)
+                ->get($this->baseUrl.$path);
+        } catch (ConnectionException) {
+            throw DiscoveryException::unreachable();
+        } catch (\Throwable) {
+            throw DiscoveryException::unreachable();
+        }
+
+        return $this->decodeOrThrow($response);
+    }
+
+    /**
+     * @return array<mixed>|null
+     */
+    private function decodeOrThrow(Response $response): ?array
+    {
+        if ($response->status() === 401 || $response->status() === 403) {
+            throw DiscoveryException::credentialsUnreadable();
+        }
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            throw DiscoveryException::unreachable();
+        }
+
+        $json = $response->json();
+
+        return is_array($json) ? $json : null;
     }
 
     /**

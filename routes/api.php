@@ -124,6 +124,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('settings/analytics-accounts', [Controllers\AnalyticsAccountController::class, 'index']);
     Route::post('settings/analytics-accounts', [Controllers\AnalyticsAccountController::class, 'store']);
     Route::patch('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'update']);
+    Route::get('settings/analytics-accounts/{analyticsAccount}/resources', [Controllers\AnalyticsAccountController::class, 'resources']);
+    Route::get('settings/analytics-accounts/{analyticsAccount}/resources/{kind}/{ref}/params', [Controllers\AnalyticsAccountController::class, 'resourceParams']);
     Route::post('settings/analytics-accounts/{analyticsAccount}/verify', [Controllers\AnalyticsAccountController::class, 'verify']);
     Route::post('settings/analytics-accounts/{analyticsAccount}/default', [Controllers\AnalyticsAccountController::class, 'setDefault']);
     Route::post('settings/analytics-accounts/{analyticsAccount}/archive', [Controllers\AnalyticsAccountController::class, 'archive']);
@@ -135,6 +137,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/insight-reports/reorder', [Controllers\InsightReportController::class, 'reorder']);
     Route::get('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'show']);
     Route::patch('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'update']);
+    Route::post('settings/insight-reports/{insightReport}/validate', [Controllers\InsightReportController::class, 'validateReport']);
     Route::post('settings/insight-reports/{insightReport}/archive', [Controllers\InsightReportController::class, 'archive']);
     Route::post('settings/insight-reports/{insightReport}/unarchive', [Controllers\InsightReportController::class, 'unarchive']);
     Route::delete('settings/insight-reports/{insightReport}', [Controllers\InsightReportController::class, 'destroy']);

@@ -41,6 +41,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('automations:resume-waiting')->everyMinute();
         // External reporting date spine; early daily, site-agnostic.
         $schedule->command('analytics:refresh')->daily();
+        // Re-check embedded insight definitions against live provider state.
+        $schedule->command('insights:validate')->daily();
 
         // Activation must run at least as often as billing, and is registered
         // first so same-tick hourly runs activate move-ins before billing

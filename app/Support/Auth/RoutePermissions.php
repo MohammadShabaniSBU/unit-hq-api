@@ -292,6 +292,8 @@ final class RoutePermissions
     'GET /api/messages/{message}/recording' => Permission::InboxView, // MessageController@recording
     'GET /api/messages/{message}/wrapup' => Permission::InboxView, // MessageController@showWrapup
     'GET /api/settings/analytics-accounts' => Permission::CredentialManage, // AnalyticsAccountController@index
+    'GET /api/settings/analytics-accounts/{analyticsAccount}/resources' => Permission::CredentialManage, // AnalyticsAccountController@resources
+    'GET /api/settings/analytics-accounts/{analyticsAccount}/resources/{kind}/{ref}/params' => Permission::CredentialManage, // AnalyticsAccountController@resourceParams
     'GET /api/settings/analytics-providers' => Permission::CredentialManage, // AnalyticsAccountController@providers
     'GET /api/settings/communications' => Permission::CredentialManage, // Facility\CommunicationAccountController@index
     'GET /api/settings/communications/call/aircall/users' => Permission::CredentialManage, // AircallUserLinkController@index
@@ -422,6 +424,7 @@ final class RoutePermissions
     'POST /api/settings/insight-reports/reorder' => Permission::SettingsManage, // InsightReportController@reorder
     'POST /api/settings/insight-reports/{insightReport}/archive' => Permission::SettingsManage, // InsightReportController@archive
     'POST /api/settings/insight-reports/{insightReport}/unarchive' => Permission::SettingsManage, // InsightReportController@unarchive
+    'POST /api/settings/insight-reports/{insightReport}/validate' => Permission::SettingsManage, // InsightReportController@validateReport
     'POST /api/settings/object-customization/groups/{group}/fields' => Permission::SettingsManage, // ObjectCustomizationController@storeField
     'POST /api/settings/object-customization/groups/{group}/fields/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderFields
     'POST /api/settings/object-customization/{entityType}/groups' => Permission::SettingsManage, // ObjectCustomizationController@storeGroup

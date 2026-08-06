@@ -9,6 +9,7 @@ use App\Enums\InsightParamValueSource;
 use App\Enums\InsightReportSource;
 use App\Enums\InsightResourceKind;
 use App\Enums\InsightSiteScopeMode;
+use App\Enums\InsightValidationStatus;
 use App\Enums\InsightVisibility;
 use App\Http\Resources\InsightNavItemResource;
 use App\Http\Resources\InsightReportResource;
@@ -27,8 +28,11 @@ use App\Support\Insights\DynamicParams;
 use App\Support\Insights\Exceptions\EmbedUrlException;
 use App\Support\Insights\Exceptions\UnknownDynamicParamKey;
 use App\Support\Insights\NativeReports;
+use App\Support\Insights\ReportValidator;
+use App\Support\Insights\Results\ValidationResult;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -203,16 +207,17 @@ class InsightReportController extends Controller
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, ReportValidator $validator): JsonResponse
     {
         Gate::authorize(Permission::SettingsManage->value);
 
         $validated = $this->validateDefinition($request, creating: true);
+        $validation = $this->runProviderValidation($validated, null, $validator);
 
         /** @var Employee $employee */
         $employee = $request->user();
 
-        $report = DB::transaction(function () use ($validated, $employee): InsightReport {
+        $report = DB::transaction(function () use ($validated, $employee, $validation): InsightReport {
             $maxOrder = (int) InsightReport::query()->max('sort_order');
 
             $report = InsightReport::query()->create([
@@ -232,6 +237,9 @@ class InsightReportController extends Controller
                 'options' => $validated['options'] ?? [],
                 'is_system' => false,
                 'created_by' => $employee->id,
+                'last_validated_at' => $validation?->validatedAt,
+                'validation_status' => $validation?->status->value ?? InsightValidationStatus::Unknown->value,
+                'validation_detail' => $validation?->detail,
             ]);
 
             $this->replaceParams($report, $validated['params'] ?? []);
@@ -239,10 +247,12 @@ class InsightReportController extends Controller
             return $report->load(['params', 'analyticsAccount']);
         });
 
-        return $this->created(
-            InsightReportResource::make($report)->resolve(),
-            'Insight report created successfully.'
-        );
+        $data = InsightReportResource::make($report)->resolve();
+        if ($validation?->isUnreachable()) {
+            $data['validation_warning'] = true;
+        }
+
+        return $this->created($data, 'Insight report created successfully.');
     }
 
     public function show(InsightReport $insightReport): JsonResponse
@@ -257,7 +267,7 @@ class InsightReportController extends Controller
         );
     }
 
-    public function update(Request $request, InsightReport $insightReport): JsonResponse
+    public function update(Request $request, InsightReport $insightReport, ReportValidator $validator): JsonResponse
     {
         Gate::authorize(Permission::SettingsManage->value);
 
@@ -267,7 +277,10 @@ class InsightReportController extends Controller
             $this->assertSystemImmutable($insightReport, $validated);
         }
 
-        $report = DB::transaction(function () use ($validated, $insightReport): InsightReport {
+        $insightReport->loadMissing(['params', 'analyticsAccount']);
+        $validation = $this->runProviderValidation($validated, $insightReport, $validator);
+
+        $report = DB::transaction(function () use ($validated, $insightReport, $validation): InsightReport {
             $insightReport->fill([
                 'key' => $validated['key'] ?? $insightReport->key,
                 'labels' => array_key_exists('labels', $validated) ? $validated['labels'] : $insightReport->labels,
@@ -295,6 +308,14 @@ class InsightReportController extends Controller
                 ]);
             }
 
+            if ($validation !== null) {
+                $insightReport->fill([
+                    'last_validated_at' => $validation->validatedAt,
+                    'validation_status' => $validation->status->value,
+                    'validation_detail' => $validation->detail,
+                ]);
+            }
+
             $insightReport->save();
 
             if (array_key_exists('params', $validated)) {
@@ -304,10 +325,33 @@ class InsightReportController extends Controller
             return $insightReport->load(['params', 'analyticsAccount']);
         });
 
-        return $this->success(
-            InsightReportResource::make($report)->resolve(),
-            'Insight report updated successfully.'
-        );
+        $data = InsightReportResource::make($report)->resolve();
+        if ($validation?->isUnreachable()) {
+            $data['validation_warning'] = true;
+        }
+
+        return $this->success($data, 'Insight report updated successfully.');
+    }
+
+    public function validateReport(InsightReport $insightReport, ReportValidator $validator): JsonResponse
+    {
+        Gate::authorize(Permission::SettingsManage->value);
+
+        $insightReport->load(['params', 'analyticsAccount']);
+        $result = $validator->validate($insightReport);
+
+        $insightReport->fill([
+            'last_validated_at' => $result->validatedAt,
+            'validation_status' => $result->status->value,
+            'validation_detail' => $result->detail,
+        ]);
+        $insightReport->save();
+
+        return $this->success([
+            'status' => $result->status->value,
+            'detail' => $result->detail,
+            'validated_at' => $result->validatedAt->toIso8601String(),
+        ], 'Insight report validation completed.');
     }
 
     public function reorder(Request $request): JsonResponse
@@ -665,6 +709,105 @@ class InsightReportController extends Controller
                 'sort_order' => $param['sort_order'] ?? $index,
             ]);
         }
+    }
+
+    /**
+     * Provider round-trip for embedded definitions. Blocks save on mismatch;
+     * unreachable is allowed through with a warning status.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function runProviderValidation(
+        array $validated,
+        ?InsightReport $existing,
+        ReportValidator $validator,
+    ): ?ValidationResult {
+        $source = $validated['source'] ?? $existing?->source->value;
+        if ($source !== InsightReportSource::Embedded->value) {
+            return $existing !== null && $existing->source === InsightReportSource::Native
+                ? new ValidationResult(InsightValidationStatus::Valid, null, now())
+                : ($source === InsightReportSource::Native->value
+                    ? new ValidationResult(InsightValidationStatus::Valid, null, now())
+                    : null);
+        }
+
+        $provisional = $this->provisionalEmbeddedReport($validated, $existing);
+        $result = $validator->validate($provisional);
+
+        if ($result->blocksSave()) {
+            throw ValidationException::withMessages([
+                'resource' => [__('errors.insights.'.$result->status->value)],
+            ])->errorBag(response()->json([
+                'message' => $result->status->value,
+                'errors' => [
+                    'validation_detail' => $result->detail,
+                    'validation_status' => $result->status->value,
+                ],
+            ], 422));
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function provisionalEmbeddedReport(array $validated, ?InsightReport $existing): InsightReport
+    {
+        $report = new InsightReport([
+            'key' => $validated['key'] ?? $existing?->key ?? 'provisional',
+            'source' => InsightReportSource::Embedded->value,
+            'analytics_account_id' => $validated['analytics_account_id'] ?? $existing?->analytics_account_id,
+            'resource_kind' => $validated['resource_kind'] ?? $existing?->resource_kind?->value,
+            'resource_ref' => $validated['resource_ref'] ?? $existing?->resource_ref,
+            'site_scope_mode' => $validated['site_scope_mode']
+                ?? $existing?->site_scope_mode->value
+                ?? InsightSiteScopeMode::Inherit->value,
+            'visibility' => $validated['visibility']
+                ?? $existing?->visibility->value
+                ?? InsightVisibility::All->value,
+            'options' => $validated['options'] ?? $existing?->options ?? [],
+            'is_system' => false,
+        ]);
+
+        $accountId = $report->analytics_account_id;
+        $account = $accountId !== null
+            ? AnalyticsAccount::query()->find($accountId)
+            : null;
+        $report->setRelation('analyticsAccount', $account);
+
+        if (array_key_exists('params', $validated)) {
+            $report->setRelation('params', $this->provisionalParams($validated['params'] ?? []));
+        } elseif ($existing !== null) {
+            $report->setRelation('params', $existing->params);
+        } else {
+            $report->setRelation('params', new Collection);
+        }
+
+        return $report;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $params
+     * @return Collection<int, InsightReportParam>
+     */
+    private function provisionalParams(array $params): Collection
+    {
+        $collection = new Collection;
+
+        foreach (array_values($params) as $index => $param) {
+            $collection->push(new InsightReportParam([
+                'name' => $param['name'],
+                'value_source' => $param['value_source'],
+                'static_value' => $param['static_value'] ?? null,
+                'dynamic_key' => $param['dynamic_key'] ?? null,
+                'binding' => $param['binding'] ?? InsightParamBinding::Locked->value,
+                'is_required' => $param['is_required'] ?? true,
+                'sort_order' => $param['sort_order'] ?? $index,
+            ]));
+        }
+
+        return $collection;
     }
 
     /**
