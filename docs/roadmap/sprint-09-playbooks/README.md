@@ -31,14 +31,14 @@ single-active-run-per-subject enrolment semantics.
 
 ## Exit criteria
 
-- [ ] An operator with no automation knowledge builds "day 1 email, day 3 SMS, day 5
+- [x] An operator with no automation knowledge builds "day 1 email, day 3 SMS, day 5
       urgent task" in the Debt process page in under two minutes, activates it, and a
       seeded delinquent contract enrols on the next case-open.
 - [ ] Paying mid-sequence — during a wait — exits the enrolment within minutes; the
       case timeline and the enrolment view both tell the story.
 - [ ] Lead chase enrols new deals, exits on stage advance or loss, and never
       double-enrols a subject.
-- [ ] Editing an active playbook affects future enrolments only, with existing ones
+- [x] Editing an active playbook affects future enrolments only, with existing ones
       finishing on the graph version they started (or being bulk-exited, operator's
       explicit choice).
 - [ ] Every new handler has a harness fixture (`HandlerCoverageTest` stays green).

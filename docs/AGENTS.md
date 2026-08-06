@@ -15,6 +15,8 @@ Before writing code, consult the doc that matches the task:
 | Payments, fiscal identity, invoice issuance (authoritative) | `roadmap/architecture-payments-and-fiscal.md` |
 | Messaging / timeline / offer sends | `06-communications.md` |
 | Insights, embedded analytics, reporting schema | `11-insights.md` |
+| Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
+| Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
 | **Always, before committing** | `09-conventions-and-invariants.md` |

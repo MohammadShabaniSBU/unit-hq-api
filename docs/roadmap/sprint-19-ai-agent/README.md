@@ -58,12 +58,12 @@ Strictly sequential.
 
 ## Exit criteria
 
-- [ ] `CrmCopilotAgent` uses `RemembersConversations`; no `messages` method exists on the
+- [x] `CrmCopilotAgent` uses `RemembersConversations`; no `messages` method exists on the
       class; conversations belong to an `Employee` participant.
-- [ ] Sending a message returns `202` immediately; the turn runs in a queue worker.
-- [ ] The panel renders streamed text, tool calls and completion from Echo, with no SSE
+- [x] Sending a message returns `202` immediately; the turn runs in a queue worker.
+- [x] The panel renders streamed text, tool calls and completion from Echo, with no SSE
       endpoint involved.
-- [ ] Closing the browser tab mid-turn does not abort the run; the conversation shows the
+- [x] Closing the browser tab mid-turn does not abort the run; the conversation shows the
       complete assistant message on reload.
 - [x] Every completed turn has exactly one settled `ai_usage_events` row attributed to the
       correct employee.

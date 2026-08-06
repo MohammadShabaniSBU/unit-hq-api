@@ -19,13 +19,13 @@ Ad-hoc nested AND/OR filters over native fields **and** custom attributes, for C
 
 Durable **person record holding identity only**. Contacts do **not** log in — they interact via offer token links.
 
-- Multiple emails / phones live in `ContactChannel` (`type`, `value`, `label`, `is_primary`) — the contact row itself stays clean.
+- Multiple emails / phones live in `ContactChannel` (`type`, `value`, `label`, `is_primary`, `opted_in`) — the contact row itself stays clean.
 - **Partial unique index** enforces only one primary channel per type per contact.
 - Contact detail views show activity **across all sites** — a Contact is not site-scoped.
 
 ## Deal
 
-The pursuit record: pipeline stage, forecast, intent. Optional link target for interactions.
+The pursuit record: pipeline stage, forecast, intent. Also carries expected-need fields: `expected_move_in`, `expected_stay_length`, `expected_stay_period`, `desired_size`, `desired_unit_class_id`. Optional link target for interactions.
 
 ## Offer — the commercial proposal
 
@@ -38,9 +38,10 @@ Belongs to a Deal and a Contact. Sits between Deal and Reservation.
 
 ## OfferOption — line item
 
-Each option references a **UnitClass, never a specific unit**.
+Each option is presented to the contact at the **UnitClass / rate level** — no unit number is shown commercially.
 
-- Carries: a price, an optional Discount, operator-written label + description, display order.
+- Carries: a `unit_class_rate_id`, an optional Discount, operator-written label + description, display order.
+- Internally, a specific candidate `unit_id` is **pre-resolved and pinned on the `offer_options` row itself at create/update time** (`Unit::resolveUnitIdForRate(...)` in `OfferOptionController::store`/`update`), well before offer acceptance — the unit isn't first chosen at Reservation.
 - When the contact picks an option, `selected_at` is written on that row.
 - **Partial unique index** on `offer_id WHERE selected_at IS NOT NULL` → exactly one selection per offer.
 
@@ -48,7 +49,7 @@ Each option references a **UnitClass, never a specific unit**.
 
 1. Set `offer_options.selected_at`
 2. Flip `offers.status = accepted`
-3. Insert a `Reservation` referencing that OfferOption (with a **specific `unit_id`**)
+3. Insert a `Reservation` referencing that OfferOption — this is where the pre-resolved unit becomes **operative** (occupancy/hold); if it's no longer available, a fresh unit is re-resolved from the rate at this point.
 
 ## OfferDelivery
 
@@ -73,10 +74,19 @@ The operational and billing anchor. Creation accepts `signature_mode: immediate 
 - Remote flow: create awaiting → generate contract document (template family `channel = document`) → send envelope via the active e-sign provider → webhook lands signed PDF + certificate (immutable hashes) → `ContractSigning::complete()`.
 - Board column **Awaiting signature** shows live-envelope aging (`sent_at` / `viewed_at` / `expires_at`; amber when expiring ≤ 3 days). Attention chips on the contracts index: declined, signed-after-cancellation (`post_cancellation`).
 
+### Lifecycle operations
+
+- **Vacate**: `POST contracts/{contract}/vacate-preview` and `POST contracts/{contract}/vacate` (`ContractController`, logic in the `VacatesContracts` concern) — ends the contract, releases the unit, and settles the deposit; the preview endpoint returns the settlement breakdown without committing.
+- **Transfers**: `ContractTransfer` model tracks moving a contract to a different unit — `POST contracts/{contract}/transfer-preview` and `POST contracts/{contract}/transfer`. It's an audit record only, deliberately redundant with the occupancy and item rows it produces.
+- **Rate changes**: `ContractRateChangeController` (`POST contracts/{contract}/rate-changes`) — schedules an effective-dated rate change on an active contract.
+- **Contract notices**: `ContractNotice` model is an append-only audit trail (rate changes, delinquency, move-out notices, etc.), never updated or deleted — `POST contract-notices/{contractNotice}/mark-sent` records the send.
+- **Autopay**: `GET`/`PUT contracts/{contract}/autopay` and `POST contracts/{contract}/autopay/retry` — per-contract autopay enrollment and manual retry of a failed charge.
+- **Contract documents**: `ContractDocument` model — generated contract paperwork (`GET`/`POST contracts/{contract}/documents`, plus `/preview`, `/regenerate`, `/pdf`), distinct from the e-sign envelope flow above.
+
 ### Billing snapshots
 
-- **Line items live on `ContractItem`** (polymorphic: unit, insurance, …), each with its **own `amount`** (net period price) — not flat FKs on the contract. Column was renamed from `rate` → `amount`.
-- Items also carry optional `price_id`, `description`, `declared_goods_value`, and tax snapshots (`tax_rate_id`, `tax_rate_snapshot`).
+- **Line items live on `ContractItem`** (polymorphic: unit, insurance, …) — versioned rows, not flat FKs on the contract. Every version carries a required `price_id` (amount/currency read through the referenced, immutable Price); there is no `amount` column on the item itself. A separate `base_rate` decimal exists only for discount-tracking math.
+- Items also carry optional `description`, `declared_goods_value`, and tax snapshots (`tax_rate_id`, `tax_rate_snapshot`).
 - At signing the contract snapshots org billing: interval / count, `billing_anchor_model`, derived `billing_anchor_date`, `proration_method`, `move_in_date`, `deposit_amount`, and sets `billed_through` (billing cursor).
 - **First-period charges are written in the same transaction** as the contract becoming signed (one charge per item + optional deposit). Preview (`convert-preview`) uses the same `BillingMath` / `ContractBilling` path so UI and ledger never diverge. Full detail: `05-billing-ledger.md`.
 - `reservation_id` is **nullable** to support walk-ins.

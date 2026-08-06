@@ -28,12 +28,12 @@ Sprint 01 — all three tasks write to `unit_occupancies`. Do not start before S
 
 ## Exit criteria
 
-- [ ] An operator can vacate a contract from the contract page; the unit returns to
+- [x] An operator can vacate a contract from the contract page; the unit returns to
       availability on the move-out date, final charges are correct, and the deposit is
       resolved.
-- [ ] An operator can transfer a tenant between units; one contract, two occupancy rows,
+- [x] An operator can transfer a tenant between units; one contract, two occupancy rows,
       continuous ledger, deposit carried.
-- [ ] An operator can schedule a rate change for a future date; it applies automatically at
+- [x] An operator can schedule a rate change for a future date; it applies automatically at
       the next billing run without any price row being mutated.
 - [ ] Every transition writes a tier-3 `core` activity row inside the same transaction.
 - [ ] No transition can be performed twice (idempotent or explicitly rejected).

@@ -24,17 +24,17 @@ overdue charges to chase and the whole recurring narrative works end to end.
 
 ## Exit criteria
 
-- [ ] `php artisan billing:run` bills every contract whose next period start falls within
+- [x] `php artisan billing:run` bills every contract whose next period start falls within
       the horizon; a second immediate run bills nothing.
-- [ ] A contract with a scheduled future rate change bills the old amount before the
+- [x] A contract with a scheduled future rate change bills the old amount before the
       effective date and the new amount after, with **no rate-change-aware code in the job**.
-- [ ] Three days of downtime → next run generates three periods per affected monthly...
+- [x] Three days of downtime → next run generates three periods per affected monthly...
       (per cadence) contract, in order, each with its own charges + invoice.
-- [ ] One contract failing (e.g. fiscal blocker) is recorded and skipped; the run completes;
+- [x] One contract failing (e.g. fiscal blocker) is recorded and skipped; the run completes;
       the contract retries next run.
 - [x] `pending` contracts auto-activate on their move-in date; `notice_given` contracts stop
       being billed past the stop line; `ended` never bill.
-- [ ] Billing runs are inspectable in the panel down to per-contract outcomes.
+- [x] Billing runs are inspectable in the panel down to per-contract outcomes.
 
 ## Task order
 

@@ -36,13 +36,13 @@ Get these in writing. #2 changes onboarding UX and is the one to chase first.
 
 ## Exit criteria
 
-- [ ] Every site belongs to a legal entity; entities are managed in Settings and archive-only.
+- [x] Every site belongs to a legal entity; entities are managed in Settings and archive-only.
 - [ ] Contacts can carry fiscal identity (billing name, tax ID, billing address), surfaced
       on the contact page and validated for ES formats.
-- [ ] Issuing an invoice allocates a **gapless, per-series** number under concurrency, in
+- [x] Issuing an invoice allocates a **gapless, per-series** number under concurrency, in
       one transaction with full issuer/buyer snapshots.
-- [ ] An issued invoice is immutable — no endpoint can change or delete it.
-- [ ] Contract signing issues the first-period invoice; vacate/transfer credits produce
+- [x] An issued invoice is immutable — no endpoint can change or delete it.
+- [x] Contract signing issues the first-period invoice; vacate/transfer credits produce
       rectificative invoices referencing the originals.
 - [ ] Tax resolution honours jurisdiction (D2): ES sites resolve ES rates.
 - [ ] A rendered invoice (HTML/PDF) exists for every issued document, from snapshots only.

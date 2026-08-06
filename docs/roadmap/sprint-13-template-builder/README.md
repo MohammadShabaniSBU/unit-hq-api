@@ -36,10 +36,10 @@ Meta docs at implementation (the standing rule).
 
 ## Exit criteria
 
-- [ ] An operator builds a two-language email in blocks, previews desktop/mobile,
+- [x] An operator builds a two-language email in blocks, previews desktop/mobile,
       test-sends, and a playbook step to a Spanish-site contact renders the `es`
       variant automatically.
-- [ ] A WhatsApp template drafts → submits → syncs to approved/rejected (with Meta's
+- [x] A WhatsApp template drafts → submits → syncs to approved/rejected (with Meta's
       reason) without leaving the panel.
 - [ ] The inbox WhatsApp composer free-texts inside an open session, and outside it
       offers only approved templates with variable fill — the state visibly explained.

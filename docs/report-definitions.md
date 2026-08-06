@@ -16,6 +16,65 @@ glossary. Review Spanish in the PR that introduces this doc (`es-reviewed`).
 Date windows use the house boundary convention: `started_on <= D < ended_on`
 (exclusive ends). As-of dates are site-local civil dates via `SiteClock` (D8).
 
+**Permission split** — `rent-roll`, `ageing`, `collections`,
+`deposit-liability`, and `daily-close` require the stricter
+`Permission::ReportFinancialView`; every other native report (occupancy,
+movement, funnel, dashboard, demo) only requires the baseline
+`Permission::ReportView`. Enforced in `ReportController::show`
+(`FINANCIAL_REPORTS` list).
+
+---
+
+## Rent roll / Lista de rentas
+
+As-of snapshot (`OccupancyMetrics::resolveAsOf`) of every open occupancy:
+contract terms are priced as of that date, but balance/overdue figures are
+always **current-state** — not reconstructed as of the as-of date (flagged
+directly in the report's own `notes`).
+
+**Scope:** open `unit_occupancies` (`started_on <= as_of` and `ended_on` null
+or `> as_of`) on enabled units, excluding contracts in `awaiting_signature` or
+`cancelled` status. Ordered by site name, then unit number.
+
+| Field (EN) | Field (ES) | Definition |
+|---|---|---|
+| Monthly rate | Tarifa mensual | Effective `unit` contract-item price as of the as-of date (`ContractItem::effectiveOn`). |
+| Insurance | Seguro | Effective `insurance` contract-item price as of the as-of date, if any; otherwise blank. |
+| Deposit held | Depósito retenido | If the contract has a `depositSettlement`: `0.00` when the settlement outcome is `released`, else the settlement's snapshot `deposit_amount`. Otherwise the contract's own `deposit_amount`. |
+| Balance owed (current) | Saldo actual | `Σ charges.amount − Σ payments.amount` for the contract, computed **today** — not as of the report's as-of date. |
+| Overdue (current) | Vencido actual | `Σ` open (unallocated) amount of charges whose `due_date` is before **today**. Same current-state caveat as balance owed. |
+| Delinquency days | Días de morosidad | Age, in the contract's site-local civil day (`SiteClock::today`), of the **oldest** unpaid charge (`due_date` < today with open amount > 0). Blank when nothing is overdue. |
+| Tenure days | Días de antigüedad | Days between move-in and the as-of date. |
+| End date | Fecha de fin | Occupancy `ended_on`; overridden by the contract's `end_date` when status is `notice_given` and `end_date` is set. |
+| Overlocked | Bloqueo (overlock) | Unit has an active `unit_holds` row with `hold_type = overlock` and no `released_at`. |
+| Access suspended | Acceso suspendido | Contract has an active `AccessSuspension`. |
+| Autopay | Domiciliación | `contracts.autopay_enabled` (yes/no). |
+
+Footer totals — units, area m², monthly rent, deposits, overdue — are summed
+per currency (never cross-summed, per the currency invariant below).
+
+---
+
+## Deposit liability / Pasivo por depósitos
+
+Accountant view: deposits held vs pending payouts, grouped by site × currency.
+
+| Side | EN | ES | Source |
+|---|---|---|---|
+| Deposits held | Deposits held | Depósitos retenidos | `Σ contracts.deposit_amount` for contracts in `active` / `notice_given` status **without** a `depositSettlement` row — i.e. still in force and not yet moved to settlement — joined through the contract's current unit item to resolve site. |
+| Pending payouts | Pending payouts | Pagos pendientes | `Σ deposit_settlements.refunded_amount` where `payout_status = pending`, same site join. |
+
+| Field (EN) | Field (ES) | Definition |
+|---|---|---|
+| Contracts | Contratos | Count of in-force contracts contributing to deposits held. |
+| Pending settlements | Liquidaciones pendientes | Count of pending settlement rows contributing to pending payouts. |
+
+A contract leaves "deposits held" the moment it gets a `depositSettlement` row
+(any outcome): its deposit is then either released, or shows up in "pending
+payouts" until the payout is made. Figures are current-state snapshots, not
+reconstructed as of a historical date. Totals are also rolled up by currency
+alone (`totals_by_currency` in the report meta), independent of site.
+
 ---
 
 ## Occupancy / Ocupación

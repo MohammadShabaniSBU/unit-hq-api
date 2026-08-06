@@ -34,15 +34,15 @@ send-scheduling in this sprint.
 
 ## Exit criteria
 
-- [ ] A contract crossing its policy's day offsets gets exactly the configured actions,
+- [x] A contract crossing its policy's day offsets gets exactly the configured actions,
       once each, idempotently, timezone-correctly, isolated per contract.
-- [ ] Payment through **any** rail (webhook, link, manual cash) triggers same-day
+- [x] Payment through **any** rail (webhook, link, manual cash) triggers same-day
       re-evaluation: case cures, overlock auto-releases, timeline shows it.
 - [ ] Fees never compound (no fee-on-fee base), are capped per case, and follow the
       fiscal defaults (0% tax, uninvoiced) behind gestor-flagged config.
-- [ ] An operator can pause a case (dispute), act manually (fee/overlock/release now),
+- [x] An operator can pause a case (dispute), act manually (fee/overlock/release now),
       and every action lands on an append-only timeline.
-- [ ] `DelinquencySpineTest`: seeded contract → run → fee+overlock → cash payment →
+- [x] `DelinquencySpineTest`: seeded contract → run → fee+overlock → cash payment →
       cured+released, executable end-to-end.
 
 ## Task order

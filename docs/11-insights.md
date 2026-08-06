@@ -25,6 +25,12 @@ create / rotate / remove.
 Native formula vocabulary lives in `report-definitions.md`. Column-level
 `analytics.*` catalogues live in `analytics-schema.md`.
 
+Financial-category native reports (`rent-roll`, `ageing`, `collections`,
+`deposit-liability`, `daily-close`) are gated behind the stricter
+`Permission::ReportFinancialView` rather than the baseline
+`Permission::ReportView` that every other native report requires — enforced in
+`ReportController::show`. See `report-definitions.md` for the full list.
+
 ---
 
 ## The registry

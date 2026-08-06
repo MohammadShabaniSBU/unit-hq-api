@@ -73,9 +73,21 @@ See `05-billing-ledger.md` for charge generation.
 - `PATCH /api/tax-rates/{id}` — new version
 - `POST /api/tax-rates/{id}/default` — set default
 
+### API (panel Settings → Facility → Discounts)
+
+- `GET /api/discounts/options` — `{ value, label }` for selects
+- `GET /api/discounts` — list
+- `POST /api/discounts` — create
+- `GET /api/discounts/{id}` — show
+- `PATCH /api/discounts/{id}` — update
+- `POST /api/discounts/{id}/archive` — archive
+- `POST /api/discounts/{id}/unarchive` — unarchive
+
+(See DISC-03 above for `GET /api/discounts/{id}/resolve`.)
+
 ## Insurance
 
-- `Insurance` (plan) follows the **same pattern as UnitClass pricing**: a static `InsuranceRate` junction at the **Site (Center) level**; catalogue prices morph-own that junction.
+- `Insurance` (plan) follows the **same pattern as UnitClass pricing**: a static `InsuranceRate` junction at the **Site (Center) level**; catalogue prices morph-own that junction. *(Note: `insurance_rates.site_id` is nullable in the schema — latent capacity for a future org-wide insurance rate — but `InsuranceController` currently requires `site_id` on writes, so this isn't exercised yet.)*
 - Insurance is **facility-scoped**, not per-building (there is no building layer).
 - Optional `tax_rate_code` default for IPT / similar.
 - Sold on contracts as a `ContractItem` line (polymorphic — see `04-crm-pipeline.md` / `05-billing-ledger.md`).

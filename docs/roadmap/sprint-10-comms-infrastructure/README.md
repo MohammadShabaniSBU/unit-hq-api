@@ -29,15 +29,15 @@ was always going to need, stored since S09/earlier.
 
 ## Exit criteria
 
-- [ ] Every outbound send (manual, offer, playbook) creates a message in a thread;
+- [x] Every outbound send (manual, offer, playbook) creates a message in a thread;
       delivery events flip its state; the CRM timeline is unchanged to the eye.
-- [ ] An email reply and an SMS reply land as inbound messages threaded correctly, with
+- [x] An email reply and an SMS reply land as inbound messages threaded correctly, with
       attachments stored; unmatched senders queue for triage instead of vanishing.
-- [ ] A bounced address or a STOP reply suppresses future sends **at the sender level** —
+- [x] A bounced address or a STOP reply suppresses future sends **at the sender level** —
       a playbook step against a suppressed channel skips-with-reason.
-- [ ] Sinch sends and receives SMS; Aircall calls appear as messages on the contact
+- [x] Sinch sends and receives SMS; Aircall calls appear as messages on the contact
       thread. All four providers configure from Settings with webhook state visible.
-- [ ] Replaying any provider webhook is a no-op (idempotency parity with Stripe).
+- [x] Replaying any provider webhook is a no-op (idempotency parity with Stripe).
 
 ## Task order
 

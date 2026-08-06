@@ -94,7 +94,7 @@ touches invariant 10. Never `(float)`.
 
 Money keys (evaluator map, overrideable in tests via `ConditionContext::$fieldTypes`):
 
-- `amount`, `unit_amount`, `tax_amount`, `total_amount`, `balance`, `deposit_amount`
+- `amount`, `unit_amount`, `tax_amount`, `total_amount`, `balance`, `deposit_amount`, `overdue_base`
 
 `"9.50" < "10.00"` is numeric true, not lexical false.
 

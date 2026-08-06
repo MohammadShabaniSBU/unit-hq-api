@@ -38,11 +38,11 @@ enum room.)
 - [ ] The mockup, live: channel tabs, thread list with previews/unread/assignment,
       conversation with delivery-state chips, context panel with balance/unit/deal and
       working quick actions.
-- [ ] Reply on email (with attachments + template insertion) and SMS (char-counted)
+- [x] Reply on email (with attachments + template insertion) and SMS (char-counted)
       round-trips through the real senders; an inbound reply appears via polling
       without refresh.
-- [ ] Mine / Unassigned / All + channel + unread filters compose; nav badge counts live.
-- [ ] Triage tab resolves unmatched messages through all three S10 resolutions;
+- [x] Mine / Unassigned / All + channel + unread filters compose; nav badge counts live.
+- [x] Triage tab resolves unmatched messages through all three S10 resolutions;
       move-thread has UI.
 - [ ] Thread list at 500 seeded threads: bounded queries, <200ms aggregate endpoint
       (the standing performance posture).

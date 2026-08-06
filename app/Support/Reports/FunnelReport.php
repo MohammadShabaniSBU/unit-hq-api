@@ -42,7 +42,6 @@ final class FunnelReport extends AbstractReport
 
         /** @var Collection<int, Deal> $deals */
         $deals = Deal::query()
-            ->with('contact:id,source')
             ->whereBetween('created_at', [$fromDt->toDateTimeString(), $toDt->toDateTimeString()])
             ->when($filters->siteIds !== null, static fn (Builder $q) => $q->whereIn('site_id', $filters->siteIds))
             ->orderBy('id')

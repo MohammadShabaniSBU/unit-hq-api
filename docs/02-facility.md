@@ -14,7 +14,8 @@ The physical storage facility (also called "Center").
 
 - Fields include address lines, `city`, `state_region`, `postal_code`, `code` (unique when set), contact info, **`country_id`** (FK → `countries`; required on create/update in the API and panel — ISO 3166-1 alpha-2 is `countries.code`, never a denormalised `sites.country_code`), and **`timezone`** (IANA string, required on create — no org default preselected). The DB column for `country_id` stays nullable until S03 makes it `NOT NULL` when every site must be placeable for jurisdiction/fiscal work.
 - **`timezone` is per-site and authoritative** for date-boundary interpretation (due dates, late fees, occupancy/holds “today”). Resolve civil dates through `App\Support\Time\SiteClock` — never bare `Carbon::today()` / `->toDateString()` on a timestamp. Org billing settings (currency prefill, cadence / anchor / proration / deposit, late-fee rules, tax rates) remain **singleton / catalogue rows** — mono-tenant, no company scoping. Do **not** add an org-level timezone: any future org display timezone (reports / schedule UI) is **display-only**, never authoritative for billing.
-- **`sites.currency`** (D1 form prefill) is **not** present yet — lands in S01-00b with site→org prefill readers. Until then, price forms prefill from org `BillingSettings.default_currency` only. Neither is read at transaction time; `prices.currency` is authoritative.
+- **`sites.currency`** (nullable, ISO 4217, validated/normalized via `SupportedCurrencies`) is live and used for **form prefill only** — new price forms prefill from the site's currency, falling back to org `BillingSettings.default_currency` when the site has none set. Neither is read at transaction time; `prices.currency` remains the sole authority (D1).
+- **`sites.delinquency_policy_id`** (nullable FK → `delinquency_policies`, `delinquencyPolicy()` relation) assigns which delinquency escalation policy applies to contracts at that site.
 - Sites are **archive-only** (`archived_at`) — never hard-deleted. List/options use an explicit `active()` scope; archived sites stay resolvable by id for historical contracts. Archive is refused while the site has active contracts or non-expired reservations.
 - Sites belong to a **legal entity**, which holds payment credentials and fiscal regime (see `roadmap/architecture-payments-and-fiscal.md`). Integration surfaces that remain per-site: floor maps and sender identities — see later phases / `05` / `06`.
 
@@ -29,7 +30,7 @@ SVG floor plans for the visual unit map. A site may have multiple floors (`floor
 
 The **commercial product definition**, not the physical box.
 
-- Fields: `slug`, `label`, `tier` (for grouping), nominal dimensions (W×D×H), amenities, a pointer to its **current price**, and optional `tax_rate_code` (default exclusive tax for new contract lines).
+- Fields: `code` (unique, stable identity — not `slug`), `label`, a single nominal `size` decimal (no separate width/depth/height columns, no `tier` column), a pointer to its **current price** (`current_price_id`), and optional `tax_rate_code` (default exclusive tax for new contract lines).
 - **Type and size are not separate dimensions** — the class *is* the product identity.
 - Billing and public listings always use **class dimensions**, never per-unit dimensions.
 
@@ -38,6 +39,7 @@ The **commercial product definition**, not the physical box.
 - References its `UnitClass` and its `Site`.
 - Optional `actual_*` dimension overrides exist **only** when a surveyed physical unit differs from its class nominal dimensions.
 - **Availability is always derived** — there is **no `is_available` column**. A unit is available on date D when it has no covering `unit_occupancies` row and no unreleased blocking `unit_holds` row (half-open ranges; see invariant 36). Resolve “today” through `SiteClock` per site. Never store availability as a flag.
+- **`units.enabled`** (boolean, default `true`) is the archive mechanism for units: `Unit::deriveStatus()` returns `UnitStatus::Archived` whenever `enabled` is `false`, ahead of any occupancy/reservation state check. **`units.note`** (text) is a free-form operator note field.
 
 ## UnitClassRate — pricing junction
 

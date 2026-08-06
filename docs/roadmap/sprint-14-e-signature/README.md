@@ -36,16 +36,16 @@ variants and the resolver ladder come free.
 
 ## Exit criteria
 
-- [ ] An operator prepares a contract, previews the rendered document (es/en per the
+- [x] An operator prepares a contract, previews the rendered document (es/en per the
       ladder), sends for signature; the tenant signs on Signable's page; the webhook
       lands the signed PDF (hash-recorded, immutable), and the contract transitions to
       signed **with charges + invoice + occupancy created in that transaction**.
 - [ ] Walk-in creation is regression-identical (fixture).
-- [ ] Decline and expiry are handled states with operator affordances (resend, cancel);
+- [x] Decline and expiry are handled states with operator affordances (resend, cancel);
       cancelling an awaiting contract releases the unit with zero ledger rows.
-- [ ] The generated document is a **snapshot**: later template or price edits change
+- [x] The generated document is a **snapshot**: later template or price edits change
       nothing about a sent envelope (the S03 invoice discipline, contract edition).
-- [ ] A second adapter could be added touching only an adapter class + registry
+- [x] A second adapter could be added touching only an adapter class + registry
       (architecture test, the Sinch idiom).
 
 ## Task order

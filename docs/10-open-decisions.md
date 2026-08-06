@@ -63,11 +63,10 @@
 
 ## Explicitly out of scope (for now)
 
-- Deposit refund / deduction lifecycle.
-- Recurring billing job beyond first-charge generation (cursor is ready; job is not).
+- Deposit refund/deduction **payout execution** (moving money) — the decision/recording half (`DepositSettlement` at vacate) is shipped; only executing the actual payout remains deferred.
 - Per-contract cadence override.
 - Calendar multi-period epoch for `interval_count > 1` (still one boundary per month-day / weekday).
-- Stripe PaymentIntent wiring for deposits / first period.
+- Stripe PaymentIntent wiring for deposits / first period (same payout-execution gap as the deposit line above — `payout_status` stays `pending` until this lands).
 - Custom-attribute **saved views** and column promotion (advanced filters / `POST …/search` shipped; snapshots deferred).
 - Object-customization drag-and-drop reorder (arrow reorder ships first); multi-column / conditional / per-role layouts.
 - Removing or renaming `attribute_definitions.group_name` (catalog metadata unused by layout; kept for now).
@@ -132,5 +131,4 @@
 - Contract detail / update surfaces
 - Contact transactions
 - Invoice / payment resources polish
-- Recurring billing job (consume `billed_through`)
 - **S10 schema defect (fixed in S11-01):** `message_attachments.message_id` is nullable so outbound compose can stage files before send; orphans are swept daily. Not an S11 schema expansion.

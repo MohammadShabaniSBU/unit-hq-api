@@ -4,7 +4,7 @@
 
 Multi-channel contact identity: email, phone, WhatsApp.
 
-- Fields: `contact_id`, `type`, `value`, `label`, `is_primary`.
+- Fields: `contact_id`, `type`, `value`, `label`, `is_primary`, `opted_in`.
 - Partial unique index: **one primary channel per type per contact**.
 
 ## Message store — canonical communication record

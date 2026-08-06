@@ -26,14 +26,14 @@ makes this a port, not a data migration.
 
 ## Exit criteria
 
-- [ ] Each entity connects its own Stripe account (verify, webhook auto-registration,
+- [x] Each entity connects its own Stripe account (verify, webhook auto-registration,
       rotate, disconnect) from Settings; per-account inbound routes verify signatures.
-- [ ] A tenant opens a payment link, pays by card, optionally saves it — and the ledger
+- [x] A tenant opens a payment link, pays by card, optionally saves it — and the ledger
       records the payment **only after** the verified webhook, allocated to the targeted
       charges.
-- [ ] A contract with autopay enabled has its billing-run charges collected off-session;
+- [x] A contract with autopay enabled has its billing-run charges collected off-session;
       success lands in the ledger via webhook; failure is recorded where S07 will read it.
-- [ ] Client-side success callbacks write nothing, ever (invariant 11 rail A).
+- [x] Client-side success callbacks write nothing, ever (invariant 11 rail A).
 - [ ] Kill the deployment's queue worker mid-flow: nothing double-writes when it resumes
       (idempotency end-to-end test).
 

@@ -40,14 +40,14 @@ Checked against `dev` — do not re-derive:
 
 ## Exit criteria
 
-- [ ] After `php artisan demo:seed --fresh`, `site_maps` holds 20 rows — 4 floors for each of the
+- [x] After `php artisan demo:seed --fresh`, `site_maps` holds 20 rows — 4 floors for each of the
       5 sites — with `sort_order` 0..3.
-- [ ] For every seeded map, `SiteMapIdMatcher::match()` returns `orphan_shapes = []` and, across a
+- [x] For every seeded map, `SiteMapIdMatcher::match()` returns `orphan_shapes = []` and, across a
       site's four floors, `uncovered_units = []`.
 - [ ] `POST /api/sites/{site}/maps/validate` with a hand-authored SVG using `data-unit-number`
       reports real matches instead of a total miss.
 - [ ] Structural ids (`row-3`, `entrance`, `lift-core`) are never reported as orphan shapes.
-- [ ] Every stored `svg_map` is the output of `SvgSanitizer::sanitize()`, and a test proves the
+- [x] Every stored `svg_map` is the output of `SvgSanitizer::sanitize()`, and a test proves the
       unit join survives that round trip.
 - [ ] `demo:seed --fresh` wall clock has not regressed by more than 5 s.
 - [ ] Re-running `demo:seed --fresh` with the same `DEMO_SEED` produces byte-identical maps.

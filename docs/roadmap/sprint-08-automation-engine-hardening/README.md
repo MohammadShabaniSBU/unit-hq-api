@@ -25,7 +25,7 @@ treats the evaluator as untrusted until the golden suite says otherwise.
 
 ## Exit criteria
 
-- [ ] `logic.wait` parks a run as `waiting` with a resume time; resume continues exactly
+- [x] `logic.wait` parks a run as `waiting` with a resume time; resume continues exactly
       where it left off; the run-log never shows a parked wait as `running`
       (`10-open-decisions.md` entry closed).
 - [ ] A run can be cancelled while `pending|running|waiting`, atomically, with cause;
@@ -35,7 +35,7 @@ treats the evaluator as untrusted until the golden suite says otherwise.
       null/missing semantics) and its rules are written down.
 - [ ] Delinquency and payment domain events trigger automations from queue/scheduled
       contexts with correct (possibly null) causers.
-- [ ] `AutomationHarness` runs graph fixtures synchronously in tests; a committed fixture
+- [x] `AutomationHarness` runs graph fixtures synchronously in tests; a committed fixture
       library covers every node type and every S09-needed shape.
 
 ## Task order

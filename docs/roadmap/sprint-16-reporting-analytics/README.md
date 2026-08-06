@@ -32,10 +32,10 @@ cross-report consistency fixtures are the countermeasure.
 
 ## Exit criteria
 
-- [ ] Rent roll for any as-of date matches hand-computed truth on the seed; the three
+- [x] Rent roll for any as-of date matches hand-computed truth on the seed; the three
       occupancy figures render with their definitions one click away and agree with
       the Unit Class matrix and the unit list counts (cross-surface fixtures).
-- [ ] Ageing buckets sum to total overdue to the cent; collections shows
+- [x] Ageing buckets sum to total overdue to the cent; collections shows
       promise-kept and autopay-recovery rates; daily close reconciles a seeded cash
       day by method and employee.
 - [ ] Movement and funnel reports over a seeded quarter tell a coherent story
@@ -43,7 +43,7 @@ cross-report consistency fixtures are the countermeasure.
       visible).
 - [ ] Every report: site + date filters, currency grouping, CSV export, print CSS,
       bounded queries asserted at seed scale.
-- [ ] The Insights dashboard renders the daily-glance KPIs from the same query
+- [x] The Insights dashboard renders the daily-glance KPIs from the same query
       classes the full reports use — one computation, two zoom levels.
 
 ## Task order

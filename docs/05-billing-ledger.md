@@ -12,12 +12,40 @@ The design evolved from a single generic ledger-entries table to explicit `Charg
 
 ### Invoice vs Statement (D5)
 
-- **Invoice** — a fiscal document. Numbered, immutable once issued, belongs to a series. From
-  S03 onward this is the source of truth for what was billed.
+- **Invoice** — a fiscal document. Numbered, immutable once issued, belongs to a series. This
+  is the source of truth for what was billed.
 - **Statement** — a computed view of what a contact owes right now across contracts. Never a
   stored row. Never numbered.
 - The display-grouping table is **`billing_periods`** (renamed in S01-00b) so the name
   `invoices` is free for the fiscal document.
+
+### Invoice / InvoiceSeries / InvoiceLine — shipped
+
+`Invoice` is the numbered fiscal document; `InvoiceSeries` allocates its gapless numbers;
+`InvoiceLine` is an append-only snapshot of the charge(s) it covers. `charges.invoice_id`
+is a real (nullable) FK — a charge is billed onto an invoice, not the other way round.
+
+| Model | Role |
+|---|---|
+| `Invoice` | Numbered (`number` + `full_number`), immutable once issued. `InvoiceKind` / `InvoiceStatus` enums. Carries an **immutable snapshot** of issuer and buyer (`issuer_name`, `issuer_tax_id`, `issuer_address`, `buyer_name`, `buyer_tax_id`, `buyer_address`) so old invoices re-render correctly years later regardless of later legal-entity/contact edits. Verifactu fields (`verifactu_hash`, `verifactu_prev_hash`, `verifactu_submitted_at`) exist on the table but are **not yet written** — hashing/submission is future work. |
+| `InvoiceSeries` | Gapless number series scoped to a `legal_entity_id`, keyed by `code` + `InvoiceSeriesKind`, one `is_default` per entity. Archive-only (never hard-deleted). Numbers allocated via `App\Support\Fiscal\InvoiceNumbering::allocate` inside the issuing transaction. |
+| `InvoiceLine` | Append-only snapshot of one charge on the invoice: `description`, `period_start`/`period_end`, `net_amount`, `tax_rate_snapshot`, `tax_amount`, `gross_amount`. |
+
+**Rectification.** Corrections are a new invoice, never an edit: `rectifies_invoice_id` +
+`rectification_reason` chain a rectificative invoice back to the one it corrects
+(`Invoice::rectifiesInvoice` / `rectificatives`), consistent with the append-only ledger
+invariant above.
+
+**API surface:**
+
+- Series: `GET/POST legal-entities/{legal_entity}/invoice-series`, `PATCH
+  invoice-series/{id}`, `POST invoice-series/{id}/archive`, `POST
+  invoice-series/{id}/unarchive`.
+- Invoices: `GET /invoices`, `GET /invoices/{invoice}`, `GET /invoices/{invoice}/pdf`,
+  `POST /invoices/{invoice}/rectify`.
+- Issuing: `POST /contracts/{contract}/invoices` (manual issue for a contract); recurring
+  billing issues automatically via `InvoiceIssuer::issue` (see Recurring billing runs
+  below).
 
 ## Hard invariants
 
@@ -55,6 +83,17 @@ expected until credit notes exist; do not “fix” `isRevenue()` in S08.
 `write_off` cannot use `reversal_of_charge_id` for partial write-offs — it is a new charge with
 its own amount, optionally referencing the related charge for reporting.
 
+### Where `late_fee` / `lien_fee` come from — Delinquency/collections
+
+This doc's ledger stays agnostic about *why* a `late_fee` or `lien_fee` charge exists —
+that policy lives in a separate collections domain: `delinquencies`, `delinquency_steps`,
+`delinquency_policies`, `delinquency_policy_steps` tables, driven by
+`DelinquencyController` / `DelinquencyPolicyController` (assess-fee, overlock,
+suspend/restore access, notices, pause/resume, write-off routes). It runs a per-contract
+ladder of policy steps against overdue charges and writes the resulting fee/enforcement
+actions back onto the ledger described here. See
+`docs/roadmap/sprint-07-delinquency-engine/` for the full design.
+
 ## Contract billing (cadence, anchor, first period)
 
 Billing behaviour is configured at org level (`BillingSettings`) and **snapshotted onto the contract at signing**. Later settings changes never rewrite existing contracts.
@@ -71,6 +110,9 @@ Billing behaviour is configured at org level (`BillingSettings`) and **snapshott
 | `proration_method` | `daily` (default) \| `full_period` \| `none` |
 | `default_deposit_amount` | `NUMERIC(10,2)`, default `0.00` |
 | `billing_horizon_days` | Non-negative integer, default `0`. Bill periods whose start is within site-today + N days. **Operational only** — not snapshotted at signing; changing it never rewrites contract windows or amounts (invariant-18 exemption). |
+| `move_out_settlement` | Default `'none'`. Snapshotted onto `contracts.move_out_settlement` at signing. |
+| `turnover_hold_days` | Non-negative integer, default `0`. |
+| `transfer_billing` | Default `'prorate_immediately'`. Snapshotted onto `contracts.transfer_billing` at signing. |
 
 **Cadence locks:**
 
@@ -248,6 +290,11 @@ writer: forward to a billed period end under the row lock).
 
 ## Out of scope (current billing slice)
 
-- Deposit refund / deduction lifecycle.
+- Deposit refund/deduction **payout execution** (moving money, e.g. a Stripe refund). The
+  decision/recording half is shipped: `DepositSettlement` / `DepositSettlementLine`
+  (`DepositSettlementOutcome`, `DepositPayoutStatus` enums) record the operator's
+  disposition decision at `POST contracts/{contract}/vacate-preview` /
+  `POST contracts/{contract}/vacate`. `payout_status` stays `pending` until a future
+  sprint executes the actual payout.
 - Per-contract cadence override.
 - Multi-week / multi-month epoch for `interval_count > 1` on calendar models (boundaries are still every month-day / every weekday).

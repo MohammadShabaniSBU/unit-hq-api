@@ -15,7 +15,7 @@ Three logging tiers on two tables:
 - **Correlation id.** `AssignRequestId` middleware + queue payload restore. Stamped on every tier-1 row and into `properties.request_id` on every activity row.
 - **Append-only.** No update/delete API for logs. Carve-out: GDPR redaction may null JSON keys (`contacts:redact`).
 - **Tier-3 events are logged explicitly** inside the same DB transaction as the business op (`RecordsActivity::core`). Never via model observers for core events.
-- **Tier-2 attribute diffs** use Spatie `LogsActivity` via `LogsDirtyActivity` on Contact, ContactChannel, Unit, UnitClass, Insurance, Discount.
+- **Tier-2 attribute diffs** use Spatie `LogsActivity` via `LogsDirtyActivity` on Contact, ContactChannel, Unit, UnitClass, Insurance, Discount, TaxRate.
 - **Tier-1 writes never fail business code.** `SystemEvent::record` uses `DB::afterCommit` + try/catch + `report()`.
 
 ## Channels (`LogChannel`)

@@ -33,16 +33,16 @@ auto-release flag pattern.
 
 ## Exit criteria
 
-- [ ] Units and site gates map to provider access points; a signed move-in grants gate +
+- [x] Units and site gates map to provider access points; a signed move-in grants gate +
       unit access without human action; vacate/transfer revoke/move it.
-- [ ] The `revoke_access` policy step executes; the tenant's credential stops working at
+- [x] The `revoke_access` policy step executes; the tenant's credential stops working at
       every point; payment restores it the same afternoon (the S07 cure-hook latency).
-- [ ] Overlock placement denies the unit door digitally as a side effect of the existing
+- [x] Overlock placement denies the unit door digitally as a side effect of the existing
       hold — no new call sites in delinquency code.
-- [ ] `access:sync --dry-run` prints the full desired/actual diff; drift injected at the
+- [x] `access:sync --dry-run` prints the full desired/actual diff; drift injected at the
       provider is detected and converged; provider downtime degrades to queued
       convergence, never lost state.
-- [ ] Denied-entry events during a suspension land on the contact timeline (the dispute
+- [x] Denied-entry events during a suspension land on the contact timeline (the dispute
       evidence S07's audit posture always wanted).
 - [ ] A `FakeSecondProvider` round-trips with changes confined to adapter + registry.
 

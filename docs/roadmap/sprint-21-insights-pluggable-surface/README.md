@@ -31,14 +31,14 @@ you have gone wrong — go read `06-communications.md` again.
 
 ## Exit criteria
 
-- [ ] An operator can connect a Metabase instance from Settings → Insights, see the
+- [x] An operator can connect a Metabase instance from Settings → Insights, see the
       connection verified, and see a masked credential afterwards — never a raw secret.
-- [ ] An operator can create a report from *question 2* on that instance, bind `site_id` to
+- [x] An operator can create a report from *question 2* on that instance, bind `site_id` to
       the dynamic value `current_site_id` and `charge_type` to a static value, save it, and
       see it appear in the Insights nav.
-- [ ] Opening that report renders the embed scoped to the selected site, with no way for the
+- [x] Opening that report renders the embed scoped to the selected site, with no way for the
       viewer to widen the scope by editing the URL.
-- [ ] The twelve existing native reports appear in the same registry, can be reordered and
+- [x] The twelve existing native reports appear in the same registry, can be reordered and
       hidden, and still render their native components.
 - [ ] A report pointed at a generic `iframe` provider renders, proving the adapter layer is
       not Metabase-shaped.

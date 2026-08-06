@@ -30,14 +30,14 @@ untested. One session.
 
 ## Exit criteria
 
-- [ ] A mapped operator clicks Call on a delinquent tenant; their Aircall device rings,
+- [x] A mapped operator clicks Call on a delinquent tenant; their Aircall device rings,
       the call connects, and the call message lands on the thread linked to the click
       (correlation, not coincidence).
 - [ ] Incoming call from a known contact shows a banner with name + context link within
       the polling latency; unknown numbers link to triage-style resolution.
-- [ ] Every call message can carry a disposition + note; recordings play in-place from
+- [x] Every call message can carry a disposition + note; recordings play in-place from
       the provider URL; voicemails are visually distinct and unread until handled.
-- [ ] The S11 disabled call-back affordance is live for mapped employees, honestly
+- [x] The S11 disabled call-back affordance is live for mapped employees, honestly
       disabled-with-reason otherwise.
 - [ ] SMS composable from the contact page and the delinquency board without detouring
       through the inbox.

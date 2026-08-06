@@ -40,9 +40,9 @@ is computed. The prohibition is on cached booleans, not on fact tables.
 
 ## Exit criteria
 
-- [ ] Signing two contracts for the same unit over overlapping dates fails at the database
+- [x] Signing two contracts for the same unit over overlapping dates fails at the database
       level, not just in application code.
-- [ ] `Unit::availableAt($date)` and `Unit::scopeAvailableBetween()` read only
+- [x] `Unit::availableAt($date)` and `Unit::scopeAvailableBetween()` read only
       `unit_occupancies` and `unit_holds`.
 - [ ] Seeders produce occupancies and holds covering all seven unit states plus the
       documented edge cases; `migrate:fresh --seed` runs clean and a test proves the seeded

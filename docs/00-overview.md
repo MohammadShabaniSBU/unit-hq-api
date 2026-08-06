@@ -15,7 +15,7 @@ Keevaris is a **mono-tenant** (single-company) self-storage operations platform.
 | Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
 | Payments | Stripe credentials per legal entity — each entity is the merchant of record (`architecture-payments-and-fiscal.md`) |
 | Insights | Operator-ordered registry of native reports and embedded analytics (Metabase / iframe); native vocabulary in `report-definitions.md`, surface in `11-insights.md` |
-| Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automations, AI copilot, tasks/notes |
+| Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automation engine (flow graph: triggers/actions/logic, `12-automation-engine.md`), Playbooks (compiled linear automations for debt process / lead chase, `13-playbooks.md`), AI copilot, tasks/notes |
 
 ## Workspace layout
 
@@ -57,4 +57,6 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 - `09-conventions-and-invariants.md` — hard rules; read before writing code
 - `10-open-decisions.md` — decided vs undecided vs out of scope
 - `11-insights.md` — report registry, analytics accounts, embeds, `analytics` schema contract
+- `12-automation-engine.md` — automation nodes/edges/runs, triggers, node handlers, run lifecycle
+- `13-playbooks.md` — Playbooks (debt process / lead chase), compiled onto the automation engine
 - `AGENTS.md` — short index for AI assistants
