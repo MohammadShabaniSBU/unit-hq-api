@@ -7,7 +7,6 @@ namespace App\Support\Communications;
 use App\Enums\ContactChannelType;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
-use App\Enums\ContactSource;
 use App\Models\CommsTriage;
 use App\Models\Contact;
 use App\Models\ContactChannel;
@@ -53,8 +52,6 @@ final class TriageResolver
                 'email' => $channelType === ContactChannelType::Email ? $triage->sender_value : null,
                 'status' => ContactLifecycleStatus::Prospect,
                 'contact_status' => ContactRecordStatus::Active,
-                'source' => ContactSource::EmailConversations,
-                'source_detail' => 'comms_triage',
             ]);
 
             ContactChannel::query()->create([

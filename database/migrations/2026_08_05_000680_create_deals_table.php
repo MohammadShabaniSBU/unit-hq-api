@@ -18,7 +18,6 @@ return new class extends Migration
             $table->date('expected_move_in')->nullable();
             $table->smallInteger('expected_stay_length')->nullable();
             $table->string('expected_stay_period', 255)->nullable();
-            $table->string('storage_reason', 255)->nullable();
             $table->decimal('desired_size', 8, 2)->nullable();
             $table->foreignId('desired_unit_class_id')->nullable()->constrained('unit_classes')->nullOnDelete();
             $table->timestamps();

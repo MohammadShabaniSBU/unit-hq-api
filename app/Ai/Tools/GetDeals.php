@@ -42,7 +42,6 @@ class GetDeals implements Tool
                 'contact_email' => $deal->contact->email,
                 'status' => $deal->status->value,
                 'expected_move_in' => $deal->expected_move_in?->format('Y-m-d'),
-                'storage_reason' => $deal->storage_reason?->value,
                 'desired_size' => $deal->desired_size,
             ];
         });

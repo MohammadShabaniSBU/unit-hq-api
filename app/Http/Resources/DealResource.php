@@ -18,7 +18,6 @@ class DealResource extends BaseResource
             'expected_move_in'       => $this->date($this->expected_move_in),
             'expected_stay_length'   => $this->expected_stay_length,
             'expected_stay_period'   => $this->expected_stay_period,
-            'storage_reason'         => $this->storage_reason,
             'desired_size'           => $this->desired_size,
             'desired_unit_class_id'  => $this->desired_unit_class_id,
             'created_at'             => $this->datetime($this->created_at),

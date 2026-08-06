@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
-use App\Enums\StorageReason;
 use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\HasNotes;
 use App\Support\Auth\Concerns\VisibleToEmployee;
@@ -33,7 +32,6 @@ use Illuminate\Support\Carbon;
  * @property string|null      $expected_move_in Y-m-d
  * @property int|null         $expected_stay_length
  * @property StayPeriod|null  $expected_stay_period
- * @property StorageReason|null $storage_reason
  * @property string|null      $desired_size  NUMERIC(8,2)
  * @property int|null         $desired_unit_class_id
  * @property Carbon           $created_at
@@ -59,7 +57,6 @@ class Deal extends Model
         'expected_move_in',
         'expected_stay_length',
         'expected_stay_period',
-        'storage_reason',
         'desired_size',
         'desired_unit_class_id',
     ];
@@ -70,7 +67,6 @@ class Deal extends Model
             'status'               => DealStatus::class,
             'expected_move_in'     => 'date',
             'expected_stay_period' => StayPeriod::class,
-            'storage_reason'       => StorageReason::class,
             'desired_size'         => 'decimal:2',
         ];
     }

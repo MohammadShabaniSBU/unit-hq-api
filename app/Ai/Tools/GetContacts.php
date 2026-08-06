@@ -43,7 +43,6 @@ class GetContacts implements Tool
                 'email' => $contact->email,
                 'company' => $contact->company,
                 'status' => $contact->status->value,
-                'source' => $contact->source?->value,
             ];
         });
 

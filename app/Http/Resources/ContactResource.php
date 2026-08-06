@@ -31,8 +31,6 @@ class ContactResource extends BaseResource
             'status'               => $this->status,
             'contact_status'       => $this->contact_status,
             'canonical_contact_id' => $this->canonical_contact_id,
-            'source'               => $this->source,
-            'source_detail'        => $this->source_detail,
             'assigned_to'          => $this->assigned_to,
             'last_contacted_at'    => $this->datetime($this->last_contacted_at),
             'created_by'           => $this->created_by,

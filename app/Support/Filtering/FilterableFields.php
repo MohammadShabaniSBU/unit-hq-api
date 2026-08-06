@@ -6,12 +6,10 @@ namespace App\Support\Filtering;
 
 use App\Enums\AttributeEntityType;
 use App\Enums\ContactLifecycleStatus;
-use App\Enums\ContactSource;
 use App\Enums\ContractStatus;
 use App\Enums\DealStatus;
 use App\Enums\ReservationStatus;
 use App\Enums\StayPeriod;
-use App\Enums\StorageReason;
 use App\Enums\TaxIdType;
 use App\Models\Offer;
 use BackedEnum;
@@ -79,7 +77,6 @@ final class FilterableFields
             self::text('billing_postal_code', 'Billing postal code'),
             self::text('billing_country_code', 'Billing country'),
             self::select('status', 'Status', self::enumOptions(ContactLifecycleStatus::cases())),
-            self::select('source', 'Source', self::enumOptions(ContactSource::cases())),
             self::date('created_at', 'Created'),
             self::number('assigned_to', 'Assigned to'),
         ];
@@ -93,7 +90,6 @@ final class FilterableFields
             self::date('expected_move_in', 'Expected move-in'),
             self::number('expected_stay_length', 'Expected stay length'),
             self::select('expected_stay_period', 'Expected stay period', self::enumOptions(StayPeriod::cases())),
-            self::select('storage_reason', 'Storage reason', self::enumOptions(StorageReason::cases())),
             self::number('desired_size', 'Desired size'),
             self::number('desired_unit_class_id', 'Desired unit class'),
             self::number('contact_id', 'Contact'),

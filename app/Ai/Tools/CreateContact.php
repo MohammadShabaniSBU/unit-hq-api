@@ -28,8 +28,6 @@ class CreateContact implements Tool, Approvable
             'last_name' => $request['last_name'] ?? '',
             'email' => $request['email'] ?? null,
             'company' => $request['company'] ?? null,
-            'source' => $request['source'] ?? null,
-            'source_detail' => $request['source_detail'] ?? null,
         ]);
 
         return json_encode([
@@ -55,13 +53,6 @@ class CreateContact implements Tool, Approvable
                 ->nullable(),
             'company' => $schema->string()
                 ->description('Company name')
-                ->nullable(),
-            'source' => $schema->string()
-                ->description('Source where contact came from (e.g., social_media, google, web_form, organic)')
-                ->enum(['social_media', 'google', 'meta', 'organic', 'offline', 'walk_ins', 'calls', 'emailing', 'referrals', 'aircall_paid', 'email_conversations', 'website', 'web_form', 'import', 'other'])
-                ->nullable(),
-            'source_detail' => $schema->string()
-                ->description('Additional details about the source')
                 ->nullable(),
         ];
     }

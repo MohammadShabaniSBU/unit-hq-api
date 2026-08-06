@@ -34,8 +34,6 @@ class ContactFactory extends Factory
             'status' => ContactLifecycleStatus::Prospect,
             'contact_status' => ContactRecordStatus::Active,
             'canonical_contact_id' => null,
-            'source' => null,
-            'source_detail' => null,
             'assigned_to' => null,
             'last_contacted_at' => null,
             'created_by' => null,

@@ -33,7 +33,6 @@ class CreateDeal implements Tool, Approvable
             'expected_move_in' => $request['expected_move_in'] ?? null,
             'expected_stay_length' => $request['expected_stay_length'] ?? null,
             'expected_stay_period' => $request['expected_stay_period'] ?? null,
-            'storage_reason' => $request['storage_reason'] ?? null,
             'desired_size' => $request['desired_size'] ?? null,
             'desired_unit_class_id' => $request['desired_unit_class_id'] ?? null,
         ]);
@@ -67,10 +66,6 @@ class CreateDeal implements Tool, Approvable
             'expected_stay_period' => $schema->string()
                 ->description('Unit of stay period (day, week, or month)')
                 ->enum(['day', 'week', 'month'])
-                ->nullable(),
-            'storage_reason' => $schema->string()
-                ->description('Reason for storage need')
-                ->enum(['freelancer', 'business_extra_space', 'startup', 'other_business_need', 'other_personal_use', 'new_home', 'house_renovations', 'travelling', 'decluttering', 'charity_non_profit', 'other', 'personal', 'business', 'student'])
                 ->nullable(),
             'desired_size' => $schema->string()
                 ->description('Desired unit size (numeric value)')

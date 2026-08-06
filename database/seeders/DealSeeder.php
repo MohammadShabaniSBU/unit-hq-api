@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\DealStatus;
-use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Offer;
@@ -34,8 +33,7 @@ class DealSeeder extends Seeder
             $deals = Deal::factory()
                 ->count(fake()->numberBetween(1, 2))
                 ->create([
-                    'contact_id'     => $contact->id,
-                    'storage_reason' => fake()->randomElement(StorageReason::cases())->value,
+                    'contact_id' => $contact->id,
                 ]);
 
             foreach ($deals as $deal) {

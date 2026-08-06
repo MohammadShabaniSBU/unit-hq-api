@@ -10,7 +10,6 @@ use App\Enums\AutopayAttemptTrigger;
 use App\Enums\ChargeType;
 use App\Enums\ContactChannelType;
 use App\Enums\ContactLifecycleStatus;
-use App\Enums\ContactSource;
 use App\Enums\ContractDocumentStatus;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractItemChangeReason;
@@ -133,8 +132,6 @@ final class JourneySupport
             'email' => $email,
             'company' => $attrs['company'] ?? null,
             'status' => $attrs['status'] ?? ContactLifecycleStatus::Prospect,
-            'source' => $attrs['source'] ?? ContactSource::Import,
-            'source_detail' => $attrs['source_detail'] ?? 'demo_cast',
             'assigned_to' => $attrs['assigned_to'] ?? Employee::query()->value('id'),
             'billing_name' => $attrs['billing_name'] ?? "{$firstName} {$lastName}",
             'tax_id' => $attrs['tax_id'] ?? $defaultTaxId,

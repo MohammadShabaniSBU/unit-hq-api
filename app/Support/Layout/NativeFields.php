@@ -71,15 +71,12 @@ final class NativeFields
                 'last_name',
                 'email',
                 'status',
-                'source',
-                'source_detail',
             ],
             AttributeEntityType::Deal => [
                 'status',
                 'expected_move_in',
                 'expected_stay_length',
                 'expected_stay_period',
-                'storage_reason',
                 'desired_size',
                 'desired_unit_class_id',
             ],
@@ -147,8 +144,6 @@ final class NativeFields
             new NativeField('last_name', 'Last name', 'text', required: true),
             new NativeField('email', 'Email', 'email'),
             new NativeField('status', 'Status', 'select', optionsSource: 'contact_statuses'),
-            new NativeField('source', 'Source', 'select', optionsSource: 'contact_sources'),
-            new NativeField('source_detail', 'Source detail', 'text'),
         ];
     }
 
@@ -160,7 +155,6 @@ final class NativeFields
             new NativeField('expected_move_in', 'Expected move-in', 'date'),
             new NativeField('expected_stay_length', 'Expected stay length', 'number'),
             new NativeField('expected_stay_period', 'Expected stay period', 'select', optionsSource: 'stay_periods'),
-            new NativeField('storage_reason', 'Storage reason', 'select', optionsSource: 'storage_reasons'),
             new NativeField('desired_size', 'Desired size', 'number'),
             new NativeField('desired_unit_class_id', 'Desired unit class', 'select', optionsSource: 'unit_classes'),
         ];

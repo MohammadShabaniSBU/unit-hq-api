@@ -73,7 +73,7 @@ final class LeadChase implements PlaybookKind
 
     public function validateFilters(array $filters): void
     {
-        $allowed = ['site_ids', 'stages', 'sources'];
+        $allowed = ['site_ids', 'stages'];
         foreach (array_keys($filters) as $key) {
             if (! in_array($key, $allowed, true)) {
                 throw ValidationException::withMessages([
@@ -82,7 +82,7 @@ final class LeadChase implements PlaybookKind
             }
         }
 
-        foreach (['site_ids', 'stages', 'sources'] as $listKey) {
+        foreach (['site_ids', 'stages'] as $listKey) {
             if (isset($filters[$listKey]) && ! is_array($filters[$listKey])) {
                 throw ValidationException::withMessages([
                     "enrolment_filters.{$listKey}" => "{$listKey} must be an array.",

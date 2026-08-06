@@ -267,7 +267,7 @@ final class DayTexture
     private function maybeDoor(DemoWorld $world): void
     {
         $tenants = Contact::query()
-            ->where('source_detail', 'demo_crowd')
+            ->where('email', 'like', '%@demo.keevaris.test')
             ->where('status', 'tenant')
             ->orderBy('id')
             ->pluck('id');

@@ -202,7 +202,6 @@ final class InboxContentBootstrap
         JourneySupport::createContact($world, $handle, $first, $last, [
             'email' => $email,
             'phone' => $phone,
-            'source_detail' => 'demo_inbox_bootstrap',
         ]);
         $world->remember("{$handle}.site", $site);
     }

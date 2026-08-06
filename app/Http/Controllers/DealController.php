@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\AttributeEntityType;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
-use App\Enums\StorageReason;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
@@ -83,7 +82,6 @@ class DealController extends Controller
             'expected_move_in'      => ['nullable', 'date'],
             'expected_stay_length'  => ['nullable', 'integer', 'min:1'],
             'expected_stay_period'  => ['nullable', Rule::enum(StayPeriod::class)],
-            'storage_reason'        => ['nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
         ]);
@@ -137,7 +135,6 @@ class DealController extends Controller
             'expected_move_in'      => ['sometimes', 'nullable', 'date'],
             'expected_stay_length'  => ['sometimes', 'nullable', 'integer', 'min:1'],
             'expected_stay_period'  => ['sometimes', 'nullable', Rule::enum(StayPeriod::class)],
-            'storage_reason'        => ['sometimes', 'nullable', Rule::enum(StorageReason::class)],
             'desired_size'          => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['sometimes', 'nullable', 'integer', 'exists:unit_classes,id'],
         ]);

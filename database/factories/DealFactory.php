@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
-use App\Enums\StorageReason;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Site;
@@ -34,9 +33,6 @@ class DealFactory extends Factory
             'expected_move_in'      => fake()->dateTimeBetween('now', '+3 months')->format('Y-m-d'),
             'expected_stay_length'  => $stayLength,
             'expected_stay_period'  => $stayPeriod,
-            'storage_reason'        => fake()->boolean(80)
-                ? fake()->randomElement(StorageReason::cases())->value
-                : null,
             'desired_size'          => $unitClass?->size ?? fake()->randomFloat(2, 5, 30),
             'desired_unit_class_id' => $unitClass?->id,
         ];

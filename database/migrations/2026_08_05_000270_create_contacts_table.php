@@ -19,8 +19,6 @@ return new class extends Migration
             $table->string('status', 255)->default('prospect');
             $table->string('contact_status', 255)->default('active');
             $table->foreignId('canonical_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
-            $table->string('source', 100)->nullable();
-            $table->string('source_detail', 255)->nullable();
             $table->foreignId('assigned_to')->nullable()->constrained('employees')->nullOnDelete();
             $table->timestamp('last_contacted_at')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('employees')->nullOnDelete();

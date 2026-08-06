@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\AttributeEntityType;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
-use App\Enums\ContactSource;
 use App\Enums\TaxIdType;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\BillingPeriodResource;
@@ -95,8 +94,6 @@ class ContactController extends Controller
             ...$this->fiscalValidationRules(sometimes: false),
             'contact_status'       => ['nullable', Rule::enum(ContactRecordStatus::class)],
             'canonical_contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
-            'source'               => ['nullable', Rule::enum(ContactSource::class)],
-            'source_detail'        => ['nullable', 'string', 'max:255'],
             'assigned_to'          => ['nullable', 'integer', 'exists:employees,id'],
             'created_by'           => ['nullable', 'integer', 'exists:employees,id'],
         ]);
@@ -147,8 +144,6 @@ class ContactController extends Controller
             'status'               => ['sometimes', 'nullable', Rule::enum(ContactLifecycleStatus::class)],
             'contact_status'       => ['sometimes', 'nullable', Rule::enum(ContactRecordStatus::class)],
             'canonical_contact_id' => ['sometimes', 'nullable', 'integer', 'exists:contacts,id'],
-            'source'               => ['sometimes', 'nullable', Rule::enum(ContactSource::class)],
-            'source_detail'        => ['sometimes', 'nullable', 'string', 'max:255'],
             'assigned_to'          => ['sometimes', 'nullable', 'integer', 'exists:employees,id'],
         ]);
 

@@ -168,7 +168,6 @@ final class CrowdSupport
         $person = self::person($rng, $handle);
         JourneySupport::createContact($world, $handle, $person['first'], $person['last'], array_merge([
             'email' => $person['email'],
-            'source_detail' => 'demo_crowd',
             'status' => ContactLifecycleStatus::Prospect,
         ], $attrs));
     }
