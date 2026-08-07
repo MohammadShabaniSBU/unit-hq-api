@@ -8,6 +8,7 @@ use App\Enums\CredentialStatus;
 use App\Http\Controllers\Controller;
 use App\Models\CommunicationAccount;
 use App\Models\SiteSenderIdentity;
+use App\Models\WhatsappTemplate;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\AircallUserDirectory;
 use App\Support\Communications\Channel;
@@ -319,6 +320,11 @@ class CommunicationAccountController extends Controller
         }
 
         $wasActive = $account->is_active;
+
+        WhatsappTemplate::query()
+            ->where('communication_account_id', $account->id)
+            ->delete();
+
         $account->delete();
 
         if ($wasActive) {

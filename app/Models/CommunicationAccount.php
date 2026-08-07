@@ -37,6 +37,7 @@ use Illuminate\Support\Carbon;
  *
  * @property-read Site|null                       $site
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SiteSenderIdentity> $senderIdentities
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, WhatsappTemplate> $whatsappTemplates
  */
 class CommunicationAccount extends Model
 {
@@ -90,5 +91,11 @@ class CommunicationAccount extends Model
     public function senderIdentities(): HasMany
     {
         return $this->hasMany(SiteSenderIdentity::class, 'account_id');
+    }
+
+    /** @return HasMany<WhatsappTemplate> */
+    public function whatsappTemplates(): HasMany
+    {
+        return $this->hasMany(WhatsappTemplate::class);
     }
 }
