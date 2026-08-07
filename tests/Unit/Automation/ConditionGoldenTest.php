@@ -7,6 +7,7 @@ namespace Tests\Unit\Automation;
 use App\Enums\ConditionSource;
 use App\Support\Automation\ConditionContext;
 use App\Support\Automation\ConditionEvaluator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -15,6 +16,8 @@ use Tests\TestCase;
  */
 class ConditionGoldenTest extends TestCase
 {
+    use RefreshDatabase;
+
     /** @return array<string, string> */
     private static function catalog(): array
     {
