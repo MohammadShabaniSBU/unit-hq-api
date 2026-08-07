@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\ContactLifecycleStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\ContactCardResource;
 use App\Models\Contact;
 use App\Models\Employee;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Gate;
 
 class ContactBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
@@ -25,6 +28,7 @@ class ContactBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Contact::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($base, $request, Contact::class, Permission::ContactView);
         $counts = Contact::statusCounts($search, clone $base);
 
         $columns = collect(ContactLifecycleStatus::cases())->map(function (ContactLifecycleStatus $status) use ($base, $search, $perColumn, $counts) {
@@ -63,6 +67,7 @@ class ContactBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Contact::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($base, $request, Contact::class, Permission::ContactView);
 
         $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)

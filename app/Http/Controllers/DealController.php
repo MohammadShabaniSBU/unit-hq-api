@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AttributeEntityType;
 use App\Enums\DealStatus;
 use App\Enums\StayPeriod;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Gate;
 
 class DealController extends Controller
 {
+    use AppliesPortalSiteFilter;
     use SearchesWithFilters;
 
     public function index(Request $request): JsonResponse
@@ -28,6 +30,7 @@ class DealController extends Controller
         $employee = $request->user();
 
         $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact'])->latest();
+        $this->applyPortalSiteFilter($query, $request, Deal::class, Permission::DealManage);
 
         if ($request->filled('contact_id')) {
             $query->where('contact_id', $request->integer('contact_id'));
@@ -57,10 +60,13 @@ class DealController extends Controller
         /** @var \App\Models\Employee $employee */
         $employee = $request->user();
 
+        $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact']);
+        $this->applyPortalSiteFilter($query, $request, Deal::class, Permission::DealManage);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Deal,
-            Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact']),
+            $query,
             fn (Deal $deal) => DealResource::make($deal),
             'Deals retrieved successfully.',
             function ($query, Request $request): void {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\DealStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\DealCardResource;
 use App\Models\Deal;
 use App\Models\Employee;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Gate;
 
 class DealBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::DealManage->value);
@@ -25,6 +28,7 @@ class DealBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Deal::query()->visibleTo($employee, Permission::DealManage);
+        $this->applyPortalSiteFilter($base, $request, Deal::class, Permission::DealManage);
         $counts = Deal::statusCounts($search, clone $base);
 
         $columns = collect(DealStatus::cases())->map(function (DealStatus $status) use ($base, $search, $perColumn, $counts) {
@@ -63,6 +67,7 @@ class DealBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Deal::query()->visibleTo($employee, Permission::DealManage);
+        $this->applyPortalSiteFilter($base, $request, Deal::class, Permission::DealManage);
 
         $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\TaskCardResource;
 use App\Models\Employee;
 use App\Models\Task;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Gate;
 
 class TaskBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);
@@ -23,9 +26,10 @@ class TaskBoardController extends Controller
 
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
-        // Task is company-level (no site path) — visibleTo is a no-op unless the
-        // permission is held nowhere, kept here for scoping consistency.
+        // SubjectSite for Task stays null (authorize is company-level); list
+        // visibility uses SitePath via taskable when grants or portal site_id apply.
         $base = Task::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($base, $request, Task::class, Permission::ContactView);
         $counts = Task::statusCounts($search, clone $base);
 
         $columns = collect(Task::STATUSES)->map(function (string $status) use ($base, $search, $perColumn, $counts) {
@@ -62,6 +66,7 @@ class TaskBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Task::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($base, $request, Task::class, Permission::ContactView);
 
         $page = (clone $base)
             ->forBoardColumn($status, $search)

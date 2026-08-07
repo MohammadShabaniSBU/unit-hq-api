@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\ContractStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\ContractCardResource;
 use App\Models\Contract;
 use App\Models\Employee;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Gate;
 
 class ContractBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ContractView->value);
@@ -25,6 +28,7 @@ class ContractBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $this->applyPortalSiteFilter($base, $request, Contract::class, Permission::ContractView);
         $counts = Contract::statusCounts($search, clone $base);
 
         $columns = collect(ContractStatus::cases())->map(function (ContractStatus $status) use ($base, $search, $perColumn, $counts) {
@@ -63,6 +67,7 @@ class ContractBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $this->applyPortalSiteFilter($base, $request, Contract::class, Permission::ContractView);
 
         $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AttributeEntityType;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\OfferCardResource;
 use App\Http\Resources\OfferResource;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 
 class OfferController extends Controller
 {
+    use AppliesPortalSiteFilter;
     use SearchesWithFilters;
 
     public function index(Request $request): JsonResponse
@@ -34,6 +36,7 @@ class OfferController extends Controller
             'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
             'contact',
         ])->latest();
+        $this->applyPortalSiteFilter($query, $request, Offer::class, Permission::OfferManage);
 
         if ($request->filled('deal_id')) {
             $query->where('deal_id', $request->integer('deal_id'));
@@ -63,13 +66,16 @@ class OfferController extends Controller
         /** @var \App\Models\Employee $employee */
         $employee = $request->user();
 
+        $query = Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
+            'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
+            'contact',
+        ]);
+        $this->applyPortalSiteFilter($query, $request, Offer::class, Permission::OfferManage);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Offer,
-            Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
-                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads()),
-                'contact',
-            ]),
+            $query,
             fn (Offer $offer) => OfferResource::make($offer),
             'Offers retrieved successfully.',
             function ($query, Request $request): void {

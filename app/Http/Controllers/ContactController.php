@@ -6,6 +6,7 @@ use App\Enums\AttributeEntityType;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\TaxIdType;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\BillingPeriodResource;
 use App\Http\Resources\ContactCardResource;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Gate;
 
 class ContactController extends Controller
 {
+    use AppliesPortalSiteFilter;
     use SearchesWithFilters;
 
     public function index(Request $request): JsonResponse
@@ -34,6 +36,7 @@ class ContactController extends Controller
         $employee = $request->user();
 
         $query = Contact::query()->visibleTo($employee, Permission::ContactView)->latest();
+        $this->applyPortalSiteFilter($query, $request, Contact::class, Permission::ContactView);
 
         if ($request->filled('search')) {
             $query->search($request->string('search')->trim()->value());
@@ -67,10 +70,13 @@ class ContactController extends Controller
         /** @var \App\Models\Employee $employee */
         $employee = $request->user();
 
+        $query = Contact::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($query, $request, Contact::class, Permission::ContactView);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Contact,
-            Contact::query()->visibleTo($employee, Permission::ContactView),
+            $query,
             fn (Contact $contact) => ContactResource::make($contact),
             'Contacts retrieved successfully.',
             function ($query, Request $request): void {

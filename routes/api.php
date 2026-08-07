@@ -319,6 +319,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('tasks/board', [Controllers\TaskBoardController::class, 'index']);
     Route::get('tasks/board/columns/{status}', [Controllers\TaskBoardController::class, 'column']);
     Route::get('tasks', [Controllers\TaskController::class, 'index']);
+    Route::get('tasks/{task}', [Controllers\TaskController::class, 'show']);
+    Route::patch('tasks/{task}', [Controllers\TaskController::class, 'update']);
     Route::patch('tasks/{task}/status', [Controllers\TaskController::class, 'updateStatus']);
 
     Route::post('notes', [Controllers\NoteController::class, 'store']);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\ReservationStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\ReservationCardResource;
 use App\Models\Employee;
 use App\Models\Reservation;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Gate;
 
 class ReservationBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::ReservationManage->value);
@@ -25,6 +28,7 @@ class ReservationBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Reservation::query()->visibleTo($employee, Permission::ReservationManage);
+        $this->applyPortalSiteFilter($base, $request, Reservation::class, Permission::ReservationManage);
         $counts = Reservation::statusCounts($search, clone $base);
 
         $columns = collect(ReservationStatus::cases())->map(function (ReservationStatus $status) use ($base, $search, $perColumn, $counts) {
@@ -63,6 +67,7 @@ class ReservationBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Reservation::query()->visibleTo($employee, Permission::ReservationManage);
+        $this->applyPortalSiteFilter($base, $request, Reservation::class, Permission::ReservationManage);
 
         $page = (clone $base)
             ->forBoardColumn($statusEnum, $search)

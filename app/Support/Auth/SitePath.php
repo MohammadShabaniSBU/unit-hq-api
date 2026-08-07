@@ -19,6 +19,7 @@ use App\Models\Offer;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Site;
+use App\Models\Task;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
@@ -52,7 +53,8 @@ final class SitePath
             Offer::class,
             Deal::class,
             Contact::class,
-            MessageThread::class => true,
+            MessageThread::class,
+            Task::class => true,
             default => false,
         };
     }
@@ -89,8 +91,66 @@ final class SitePath
             Deal::class => self::dealDRbac1($q, $siteIds),
             Contact::class => self::contactDRbac1($q, $siteIds),
             MessageThread::class => self::viaMessageThread($q, $siteIds),
+            Task::class => self::viaTaskable($q, $siteIds),
             default => $q->whereRaw('1 = 0'),
         };
+    }
+
+    /**
+     * Tasks whose morph parent resolves to a granted site (or unassigned deal/contact).
+     * Morph aliases match Relation::morphMap keys stored on tasks.taskable_type.
+     *
+     * @param  Builder<Model>  $q
+     * @param  list<int>  $siteIds
+     * @return Builder<Model>
+     */
+    private static function viaTaskable(Builder $q, array $siteIds): Builder
+    {
+        return $q->where(function (Builder $outer) use ($siteIds): void {
+            $outer
+                ->where(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'deal')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            self::dealDRbac1(Deal::query(), $siteIds)->select('deals.id')
+                        );
+                })
+                ->orWhere(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'contact')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            self::contactDRbac1(Contact::query(), $siteIds)->select('contacts.id')
+                        );
+                })
+                ->orWhere(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'unit')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            Unit::query()->whereIn('units.site_id', $siteIds)->select('units.id')
+                        );
+                })
+                ->orWhere(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'contract')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            self::contractAtSites(Contract::query(), 'contracts.id', $siteIds)->select('contracts.id')
+                        );
+                })
+                ->orWhere(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'reservation')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            self::viaUnitSite(Reservation::query(), Reservation::class, $siteIds)->select('reservations.id')
+                        );
+                })
+                ->orWhere(function (Builder $inner) use ($siteIds): void {
+                    $inner->where('tasks.taskable_type', 'offer')
+                        ->whereIn(
+                            'tasks.taskable_id',
+                            self::viaDealSite(Offer::query(), $siteIds)->select('offers.id')
+                        );
+                });
+        });
     }
 
     /**

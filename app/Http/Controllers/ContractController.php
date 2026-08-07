@@ -6,6 +6,7 @@ use App\Enums\AccessSuspensionLiftReason;
 use App\Enums\AccessSuspensionReason;
 use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Concerns\TransfersContracts;
@@ -42,6 +43,7 @@ use Illuminate\Support\Facades\Gate;
 
 class ContractController extends Controller
 {
+    use AppliesPortalSiteFilter;
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
     use TransfersContracts;
@@ -63,6 +65,7 @@ class ContractController extends Controller
         ]);
 
         $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $this->applyPortalSiteFilter($base, $request, Contract::class, Permission::ContractView);
         $chips = Contract::attentionCounts(clone $base);
 
         $query = (clone $base)
@@ -139,6 +142,7 @@ class ContractController extends Controller
         ]);
 
         $base = Contract::query()->visibleTo($employee, Permission::ContractView);
+        $this->applyPortalSiteFilter($base, $request, Contract::class, Permission::ContractView);
         $chips = Contract::attentionCounts(clone $base);
 
         $query = (clone $base)->with(['items.item', 'contact', 'reservation']);

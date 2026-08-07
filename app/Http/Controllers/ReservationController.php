@@ -6,6 +6,7 @@ use App\Enums\AttributeEntityType;
 use App\Enums\ContractStatus;
 use App\Enums\ProrationMethod;
 use App\Enums\ReservationStatus;
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Controllers\Concerns\WritesReservationHolds;
@@ -50,6 +51,7 @@ use Illuminate\Support\Facades\Gate;
 
 class ReservationController extends Controller
 {
+    use AppliesPortalSiteFilter;
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
     use WritesReservationHolds;
@@ -65,6 +67,7 @@ class ReservationController extends Controller
             ->visibleTo($employee, Permission::ReservationManage)
             ->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price'])
             ->latest();
+        $this->applyPortalSiteFilter($query, $request, Reservation::class, Permission::ReservationManage);
 
         if ($request->filled('contact_id')) {
             $query->where('contact_id', $request->integer('contact_id'));
@@ -102,10 +105,15 @@ class ReservationController extends Controller
         /** @var \App\Models\Employee $employee */
         $employee = $request->user();
 
+        $query = Reservation::query()
+            ->visibleTo($employee, Permission::ReservationManage)
+            ->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price']);
+        $this->applyPortalSiteFilter($query, $request, Reservation::class, Permission::ReservationManage);
+
         return $this->searchWithFilters(
             $request,
             AttributeEntityType::Reservation,
-            Reservation::query()->visibleTo($employee, Permission::ReservationManage)->with(['unit.site', 'unit.unitClass', 'contact', 'contract', 'price']),
+            $query,
             fn (Reservation $r) => ReservationResource::make($r),
             'Reservations retrieved successfully.',
             function ($query, Request $request): void {

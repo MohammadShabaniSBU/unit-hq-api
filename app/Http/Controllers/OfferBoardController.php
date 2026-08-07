@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Resources\OfferCardResource;
 use App\Models\Employee;
 use App\Models\Offer;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Gate;
 
 class OfferBoardController extends Controller
 {
+    use AppliesPortalSiteFilter;
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize(Permission::OfferManage->value);
@@ -24,6 +27,7 @@ class OfferBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Offer::query()->visibleTo($employee, Permission::OfferManage);
+        $this->applyPortalSiteFilter($base, $request, Offer::class, Permission::OfferManage);
         $counts = Offer::statusCounts($search, clone $base);
 
         $columns = collect(Offer::STATUSES)->map(function (string $status) use ($base, $search, $perColumn, $counts) {
@@ -60,6 +64,7 @@ class OfferBoardController extends Controller
         $search = $this->boardSearch($request);
         $perColumn = $this->perColumn($request);
         $base = Offer::query()->visibleTo($employee, Permission::OfferManage);
+        $this->applyPortalSiteFilter($base, $request, Offer::class, Permission::OfferManage);
 
         $page = (clone $base)
             ->forBoardColumn($status, $search)
