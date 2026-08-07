@@ -70,11 +70,17 @@ final class BrevoAdapter implements ProviderAccount, SendsEmail, AutoRegistersWe
 
     public function sendEmail(EmailMessage $message): SendResult
     {
+        // Brevo rejects empty htmlContent as "missing_parameter" even when
+        // textContent is present — derive a minimal HTML body for text-only sends.
+        $html = trim($message->html) !== ''
+            ? $message->html
+            : (trim($message->text) !== '' ? nl2br(e($message->text), false) : $message->html);
+
         $payload = [
             'sender' => $this->addressObject($message->from),
             'to' => array_map(fn (EmailAddress $a) => $this->addressObject($a), $message->to),
             'subject' => $message->subject,
-            'htmlContent' => $message->html,
+            'htmlContent' => $html,
             'textContent' => $message->text,
         ];
 
