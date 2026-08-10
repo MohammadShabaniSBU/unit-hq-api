@@ -132,6 +132,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/analytics-accounts/{analyticsAccount}/unarchive', [Controllers\AnalyticsAccountController::class, 'unarchive']);
     Route::delete('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'destroy']);
 
+    Route::get('settings/ai-providers', [Controllers\AiProviderAccountController::class, 'providers']);
+    Route::get('settings/ai-provider-accounts', [Controllers\AiProviderAccountController::class, 'index']);
+    Route::post('settings/ai-provider-accounts', [Controllers\AiProviderAccountController::class, 'store']);
+    Route::patch('settings/ai-provider-accounts/{aiProviderAccount}', [Controllers\AiProviderAccountController::class, 'update']);
+    Route::post('settings/ai-provider-accounts/{aiProviderAccount}/verify', [Controllers\AiProviderAccountController::class, 'verify']);
+    Route::post('settings/ai-provider-accounts/{aiProviderAccount}/default', [Controllers\AiProviderAccountController::class, 'setDefault']);
+    Route::post('settings/ai-provider-accounts/{aiProviderAccount}/archive', [Controllers\AiProviderAccountController::class, 'archive']);
+    Route::post('settings/ai-provider-accounts/{aiProviderAccount}/unarchive', [Controllers\AiProviderAccountController::class, 'unarchive']);
+    Route::delete('settings/ai-provider-accounts/{aiProviderAccount}', [Controllers\AiProviderAccountController::class, 'destroy']);
+
     Route::get('settings/insight-reports', [Controllers\InsightReportController::class, 'index']);
     Route::post('settings/insight-reports', [Controllers\InsightReportController::class, 'store']);
     Route::post('settings/insight-reports/reorder', [Controllers\InsightReportController::class, 'reorder']);

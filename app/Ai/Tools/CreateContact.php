@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Ai\Tools;
 
 use App\Models\Contact;
+use App\Models\Employee;
+use App\Support\Auth\Permission;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;
@@ -16,6 +18,8 @@ class CreateContact implements Tool, Approvable
 {
     use InteractsWithApprovals;
 
+    public function __construct(private readonly Employee $employee) {}
+
     public function description(): Stringable|string
     {
         return 'Create a new contact in the CRM with name, email, and other details.';
@@ -23,6 +27,13 @@ class CreateContact implements Tool, Approvable
 
     public function handle(Request $request): Stringable|string
     {
+        if (! $this->employee->allowsPermission(Permission::ContactManage)) {
+            return json_encode([
+                'success' => false,
+                'error' => 'You do not have permission to create contacts.',
+            ]);
+        }
+
         $contact = Contact::query()->create([
             'first_name' => $request['first_name'],
             'last_name' => $request['last_name'] ?? '',

@@ -7,6 +7,8 @@ namespace App\Ai\Tools;
 use App\Enums\DealStatus;
 use App\Models\Contact;
 use App\Models\Deal;
+use App\Models\Employee;
+use App\Support\Auth\Permission;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;
@@ -18,6 +20,8 @@ class CreateDeal implements Tool, Approvable
 {
     use InteractsWithApprovals;
 
+    public function __construct(private readonly Employee $employee) {}
+
     public function description(): Stringable|string
     {
         return 'Create a new deal/opportunity for an existing contact, tracking their expected move-in date, stay period, and storage needs.';
@@ -25,6 +29,13 @@ class CreateDeal implements Tool, Approvable
 
     public function handle(Request $request): Stringable|string
     {
+        if (! $this->employee->allowsPermission(Permission::DealManage)) {
+            return json_encode([
+                'success' => false,
+                'error' => 'You do not have permission to create deals.',
+            ]);
+        }
+
         $contact = Contact::query()->findOrFail($request['contact_id']);
 
         $deal = Deal::query()->create([

@@ -151,7 +151,7 @@ final class RoutePermissions
     'POST /api/deals' => Permission::DealManage, // DealController@store
     'POST /api/deals/search' => Permission::DealManage, // DealController@search
     'POST /api/deals/{deal}/tasks' => Permission::DealManage, // DealTaskController@store
-    'POST /api/notes' => Permission::ContactManage, // NoteController@store — authorize noteable parent in controller
+    'POST /api/notes' => Permission::ContactManage, // NoteController@store — actual permission resolved per note type via AttributeEntityType::managePermission(), not a single static case
     'POST /api/offer-options' => Permission::OfferManage, // OfferOptionController@store
     'POST /api/offers' => Permission::OfferManage, // OfferController@store
     'POST /api/offers/search' => Permission::OfferManage, // OfferController@search
@@ -270,6 +270,7 @@ final class RoutePermissions
     'POST /api/delinquency-policies/{delinquencyPolicy}/unarchive' => Permission::SettingsManage, // DelinquencyPolicyController@unarchive
 
     // ===== Comms (72) =====
+    'DELETE /api/settings/ai-provider-accounts/{aiProviderAccount}' => Permission::CredentialManage, // AiProviderAccountController@destroy
     'DELETE /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@destroy
     'DELETE /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@destroy — aliases archive
     'DELETE /api/settings/communications/call/aircall/users/{aircallUserId}' => Permission::CredentialManage, // AircallUserLinkController@unlink
@@ -291,6 +292,8 @@ final class RoutePermissions
     'GET /api/message-attachments/{messageAttachment}/download' => Permission::InboxView, // MessageAttachmentController@download
     'GET /api/messages/{message}/recording' => Permission::InboxView, // MessageController@recording
     'GET /api/messages/{message}/wrapup' => Permission::InboxView, // MessageController@showWrapup
+    'GET /api/settings/ai-provider-accounts' => Permission::CredentialManage, // AiProviderAccountController@index
+    'GET /api/settings/ai-providers' => Permission::CredentialManage, // AiProviderAccountController@providers
     'GET /api/settings/analytics-accounts' => Permission::CredentialManage, // AnalyticsAccountController@index
     'GET /api/settings/analytics-accounts/{analyticsAccount}/resources' => Permission::CredentialManage, // AnalyticsAccountController@resources
     'GET /api/settings/analytics-accounts/{analyticsAccount}/resources/{kind}/{ref}/params' => Permission::CredentialManage, // AnalyticsAccountController@resourceParams
@@ -304,6 +307,7 @@ final class RoutePermissions
     'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
     'GET /api/whatsapp-templates' => Permission::TemplateManage, // WhatsappTemplateController@index
     'GET /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@show
+    'PATCH /api/settings/ai-provider-accounts/{aiProviderAccount}' => Permission::CredentialManage, // AiProviderAccountController@update
     'PATCH /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@update
     'PATCH /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@update
     'PATCH /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@update
@@ -318,6 +322,11 @@ final class RoutePermissions
     'POST /api/inbox/threads/{messageThread}/reply' => Permission::InboxSend, // InboxController@reply
     'POST /api/inbox/threads/{messageThread}/unread' => Permission::InboxView, // InboxController@unread
     'POST /api/messages/{message}/move-thread' => Permission::InboxAssign, // MessageController@moveThread
+    'POST /api/settings/ai-provider-accounts' => Permission::CredentialManage, // AiProviderAccountController@store
+    'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/archive' => Permission::CredentialManage, // AiProviderAccountController@archive
+    'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/default' => Permission::CredentialManage, // AiProviderAccountController@setDefault
+    'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/unarchive' => Permission::CredentialManage, // AiProviderAccountController@unarchive
+    'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/verify' => Permission::CredentialManage, // AiProviderAccountController@verify
     'POST /api/settings/analytics-accounts' => Permission::CredentialManage, // AnalyticsAccountController@store
     'POST /api/settings/analytics-accounts/{analyticsAccount}/archive' => Permission::CredentialManage, // AnalyticsAccountController@archive
     'POST /api/settings/analytics-accounts/{analyticsAccount}/default' => Permission::CredentialManage, // AnalyticsAccountController@setDefault
@@ -383,9 +392,9 @@ final class RoutePermissions
     'GET /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@showLeasing
     'GET /api/settings/object-customization/{entityType}' => Permission::SettingsManage, // ObjectCustomizationController@show
     'GET /api/units/{unit}/access-events' => Permission::AccessView, // AccessEventController@forUnit
-    'GET /api/{entityType}/{entityId}/attribute-values' => Permission::SettingsManage, // AttributeValueController@index — also authorize parent entity in controller
+    'GET /api/{entityType}/{entityId}/attribute-values' => Permission::ContactView, // AttributeValueController@index — actual permission resolved per entityType via AttributeEntityType::viewPermission(), not a single static case
     'PATCH /api/attribute-definitions/{attributeDefinition}' => Permission::SettingsManage, // AttributeDefinitionController@update
-    'PATCH /api/attribute-values' => Permission::SettingsManage, // AttributeValueController@upsert — also authorize parent entity in controller
+    'PATCH /api/attribute-values' => Permission::ContactManage, // AttributeValueController@upsert — actual permission resolved per entityType via AttributeEntityType::managePermission(), not a single static case
     'PATCH /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
     'PATCH /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
     'PATCH /api/settings/access/points/{accessPoint}' => Permission::AccessManage, // AccessPointController@update — access point catalogue
