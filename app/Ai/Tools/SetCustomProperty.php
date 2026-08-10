@@ -126,13 +126,8 @@ class SetCustomProperty implements Tool, Approvable
             'definition_id' => $schema->integer()
                 ->description('ID of the attribute definition to set a value for')
                 ->required(),
-            'value' => $schema->union([
-                $schema->string(),
-                $schema->number(),
-                $schema->boolean(),
-                $schema->array()->items($schema->integer()),
-            ])
-                ->description('The value to set. Use a string for text/date, a number, a boolean, an option ID for select attributes, or an array of option IDs for multiselect attributes. Omit or pass an empty value to clear it.')
+            'value' => $schema->union(['string', 'number', 'boolean', 'array'])
+                ->description('The value to set. Use a string for text/date, a number for a numeric or select attribute (option ID), a boolean, or an array of integer option IDs for multiselect attributes. Omit or pass an empty value to clear it.')
                 ->nullable(),
         ];
     }
