@@ -17,6 +17,7 @@ use App\Http\Resources\ReservationResource;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Discount;
+use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\Reservation;
 use App\Models\Setting;
@@ -24,6 +25,8 @@ use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Support\Attributes\AppliesCreateAttributes;
+use App\Support\Auth\Permission;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
@@ -44,10 +47,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class ReservationController extends Controller
 {
@@ -60,7 +62,7 @@ class ReservationController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Reservation::query()
@@ -102,7 +104,7 @@ class ReservationController extends Controller
     {
         Gate::authorize(Permission::ReservationManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Reservation::query()
@@ -135,17 +137,24 @@ class ReservationController extends Controller
         Gate::authorize(Permission::ReservationManage->value);
 
         $validated = $request->validate([
-            'site_id'         => ['required', 'integer', 'exists:sites,id'],
-            'unit_class_id'   => ['required', 'integer', 'exists:unit_classes,id'],
-            'unit_id'         => ['nullable', 'integer', 'exists:units,id'],
-            'contact_id'      => ['required', 'integer', 'exists:contacts,id'],
-            'deal_id'         => ['nullable', 'integer', 'exists:deals,id'],
+            'site_id' => ['required', 'integer', 'exists:sites,id'],
+            'unit_class_id' => ['required', 'integer', 'exists:unit_classes,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
             'offer_option_id' => ['nullable', 'integer', 'exists:offer_options,id'],
-            'status'          => ['nullable', Rule::enum(ReservationStatus::class)],
-            'expires_at'      => ['required', 'date'],
+            'status' => ['nullable', Rule::enum(ReservationStatus::class)],
+            'expires_at' => ['required', 'date'],
+            ...AppliesCreateAttributes::validationRules(),
         ]);
 
-        $reservation = DB::transaction(function () use ($validated): Reservation {
+        $attributes = $validated['attributes'] ?? [];
+        unset($validated['attributes']);
+
+        /** @var Employee|null $actor */
+        $actor = $request->user();
+
+        $reservation = DB::transaction(function () use ($validated, $attributes, $actor): Reservation {
             if (! empty($validated['deal_id'])) {
                 $deal = Deal::query()->findOrFail($validated['deal_id']);
 
@@ -215,6 +224,13 @@ class ReservationController extends Controller
 
             $this->writeReservationHold($reservation, $selectedUnit);
 
+            AppliesCreateAttributes::apply(
+                AttributeEntityType::Reservation,
+                $reservation,
+                $attributes,
+                $actor,
+            );
+
             RecordsActivity::core('reservation.created', $reservation, [
                 'unit_id' => $reservation->unit_id,
                 'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
@@ -246,8 +262,8 @@ class ReservationController extends Controller
         Gate::authorize(Permission::ReservationManage->value, $reservation);
 
         $validated = $request->validate([
-            'unit_id'    => ['sometimes', 'required', 'integer', 'exists:units,id'],
-            'status'     => ['sometimes', 'required', Rule::enum(ReservationStatus::class)],
+            'unit_id' => ['sometimes', 'required', 'integer', 'exists:units,id'],
+            'status' => ['sometimes', 'required', Rule::enum(ReservationStatus::class)],
             'expires_at' => ['sometimes', 'required', 'date'],
         ]);
 
@@ -327,13 +343,13 @@ class ReservationController extends Controller
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([
-            'start_date'        => ['nullable', 'date'],
-            'move_in_date'      => ['nullable', 'date'],
-            'unit_rate'         => ['nullable', 'numeric', 'min:0'],
-            'insurance_id'      => ['nullable', 'integer', 'exists:insurances,id'],
-            'insurance_rate'    => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
-            'deposit_amount'    => ['nullable', 'numeric', 'min:0'],
-            'commitment_weeks'  => ['nullable', 'integer', 'min:1'],
+            'start_date' => ['nullable', 'date'],
+            'move_in_date' => ['nullable', 'date'],
+            'unit_rate' => ['nullable', 'numeric', 'min:0'],
+            'insurance_id' => ['nullable', 'integer', 'exists:insurances,id'],
+            'insurance_rate' => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'commitment_weeks' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $reservation->load([
@@ -451,43 +467,43 @@ class ReservationController extends Controller
 
         return $this->success([
             'contact' => [
-                'id'   => $reservation->contact->id,
+                'id' => $reservation->contact->id,
                 'name' => trim($reservation->contact->first_name.' '.$reservation->contact->last_name),
             ],
             'unit' => [
-                'id'          => $reservation->unit->id,
+                'id' => $reservation->unit->id,
                 'unit_number' => $reservation->unit->unit_number,
-                'site'        => $reservation->unit->site ? [
-                    'id'   => $reservation->unit->site->id,
+                'site' => $reservation->unit->site ? [
+                    'id' => $reservation->unit->site->id,
                     'name' => $reservation->unit->site->name,
                 ] : null,
-                'unit_class'  => $reservation->unit->unitClass ? [
-                    'id'    => $reservation->unit->unitClass->id,
+                'unit_class' => $reservation->unit->unitClass ? [
+                    'id' => $reservation->unit->unitClass->id,
                     'label' => $reservation->unit->unitClass->label,
-                    'code'  => $reservation->unit->unitClass->code_slug,
+                    'code' => $reservation->unit->unitClass->code_slug,
                 ] : null,
             ],
-            'billing_interval'       => $billing->defaultBillingInterval,
+            'billing_interval' => $billing->defaultBillingInterval,
             'billing_interval_count' => $billing->defaultBillingIntervalCount,
-            'billing_anchor_model'   => $billing->billingAnchorModel,
-            'currency'            => $currency,
-            'base_rate'           => $this->formatMoney($pricing['base_rate']),
+            'billing_anchor_model' => $billing->billingAnchorModel,
+            'currency' => $currency,
+            'base_rate' => $this->formatMoney($pricing['base_rate']),
             'suggested_unit_rate' => $this->formatMoney((float) $periodAmount),
-            'unit_rate'           => $this->formatMoney($unitRate),
-            'unit_tax_rate'       => $this->formatTaxRate($unitTaxRate),
-            'insurance_id'        => $validated['insurance_id'] ?? null,
-            'insurance_rate'      => $insuranceRate !== null ? $this->formatMoney($insuranceRate) : null,
-            'insurance_tax_rate'  => $this->formatTaxRate($insuranceTaxRate),
-            'deposit_amount'      => $this->formatMoney((float) $depositAmount),
-            'move_in_date'        => $moveIn->toDateString(),
-            'discount'            => $pricing['discount'] !== null
+            'unit_rate' => $this->formatMoney($unitRate),
+            'unit_tax_rate' => $this->formatTaxRate($unitTaxRate),
+            'insurance_id' => $validated['insurance_id'] ?? null,
+            'insurance_rate' => $insuranceRate !== null ? $this->formatMoney($insuranceRate) : null,
+            'insurance_tax_rate' => $this->formatTaxRate($insuranceTaxRate),
+            'deposit_amount' => $this->formatMoney((float) $depositAmount),
+            'move_in_date' => $moveIn->toDateString(),
+            'discount' => $pricing['discount'] !== null
                 ? DiscountResource::make($pricing['discount'])->resolve()
                 : null,
-            'discount_ends_at'    => $discountEndsAt,
-            'discount_schedule'   => $versionPlan?->toArray(),
-            'commitment_weeks'    => $pricing['commitment_weeks'],
-            'rate_overridden'     => $rateOverridden,
-            'first_period'        => $firstPeriod,
+            'discount_ends_at' => $discountEndsAt,
+            'discount_schedule' => $versionPlan?->toArray(),
+            'commitment_weeks' => $pricing['commitment_weeks'],
+            'rate_overridden' => $rateOverridden,
+            'first_period' => $firstPeriod,
             ...$invoicePreview,
         ], 'Convert preview retrieved successfully.');
     }
@@ -504,18 +520,18 @@ class ReservationController extends Controller
         $this->assertConvertible($reservation);
 
         $validated = $request->validate([
-            'start_date'            => ['required', 'date'],
-            'end_date'              => ['nullable', 'date', 'after:start_date'],
-            'move_in_date'          => ['nullable', 'date'],
-            'signed_at'             => ['nullable', 'date'],
-            'signature_mode'        => ['nullable', Rule::in(['immediate', 'remote'])],
-            'unit_rate'             => ['required', 'numeric', 'min:0'],
-            'unit_tax_rate_id'      => ['nullable', 'integer', 'exists:tax_rates,id'],
-            'insurance_id'          => ['nullable', 'integer', 'exists:insurances,id'],
-            'insurance_rate'        => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after:start_date'],
+            'move_in_date' => ['nullable', 'date'],
+            'signed_at' => ['nullable', 'date'],
+            'signature_mode' => ['nullable', Rule::in(['immediate', 'remote'])],
+            'unit_rate' => ['required', 'numeric', 'min:0'],
+            'unit_tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'insurance_id' => ['nullable', 'integer', 'exists:insurances,id'],
+            'insurance_rate' => ['nullable', 'required_with:insurance_id', 'numeric', 'min:0'],
             'insurance_tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
-            'deposit_amount'        => ['nullable', 'numeric', 'min:0'],
-            'commitment_weeks'      => ['nullable', 'integer', 'min:1'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'commitment_weeks' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $signatureMode = $validated['signature_mode'] ?? 'immediate';
@@ -556,24 +572,24 @@ class ReservationController extends Controller
                     : ContractStatus::Active);
 
             $contract = Contract::query()->create([
-                'contact_id'             => $reservation->contact_id,
-                'reservation_id'         => $reservation->id,
-                'deal_id'                => $reservation->deal_id,
-                'start_date'             => $validated['start_date'],
-                'end_date'               => $validated['end_date'] ?? null,
-                'status'                 => $status->value,
-                'notice_period_days'     => $leasing->defaultNoticePeriodDays,
-                'move_out_settlement'    => $billing->moveOutSettlement,
-                'transfer_billing'       => $billing->transferBilling,
-                'signed_at'              => null,
-                'billing_interval'       => $billing->defaultBillingInterval,
+                'contact_id' => $reservation->contact_id,
+                'reservation_id' => $reservation->id,
+                'deal_id' => $reservation->deal_id,
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'] ?? null,
+                'status' => $status->value,
+                'notice_period_days' => $leasing->defaultNoticePeriodDays,
+                'move_out_settlement' => $billing->moveOutSettlement,
+                'transfer_billing' => $billing->transferBilling,
+                'signed_at' => null,
+                'billing_interval' => $billing->defaultBillingInterval,
                 'billing_interval_count' => $billing->defaultBillingIntervalCount,
-                'billing_anchor_model'   => $billing->billingAnchorModel,
-                'proration_method'       => $billing->prorationMethod,
-                'move_in_date'           => $moveIn->toDateString(),
-                'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
+                'billing_anchor_model' => $billing->billingAnchorModel,
+                'proration_method' => $billing->prorationMethod,
+                'move_in_date' => $moveIn->toDateString(),
+                'deposit_amount' => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
                 // Placeholder until items agree — overwritten before charges.
-                'currency'               => $unitCurrency,
+                'currency' => $unitCurrency,
             ]);
 
             $site = $reservation->unit?->site;
@@ -601,13 +617,13 @@ class ReservationController extends Controller
             );
 
             $contractItems = collect([$contract->items()->create([
-                'item_type'         => 'unit',
-                'item_id'           => $reservation->unit_id,
-                'price_id'          => $resolvedUnitPrice->id,
-                'effective_from'    => $moveIn->toDateString(),
-                'effective_to'      => null,
-                'change_reason'     => null,
-                'tax_rate_id'       => $unitTaxRate?->id,
+                'item_type' => 'unit',
+                'item_id' => $reservation->unit_id,
+                'price_id' => $resolvedUnitPrice->id,
+                'effective_from' => $moveIn->toDateString(),
+                'effective_to' => null,
+                'change_reason' => null,
+                'tax_rate_id' => $unitTaxRate?->id,
                 'tax_rate_snapshot' => $unitTaxRate?->rate,
             ])]);
 
@@ -644,13 +660,13 @@ class ReservationController extends Controller
                 );
 
                 $contract->items()->create([
-                    'item_type'         => 'insurance',
-                    'item_id'           => $validated['insurance_id'],
-                    'price_id'          => $resolvedInsurancePrice->id,
-                    'effective_from'    => $moveIn->toDateString(),
-                    'effective_to'      => null,
-                    'change_reason'     => null,
-                    'tax_rate_id'       => $insuranceTaxRate?->id,
+                    'item_type' => 'insurance',
+                    'item_id' => $validated['insurance_id'],
+                    'price_id' => $resolvedInsurancePrice->id,
+                    'effective_from' => $moveIn->toDateString(),
+                    'effective_to' => null,
+                    'change_reason' => null,
+                    'tax_rate_id' => $insuranceTaxRate?->id,
                     'tax_rate_snapshot' => $insuranceTaxRate?->rate,
                 ]);
             }
@@ -738,10 +754,10 @@ class ReservationController extends Controller
         }
 
         return [
-            'base_rate'         => round($baseRate, 2),
-            'discount'          => $discount,
-            'commitment_weeks'  => $commitmentWeeks,
-            'version_plan'      => $versionPlan,
+            'base_rate' => round($baseRate, 2),
+            'discount' => $discount,
+            'commitment_weeks' => $commitmentWeeks,
+            'version_plan' => $versionPlan,
         ];
     }
 
@@ -793,17 +809,17 @@ class ReservationController extends Controller
         }
 
         return [
-            'start_date'     => $plan->windowStart->toDateString(),
-            'end_date'       => $plan->windowEnd->toDateString(),
-            'has_stub'       => $plan->hasStub,
-            'skipped'        => $skipped,
-            'days_occupied'  => $plan->daysOccupied,
+            'start_date' => $plan->windowStart->toDateString(),
+            'end_date' => $plan->windowEnd->toDateString(),
+            'has_stub' => $plan->hasStub,
+            'skipped' => $skipped,
+            'days_occupied' => $plan->daysOccupied,
             'days_in_period' => $plan->daysInPeriod,
-            'unit'           => $unitLine,
-            'insurance'      => $insuranceLine,
-            'total_net'      => bcadd($unitLine['net'] ?? '0.00', $insuranceLine['net'] ?? '0.00', 2),
-            'total_tax'      => bcadd($unitLine['tax'] ?? '0.00', $insuranceLine['tax'] ?? '0.00', 2),
-            'total_gross'    => bcadd($unitLine['gross'] ?? '0.00', $insuranceLine['gross'] ?? '0.00', 2),
+            'unit' => $unitLine,
+            'insurance' => $insuranceLine,
+            'total_net' => bcadd($unitLine['net'] ?? '0.00', $insuranceLine['net'] ?? '0.00', 2),
+            'total_tax' => bcadd($unitLine['tax'] ?? '0.00', $insuranceLine['tax'] ?? '0.00', 2),
+            'total_gross' => bcadd($unitLine['gross'] ?? '0.00', $insuranceLine['gross'] ?? '0.00', 2),
         ];
     }
 
@@ -811,8 +827,8 @@ class ReservationController extends Controller
     private function formatChargeLine(TaxBreakdown $breakdown): array
     {
         return [
-            'net'   => $breakdown->net,
-            'tax'   => $breakdown->tax,
+            'net' => $breakdown->net,
+            'tax' => $breakdown->tax,
             'gross' => $breakdown->gross,
         ];
     }
@@ -825,7 +841,7 @@ class ReservationController extends Controller
         }
 
         return [
-            'id'   => $taxRate->id,
+            'id' => $taxRate->id,
             'name' => $taxRate->name,
             'code' => $taxRate->code,
             'rate' => (string) $taxRate->rate,

@@ -7,18 +7,20 @@ use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\OfferCardResource;
 use App\Http\Resources\OfferResource;
+use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Unit;
+use App\Support\Attributes\AppliesCreateAttributes;
+use App\Support\Auth\Permission;
 use App\Support\Discounts\DiscountSurface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class OfferController extends Controller
 {
@@ -29,7 +31,7 @@ class OfferController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
@@ -63,7 +65,7 @@ class OfferController extends Controller
     {
         Gate::authorize(Permission::OfferManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Offer::query()->visibleTo($employee, Permission::OfferManage)->with([
@@ -91,26 +93,31 @@ class OfferController extends Controller
         Gate::authorize(Permission::OfferManage->value);
 
         $validated = $request->validate([
-            'deal_id'         => ['required', 'integer', 'exists:deals,id'],
-            'contact_id'      => ['required', 'integer', 'exists:contacts,id'],
-            'token'           => ['nullable', 'string', 'unique:offers,token'],
-            'status'          => ['nullable', Rule::in(Offer::STATUSES)],
-            'expires_at'      => ['required', 'date'],
-            'sent_at'         => ['nullable', 'date'],
+            'deal_id' => ['required', 'integer', 'exists:deals,id'],
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'token' => ['nullable', 'string', 'unique:offers,token'],
+            'status' => ['nullable', Rule::in(Offer::STATUSES)],
+            'expires_at' => ['required', 'date'],
+            'sent_at' => ['nullable', 'date'],
             'first_viewed_at' => ['nullable', 'date'],
-            'accepted_at'     => ['nullable', 'date'],
-            'options'         => ['nullable', 'array'],
+            'accepted_at' => ['nullable', 'date'],
+            'options' => ['nullable', 'array'],
             'options.*.unit_class_rate_id' => ['required', 'integer', 'exists:unit_class_rates,id'],
-            'options.*.discount_id'    => ['nullable', 'integer', 'exists:discounts,id'],
-            'options.*.label'          => ['required', 'string'],
-            'options.*.description'    => ['nullable', 'string'],
-            'options.*.display_order'  => ['required', 'integer', 'min:0'],
+            'options.*.discount_id' => ['nullable', 'integer', 'exists:discounts,id'],
+            'options.*.label' => ['required', 'string'],
+            'options.*.description' => ['nullable', 'string'],
+            'options.*.display_order' => ['required', 'integer', 'min:0'],
+            ...AppliesCreateAttributes::validationRules(),
         ]);
 
         $options = $validated['options'] ?? [];
-        unset($validated['options']);
+        $attributes = $validated['attributes'] ?? [];
+        unset($validated['options'], $validated['attributes']);
 
-        $offer = DB::transaction(function () use ($validated, $options) {
+        /** @var Employee|null $actor */
+        $actor = $request->user();
+
+        $offer = DB::transaction(function () use ($validated, $options, $attributes, $actor) {
             $validated['token'] ??= Str::random(64);
 
             $offer = Offer::query()->create($validated);
@@ -119,6 +126,13 @@ class OfferController extends Controller
                 $optionData['unit_id'] = Unit::resolveUnitIdForRate($optionData['unit_class_rate_id']);
                 $offer->options()->create($optionData);
             }
+
+            AppliesCreateAttributes::apply(
+                AttributeEntityType::Offer,
+                $offer,
+                $attributes,
+                $actor,
+            );
 
             return $offer;
         });
@@ -146,7 +160,7 @@ class OfferController extends Controller
         if (is_null($offer->first_viewed_at)) {
             $offer->update([
                 'first_viewed_at' => now(),
-                'status'          => 'viewed',
+                'status' => 'viewed',
             ]);
         }
 
@@ -184,14 +198,14 @@ class OfferController extends Controller
         Gate::authorize(Permission::OfferManage->value, $offer);
 
         $validated = $request->validate([
-            'deal_id'         => ['sometimes', 'required', 'integer', 'exists:deals,id'],
-            'contact_id'      => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
-            'token'           => ['sometimes', 'nullable', 'string', Rule::unique('offers', 'token')->ignore($offer->id)],
-            'status'          => ['sometimes', 'nullable', Rule::in(Offer::STATUSES)],
-            'expires_at'      => ['sometimes', 'required', 'date'],
-            'sent_at'         => ['sometimes', 'nullable', 'date'],
+            'deal_id' => ['sometimes', 'required', 'integer', 'exists:deals,id'],
+            'contact_id' => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
+            'token' => ['sometimes', 'nullable', 'string', Rule::unique('offers', 'token')->ignore($offer->id)],
+            'status' => ['sometimes', 'nullable', Rule::in(Offer::STATUSES)],
+            'expires_at' => ['sometimes', 'required', 'date'],
+            'sent_at' => ['sometimes', 'nullable', 'date'],
             'first_viewed_at' => ['sometimes', 'nullable', 'date'],
-            'accepted_at'     => ['sometimes', 'nullable', 'date'],
+            'accepted_at' => ['sometimes', 'nullable', 'date'],
         ]);
 
         $offer->update($validated);

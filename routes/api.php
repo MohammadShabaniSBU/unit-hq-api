@@ -272,6 +272,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('settings/object-customization/fields/{field}', [Controllers\ObjectCustomizationController::class, 'updateField']);
     Route::delete('settings/object-customization/fields/{field}', [Controllers\ObjectCustomizationController::class, 'destroyField']);
 
+    Route::get('{entityType}/attribute-definitions', [Controllers\AttributeDefinitionController::class, 'forEntity'])
+        ->whereIn('entityType', ['contact', 'deal', 'offer', 'reservation', 'unit', 'contract']);
     Route::get('{entityType}/{entityId}/attribute-values', [Controllers\AttributeValueController::class, 'index'])
         ->whereIn('entityType', ['contact', 'deal', 'offer', 'reservation', 'unit', 'contract'])
         ->whereNumber('entityId');
@@ -341,7 +343,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'destroy']);
     Route::post('copilot/conversations/{conversation}/messages', [Controllers\CopilotController::class, 'storeMessage']);
     Route::post('copilot/conversations/{conversation}/decisions', [Controllers\CopilotController::class, 'storeDecisions']);
-
 
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::get('deals/filters/schema', [Controllers\DealController::class, 'filterSchema']);

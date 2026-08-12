@@ -19,6 +19,8 @@ use App\Models\Employee;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\Unit;
+use App\Support\Attributes\AppliesCreateAttributes;
+use App\Support\Auth\Permission;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
@@ -36,10 +38,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class ContractController extends Controller
 {
@@ -227,29 +228,32 @@ class ContractController extends Controller
         }
 
         $validated = $request->validate([
-            'contact_id'         => ['required', 'integer', 'exists:contacts,id'],
-            'reservation_id'     => ['nullable', 'integer', 'exists:reservations,id'],
-            'deal_id'            => ['nullable', 'integer', 'exists:deals,id'],
-            'start_date'         => ['required', 'date'],
-            'end_date'           => ['nullable', 'date', 'after:start_date'],
-            'move_in_date'       => ['nullable', 'date'],
-            'deposit_amount'     => ['nullable', 'numeric', 'min:0'],
-            'signed_at'          => ['nullable', 'date'],
-            'signature_mode'     => ['nullable', Rule::in(['immediate', 'remote'])],
-            'discount_id'        => ['nullable', 'integer', 'exists:discounts,id'],
-            'commitment_weeks'   => ['nullable', 'integer', 'min:1'],
-            'items'              => ['required', 'array', 'min:1'],
-            'items.*.item_type'             => ['required', 'string', Rule::in(['unit', 'insurance'])],
-            'items.*.item_id'               => ['required', 'integer'],
-            'items.*.amount'                => ['required', 'numeric', 'min:0'],
-            'items.*.tax_rate_id'           => ['nullable', 'integer', 'exists:tax_rates,id'],
-            'items.*.declared_goods_value'  => ['nullable', 'numeric', 'min:0'],
-            'items.*.description'           => ['nullable', 'string'],
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
+            'deal_id' => ['nullable', 'integer', 'exists:deals,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after:start_date'],
+            'move_in_date' => ['nullable', 'date'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'signed_at' => ['nullable', 'date'],
+            'signature_mode' => ['nullable', Rule::in(['immediate', 'remote'])],
+            'discount_id' => ['nullable', 'integer', 'exists:discounts,id'],
+            'commitment_weeks' => ['nullable', 'integer', 'min:1'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_type' => ['required', 'string', Rule::in(['unit', 'insurance'])],
+            'items.*.item_id' => ['required', 'integer'],
+            'items.*.amount' => ['required', 'numeric', 'min:0'],
+            'items.*.tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'items.*.declared_goods_value' => ['nullable', 'numeric', 'min:0'],
+            'items.*.description' => ['nullable', 'string'],
+            ...AppliesCreateAttributes::validationRules(),
         ]);
 
         $signatureMode = $validated['signature_mode'] ?? 'immediate';
+        $attributes = $validated['attributes'] ?? [];
+        unset($validated['attributes']);
 
-        $contract = DB::transaction(function () use ($validated, $request, $signatureMode) {
+        $contract = DB::transaction(function () use ($validated, $request, $signatureMode, $attributes) {
             $billing = Setting::billing();
             $leasing = Setting::leasing();
             $moveIn = CarbonImmutable::parse($validated['move_in_date'] ?? $validated['start_date'])->startOfDay();
@@ -281,24 +285,24 @@ class ContractController extends Controller
                     : ContractStatus::Active);
 
             $contract = Contract::query()->create([
-                'contact_id'             => $validated['contact_id'],
-                'reservation_id'         => $validated['reservation_id'] ?? null,
-                'deal_id'                => $validated['deal_id'] ?? null,
-                'start_date'             => $validated['start_date'],
-                'end_date'               => $validated['end_date'] ?? null,
-                'status'                 => $status->value,
-                'notice_period_days'     => $leasing->defaultNoticePeriodDays,
-                'move_out_settlement'    => $billing->moveOutSettlement,
-                'transfer_billing'       => $billing->transferBilling,
-                'signed_at'              => null,
-                'billing_interval'       => $billing->defaultBillingInterval,
+                'contact_id' => $validated['contact_id'],
+                'reservation_id' => $validated['reservation_id'] ?? null,
+                'deal_id' => $validated['deal_id'] ?? null,
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'] ?? null,
+                'status' => $status->value,
+                'notice_period_days' => $leasing->defaultNoticePeriodDays,
+                'move_out_settlement' => $billing->moveOutSettlement,
+                'transfer_billing' => $billing->transferBilling,
+                'signed_at' => null,
+                'billing_interval' => $billing->defaultBillingInterval,
                 'billing_interval_count' => $billing->defaultBillingIntervalCount,
-                'billing_anchor_model'   => $billing->billingAnchorModel,
-                'proration_method'       => $billing->prorationMethod,
-                'move_in_date'           => $moveIn->toDateString(),
-                'deposit_amount'         => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
+                'billing_anchor_model' => $billing->billingAnchorModel,
+                'proration_method' => $billing->prorationMethod,
+                'move_in_date' => $moveIn->toDateString(),
+                'deposit_amount' => $validated['deposit_amount'] ?? $billing->defaultDepositAmount,
                 // Placeholder until items agree — overwritten before charges.
-                'currency'               => $billing->defaultCurrency ?: 'EUR',
+                'currency' => $billing->defaultCurrency ?: 'EUR',
             ]);
 
             $createdBy = $request->user()?->id;
@@ -328,16 +332,16 @@ class ContractController extends Controller
                 );
 
                 return $contract->items()->create([
-                    'item_type'             => $itemData['item_type'],
-                    'item_id'               => $itemData['item_id'],
-                    'price_id'              => $price->id,
-                    'effective_from'        => $moveIn->toDateString(),
-                    'effective_to'          => null,
-                    'change_reason'         => null,
-                    'tax_rate_id'           => $taxRate?->id,
-                    'tax_rate_snapshot'     => $taxRate?->rate,
-                    'declared_goods_value'  => $itemData['declared_goods_value'] ?? null,
-                    'description'           => $itemData['description'] ?? null,
+                    'item_type' => $itemData['item_type'],
+                    'item_id' => $itemData['item_id'],
+                    'price_id' => $price->id,
+                    'effective_from' => $moveIn->toDateString(),
+                    'effective_to' => null,
+                    'change_reason' => null,
+                    'tax_rate_id' => $taxRate?->id,
+                    'tax_rate_snapshot' => $taxRate?->rate,
+                    'declared_goods_value' => $itemData['declared_goods_value'] ?? null,
+                    'description' => $itemData['description'] ?? null,
                 ]);
             });
 
@@ -383,6 +387,16 @@ class ContractController extends Controller
                     $validated['signed_at'] ?? now(),
                 );
             }
+
+            /** @var Employee|null $actor */
+            $actor = $request->user();
+
+            AppliesCreateAttributes::apply(
+                AttributeEntityType::Contract,
+                $contract,
+                $attributes,
+                $actor,
+            );
 
             return $contract;
         });
@@ -477,8 +491,8 @@ class ContractController extends Controller
 
         $validated = $request->validate([
             'start_date' => ['sometimes', 'required', 'date'],
-            'end_date'   => ['sometimes', 'nullable', 'date'],
-            'signed_at'  => ['sometimes', 'required', 'date'],
+            'end_date' => ['sometimes', 'nullable', 'date'],
+            'signed_at' => ['sometimes', 'required', 'date'],
         ]);
 
         $contract->update($validated);

@@ -15,15 +15,17 @@ use App\Http\Resources\ContactResource;
 use App\Http\Resources\PaymentResource;
 use App\Models\BillingPeriod;
 use App\Models\Contact;
+use App\Models\Employee;
 use App\Models\Payment;
+use App\Support\Attributes\AppliesCreateAttributes;
+use App\Support\Auth\Permission;
 use App\Support\Fiscal\TaxId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class ContactController extends Controller
 {
@@ -34,7 +36,7 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Contact::query()->visibleTo($employee, Permission::ContactView)->latest();
@@ -69,7 +71,7 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Contact::query()->visibleTo($employee, Permission::ContactView);
@@ -94,27 +96,32 @@ class ContactController extends Controller
         Gate::authorize(Permission::ContactManage->value);
 
         $validated = $request->validate([
-            'first_name'           => ['required', 'string', 'max:255'],
-            'last_name'            => ['required', 'string', 'max:255'],
-            'email'                => ['nullable', 'email', 'max:255'],
-            'company'              => ['nullable', 'string', 'max:255'],
-            'phone'                => ['nullable', 'string', 'max:255'],
-            'site_id'              => ['required', 'integer', 'exists:sites,id'],
-            'locale'               => ['nullable', 'string', 'in:en,es,fr'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'company' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
+            'site_id' => ['required', 'integer', 'exists:sites,id'],
+            'locale' => ['nullable', 'string', 'in:en,es,fr'],
             ...$this->fiscalValidationRules(sometimes: false),
-            'contact_status'       => ['nullable', Rule::enum(ContactRecordStatus::class)],
+            'contact_status' => ['nullable', Rule::enum(ContactRecordStatus::class)],
             'canonical_contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
-            'assigned_to'          => ['nullable', 'integer', 'exists:employees,id'],
-            'created_by'           => ['nullable', 'integer', 'exists:employees,id'],
+            'assigned_to' => ['nullable', 'integer', 'exists:employees,id'],
+            'created_by' => ['nullable', 'integer', 'exists:employees,id'],
+            ...AppliesCreateAttributes::validationRules(),
         ]);
 
         $siteId = (int) $validated['site_id'];
         $phone = isset($validated['phone']) ? trim((string) $validated['phone']) : '';
-        unset($validated['site_id'], $validated['phone']);
+        $attributes = $validated['attributes'] ?? [];
+        unset($validated['site_id'], $validated['phone'], $validated['attributes']);
 
         $validated = $this->normalizeFiscalFields($validated);
 
-        $contact = DB::transaction(function () use ($validated, $siteId, $phone): Contact {
+        /** @var Employee|null $actor */
+        $actor = $request->user();
+
+        $contact = DB::transaction(function () use ($validated, $siteId, $phone, $attributes, $actor): Contact {
             $contact = Contact::query()->create($validated);
             $contact->sites()->attach($siteId);
 
@@ -125,6 +132,13 @@ class ContactController extends Controller
                     'is_primary' => true,
                 ]);
             }
+
+            AppliesCreateAttributes::apply(
+                AttributeEntityType::Contact,
+                $contact,
+                $attributes,
+                $actor,
+            );
 
             return $contact->load(['sites', 'channels']);
         });
@@ -163,16 +177,16 @@ class ContactController extends Controller
         Gate::authorize(Permission::ContactManage->value, $contact);
 
         $validated = $request->validate([
-            'first_name'           => ['sometimes', 'required', 'string', 'max:255'],
-            'last_name'            => ['sometimes', 'required', 'string', 'max:255'],
-            'email'                => ['sometimes', 'nullable', 'email', 'max:255'],
-            'company'              => ['sometimes', 'nullable', 'string', 'max:255'],
-            'locale'               => ['sometimes', 'nullable', 'string', 'in:en,es,fr'],
+            'first_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'company' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'locale' => ['sometimes', 'nullable', 'string', 'in:en,es,fr'],
             ...$this->fiscalValidationRules(sometimes: true),
-            'status'               => ['sometimes', 'nullable', Rule::enum(ContactLifecycleStatus::class)],
-            'contact_status'       => ['sometimes', 'nullable', Rule::enum(ContactRecordStatus::class)],
+            'status' => ['sometimes', 'nullable', Rule::enum(ContactLifecycleStatus::class)],
+            'contact_status' => ['sometimes', 'nullable', Rule::enum(ContactRecordStatus::class)],
             'canonical_contact_id' => ['sometimes', 'nullable', 'integer', 'exists:contacts,id'],
-            'assigned_to'          => ['sometimes', 'nullable', 'integer', 'exists:employees,id'],
+            'assigned_to' => ['sometimes', 'nullable', 'integer', 'exists:employees,id'],
         ]);
 
         $validated = $this->normalizeFiscalFields($validated);
@@ -291,7 +305,7 @@ class ContactController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $request->validate([

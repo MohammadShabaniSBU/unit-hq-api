@@ -9,15 +9,15 @@ use App\Enums\AttributeType;
 use App\Http\Resources\AttributeDefinitionResource;
 use App\Models\AttributeDefinition;
 use App\Models\AttributeOption;
+use App\Support\Auth\Permission;
 use App\Support\Filtering\AttributeFieldResolver;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class AttributeDefinitionController extends Controller
 {
@@ -54,6 +54,40 @@ class AttributeDefinitionController extends Controller
         );
     }
 
+    /**
+     * Entity-scoped definition list for create/edit forms (not SettingsManage).
+     * Auth uses the entity type's manage permission.
+     */
+    public function forEntity(Request $request, string $entityType): JsonResponse
+    {
+        $type = AttributeEntityType::tryFrom($entityType)
+            ?? throw ValidationException::withMessages([
+                'entityType' => ['Unsupported entity type.'],
+            ]);
+
+        Gate::authorize($type->managePermission()->value);
+
+        $request->validate([
+            'required' => ['nullable', 'boolean'],
+        ]);
+
+        $query = AttributeDefinition::query()
+            ->with('options')
+            ->active()
+            ->where('entity_type', $type)
+            ->orderBy('display_order')
+            ->orderBy('label');
+
+        if ($request->boolean('required')) {
+            $query->where('is_required', true);
+        }
+
+        return $this->success(
+            AttributeDefinitionResource::collection($query->get())->resolve(),
+            'Attribute definitions retrieved successfully.'
+        );
+    }
+
     public function store(Request $request): JsonResponse
     {
         Gate::authorize(Permission::SettingsManage->value);
@@ -62,13 +96,13 @@ class AttributeDefinitionController extends Controller
 
         $definition = DB::transaction(function () use ($validated, $request) {
             $definition = AttributeDefinition::query()->create([
-                'entity_type'   => $validated['entity_type'],
-                'key'           => $validated['key'],
-                'label'         => $validated['label'],
-                'type'          => $validated['type'],
-                'group_name'    => $validated['group_name'] ?? null,
+                'entity_type' => $validated['entity_type'],
+                'key' => $validated['key'],
+                'label' => $validated['label'],
+                'type' => $validated['type'],
+                'group_name' => $validated['group_name'] ?? null,
                 'display_order' => $validated['display_order'] ?? 0,
-                'is_required'   => $validated['is_required'] ?? false,
+                'is_required' => $validated['is_required'] ?? false,
             ]);
 
             $this->syncOptions($definition, $validated['options'] ?? []);
@@ -79,8 +113,8 @@ class AttributeDefinitionController extends Controller
                 $definition,
                 [
                     'entity_type' => $definition->entity_type->value,
-                    'key'         => $definition->key,
-                    'type'        => $definition->type->value,
+                    'key' => $definition->key,
+                    'type' => $definition->type->value,
                 ],
                 $request->user(),
             );
@@ -116,12 +150,12 @@ class AttributeDefinitionController extends Controller
 
         $definition = DB::transaction(function () use ($validated, $attributeDefinition, $request) {
             $attributeDefinition->update([
-                'label'         => $validated['label'] ?? $attributeDefinition->label,
-                'group_name'    => array_key_exists('group_name', $validated)
+                'label' => $validated['label'] ?? $attributeDefinition->label,
+                'group_name' => array_key_exists('group_name', $validated)
                     ? $validated['group_name']
                     : $attributeDefinition->group_name,
                 'display_order' => $validated['display_order'] ?? $attributeDefinition->display_order,
-                'is_required'   => $validated['is_required'] ?? $attributeDefinition->is_required,
+                'is_required' => $validated['is_required'] ?? $attributeDefinition->is_required,
             ]);
 
             if (array_key_exists('options', $validated)) {
@@ -134,8 +168,8 @@ class AttributeDefinitionController extends Controller
                 $attributeDefinition,
                 [
                     'entity_type' => $attributeDefinition->entity_type->value,
-                    'key'         => $attributeDefinition->key,
-                    'type'        => $attributeDefinition->type->value,
+                    'key' => $attributeDefinition->key,
+                    'type' => $attributeDefinition->type->value,
                 ],
                 $request->user(),
             );
@@ -171,8 +205,8 @@ class AttributeDefinitionController extends Controller
                 $attributeDefinition,
                 [
                     'entity_type' => $attributeDefinition->entity_type->value,
-                    'key'         => $attributeDefinition->key,
-                    'type'        => $attributeDefinition->type->value,
+                    'key' => $attributeDefinition->key,
+                    'type' => $attributeDefinition->type->value,
                 ],
                 $request->user(),
             );
@@ -208,8 +242,8 @@ class AttributeDefinitionController extends Controller
                 $attributeDefinition,
                 [
                     'entity_type' => $attributeDefinition->entity_type->value,
-                    'key'         => $attributeDefinition->key,
-                    'type'        => $attributeDefinition->type->value,
+                    'key' => $attributeDefinition->key,
+                    'type' => $attributeDefinition->type->value,
                 ],
                 $request->user(),
             );
@@ -235,12 +269,12 @@ class AttributeDefinitionController extends Controller
         $type = $request->input('type', $definition?->type?->value);
 
         $rules = [
-            'label'         => [$sometimes, 'string', 'max:255'],
-            'group_name'    => ['nullable', 'string', 'max:255'],
+            'label' => [$sometimes, 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:255'],
             'display_order' => ['sometimes', 'integer', 'min:0'],
-            'is_required'   => ['sometimes', 'boolean'],
-            'options'       => ['nullable', 'array'],
-            'options.*.id'  => ['nullable', 'integer', 'exists:attribute_options,id'],
+            'is_required' => ['sometimes', 'boolean'],
+            'options' => ['nullable', 'array'],
+            'options.*.id' => ['nullable', 'integer', 'exists:attribute_options,id'],
             'options.*.label' => ['required_with:options', 'string', 'max:255'],
             'options.*.display_order' => ['nullable', 'integer', 'min:0'],
         ];
@@ -319,7 +353,7 @@ class AttributeDefinitionController extends Controller
                 }
 
                 $existing->update([
-                    'label'         => $option['label'],
+                    'label' => $option['label'],
                     'display_order' => $displayOrder,
                 ]);
                 $keptIds[] = $existing->id;
@@ -328,7 +362,7 @@ class AttributeDefinitionController extends Controller
             }
 
             $created = $definition->options()->create([
-                'label'         => $option['label'],
+                'label' => $option['label'],
                 'display_order' => $displayOrder,
             ]);
             $keptIds[] = $created->id;

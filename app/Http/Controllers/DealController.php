@@ -10,12 +10,15 @@ use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
 use App\Models\Deal;
+use App\Models\Employee;
+use App\Support\Attributes\AppliesCreateAttributes;
+use App\Support\Auth\Permission;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Support\Auth\Permission;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class DealController extends Controller
 {
@@ -26,7 +29,7 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact'])->latest();
@@ -57,7 +60,7 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $query = Deal::query()->visibleTo($employee, Permission::DealManage)->with(['desiredUnitClass', 'contact']);
@@ -82,21 +85,39 @@ class DealController extends Controller
         Gate::authorize(Permission::DealManage->value);
 
         $validated = $request->validate([
-            'contact_id'            => ['required', 'integer', 'exists:contacts,id'],
-            'site_id'               => ['nullable', 'integer', 'exists:sites,id'],
-            'status'                => ['nullable', Rule::enum(DealStatus::class)],
-            'expected_move_in'      => ['nullable', 'date'],
-            'expected_stay_length'  => ['nullable', 'integer', 'min:1'],
-            'expected_stay_period'  => ['nullable', Rule::enum(StayPeriod::class)],
-            'desired_size'          => ['nullable', 'numeric', 'min:0'],
+            'contact_id' => ['required', 'integer', 'exists:contacts,id'],
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+            'status' => ['nullable', Rule::enum(DealStatus::class)],
+            'expected_move_in' => ['nullable', 'date'],
+            'expected_stay_length' => ['nullable', 'integer', 'min:1'],
+            'expected_stay_period' => ['nullable', Rule::enum(StayPeriod::class)],
+            'desired_size' => ['nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['nullable', 'integer', 'exists:unit_classes,id'],
+            ...AppliesCreateAttributes::validationRules(),
         ]);
 
-        $deal = Deal::query()->create($validated);
+        $attributes = $validated['attributes'] ?? [];
+        unset($validated['attributes']);
 
-        RecordsActivity::core('deal.created', $deal, [
-            'status' => $deal->status?->value ?? $deal->status,
-        ]);
+        /** @var Employee|null $actor */
+        $actor = $request->user();
+
+        $deal = DB::transaction(function () use ($validated, $attributes, $actor): Deal {
+            $deal = Deal::query()->create($validated);
+
+            AppliesCreateAttributes::apply(
+                AttributeEntityType::Deal,
+                $deal,
+                $attributes,
+                $actor,
+            );
+
+            RecordsActivity::core('deal.created', $deal, [
+                'status' => $deal->status?->value ?? $deal->status,
+            ]);
+
+            return $deal;
+        });
 
         return $this->created(
             DealResource::make($deal->load('desiredUnitClass')),
@@ -135,13 +156,13 @@ class DealController extends Controller
         Gate::authorize(Permission::DealManage->value, $deal);
 
         $validated = $request->validate([
-            'contact_id'            => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
-            'site_id'               => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
-            'status'                => ['sometimes', 'nullable', Rule::enum(DealStatus::class)],
-            'expected_move_in'      => ['sometimes', 'nullable', 'date'],
-            'expected_stay_length'  => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'expected_stay_period'  => ['sometimes', 'nullable', Rule::enum(StayPeriod::class)],
-            'desired_size'          => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'contact_id' => ['sometimes', 'required', 'integer', 'exists:contacts,id'],
+            'site_id' => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
+            'status' => ['sometimes', 'nullable', Rule::enum(DealStatus::class)],
+            'expected_move_in' => ['sometimes', 'nullable', 'date'],
+            'expected_stay_length' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'expected_stay_period' => ['sometimes', 'nullable', Rule::enum(StayPeriod::class)],
+            'desired_size' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'desired_unit_class_id' => ['sometimes', 'nullable', 'integer', 'exists:unit_classes,id'],
         ]);
 
@@ -221,7 +242,7 @@ class DealController extends Controller
     {
         Gate::authorize(Permission::DealManage->value);
 
-        /** @var \App\Models\Employee $employee */
+        /** @var Employee $employee */
         $employee = $request->user();
 
         $request->validate([
@@ -243,8 +264,8 @@ class DealController extends Controller
 
         $options = $query->get()->map(fn (Deal $deal) => [
             'value' => $deal->id,
-            'label' => 'Deal #' . $deal->id . ($deal->contact
-                ? ' — ' . trim("{$deal->contact->first_name} {$deal->contact->last_name}")
+            'label' => 'Deal #'.$deal->id.($deal->contact
+                ? ' — '.trim("{$deal->contact->first_name} {$deal->contact->last_name}")
                 : ''),
         ]);
 
