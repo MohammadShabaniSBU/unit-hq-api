@@ -80,10 +80,10 @@ final class FrontDeskMisc extends Journey
                     'phone' => '+34600111003',
                 ]);
                 JourneySupport::openDeal($world, 'wa_closing', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS4');
                 $date = CarbonImmutable::parse(CastExecutor::SIM_START)
                     ->addDays(max(0, $end - 40))
                     ->toDateString();
+                $unit = JourneySupport::vacantUnit($site, 'SS4', $date);
                 JourneySupport::walkInSign($world, 'wa_closing', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'wa_closing');
 

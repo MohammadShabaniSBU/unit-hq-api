@@ -284,6 +284,12 @@ final class SitePath
             $outer
                 ->whereExists(function (QueryBuilder $sub) use ($siteIds): void {
                     $sub->selectRaw('1')
+                        ->from('contact_sites')
+                        ->whereColumn('contact_sites.contact_id', 'contacts.id')
+                        ->whereIn('contact_sites.site_id', $siteIds);
+                })
+                ->orWhereExists(function (QueryBuilder $sub) use ($siteIds): void {
+                    $sub->selectRaw('1')
                         ->from('deals')
                         ->whereColumn('deals.contact_id', 'contacts.id')
                         ->whereIn('deals.site_id', $siteIds);
@@ -321,6 +327,11 @@ final class SitePath
                 })
                 ->orWhere(function (Builder $unassigned): void {
                     $unassigned
+                        ->whereNotExists(function (QueryBuilder $sub): void {
+                            $sub->selectRaw('1')
+                                ->from('contact_sites')
+                                ->whereColumn('contact_sites.contact_id', 'contacts.id');
+                        })
                         ->whereNotExists(function (QueryBuilder $sub): void {
                             $sub->selectRaw('1')
                                 ->from('deals')

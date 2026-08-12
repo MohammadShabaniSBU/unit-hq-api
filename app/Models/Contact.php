@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
@@ -56,6 +57,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read Employee|null                $creator
  * @property-read Collection<int, ContactChannel> $channels
  * @property-read Collection<int, ContactAddress> $addresses
+ * @property-read Collection<int, Site>         $sites
  * @property-read Collection<int, Deal>        $deals
  * @property-read Collection<int, Offer>       $offers
  * @property-read Collection<int, Reservation> $reservations
@@ -289,6 +291,12 @@ class Contact extends Model
     public function addresses(): HasMany
     {
         return $this->hasMany(ContactAddress::class);
+    }
+
+    /** @return BelongsToMany<Site, $this> */
+    public function sites(): BelongsToMany
+    {
+        return $this->belongsToMany(Site::class, 'contact_sites')->withTimestamps();
     }
 
     /** @return HasMany<Deal> */

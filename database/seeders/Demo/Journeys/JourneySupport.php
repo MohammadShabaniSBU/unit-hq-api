@@ -97,6 +97,7 @@ use App\Support\Payments\ProviderAccountResolver;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Seeders\Demo\DemoWorld;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -200,10 +201,17 @@ final class JourneySupport
         return $deal;
     }
 
-    public static function vacantUnit(Site $site, string $unitClassCode = 'SS4'): Unit
-    {
+    public static function vacantUnit(
+        Site $site,
+        string $unitClassCode = 'SS4',
+        CarbonInterface|string|null $from = null,
+        CarbonInterface|string|null $to = null,
+    ): Unit {
         $class = UnitClass::query()->where('code', $unitClassCode)->firstOrFail();
-        $today = SiteClock::today($site);
+        $fromDay = $from !== null
+            ? CarbonImmutable::parse($from)->startOfDay()
+            : SiteClock::today($site);
+        $toDay = $to !== null ? CarbonImmutable::parse($to)->startOfDay() : null;
 
         $units = Unit::query()
             ->where('site_id', $site->id)
@@ -213,8 +221,8 @@ final class JourneySupport
 
         foreach ($units as $unit) {
             try {
-                OccupancyGuard::assertVacant($unit->id, $today, null);
-                HoldGuard::assertUnheld($unit->id, $today, null);
+                OccupancyGuard::assertVacant($unit->id, $fromDay, $toDay);
+                HoldGuard::assertUnheld($unit->id, $fromDay, $toDay);
 
                 return $unit;
             } catch (ValidationException) {

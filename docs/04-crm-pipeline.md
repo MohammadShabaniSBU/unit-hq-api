@@ -21,7 +21,7 @@ Durable **person record holding identity only**. Contacts do **not** log in — 
 
 - Multiple emails / phones live in `ContactChannel` (`type`, `value`, `label`, `is_primary`, `opted_in`) — the contact row itself stays clean.
 - **Partial unique index** enforces only one primary channel per type per contact.
-- Contact detail views show activity **across all sites** — a Contact is not site-scoped.
+- Sites are associated via the `contact_sites` pivot (many-to-many). Create requires a `site_id`; optional `phone` creates a primary phone channel in the same transaction. Detail views still show activity **across all sites** — a Contact is not site-scoped as a subject (`SubjectSite` → null).
 
 ## Deal
 

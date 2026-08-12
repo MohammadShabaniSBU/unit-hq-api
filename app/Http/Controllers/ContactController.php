@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\ContactChannelType;
 use App\Enums\ContactLifecycleStatus;
 use App\Enums\ContactRecordStatus;
 use App\Enums\TaxIdType;
@@ -18,6 +19,7 @@ use App\Models\Payment;
 use App\Support\Fiscal\TaxId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Support\Auth\Permission;
@@ -96,6 +98,8 @@ class ContactController extends Controller
             'last_name'            => ['required', 'string', 'max:255'],
             'email'                => ['nullable', 'email', 'max:255'],
             'company'              => ['nullable', 'string', 'max:255'],
+            'phone'                => ['nullable', 'string', 'max:255'],
+            'site_id'              => ['required', 'integer', 'exists:sites,id'],
             'locale'               => ['nullable', 'string', 'in:en,es,fr'],
             ...$this->fiscalValidationRules(sometimes: false),
             'contact_status'       => ['nullable', Rule::enum(ContactRecordStatus::class)],
@@ -104,9 +108,26 @@ class ContactController extends Controller
             'created_by'           => ['nullable', 'integer', 'exists:employees,id'],
         ]);
 
+        $siteId = (int) $validated['site_id'];
+        $phone = isset($validated['phone']) ? trim((string) $validated['phone']) : '';
+        unset($validated['site_id'], $validated['phone']);
+
         $validated = $this->normalizeFiscalFields($validated);
 
-        $contact = Contact::query()->create($validated);
+        $contact = DB::transaction(function () use ($validated, $siteId, $phone): Contact {
+            $contact = Contact::query()->create($validated);
+            $contact->sites()->attach($siteId);
+
+            if ($phone !== '') {
+                $contact->channels()->create([
+                    'type' => ContactChannelType::Phone,
+                    'value' => $phone,
+                    'is_primary' => true,
+                ]);
+            }
+
+            return $contact->load(['sites', 'channels']);
+        });
 
         return $this->created(
             ContactResource::make($contact),
@@ -121,6 +142,7 @@ class ContactController extends Controller
         $contact->load([
             'channels',
             'addresses.country',
+            'sites',
             'deals.desiredUnitClass',
             'deals.offers',
             'contracts.items.item',
