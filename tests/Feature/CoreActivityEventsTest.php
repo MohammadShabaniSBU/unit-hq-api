@@ -27,7 +27,7 @@ class CoreActivityEventsTest extends TestCase
         $this->authenticateAsEmployee();
     }
 
-    public function test_deal_store_logs_core_created_event(): void
+    public function test_deal_store_logs_crm_created_event(): void
     {
         $contact = Contact::factory()->create();
 
@@ -41,13 +41,22 @@ class CoreActivityEventsTest extends TestCase
         $this->assertNotEmpty($requestId);
 
         $activity = Activity::query()
-            ->where('log_name', LogChannel::Core->value)
+            ->where('log_name', LogChannel::Crm->value)
             ->where('description', 'deal.created')
+            ->where('subject_type', 'deal')
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame('deal', $activity->subject_type);
         $this->assertSame($requestId, $activity->properties->get('request_id'));
+
+        $contactActivity = Activity::query()
+            ->where('log_name', LogChannel::Crm->value)
+            ->where('description', 'deal.created')
+            ->where('subject_type', 'contact')
+            ->where('subject_id', $contact->id)
+            ->first();
+
+        $this->assertNotNull($contactActivity);
     }
 
     public function test_deal_stage_change_logs_core_events(): void

@@ -3,17 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\TaskResource;
+use App\Enums\LogChannel;
 use App\Enums\TaskType;
 use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Task;
+use App\Support\Auth\Permission;
+use App\Support\RecordsActivity;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class ContactTaskController extends Controller
 {
@@ -44,6 +46,12 @@ class ContactTaskController extends Controller
             'status'     => 'open',
             'created_by' => $createdBy,
         ]);
+
+        RecordsActivity::log(LogChannel::Crm, 'task.created', $contact, [
+            'task_id' => $task->id,
+            'title' => $task->title,
+            'due_at' => $task->due_at?->toDateString(),
+        ], $request->user());
 
         return $this->created(
             TaskResource::make($task),

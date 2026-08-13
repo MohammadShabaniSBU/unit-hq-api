@@ -74,6 +74,7 @@ final class NativeFields
             ],
             AttributeEntityType::Deal => [
                 'status',
+                'site_id',
                 'expected_move_in',
                 'expected_stay_length',
                 'expected_stay_period',
@@ -152,6 +153,7 @@ final class NativeFields
     {
         return [
             new NativeField('status', 'Status', 'select', required: true, optionsSource: 'deal_statuses'),
+            new NativeField('site_id', 'Site', 'select', editable: false, optionsSource: 'sites'),
             new NativeField('expected_move_in', 'Expected move-in', 'date'),
             new NativeField('expected_stay_length', 'Expected stay length', 'number'),
             new NativeField('expected_stay_period', 'Expected stay period', 'select', optionsSource: 'stay_periods'),

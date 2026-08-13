@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Ai\Tools;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\LogChannel;
 use App\Enums\TaskType;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Employee;
 use App\Models\Task;
 use App\Support\Auth\SubjectSite;
+use App\Support\RecordsActivity;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;
@@ -73,6 +75,12 @@ class CreateTask implements Tool, Approvable
             'status' => 'open',
             'created_by' => $this->employee->id,
         ]);
+
+        RecordsActivity::log(LogChannel::Crm, 'task.created', $taskable, [
+            'task_id' => $task->id,
+            'title' => $task->title,
+            'due_at' => $task->due_at?->toDateString(),
+        ], $this->employee);
 
         return json_encode([
             'success' => true,

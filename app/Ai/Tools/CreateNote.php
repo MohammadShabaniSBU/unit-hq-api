@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Tools;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\LogChannel;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
@@ -12,7 +13,9 @@ use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\Reservation;
 use App\Support\Auth\SubjectSite;
+use App\Support\RecordsActivity;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Str;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Tool;
@@ -72,6 +75,11 @@ class CreateNote implements Tool, Approvable
             'content' => $request['content'],
             'employee_id' => $this->employee->id,
         ]);
+
+        RecordsActivity::log(LogChannel::Crm, 'note.created', $notable, [
+            'note_id' => $note->id,
+            'content' => Str::limit($note->content, 160),
+        ], $this->employee);
 
         return json_encode([
             'success' => true,

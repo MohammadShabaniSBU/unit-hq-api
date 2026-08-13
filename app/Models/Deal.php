@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\DealStatus;
+use App\Enums\LogChannel;
 use App\Enums\StayPeriod;
 use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\HasNotes;
+use App\Models\Concerns\LogsDirtyActivity;
 use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * The pursuit record. Starts when someone expresses interest and ends when
@@ -48,7 +52,120 @@ use Illuminate\Support\Carbon;
  */
 class Deal extends Model
 {
-    use HasFactory, HasNotes, HasAutomationTriggers, VisibleToEmployee;
+    use HasFactory, HasNotes, HasAutomationTriggers, LogsDirtyActivity, VisibleToEmployee;
+
+    protected function activityLogChannel(): LogChannel
+    {
+        return LogChannel::Crm;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName($this->activityLogChannel()->value)
+            ->logFillable()
+            ->logExcept(['status'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->dontLogIfAttributesChangedOnly(['updated_at']);
+    }
+
+    /**
+     * Store desired unit class as {id, label} so the activity timeline can show the dropdown name.
+     */
+    public function beforeActivityLogged(Activity $activity, string $event): void
+    {
+        $changes = $activity->attribute_changes;
+        if ($changes === null || $changes->isEmpty()) {
+            return;
+        }
+
+        $attributes = is_array($changes->get('attributes')) ? $changes->get('attributes') : [];
+        $old = is_array($changes->get('old')) ? $changes->get('old') : [];
+
+        $hasInAttributes = array_key_exists('desired_unit_class_id', $attributes);
+        $hasInOld = array_key_exists('desired_unit_class_id', $old);
+
+        if (! $hasInAttributes && ! $hasInOld) {
+            return;
+        }
+
+        $ids = [];
+        if ($hasInAttributes) {
+            $id = self::positiveIntOrNull($attributes['desired_unit_class_id']);
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+        if ($hasInOld) {
+            $id = self::positiveIntOrNull($old['desired_unit_class_id']);
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        /** @var SupportCollection<int, string|null> $labels */
+        $labels = $ids === []
+            ? collect()
+            : UnitClass::query()->whereIn('id', array_values(array_unique($ids)))->pluck('label', 'id');
+
+        if ($hasInAttributes) {
+            $attributes['desired_unit_class_id'] = self::unitClassRef(
+                $attributes['desired_unit_class_id'],
+                $labels
+            );
+        }
+        if ($hasInOld) {
+            $old['desired_unit_class_id'] = self::unitClassRef(
+                $old['desired_unit_class_id'],
+                $labels
+            );
+        }
+
+        $merged = $changes->all();
+        if ($hasInAttributes || array_key_exists('attributes', $merged)) {
+            $merged['attributes'] = $attributes;
+        }
+        if ($hasInOld || array_key_exists('old', $merged)) {
+            $merged['old'] = $old;
+        }
+
+        $activity->attribute_changes = collect($merged);
+    }
+
+    /**
+     * @param  SupportCollection<int, string|null>  $labels
+     * @return array{id: int, label: string|null}|null
+     */
+    private static function unitClassRef(mixed $value, SupportCollection $labels): ?array
+    {
+        $id = self::positiveIntOrNull($value);
+        if ($id === null) {
+            return null;
+        }
+
+        $label = $labels->get($id);
+
+        return [
+            'id' => $id,
+            'label' => is_string($label) ? $label : null,
+        ];
+    }
+
+    private static function positiveIntOrNull(mixed $value): ?int
+    {
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value)) {
+            $parsed = (int) $value;
+
+            return $parsed > 0 ? $parsed : null;
+        }
+
+        return null;
+    }
 
     protected $fillable = [
         'contact_id',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AttributeEntityType;
 use App\Enums\DealStatus;
+use App\Enums\LogChannel;
 use App\Enums\StayPeriod;
 use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
@@ -112,9 +113,18 @@ class DealController extends Controller
                 $actor,
             );
 
-            RecordsActivity::core('deal.created', $deal, [
+            RecordsActivity::log(LogChannel::Crm, 'deal.created', $deal, [
                 'status' => $deal->status?->value ?? $deal->status,
-            ]);
+            ], $actor);
+
+            // Mirror onto the contact so the contact Activity tab shows the pursuit start.
+            $contact = $deal->contact;
+            if ($contact !== null) {
+                RecordsActivity::log(LogChannel::Crm, 'deal.created', $contact, [
+                    'deal_id' => $deal->id,
+                    'status' => $deal->status?->value ?? $deal->status,
+                ], $actor);
+            }
 
             return $deal;
         });
@@ -131,6 +141,7 @@ class DealController extends Controller
 
         $deal->load([
             'contact',
+            'site',
             'desiredUnitClass',
             'offers.options.unitClassRate.unitClass',
             'offers.options.unitClassRate.site',
@@ -168,7 +179,7 @@ class DealController extends Controller
 
         $previousStatus = $deal->status;
         $deal->update($validated);
-        $deal = $deal->fresh()->load('desiredUnitClass');
+        $deal = $deal->fresh()->load(['desiredUnitClass', 'site']);
 
         if (array_key_exists('status', $validated)) {
             $newStatus = $deal->status;
@@ -205,7 +216,7 @@ class DealController extends Controller
 
         $previousStatus = $deal->status;
         $deal->update(['status' => $validated['status']]);
-        $deal = $deal->fresh()->load(['contact', 'desiredUnitClass']);
+        $deal = $deal->fresh()->load(['contact', 'desiredUnitClass', 'site']);
 
         $from = $previousStatus instanceof DealStatus ? $previousStatus->value : $previousStatus;
         $to = $deal->status instanceof DealStatus ? $deal->status->value : $deal->status;

@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\LogChannel;
 use App\Http\Resources\NoteResource;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Offer;
 use App\Models\Reservation;
+use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Gate;
 
 class NoteController extends Controller
 {
@@ -53,6 +56,11 @@ class NoteController extends Controller
             'content'     => $validated['content'],
             'employee_id' => $employee->id,
         ]);
+
+        RecordsActivity::log(LogChannel::Crm, 'note.created', $notable, [
+            'note_id' => $note->id,
+            'content' => Str::limit($note->content, 160),
+        ], $employee);
 
         return $this->created(
             NoteResource::make($note->load('employee')),

@@ -15,7 +15,7 @@ Three logging tiers on two tables:
 - **Correlation id.** `AssignRequestId` middleware + queue payload restore. Stamped on every tier-1 row and into `properties.request_id` on every activity row.
 - **Append-only.** No update/delete API for logs. Carve-out: GDPR redaction may null JSON keys (`contacts:redact`).
 - **Tier-3 events are logged explicitly** inside the same DB transaction as the business op (`RecordsActivity::core`). Never via model observers for core events.
-- **Tier-2 attribute diffs** use Spatie `LogsActivity` via `LogsDirtyActivity` on Contact, ContactChannel, Unit, UnitClass, Insurance, Discount, TaxRate.
+- **Tier-2 attribute diffs** use Spatie `LogsActivity` via `LogsDirtyActivity` on Contact, ContactChannel, Deal (fillable diffs; `status` excluded — stage changes are Tier-3), Unit, UnitClass, Insurance, Discount, TaxRate.
 - **Tier-1 writes never fail business code.** `SystemEvent::record` uses `DB::afterCommit` + try/catch + `report()`.
 
 ## Channels (`LogChannel`)
@@ -23,7 +23,7 @@ Three logging tiers on two tables:
 | Value | Tier | Notes |
 |---|---|---|
 | `core` | 3 | Always on |
-| `crm` | 2 | Contact / ContactChannel diffs; attribute value upserts on CRM entities |
+| `crm` | 2 | Contact / ContactChannel / Deal diffs; attribute value upserts on CRM entities |
 | `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned`; object-customization layout mutations; attribute value upserts on Unit |
 | `comms` | 2 | `offer.sent` |
 | `billing` | 2 | Billing run events (`billing.run.completed`); reserved for further billing attribute/events |

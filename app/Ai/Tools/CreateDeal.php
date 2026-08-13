@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Ai\Tools;
 
 use App\Enums\DealStatus;
+use App\Enums\LogChannel;
 use App\Models\Contact;
 use App\Models\Deal;
 use App\Models\Employee;
 use App\Support\Auth\Permission;
+use App\Support\RecordsActivity;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Concerns\InteractsWithApprovals;
 use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Tool;
@@ -38,15 +41,28 @@ class CreateDeal implements Tool, Approvable
 
         $contact = Contact::query()->findOrFail($request['contact_id']);
 
-        $deal = Deal::query()->create([
-            'contact_id' => $contact->id,
-            'status' => $request['status'] ?? DealStatus::New->value,
-            'expected_move_in' => $request['expected_move_in'] ?? null,
-            'expected_stay_length' => $request['expected_stay_length'] ?? null,
-            'expected_stay_period' => $request['expected_stay_period'] ?? null,
-            'desired_size' => $request['desired_size'] ?? null,
-            'desired_unit_class_id' => $request['desired_unit_class_id'] ?? null,
-        ]);
+        $deal = DB::transaction(function () use ($request, $contact): Deal {
+            $deal = Deal::query()->create([
+                'contact_id' => $contact->id,
+                'status' => $request['status'] ?? DealStatus::New->value,
+                'expected_move_in' => $request['expected_move_in'] ?? null,
+                'expected_stay_length' => $request['expected_stay_length'] ?? null,
+                'expected_stay_period' => $request['expected_stay_period'] ?? null,
+                'desired_size' => $request['desired_size'] ?? null,
+                'desired_unit_class_id' => $request['desired_unit_class_id'] ?? null,
+            ]);
+
+            RecordsActivity::log(LogChannel::Crm, 'deal.created', $deal, [
+                'status' => $deal->status?->value ?? $deal->status,
+            ], $this->employee);
+
+            RecordsActivity::log(LogChannel::Crm, 'deal.created', $contact, [
+                'deal_id' => $deal->id,
+                'status' => $deal->status?->value ?? $deal->status,
+            ], $this->employee);
+
+            return $deal;
+        });
 
         return json_encode([
             'success' => true,

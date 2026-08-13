@@ -59,8 +59,14 @@ class ActivityController extends Controller
         $query = Activity::query()->with('causer')->latest('id');
 
         if (! empty($validated['subject_type']) && ! empty($validated['subject_id'])) {
-            $query->where('subject_type', self::SUBJECT_MAP[$validated['subject_type']])
-                ->where('subject_id', $validated['subject_id']);
+            // Morph map stores aliases (e.g. "contact"); accept FQCN too for any legacy rows.
+            $alias = $validated['subject_type'];
+            $class = self::SUBJECT_MAP[$alias];
+            $query->where('subject_id', $validated['subject_id'])
+                ->where(function ($inner) use ($alias, $class): void {
+                    $inner->where('subject_type', $alias)
+                        ->orWhere('subject_type', $class);
+                });
         }
 
         if (! empty($validated['log_name'])) {
