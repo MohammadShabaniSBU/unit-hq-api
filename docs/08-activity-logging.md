@@ -52,6 +52,13 @@ Tier-1 (system_events): `billing.contract.failed` — per-contract failure insid
 | `layout.group.created` / `.updated` / `.reordered` / `.deleted` | `facility` | `AttributeGroup` (or null for reorder) | Org settings / config |
 | `layout.field.added` / `.moved` / `.reordered` / `.removed` | `facility` | `LayoutField` or group | Properties include `entity_type` |
 
+### AI summary (Tier-1 + Tier-2)
+
+| Event | Tier / channel | Subject | Notes |
+|---|---|---|---|
+| `ai.summary.started` / `.committed` / `.failed` | Tier-1 `system_events` | Contact or Deal | Payload: `summary_id`, optional `error_code`. **Never the body.** |
+| `ai.summary.generated` | Tier-2 `crm` | Contact or Deal | Properties: `summary_id`, `model`, `prompt_version`, `source_counts`. **Never the body.** |
+
 ## API
 
 - `GET /api/activities` — filters: `subject_type`+`subject_id`, `log_name[]`, causer, date range. Paginated. Hides disabled tier-2 channels unless `include_disabled=1` and caller is a `User` (superadmin).

@@ -62,6 +62,10 @@ enum Permission: string
     case AccessManage = 'access.manage';
     case EsignSend = 'esign.send';
 
+    // AI
+    case AiSummaryView = 'ai_summary.view';
+    case AiSummaryGenerate = 'ai_summary.generate';
+
     // Cross-cutting
     case ReportView = 'report.view';
     case ReportFinancialView = 'report.financial.view';

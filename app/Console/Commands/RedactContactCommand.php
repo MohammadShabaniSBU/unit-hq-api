@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Activity;
+use App\Models\AiSummary;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
 use App\Models\CallWrapup;
 use App\Models\Contact;
+use App\Models\Deal;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\SystemEvent;
@@ -21,7 +23,7 @@ class RedactContactCommand extends Command
 {
     protected $signature = 'contacts:redact {contact : Contact id to redact from logs}';
 
-    protected $description = 'Null allowlisted PII keys in activity_log, system_events, and automation run payloads for a contact; log contact.redacted';
+    protected $description = 'Null allowlisted PII keys in activity_log, system_events, and automation run payloads for a contact; null ai_summaries content for the contact and its deals; log contact.redacted';
 
     public function handle(): int
     {
@@ -121,15 +123,17 @@ class RedactContactCommand extends Command
         }
 
         $wrapupCount = $this->redactCallWrapupsAndRecordings($contact);
+        $summaryCount = $this->redactAiSummaries($contact);
 
         RecordsActivity::core('contact.redacted', $contact, [
             'activity_rows' => $activityCount,
             'system_event_rows' => $systemCount,
             'automation_rows' => $automationCount,
             'call_wrapup_rows' => $wrapupCount,
+            'ai_summary_rows' => $summaryCount,
         ]);
 
-        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation, {$wrapupCount} call wrap-up/recording row(s). Logged contact.redacted.");
+        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation, {$wrapupCount} call wrap-up/recording, {$summaryCount} ai_summary row(s). Logged contact.redacted.");
 
         return self::SUCCESS;
     }
@@ -188,6 +192,55 @@ class RedactContactCommand extends Command
             if ($changed) {
                 $count++;
             }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Null summary content for the contact and every deal belonging to it.
+     * Rows are retained; body/highlights/source_counts/error_code are destroyed.
+     */
+    private function redactAiSummaries(Contact $contact): int
+    {
+        $dealIds = Deal::query()
+            ->where('contact_id', $contact->id)
+            ->pluck('id')
+            ->all();
+
+        $query = AiSummary::query()->where(function ($q) use ($contact, $dealIds): void {
+            $q->where(function ($inner) use ($contact): void {
+                $inner->where('summarizable_type', $contact->getMorphClass())
+                    ->where('summarizable_id', $contact->id);
+            });
+
+            if ($dealIds !== []) {
+                $q->orWhere(function ($inner) use ($dealIds): void {
+                    $inner->where('summarizable_type', 'deal')
+                        ->whereIn('summarizable_id', $dealIds);
+                });
+            }
+        });
+
+        $count = 0;
+        foreach ($query->cursor() as $summary) {
+            /** @var AiSummary $summary */
+            $changed = $summary->body !== null
+                || $summary->highlights !== null
+                || $summary->source_counts !== null
+                || $summary->error_code !== null;
+
+            if (! $changed) {
+                continue;
+            }
+
+            $summary->forceFill([
+                'body' => null,
+                'highlights' => null,
+                'source_counts' => null,
+                'error_code' => null,
+            ])->save();
+            $count++;
         }
 
         return $count;

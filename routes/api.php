@@ -327,6 +327,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('contacts/{contact}/addresses/{address}', [Controllers\ContactAddressController::class, 'destroy']);
     Route::post('contacts/{contact}/tasks', [Controllers\ContactTaskController::class, 'store']);
     Route::patch('contacts/{contact}/tasks/{task}', [Controllers\ContactTaskController::class, 'update']);
+    Route::get('contacts/{contact}/ai-summary', [Controllers\AiSummaryController::class, 'show']);
+    Route::post('contacts/{contact}/ai-summary', [Controllers\AiSummaryController::class, 'store']);
+    Route::get('contacts/{contact}/ai-summary/history', [Controllers\AiSummaryController::class, 'history']);
 
     Route::get('tasks/board', [Controllers\TaskBoardController::class, 'index']);
     Route::get('tasks/board/columns/{status}', [Controllers\TaskBoardController::class, 'column']);
@@ -352,6 +355,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('deals/{deal}/status', [Controllers\DealController::class, 'updateStatus']);
     Route::post('deals/{deal}/tasks', [Controllers\DealTaskController::class, 'store']);
     Route::patch('deals/{deal}/tasks/{task}', [Controllers\DealTaskController::class, 'update']);
+    Route::get('deals/{deal}/ai-summary', [Controllers\AiSummaryController::class, 'show']);
+    Route::post('deals/{deal}/ai-summary', [Controllers\AiSummaryController::class, 'store']);
+    Route::get('deals/{deal}/ai-summary/history', [Controllers\AiSummaryController::class, 'history']);
     Route::apiResource('deals', Controllers\DealController::class);
 
     Route::get('offers/filters/schema', [Controllers\OfferController::class, 'filterSchema']);

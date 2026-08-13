@@ -9,48 +9,48 @@ use App\Enums\DealStatus;
 use App\Enums\LogChannel;
 use App\Enums\ReservationStatus;
 use App\Enums\TaxIdType;
-use App\Models\Concerns\HasNotes;
+use App\Models\Concerns\HasAiSummary;
 use App\Models\Concerns\HasAutomationTriggers;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsDirtyActivity;
 use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Durable identity record for prospective and current renters.
  * Not all contacts become tenants. Contacts do not authenticate —
  * they interact via shareable offer links (token-based, no login).
  *
- * @property int                       $id
- * @property string                    $first_name
- * @property string                    $last_name
- * @property string|null               $email
- * @property string|null               $company
- * @property string|null               $billing_name
- * @property string|null               $tax_id
- * @property TaxIdType|null            $tax_id_type
- * @property string|null               $billing_address_line1
- * @property string|null               $billing_address_line2
- * @property string|null               $billing_city
- * @property string|null               $billing_postal_code
- * @property string|null               $billing_country_code
- * @property string|null               $locale
- * @property ContactLifecycleStatus    $status
- * @property ContactRecordStatus       $contact_status
- * @property int|null                  $canonical_contact_id
- * @property int|null                  $assigned_to
- * @property Carbon|null               $last_contacted_at
- * @property int|null                  $created_by
- * @property Carbon                    $created_at
- * @property Carbon                    $updated_at
- *
+ * @property int $id
+ * @property string $first_name
+ * @property string $last_name
+ * @property string|null $email
+ * @property string|null $company
+ * @property string|null $billing_name
+ * @property string|null $tax_id
+ * @property TaxIdType|null $tax_id_type
+ * @property string|null $billing_address_line1
+ * @property string|null $billing_address_line2
+ * @property string|null $billing_city
+ * @property string|null $billing_postal_code
+ * @property string|null $billing_country_code
+ * @property string|null $locale
+ * @property ContactLifecycleStatus $status
+ * @property ContactRecordStatus $contact_status
+ * @property int|null $canonical_contact_id
+ * @property int|null $assigned_to
+ * @property Carbon|null $last_contacted_at
+ * @property int|null $created_by
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Contact|null                 $canonicalContact
  * @property-read Collection<int, Contact>     $duplicates
  * @property-read Employee|null                $assignee
@@ -69,7 +69,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Contact extends Model
 {
-    use HasFactory, HasNotes, HasAutomationTriggers, LogsDirtyActivity, VisibleToEmployee;
+    use HasAiSummary, HasAutomationTriggers, HasFactory, HasNotes, LogsDirtyActivity, VisibleToEmployee;
 
     protected function activityLogChannel(): LogChannel
     {
@@ -100,9 +100,9 @@ class Contact extends Model
     protected function casts(): array
     {
         return [
-            'status'            => ContactLifecycleStatus::class,
-            'contact_status'    => ContactRecordStatus::class,
-            'tax_id_type'       => TaxIdType::class,
+            'status' => ContactLifecycleStatus::class,
+            'contact_status' => ContactRecordStatus::class,
+            'tax_id_type' => TaxIdType::class,
             'last_contacted_at' => 'datetime',
         ];
     }

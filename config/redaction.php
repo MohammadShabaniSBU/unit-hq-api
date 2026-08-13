@@ -31,6 +31,11 @@ return [
     | basis — same posture as issued-invoice snapshots. contacts:redact must
     | NOT delete these artifacts; include them in any future GDPR export.
     |
+    | AI summaries (S22 / invariant 53): contacts:redact nulls body, highlights,
+    | source_counts, and error_code on all ai_summaries rows for the contact and
+    | every deal belonging to it (current and superseded). Rows are kept;
+    | content is destroyed. See RedactContactCommand — not a property_keys path.
+    |
     */
 
     'property_keys' => [

@@ -101,7 +101,7 @@
 | Late-fee fee-terms snapshot | Live-policy reading in v1 (see `09` invariant 18 exception). Snapshotting fee type/amount/percent onto contracts is the follow-up if a client pins exact fees in contract terms. |
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
-| Agent conversation redaction | Copilot / `agent_conversation_messages` hold contact names, emails and balances. `config/redaction.php` currently covers `activity_log` and `system_events` only. Extending `contacts:redact` to conversation message tables is a known gap (AR-03 out of scope). |
+| Agent conversation redaction | Copilot / `agent_conversation_messages` hold contact names, emails and balances. `ai_summaries` **is** covered by `contacts:redact` from S22 (null `body` / `highlights` / `source_counts` on the contact and its deals). Extending redaction to conversation message tables remains the open gap (AR-03 out of scope). |
 | Playbook payment links | Debt playbook emails may reference balance / a pay-link *placeholder*; auto-creating a payment request per enrolment is an **S10-era action**, not S09. |
 | Multi-playbook debt routing | v1 rejects overlapping active debt playbooks for the same site-filter coverage (empty `site_ids` = all sites). Richer priority / routing across overlapping site sets deferred. |
 | Pre-signature deposits / holding fees | S14-00 deliberately does not support taking a deposit (or any payment) before remote signature completes. An `awaiting_signature` contract has zero ledger rows; cancel leaves no fiscal trace. Holding fees / pre-signature deposits are a known future ask. |

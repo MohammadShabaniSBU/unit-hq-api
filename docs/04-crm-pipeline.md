@@ -23,9 +23,25 @@ Durable **person record holding identity only**. Contacts do **not** log in — 
 - **Partial unique index** enforces only one primary channel per type per contact.
 - Sites are associated via the `contact_sites` pivot (many-to-many). Create requires a `site_id`; optional `phone` creates a primary phone channel in the same transaction. Detail views still show activity **across all sites** — a Contact is not site-scoped as a subject (`SubjectSite` → null).
 
+### AI summary (Contact)
+
+Operator-triggered card on the Contact detail overview. One current summary per contact (`ai_summaries`, morph `summarizable`); regeneration inserts a new row and supersedes the previous current only on success. No scheduled/automatic regeneration.
+
+- `GET /api/contacts/{contact}/ai-summary` — current + in-flight + staleness + `can_generate`
+- `POST /api/contacts/{contact}/ai-summary` — queue a generation (202)
+- `GET /api/contacts/{contact}/ai-summary/history` — paginated superseded rows
+
 ## Deal
 
 The pursuit record: pipeline stage, forecast, intent. Also carries expected-need fields: `expected_move_in`, `expected_stay_length`, `expected_stay_period`, `desired_size`, `desired_unit_class_id`. Optional link target for interactions.
+
+### AI summary (Deal)
+
+Same card and job contract as Contact, scoped to the Deal. Operator-triggered only.
+
+- `GET /api/deals/{deal}/ai-summary`
+- `POST /api/deals/{deal}/ai-summary`
+- `GET /api/deals/{deal}/ai-summary/history`
 
 ## Offer — the commercial proposal
 

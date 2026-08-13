@@ -107,6 +107,8 @@ final class RoutePermissions
             'GET /api/contacts/filters/schema' => Permission::ContactView, // ContactController@filterSchema
             'GET /api/contacts/options' => Permission::ContactView, // ContactController@options
             'GET /api/contacts/{contact}' => Permission::ContactView, // ContactController@show
+            'GET /api/contacts/{contact}/ai-summary' => Permission::AiSummaryView, // AiSummaryController@show
+            'GET /api/contacts/{contact}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
             'GET /api/contacts/{contact}/interactions' => Permission::ContactView, // ContactInteractionController@index
             'GET /api/deals' => Permission::DealManage, // DealController@index
             'GET /api/deals/board' => Permission::DealManage, // DealBoardController@index
@@ -114,6 +116,8 @@ final class RoutePermissions
             'GET /api/deals/filters/schema' => Permission::DealManage, // DealController@filterSchema
             'GET /api/deals/options' => Permission::DealManage, // DealController@options
             'GET /api/deals/{deal}' => Permission::DealManage, // DealController@show
+            'GET /api/deals/{deal}/ai-summary' => Permission::AiSummaryView, // AiSummaryController@show
+            'GET /api/deals/{deal}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
             'GET /api/offers' => Permission::OfferManage, // OfferController@index
             'GET /api/offers/board' => Permission::OfferManage, // OfferBoardController@index
             'GET /api/offers/board/columns/{status}' => Permission::OfferManage, // OfferBoardController@column
@@ -144,11 +148,13 @@ final class RoutePermissions
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search
             'POST /api/contacts/{contact}/addresses' => Permission::ContactManage, // ContactAddressController@store
+            'POST /api/contacts/{contact}/ai-summary' => Permission::AiSummaryGenerate, // AiSummaryController@store
             'POST /api/contacts/{contact}/channels' => Permission::ContactManage, // ContactChannelController@store
             'POST /api/contacts/{contact}/interactions' => Permission::ContactManage, // ContactInteractionController@store
             'POST /api/contacts/{contact}/tasks' => Permission::ContactManage, // ContactTaskController@store
             'POST /api/deals' => Permission::DealManage, // DealController@store
             'POST /api/deals/search' => Permission::DealManage, // DealController@search
+            'POST /api/deals/{deal}/ai-summary' => Permission::AiSummaryGenerate, // AiSummaryController@store
             'POST /api/deals/{deal}/tasks' => Permission::DealManage, // DealTaskController@store
             'POST /api/notes' => Permission::ContactManage, // NoteController@store — actual permission resolved per note type via AttributeEntityType::managePermission(), not a single static case
             'POST /api/offer-options' => Permission::OfferManage, // OfferOptionController@store

@@ -158,6 +158,8 @@ class RbacSystemRoleSeeder extends Seeder
                     Permission::ActivityView,
                     Permission::AccessView,
                     Permission::EsignSend,
+                    Permission::AiSummaryView,
+                    Permission::AiSummaryGenerate,
                 ],
             ],
             [

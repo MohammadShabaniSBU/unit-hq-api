@@ -27,7 +27,7 @@
 - **Marketing** — campaigns; templates (email, SMS, WhatsApp). The email builder (`app/components/email-builder/`) doubles as a document/contract-authoring tool: alongside the usual email blocks it has a `document` template channel and contract-specific blocks (`PartiesBlock`, `TermsTableBlock`, `SignatureAnchorBlock`, `LegalSectionBlock`)
 - **Automations** — automation engine workflows (list + `[id]` flow-canvas graph editor built on `@vue-flow/core`, filterable by trigger domain) and `[id]/runs` run history/detail — see `12-automation-engine.md`
 - **Playbooks** — linear, kind-typed enrolment sequences (debt process / lead chase) that compile onto the automation engine — builder, enrolments, kind landing pages — see `13-playbooks.md`
-- **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount
+- **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount; contact/deal detail overview shows an operator-triggered AI summary card
 - **Facility** — units, unit classes, rates, discounts, insurance plans, access control
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
 - **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights

@@ -142,4 +142,35 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | AI Summaries (Contact / Deal)
+    |--------------------------------------------------------------------------
+    |
+    | Operator-triggered regenerable summaries. Caps bound the context builders;
+    | prompt_version is stamped on every ai_summaries row.
+    |
+    */
+
+    'summaries' => [
+        'prompt_version' => 'v1',
+        'model' => env('AI_SUMMARY_MODEL'),
+        'max_tokens' => 900,
+        'timeout' => 90,
+        'caps' => [
+            'interactions' => 40,
+            'notes' => 20,
+            'body_chars' => 800,
+        ],
+        'min_regenerate_seconds' => 30,
+        'highlight_keys' => [
+            'balance',
+            'stage',
+            'last_contact',
+            'open_tasks',
+            'delinquency',
+            'forecast',
+        ],
+    ],
+
 ];

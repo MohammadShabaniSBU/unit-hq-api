@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DealStatus;
 use App\Enums\LogChannel;
 use App\Enums\StayPeriod;
+use App\Models\Concerns\HasAiSummary;
 use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsDirtyActivity;
@@ -29,18 +30,17 @@ use Spatie\Activitylog\Support\LogOptions;
  *
  * Expected values live on Deal. Actual values live on Contract.
  *
- * @property int              $id
- * @property int              $contact_id
- * @property int|null         $site_id
- * @property DealStatus       $status
- * @property string|null      $expected_move_in Y-m-d
- * @property int|null         $expected_stay_length
- * @property StayPeriod|null  $expected_stay_period
- * @property string|null      $desired_size  NUMERIC(8,2)
- * @property int|null         $desired_unit_class_id
- * @property Carbon           $created_at
- * @property Carbon           $updated_at
- *
+ * @property int $id
+ * @property int $contact_id
+ * @property int|null $site_id
+ * @property DealStatus $status
+ * @property string|null $expected_move_in Y-m-d
+ * @property int|null $expected_stay_length
+ * @property StayPeriod|null $expected_stay_period
+ * @property string|null $desired_size NUMERIC(8,2)
+ * @property int|null $desired_unit_class_id
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Contact                          $contact
  * @property-read Site|null                        $site
  * @property-read UnitClass|null                   $desiredUnitClass
@@ -52,7 +52,7 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Deal extends Model
 {
-    use HasFactory, HasNotes, HasAutomationTriggers, LogsDirtyActivity, VisibleToEmployee;
+    use HasAiSummary, HasAutomationTriggers, HasFactory, HasNotes, LogsDirtyActivity, VisibleToEmployee;
 
     protected function activityLogChannel(): LogChannel
     {
@@ -181,10 +181,10 @@ class Deal extends Model
     protected function casts(): array
     {
         return [
-            'status'               => DealStatus::class,
-            'expected_move_in'     => 'date',
+            'status' => DealStatus::class,
+            'expected_move_in' => 'date',
             'expected_stay_period' => StayPeriod::class,
-            'desired_size'         => 'decimal:2',
+            'desired_size' => 'decimal:2',
         ];
     }
 

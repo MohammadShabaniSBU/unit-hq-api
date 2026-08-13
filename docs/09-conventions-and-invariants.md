@@ -183,6 +183,17 @@
 52. **Insight reports and analytics accounts are archive-only.** `archived_at`,
     `POST …/archive` / `…/unarchive`, `DELETE` aliases archive. Built-in (`is_system`) reports
     can be hidden and relabelled but never archived or repointed.
+53. **`ai_summaries` is a regenerable derived artefact, not history.** Its `status`
+    (`queued` → `running` → `succeeded` \| `failed`) is deliberately mutable and invariant 3
+    does not apply — but the *body* is never edited in place. Regeneration inserts a new row
+    and stamps `superseded_at` on the previous current row, inside one transaction, only on
+    success. A failed or in-flight generation never supersedes a succeeded summary. Exactly
+    one current summary per subject (partial unique on `(summarizable_type, summarizable_id)
+    WHERE superseded_at IS NULL AND status = 'succeeded'`) and at most one in-flight
+    generation (partial unique WHERE `status IN ('queued','running')`). Summary bodies are
+    model output about a contact and are in scope for `contacts:redact`. A summary is never
+    shown to a contact and is never an input to billing, delinquency, or any automated
+    decision.
 
 ## Code conventions
 
