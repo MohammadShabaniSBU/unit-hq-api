@@ -16,6 +16,22 @@ final class SupportAgentDefinition implements AgentDefinition
         return 'support';
     }
 
+    public function toolKeys(): array
+    {
+        return [
+            'facility.site_info',
+            'crm.create_task',
+            'crm.create_note',
+            'contract.summary',
+            'billing.balance',
+            'billing.next_charge',
+            'billing.invoices',
+            'access.status',
+            'kb.faq_lookup',
+            'agent.escalate',
+        ];
+    }
+
     protected function roleParagraph(AgentContext $ctx): string
     {
         return <<<'TEXT'

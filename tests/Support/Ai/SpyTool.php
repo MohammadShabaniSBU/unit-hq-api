@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support\Ai;
 
+use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\AgentTool;
@@ -59,7 +60,7 @@ final class SpyTool implements AgentTool
         return $this->contactKeys;
     }
 
-    public function handle(AgentPrincipal $principal, array $arguments): ToolResult
+    public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $this->handleCalled = true;
 

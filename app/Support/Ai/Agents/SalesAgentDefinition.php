@@ -16,6 +16,22 @@ final class SalesAgentDefinition implements AgentDefinition
         return 'sales';
     }
 
+    public function toolKeys(): array
+    {
+        return [
+            'facility.availability',
+            'facility.site_info',
+            'pricing.quote',
+            'pricing.discounts',
+            'sales.propose_offer',
+            'crm.create_contact',
+            'crm.create_deal',
+            'crm.create_task',
+            'kb.faq_lookup',
+            'agent.escalate',
+        ];
+    }
+
     protected function roleParagraph(AgentContext $ctx): string
     {
         return <<<'TEXT'

@@ -6,6 +6,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AiAgent;
 use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\ToolRegistry;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +35,22 @@ class AgentDefinitionCoverageTest extends TestCase
                     "Definition [{$key}] claims unregistered tool [{$toolKey}].",
                 );
             }
+        }
+    }
+
+    #[Test]
+    public function sales_claims_no_verified_tools(): void
+    {
+        $definition = app(AgentRegistry::class)->get('sales');
+        $tools = app(ToolRegistry::class);
+
+        foreach ($definition->toolKeys() as $toolKey) {
+            $this->assertTrue($tools->has($toolKey), "Sales claims unregistered tool [{$toolKey}].");
+            $this->assertNotSame(
+                VerificationLevel::Verified,
+                $tools->get($toolKey)->requiredVerification(),
+                "Sales claims verified tool [{$toolKey}].",
+            );
         }
     }
 }

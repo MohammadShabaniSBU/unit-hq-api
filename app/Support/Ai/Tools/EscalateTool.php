@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
@@ -52,7 +53,7 @@ final class EscalateTool implements AgentTool
         return [];
     }
 
-    public function handle(AgentPrincipal $principal, array $arguments): ToolResult
+    public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $reason = HandoffReason::from((string) $arguments['reason']);
         $summary = (string) $arguments['summary'];

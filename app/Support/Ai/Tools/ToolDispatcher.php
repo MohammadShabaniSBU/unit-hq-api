@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Enums\ToolDeniedReason;
@@ -20,6 +21,7 @@ final class ToolDispatcher
         AgentPrincipal $principal,
         string $toolKey,
         array $arguments,
+        ?AgentContext $ctx = null,
     ): ToolResult {
         if (! in_array($toolKey, $definition->toolKeys(), true)) {
             return ToolResult::denied(
@@ -56,7 +58,7 @@ final class ToolDispatcher
             }
         }
 
-        return $tool->handle($principal, $arguments);
+        return $tool->handle($principal, $arguments, $ctx);
     }
 
     private function validateArguments(AgentTool $tool, array $arguments): ?string

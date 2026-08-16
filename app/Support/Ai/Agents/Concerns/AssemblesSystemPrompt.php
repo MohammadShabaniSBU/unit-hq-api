@@ -31,11 +31,6 @@ trait AssemblesSystemPrompt
         return implode("\n\n", array_filter($parts, fn (string $part): bool => $part !== ''));
     }
 
-    public function toolKeys(): array
-    {
-        return ['agent.escalate'];
-    }
-
     public function handoffRules(): array
     {
         return [];

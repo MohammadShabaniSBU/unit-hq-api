@@ -171,6 +171,7 @@ final class AgentRuntime
                         $principal,
                         $call['name'],
                         $call['arguments'],
+                        $ctx,
                     );
                     $durationMs = (int) ((hrtime(true) - $startedTool) / 1_000_000);
 

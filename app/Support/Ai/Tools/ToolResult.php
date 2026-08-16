@@ -60,7 +60,7 @@ final readonly class ToolResult
         );
     }
 
-    public static function error(string $message): self
+    public static function error(string $message, ?HandoffReason $handoffReason = null): self
     {
         return new self(
             ToolInvocationStatus::Error,
@@ -68,6 +68,7 @@ final readonly class ToolResult
             '',
             new FactBag,
             message: $message,
+            handoffReason: $handoffReason,
         );
     }
 }

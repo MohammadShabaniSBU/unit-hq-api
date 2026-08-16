@@ -49,7 +49,22 @@ use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\HandoffEvaluator;
 use App\Support\Ai\Guards\NullGuardrailPipeline;
 use App\Support\Ai\Guards\NullHandoffEvaluator;
+use App\Support\Ai\Tools\AccessStatusTool;
+use App\Support\Ai\Tools\BillingBalanceTool;
+use App\Support\Ai\Tools\BillingInvoicesTool;
+use App\Support\Ai\Tools\BillingNextChargeTool;
+use App\Support\Ai\Tools\ContractSummaryTool;
+use App\Support\Ai\Tools\CrmCreateContactTool;
+use App\Support\Ai\Tools\CrmCreateDealTool;
+use App\Support\Ai\Tools\CrmCreateNoteTool;
+use App\Support\Ai\Tools\CrmCreateTaskTool;
 use App\Support\Ai\Tools\EscalateTool;
+use App\Support\Ai\Tools\FacilityAvailabilityTool;
+use App\Support\Ai\Tools\FacilitySiteInfoTool;
+use App\Support\Ai\Tools\KbFaqLookupTool;
+use App\Support\Ai\Tools\PricingDiscountsTool;
+use App\Support\Ai\Tools\PricingQuoteTool;
+use App\Support\Ai\Tools\SalesProposeOfferTool;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
@@ -96,6 +111,21 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(ToolRegistry::class, function (): ToolRegistry {
             $registry = new ToolRegistry;
+            $registry->register(new FacilityAvailabilityTool);
+            $registry->register(new FacilitySiteInfoTool);
+            $registry->register(new PricingQuoteTool);
+            $registry->register(new PricingDiscountsTool);
+            $registry->register(new SalesProposeOfferTool);
+            $registry->register(new CrmCreateContactTool);
+            $registry->register(new CrmCreateDealTool);
+            $registry->register(new CrmCreateTaskTool);
+            $registry->register(new CrmCreateNoteTool);
+            $registry->register(new ContractSummaryTool);
+            $registry->register(new BillingBalanceTool);
+            $registry->register(new BillingNextChargeTool);
+            $registry->register(new BillingInvoicesTool);
+            $registry->register(new AccessStatusTool);
+            $registry->register(new KbFaqLookupTool);
             $registry->register(new EscalateTool);
 
             return $registry;
