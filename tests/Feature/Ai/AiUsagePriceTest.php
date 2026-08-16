@@ -6,6 +6,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AiModelPrice;
 use App\Models\AiUsageEvent;
+use App\Models\Employee;
 use App\Support\Ai\AiUsageCost;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -47,6 +48,7 @@ class AiUsagePriceTest extends TestCase
         $callId = (string) Str::uuid7();
         $event = AiUsageEvent::query()->create([
             'call_id' => $callId,
+            'employee_id' => Employee::factory()->create()->id,
             'purpose' => 'copilot',
             'provider' => 'anthropic',
             'model' => 'claude-sonnet-5',

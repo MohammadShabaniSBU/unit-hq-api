@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Ai\Concerns\RemembersConversations;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -67,7 +68,7 @@ class CopilotConversationTest extends TestCase
         ]);
 
         $now = now();
-        DB::table('agent_conversation_messages')->insert([
+        DB::table('copilot_conversation_messages')->insert([
             [
                 'id' => (string) Str::uuid7(),
                 'conversation_id' => $conversation->id,
@@ -123,7 +124,7 @@ class CopilotConversationTest extends TestCase
             4,
             ConversationMessage::query()->where('conversation_id', $conversation->id)->count(),
         );
-        $this->assertDatabaseHas('agent_conversation_messages', [
+        $this->assertDatabaseHas('copilot_conversation_messages', [
             'conversation_id' => $conversation->id,
             'role' => 'user',
             'content' => 'Tell me more',
@@ -161,7 +162,6 @@ class CopilotConversationTest extends TestCase
             'message' => 'Hello',
             'client_message_id' => (string) Str::uuid(),
         ])->assertForbidden();
-
 
         $this->deleteJson("/api/copilot/conversations/{$conversation->id}")
             ->assertForbidden();
@@ -252,5 +252,22 @@ class CopilotConversationTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonFragment(['id' => $own->id])
             ->assertJsonMissing(['title' => 'B conversation']);
+    }
+
+    #[Test]
+    public function sdk_store_writes_copilot_tables_not_agent_tables(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+
+        $store = $this->app->make(ConversationStore::class);
+        $id = $store->storeConversation('employee', $employee->id, 'Rename smoke');
+
+        $this->assertDatabaseHas('copilot_conversations', [
+            'id' => $id,
+            'title' => 'Rename smoke',
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+        ]);
+        $this->assertSame(0, DB::table('agent_conversations')->count());
     }
 }

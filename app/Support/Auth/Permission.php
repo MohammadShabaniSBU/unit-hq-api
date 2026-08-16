@@ -65,6 +65,7 @@ enum Permission: string
     // AI
     case AiSummaryView = 'ai_summary.view';
     case AiSummaryGenerate = 'ai_summary.generate';
+    case AiAgentUse = 'ai_agent.use';
 
     // Cross-cutting
     case ReportView = 'report.view';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use Carbon\CarbonImmutable;
+use Database\Seeders\AiAgentSeeder;
 use Database\Seeders\Demo\Crowd\CrowdGenerator;
 use Database\Seeders\Demo\Crowd\DemoRng;
 use Illuminate\Contracts\Foundation\Application;
@@ -38,6 +39,11 @@ final class DemoPipeline
         $seeder = new StageSeeder;
         $seeder->setContainer($app);
         $seeder->run();
+
+        $agents = new AiAgentSeeder;
+        $agents->setContainer($app);
+        $agents->run();
+
         $world->hydrateFromDatabase();
 
         $from = CarbonImmutable::parse(CastExecutor::SIM_START)->startOfDay();

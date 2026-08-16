@@ -173,4 +173,22 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Conversations (laravel/ai SDK storage)
+    |--------------------------------------------------------------------------
+    |
+    | Copilot persists through DatabaseConversationStore. Table names are
+    | copilot_* so S22 can own agent_conversations. Do not put S22 keys here —
+    | a vendor:publish --force would reset them. See config/agents.php.
+    |
+    */
+
+    'conversations' => [
+        'tables' => [
+            'conversations' => 'copilot_conversations',
+            'messages' => 'copilot_conversation_messages',
+        ],
+    ],
+
 ];

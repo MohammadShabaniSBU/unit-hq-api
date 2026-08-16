@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_conversation_messages', function (Blueprint $table): void {
+        Schema::create('copilot_conversation_messages', function (Blueprint $table): void {
             $table->string('id', 36)->primary();
             $table->string('conversation_id', 36);
             $table->string('participant_type', 255)->nullable();
@@ -25,14 +25,15 @@ return new class extends Migration
             $table->text('meta');
             $table->text('approval_state')->nullable();
             $table->timestamps();
-            $table->index('conversation_id', 'agent_conversation_messages_conversation_id_index');
-            $table->index(['conversation_id', 'participant_type', 'participant_id', 'updated_at'], 'conversation_index');
-            $table->index(['participant_type', 'participant_id'], 'participant_index');
+            $table->foreign('conversation_id')->references('id')->on('copilot_conversations');
+            $table->index('conversation_id', 'copilot_conversation_messages_conversation_id_index');
+            $table->index(['conversation_id', 'participant_type', 'participant_id', 'updated_at'], 'copilot_conversation_messages_conversation_index');
+            $table->index(['participant_type', 'participant_id'], 'copilot_conversation_messages_participant_index');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('agent_conversation_messages');
+        Schema::dropIfExists('copilot_conversation_messages');
     }
 };

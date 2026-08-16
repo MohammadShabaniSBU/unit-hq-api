@@ -14,24 +14,26 @@ use Laravel\Ai\Responses\Data\Usage;
  *
  * Status is mutable by design — invariant 3 does not apply.
  *
- * @property int         $id
- * @property string      $call_id
- * @property int|null    $employee_id
+ * @property int $id
+ * @property string $call_id
+ * @property int|null $employee_id
+ * @property int|null $ai_agent_id
+ * @property int|null $agent_conversation_id
  * @property string|null $conversation_id
- * @property string      $purpose
+ * @property string $purpose
  * @property string|null $provider
  * @property string|null $model
- * @property string      $status
- * @property int         $input_tokens
- * @property int         $cached_input_tokens
- * @property int         $output_tokens
- * @property int         $reasoning_tokens
- * @property bool        $tokens_estimated
- * @property int         $tool_calls
- * @property int|null    $duration_ms
+ * @property string $status
+ * @property int $input_tokens
+ * @property int $cached_input_tokens
+ * @property int $output_tokens
+ * @property int $reasoning_tokens
+ * @property bool $tokens_estimated
+ * @property int $tool_calls
+ * @property int|null $duration_ms
  * @property string|null $request_id
- * @property array|null  $raw_usage
- * @property Carbon      $started_at
+ * @property array|null $raw_usage
+ * @property Carbon $started_at
  * @property Carbon|null $settled_at
  */
 class AiUsageEvent extends Model
@@ -49,6 +51,8 @@ class AiUsageEvent extends Model
     protected $fillable = [
         'call_id',
         'employee_id',
+        'ai_agent_id',
+        'agent_conversation_id',
         'conversation_id',
         'purpose',
         'provider',
@@ -81,6 +85,18 @@ class AiUsageEvent extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** @return BelongsTo<AiAgent, $this> */
+    public function aiAgent(): BelongsTo
+    {
+        return $this->belongsTo(AiAgent::class);
+    }
+
+    /** @return BelongsTo<AgentConversation, $this> */
+    public function agentConversation(): BelongsTo
+    {
+        return $this->belongsTo(AgentConversation::class);
     }
 
     public static function reserve(
