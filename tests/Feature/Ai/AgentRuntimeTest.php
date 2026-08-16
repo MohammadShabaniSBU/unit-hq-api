@@ -11,7 +11,6 @@ use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
 use App\Support\Ai\AgentContext;
-use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Drivers\FakeModelDriver;
@@ -23,14 +22,13 @@ use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailVerdict;
-use App\Support\Ai\Guards\HandoffEvaluator;
-use App\Support\Ai\Guards\HandoffMatch;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\Support\Ai\RecordingTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
@@ -72,8 +70,9 @@ class AgentRuntimeTest extends TestCase
             'How much is it?',
         );
 
-        $this->assertSame('The figure is €84,70 (incl. 21% IVA).', $turn->draft);
         $this->assertTrue($turn->facts->contains('84,70'));
+        $this->assertStringContainsString('€84,70', $turn->draft);
+        $this->assertStringContainsString((string) config('ai-handoff.disclosure.en'), $turn->draft);
         $this->assertCount(1, $turn->invocations);
         $this->assertSame(ToolInvocationStatus::Ok, $turn->invocations[0]->status);
         $this->assertSame(ConversationState::Active, $turn->state);
@@ -81,12 +80,14 @@ class AgentRuntimeTest extends TestCase
         $this->assertDriverNotWrappedInRuntimeTransaction();
 
         $this->assertSame(1, AgentToolInvocation::query()->where('agent_conversation_id', $conversation->id)->count());
-        $usage = AiUsageEvent::query()->where('agent_conversation_id', $conversation->id)->first();
-        $this->assertNotNull($usage);
-        $this->assertSame('agent', $usage->purpose);
-        $this->assertSame($conversation->ai_agent_id, $usage->ai_agent_id);
-        $this->assertNull($usage->employee_id);
-        $this->assertSame(1, $usage->tool_calls);
+        $usages = AiUsageEvent::query()->where('agent_conversation_id', $conversation->id)->get();
+        $this->assertGreaterThanOrEqual(1, $usages->count());
+        foreach ($usages as $usage) {
+            $this->assertSame('agent', $usage->purpose);
+            $this->assertSame($conversation->ai_agent_id, $usage->ai_agent_id);
+            $this->assertNull($usage->employee_id);
+        }
+        $this->assertSame(1, (int) $usages->sum('tool_calls'));
         $this->assertNotNull($conversation->fresh()->last_turn_at);
     }
 
@@ -118,7 +119,7 @@ class AgentRuntimeTest extends TestCase
     }
 
     #[Test]
-    public function turn_cap_handoffs_budget_exceeded_without_model_call(): void
+    public function turn_cap_handoffs_turn_limit_without_model_call(): void
     {
         $conversation = $this->conversation('support');
         $max = (int) config('agents.max_turns');
@@ -140,7 +141,7 @@ class AgentRuntimeTest extends TestCase
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertNotNull($turn->handoff);
-        $this->assertSame(HandoffReason::BudgetExceeded, $turn->handoff->reason);
+        $this->assertSame(HandoffReason::TurnLimit, $turn->handoff->reason);
         $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff->trigger_source);
         $this->assertSame(ConversationState::AwaitingHuman, $conversation->fresh()->state);
     }
@@ -170,19 +171,13 @@ class AgentRuntimeTest extends TestCase
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertSame(HandoffReason::BudgetExceeded, $turn->handoff?->reason);
+        $this->assertSame(ConversationState::Closed, $conversation->fresh()->state);
+        $this->assertNotNull($conversation->fresh()->closed_at);
     }
 
     #[Test]
     public function pre_model_handoff_does_not_call_driver(): void
     {
-        $this->app->instance(HandoffEvaluator::class, new class implements HandoffEvaluator
-        {
-            public function match(AgentConversation $conversation, AgentPrincipal $principal, string $input): ?HandoffMatch
-            {
-                return new HandoffMatch(HandoffReason::LegalOrComplaint, 'Handing to a human.', ['rule' => 'legal']);
-            }
-        });
-
         $conversation = $this->conversation('support');
 
         $turn = app(AgentRuntime::class)->turn(
@@ -192,7 +187,8 @@ class AgentRuntimeTest extends TestCase
         );
 
         $this->assertSame(0, $this->driver->callCount);
-        $this->assertSame('Handing to a human.', $turn->draft);
+        $this->assertStringContainsString('teammate', $turn->draft);
+        $this->assertStringContainsString((string) config('ai-handoff.disclosure.en'), $turn->draft);
         $this->assertSame(HandoffReason::LegalOrComplaint, $turn->handoff?->reason);
         $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff?->trigger_source);
         $this->assertSame(1, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
@@ -262,7 +258,10 @@ class AgentRuntimeTest extends TestCase
             'what do I owe?',
         );
 
-        $this->assertSame('I need to hand this to a teammate.', $turn->draft);
+        $this->assertSame(
+            'I need to hand this to a teammate. '.(string) config('ai-handoff.disclosure.en'),
+            $turn->draft,
+        );
         $this->assertSame('grounding', $turn->blockedBy);
         $this->assertSame(HandoffReason::GroundingFailure, $turn->handoff?->reason);
         $this->assertSame(HandoffTriggerSource::Guardrail, $turn->handoff?->trigger_source);
@@ -272,6 +271,26 @@ class AgentRuntimeTest extends TestCase
                 ->where('blocked_by', 'grounding')
                 ->exists(),
         );
+    }
+
+    #[Test]
+    public function kill_switch_disables_the_runtime_without_a_model_call(): void
+    {
+        config(['agents.enabled' => false]);
+        $conversation = $this->conversation('support');
+
+        try {
+            app(AgentRuntime::class)->turn(
+                $conversation,
+                $conversation->principal(),
+                'hello',
+            );
+            $this->fail('Expected the kill switch to throw.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('Customer-facing agents are disabled.', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->driver->callCount);
     }
 
     private function conversation(string $agentKey): AgentConversation

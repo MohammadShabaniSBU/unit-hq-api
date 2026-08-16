@@ -40,6 +40,11 @@ final readonly class SmsMessage
         return $length <= 70 ? 1 : (int) ceil($length / 67);
     }
 
+    public function encoding(): string
+    {
+        return $this->isGsm7($this->body) ? 'gsm7' : 'ucs2';
+    }
+
     private function isGsm7(string $body): bool
     {
         // GSM 03.38 basic + extension table characters.
@@ -47,8 +52,8 @@ final readonly class SmsMessage
 
         if ($gsm7 === null) {
             $basic = "@£\$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?"
-                ."¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
-            $extended = "^{}\\[~]|€";
+                .'¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
+            $extended = '^{}\\[~]|€';
             $gsm7 = $basic.$extended;
         }
 

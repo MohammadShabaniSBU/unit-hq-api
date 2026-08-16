@@ -59,7 +59,7 @@ final class RecordingTool implements AgentTool
         return ToolResult::ok(
             ['amount' => '84.70', 'currency' => 'EUR'],
             '€84,70 (incl. 21% IVA)',
-            (new FactBag)->money('84.70', 'EUR'),
+            (new FactBag)->money('84.70', 'EUR')->percent('21'),
         );
     }
 }

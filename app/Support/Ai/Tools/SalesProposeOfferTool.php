@@ -128,7 +128,8 @@ final class SalesProposeOfferTool implements AgentTool
             ->money($breakdown->net, $currency)
             ->money($breakdown->tax, $currency)
             ->money($breakdown->gross, $currency)
-            ->number($ratePct);
+            ->number($ratePct)
+            ->percent($ratePct);
         if ($moveIn !== null && $moveIn !== '') {
             $facts->date($moveIn);
         }

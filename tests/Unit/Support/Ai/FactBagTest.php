@@ -33,6 +33,16 @@ class FactBagTest extends TestCase
     }
 
     #[Test]
+    public function percent_is_licensed_separately_from_money(): void
+    {
+        $bag = (new FactBag)->percent('21');
+
+        $this->assertTrue($bag->containsPercent('21%'));
+        $this->assertTrue($bag->containsPercent('21.00'));
+        $this->assertFalse($bag->containsPercent('10'));
+    }
+
+    #[Test]
     public function customer_message_seeds_echo_licence(): void
     {
         $bag = FactBag::fromCustomerMessage('You quoted €84.70 for unit A-114 on 2026-09-01.');

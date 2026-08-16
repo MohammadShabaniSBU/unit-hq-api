@@ -20,4 +20,6 @@ return [
 
     'conversation_token_budget' => 200_000,
 
+    'conversation_call_budget' => 40,
+
 ];

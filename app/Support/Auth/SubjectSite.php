@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Auth;
 
 use App\Models\AccessEvent;
+use App\Models\AgentConversation;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
@@ -153,8 +154,22 @@ final class SubjectSite
             EsignEnvelope::class => $subject instanceof EsignEnvelope
                 ? self::viaContract($subject->contract)
                 : null,
+            AgentConversation::class => $subject instanceof AgentConversation
+                ? self::agentConversationSite($subject)
+                : null,
             default => throw new UnresolvableSubjectSite($subject),
         };
+    }
+
+    private static function agentConversationSite(AgentConversation $conversation): ?Site
+    {
+        if ($conversation->site_id === null) {
+            return null;
+        }
+
+        return $conversation->relationLoaded('site')
+            ? $conversation->site
+            : Site::query()->find($conversation->site_id);
     }
 
     private static function messageSite(Message $message): ?Site

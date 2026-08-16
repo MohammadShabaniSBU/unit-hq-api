@@ -131,6 +131,7 @@ final class RoutePermissions
             'GET /api/tasks' => Permission::ContactView, // TaskController@index
             'GET /api/tasks/board' => Permission::ContactView, // TaskBoardController@index
             'GET /api/tasks/board/columns/{status}' => Permission::ContactView, // TaskBoardController@column
+            'GET /api/tasks/{task}' => Permission::ContactView, // TaskController@show
             'PATCH /api/contacts/{contact}' => Permission::ContactManage, // ContactController@update
             'PATCH /api/contacts/{contact}/addresses/{address}' => Permission::ContactManage, // ContactAddressController@update
             'PATCH /api/contacts/{contact}/channels/{channel}' => Permission::ContactManage, // ContactChannelController@update
@@ -144,6 +145,7 @@ final class RoutePermissions
             'PATCH /api/offers/{offer}/status' => Permission::OfferSend, // OfferController@updateStatus — controller: OfferSend only when →sent; else OfferManage
             'PATCH /api/reservations/{reservation}' => Permission::ReservationManage, // ReservationController@update
             'PATCH /api/reservations/{reservation}/status' => Permission::ReservationManage, // ReservationController@updateStatus
+            'PATCH /api/tasks/{task}' => Permission::ContactManage, // TaskController@update
             'PATCH /api/tasks/{task}/status' => Permission::ContactManage, // TaskController@updateStatus
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search
@@ -369,6 +371,10 @@ final class RoutePermissions
             'DELETE /api/settings/object-customization/groups/{group}' => Permission::SettingsManage, // ObjectCustomizationController@destroyGroup
             'GET /api/access/events' => Permission::AccessView, // AccessEventController@index
             'GET /api/activities' => Permission::ActivityView, // ActivityController@index
+            'GET /api/agent-conversations' => Permission::AiAgentUse, // AgentConversationController@index
+            'GET /api/agent-conversations/{agentConversation}' => Permission::AiAgentUse, // AgentConversationController@show
+            'GET /api/ai/agents' => Permission::AiAgentUse, // AiAgentController@index
+            'GET /api/ai/demo-personas' => Permission::AiAgentUse, // AiDemoPersonaController@index
             'GET /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@index
             'GET /api/attribute-definitions/{attributeDefinition}' => Permission::SettingsManage, // AttributeDefinitionController@show
             'GET /api/automations' => Permission::AutomationView, // AutomationController@index
@@ -411,6 +417,9 @@ final class RoutePermissions
             'PATCH /api/settings/object-customization/fields/{field}' => Permission::SettingsManage, // ObjectCustomizationController@updateField
             'PATCH /api/settings/object-customization/groups/{group}' => Permission::SettingsManage, // ObjectCustomizationController@updateGroup
             'POST /api/access/grants/{accessGrant}/retry' => Permission::AccessManage, // AccessGrantController@retry
+            'POST /api/agent-conversations' => Permission::AiAgentUse, // AgentConversationController@store
+            'POST /api/agent-conversations/{agentConversation}/close' => Permission::AiAgentUse, // AgentConversationController@close
+            'POST /api/agent-conversations/{agentConversation}/turns' => Permission::AiAgentUse, // AgentConversationController@storeTurn
             'POST /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@store
             'POST /api/attribute-definitions/{attributeDefinition}/archive' => Permission::SettingsManage, // AttributeDefinitionController@archive
             'POST /api/attribute-definitions/{attributeDefinition}/unarchive' => Permission::SettingsManage, // AttributeDefinitionController@unarchive

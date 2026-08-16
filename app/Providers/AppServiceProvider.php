@@ -19,6 +19,7 @@ use App\Models\AccessGrant;
 use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
 use App\Models\AccessSuspension;
+use App\Models\AgentConversation;
 use App\Models\AutopayAttempt;
 use App\Models\BillingRun;
 use App\Models\Contact;
@@ -45,10 +46,10 @@ use App\Support\Ai\Agents\SupportAgentDefinition;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\LaravelAiDriver;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Guards\CompositeGuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\HandoffEvaluator;
-use App\Support\Ai\Guards\NullGuardrailPipeline;
-use App\Support\Ai\Guards\NullHandoffEvaluator;
+use App\Support\Ai\Guards\HandoffRules;
 use App\Support\Ai\Tools\AccessStatusTool;
 use App\Support\Ai\Tools\BillingBalanceTool;
 use App\Support\Ai\Tools\BillingInvoicesTool;
@@ -131,8 +132,8 @@ class AppServiceProvider extends ServiceProvider
             return $registry;
         });
 
-        $this->app->singleton(HandoffEvaluator::class, NullHandoffEvaluator::class);
-        $this->app->singleton(GuardrailPipeline::class, NullGuardrailPipeline::class);
+        $this->app->singleton(HandoffEvaluator::class, HandoffRules::class);
+        $this->app->singleton(GuardrailPipeline::class, CompositeGuardrailPipeline::class);
 
         $this->app->singleton(ModelDriver::class, function ($app): ModelDriver {
             return match ((string) config('agents.driver')) {
@@ -166,6 +167,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(1)->by('insights-embed|'.$employeeId.'|'.$key);
         });
 
+        RateLimiter::for('ai-turns', function (Request $request) {
+            $employeeId = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
+
+            return Limit::perMinute(30)->by('ai-turns|'.$employeeId);
+        });
+
         Relation::morphMap([
             'employee' => Employee::class,
             'contact' => Contact::class,
@@ -190,6 +197,7 @@ class AppServiceProvider extends ServiceProvider
             'access_grant' => AccessGrant::class,
             'access_provider_account' => AccessProviderAccount::class,
             'access_event' => AccessEvent::class,
+            'agent_conversation' => AgentConversation::class,
         ]);
 
         Session::extend('database', function ($app) {

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\LogChannel;
 use App\Http\Resources\ActivityResource;
 use App\Models\Activity;
+use App\Models\AgentConversation;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
@@ -30,6 +31,7 @@ class ActivityController extends Controller
         'offer' => Offer::class,
         'reservation' => Reservation::class,
         'contract' => Contract::class,
+        'agent_conversation' => AgentConversation::class,
     ];
 
     public function index(Request $request): JsonResponse

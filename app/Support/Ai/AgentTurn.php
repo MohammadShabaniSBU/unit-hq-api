@@ -14,6 +14,7 @@ final readonly class AgentTurn
 {
     /**
      * @param  list<AgentToolInvocation>  $invocations
+     * @param  list<AiUsageEvent>  $usageEvents
      */
     public function __construct(
         public string $draft,
@@ -21,8 +22,9 @@ final readonly class AgentTurn
         public FactBag $facts,
         public array $invocations,
         public ?AgentHandoff $handoff,
-        public ?AiUsageEvent $usage,
+        public array $usageEvents,
         public ConversationState $state,
         public ?string $blockedBy,
+        public ?string $subject = null,
     ) {}
 }

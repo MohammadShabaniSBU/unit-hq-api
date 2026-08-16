@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Ai\Agents;
 
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\Enums\HandoffRuleKey;
 
 interface AgentDefinition
 {
@@ -18,7 +19,9 @@ interface AgentDefinition
     public function toolKeys(): array;
 
     /**
-     * @return list<mixed>
+     * Extra rule keys on top of the shared config set.
+     *
+     * @return list<HandoffRuleKey>
      */
     public function handoffRules(): array;
 

@@ -25,6 +25,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $latency_ms
  * @property string|null $finish_reason
  * @property string|null $blocked_by
+ * @property array<int, string>|null $fact_keys
+ * @property string|null $principal_verification
  * @property int|null $emitted_message_id
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
@@ -47,6 +49,8 @@ class AgentConversationMessage extends Model
         'latency_ms',
         'finish_reason',
         'blocked_by',
+        'fact_keys',
+        'principal_verification',
         'emitted_message_id',
     ];
 
@@ -55,6 +59,7 @@ class AgentConversationMessage extends Model
         return [
             'role' => AgentMessageRole::class,
             'tool_calls' => 'array',
+            'fact_keys' => 'array',
         ];
     }
 

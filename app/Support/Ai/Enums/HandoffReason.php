@@ -16,5 +16,6 @@ enum HandoffReason: string
     case CustomerRequested = 'customer_requested';
     case OutOfHours = 'out_of_hours';
     case BudgetExceeded = 'budget_exceeded';
+    case TurnLimit = 'turn_limit';
     case Error = 'error';
 }

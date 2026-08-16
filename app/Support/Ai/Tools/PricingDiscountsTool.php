@@ -8,6 +8,7 @@ use App\Models\Discount;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Discounts\DiscountSurface;
 
 final class PricingDiscountsTool implements AgentTool
@@ -63,8 +64,12 @@ final class PricingDiscountsTool implements AgentTool
         }
 
         $facts = new FactBag;
+        $extractor = new DraftTokenExtractor;
         foreach ($rows as $row) {
             $facts->identifier((string) $row['id']);
+            foreach ($extractor->extractPercents((string) $row['display']) as $percent) {
+                $facts->percent($percent);
+            }
         }
 
         $display = $rows === []

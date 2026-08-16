@@ -10,17 +10,23 @@ use App\Models\AgentHandoff;
 use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
+use App\Models\Site;
+use App\Models\SystemEvent;
 use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
+use App\Support\Ai\Guards\CannedReply;
+use App\Support\Ai\Guards\DisclosureGuard;
 use App\Support\Ai\Guards\GuardrailPipeline;
-use App\Support\Ai\Guards\HandoffEvaluator;
+use App\Support\Ai\Guards\GuardrailVerdict;
 use App\Support\Ai\Guards\HandoffMatch;
+use App\Support\Ai\Guards\InboundGuardPipeline;
 use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolDispatcher;
@@ -33,23 +39,16 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Responses\Data\Usage;
 use LogicException;
 use RuntimeException;
+use Throwable;
 
 final class AgentRuntime
 {
-    private const CANNED_HANDOFF = 'I am connecting you with a teammate who can help with this.';
-
-    private const CANNED_BUDGET = 'I have reached the limit for this conversation and am handing you to a teammate.';
-
-    private const CANNED_ERROR = 'Something went wrong. I am connecting you with a teammate.';
-
-    private const CANNED_BLOCKED = 'I need to hand this to a teammate.';
-
     public function __construct(
         private readonly ModelDriver $driver,
         private readonly ToolRegistry $tools,
         private readonly ToolDispatcher $dispatcher,
         private readonly AgentRegistry $agents,
-        private readonly HandoffEvaluator $handoffs,
+        private readonly InboundGuardPipeline $inbound,
         private readonly GuardrailPipeline $guards,
     ) {}
 
@@ -75,21 +74,18 @@ final class AgentRuntime
         $channel = ChannelProfile::for($conversation->channel);
         $ctx = new AgentContext($principal, $channel, $definition, $conversation, $agent);
 
-        $match = $this->handoffs->match($conversation, $principal, $input);
+        $match = $this->inbound->evaluate($conversation, $principal, $input, $definition, $agent);
         if ($match !== null) {
             return $this->shortCircuitHandoff($ctx, $principal, $input, $match, HandoffTriggerSource::Rule);
-        }
-
-        $budgetHandoff = $this->budgetHandoff($conversation, $definition, $agent);
-        if ($budgetHandoff !== null) {
-            return $this->shortCircuitHandoff($ctx, $principal, $input, $budgetHandoff, HandoffTriggerSource::Rule);
         }
 
         $priorMessages = $conversation->messages()->orderBy('sequence')->get();
         $this->persistUserMessage($conversation, $input);
 
-        $facts = FactBag::fromCustomerMessage($input);
+        $site = $this->siteFor($principal);
+        $facts = FactBag::fromCustomerMessage($input, $site);
         $invocations = [];
+        $usageEvents = [];
         $usageTotal = new Usage;
         $toolCallCount = 0;
         $maxToolCalls = (int) config('agents.max_tool_calls_per_turn');
@@ -105,11 +101,14 @@ final class AgentRuntime
         try {
             while (true) {
                 $started = hrtime(true);
-                $response = $this->driver->stream(
+                $response = $this->streamMetered(
+                    $agent,
+                    $conversation,
                     $messages,
                     $toolObjects,
                     $model,
-                    $onEvent === null ? null : fn (string $delta) => $onEvent('token', ['delta' => $delta]),
+                    $onEvent,
+                    $usageEvents,
                 );
                 $latencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
                 $usageTotal = $usageTotal->add($response->usage);
@@ -133,8 +132,9 @@ final class AgentRuntime
                             $invocations,
                             HandoffReason::Error,
                             HandoffTriggerSource::Rule,
-                            self::CANNED_ERROR,
+                            CannedReply::Error,
                             ['detail' => 'max_tool_calls_per_turn'],
+                            $usageEvents,
                         );
                     }
 
@@ -149,6 +149,8 @@ final class AgentRuntime
                     $response->usage,
                     $latencyMs,
                     $finishReason,
+                    facts: $facts,
+                    principal: $principal,
                 );
 
                 $toRun = array_slice($response->toolCalls, 0, $remaining);
@@ -162,7 +164,10 @@ final class AgentRuntime
                 foreach ($toRun as $call) {
                     $toolCallCount++;
                     if ($onEvent !== null) {
-                        $onEvent('tool.started', ['tool' => $call['name'], 'id' => $call['id']]);
+                        $onEvent('tool.started', [
+                            'tool_key' => $call['name'],
+                            'arguments' => $call['arguments'],
+                        ]);
                     }
 
                     $startedTool = hrtime(true);
@@ -200,9 +205,11 @@ final class AgentRuntime
 
                     if ($onEvent !== null) {
                         $onEvent('tool.finished', [
-                            'tool' => $call['name'],
-                            'id' => $call['id'],
+                            'tool_key' => $call['name'],
                             'status' => $result->status->value,
+                            'denied_reason' => $result->deniedReason?->value,
+                            'duration_ms' => $durationMs,
+                            'result_summary' => $result->display !== '' ? $result->display : $result->message,
                         ]);
                     }
 
@@ -212,6 +219,12 @@ final class AgentRuntime
                     }
                 }
 
+                if ($usageEvents !== []) {
+                    $metered = $usageEvents[array_key_last($usageEvents)];
+                    $metered->tool_calls = count($toRun);
+                    $metered->save();
+                }
+
                 if ($escalate !== null && $escalate->handoffReason !== null) {
                     return $this->finishWithHandoff(
                         $ctx,
@@ -219,9 +232,9 @@ final class AgentRuntime
                         $invocations,
                         $escalate->handoffReason,
                         HandoffTriggerSource::Model,
-                        $escalate->display !== '' ? $escalate->display : self::CANNED_HANDOFF,
+                        $escalate->display !== '' ? $escalate->display : CannedReply::Handoff,
                         ['summary' => $escalate->data['summary'] ?? null],
-                        $this->settleUsage($agent, $conversation, $usageTotal, $model, $toolCallCount),
+                        $usageEvents,
                     );
                 }
 
@@ -235,9 +248,9 @@ final class AgentRuntime
                             $invocations,
                             HandoffReason::Error,
                             HandoffTriggerSource::Rule,
-                            self::CANNED_ERROR,
+                            CannedReply::Error,
                             ['detail' => 'max_tool_calls_per_turn'],
-                            $this->settleUsage($agent, $conversation, $usageTotal, $model, $toolCallCount),
+                            $usageEvents,
                         );
                     }
 
@@ -251,14 +264,34 @@ final class AgentRuntime
                 $invocations,
                 HandoffReason::Error,
                 HandoffTriggerSource::Rule,
-                self::CANNED_ERROR,
+                CannedReply::Error,
                 ['detail' => 'timeout'],
-                $this->settleUsage($agent, $conversation, $usageTotal, $model, $toolCallCount, AiUsageEvent::STATUS_FAILED),
+                $usageEvents,
             );
         }
 
-        $verdict = $this->guards->check($draft, $facts, $ctx);
-        if (! $verdict->passed) {
+        $verdict = $this->applyOutboundGuards(
+            $draft,
+            $facts,
+            $ctx,
+            $messages,
+            $toolObjects,
+            $model,
+            $onEvent,
+            $usageTotal,
+            $lastUsage,
+            $lastLatencyMs,
+            $finishReason,
+            $usageEvents,
+        );
+        $draft = $verdict['draft'];
+        $usageTotal = $verdict['usage'];
+        $lastUsage = $verdict['lastUsage'];
+        $lastLatencyMs = $verdict['lastLatencyMs'];
+        $finishReason = $verdict['finishReason'];
+        $outbound = $verdict['verdict'];
+
+        if (! $outbound->passed) {
             $this->persistAssistantMessage(
                 $conversation,
                 $draft,
@@ -267,21 +300,30 @@ final class AgentRuntime
                 $lastUsage,
                 $lastLatencyMs,
                 $finishReason,
-                $verdict->blockedBy,
+                $outbound->blockedBy,
+                $facts,
+                $principal,
             );
 
             return $this->finishWithHandoff(
                 $ctx,
                 $facts,
                 $invocations,
-                $verdict->handoffReason ?? HandoffReason::GroundingFailure,
+                $outbound->handoffReason ?? HandoffReason::GroundingFailure,
                 HandoffTriggerSource::Guardrail,
-                self::CANNED_BLOCKED,
-                ['blocked_by' => $verdict->blockedBy],
-                $this->settleUsage($agent, $conversation, $usageTotal, $model, $toolCallCount),
-                $verdict->blockedBy,
+                CannedReply::Blocked,
+                array_filter([
+                    'blocked_by' => $outbound->blockedBy,
+                    ...($outbound->detail ?? []),
+                ], fn (mixed $value): bool => $value !== null),
+                $usageEvents,
+                $outbound->blockedBy,
                 persistAssistant: false,
             );
+        }
+
+        if ($outbound->mutatedDraft !== null) {
+            $draft = $outbound->mutatedDraft;
         }
 
         if (! $draftAlreadyPersisted) {
@@ -293,10 +335,11 @@ final class AgentRuntime
                 $lastUsage,
                 $lastLatencyMs,
                 $finishReason,
+                facts: $facts,
+                principal: $principal,
             );
         }
 
-        $usage = $this->settleUsage($agent, $conversation, $usageTotal, $model, $toolCallCount);
         $this->touchConversation($conversation, ConversationState::Active);
 
         return new AgentTurn(
@@ -305,10 +348,125 @@ final class AgentRuntime
             $facts,
             $invocations,
             null,
-            $usage,
+            $usageEvents,
             ConversationState::Active,
             null,
+            $outbound->subject,
         );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $messages
+     * @param  list<AgentTool>  $toolObjects
+     * @param  list<AiUsageEvent>  $usageEvents
+     * @return array{
+     *     draft: string,
+     *     verdict: GuardrailVerdict,
+     *     usage: Usage,
+     *     lastUsage: Usage,
+     *     lastLatencyMs: int|null,
+     *     finishReason: string
+     * }
+     */
+    private function applyOutboundGuards(
+        string $draft,
+        FactBag $facts,
+        AgentContext $ctx,
+        array $messages,
+        array $toolObjects,
+        string $model,
+        ?Closure $onEvent,
+        Usage $usageTotal,
+        Usage $lastUsage,
+        ?int $lastLatencyMs,
+        string $finishReason,
+        array &$usageEvents,
+    ): array {
+        $retriedThisTurn = false;
+        $verdict = $this->guards->check($draft, $facts, $ctx);
+        $this->emitGuardrailEvents($onEvent, $verdict);
+
+        if ($verdict->retry !== null && ! $retriedThisTurn) {
+            $retriedThisTurn = true;
+            $messages[] = ['role' => 'assistant', 'content' => $draft];
+            $messages[] = ['role' => 'system', 'content' => $verdict->retry];
+
+            try {
+                $started = hrtime(true);
+                $response = $this->streamMetered(
+                    $ctx->agent,
+                    $ctx->conversation,
+                    $messages,
+                    $toolObjects,
+                    $model,
+                    $onEvent,
+                    $usageEvents,
+                );
+                $lastLatencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
+                $usageTotal = $usageTotal->add($response->usage);
+                $lastUsage = $response->usage;
+                $finishReason = $response->finishReason;
+            } catch (ModelTimeoutException) {
+                $verdict = GuardrailVerdict::block(
+                    $verdict->blockedBy ?? 'channel',
+                    HandoffReason::Error,
+                    ['detail' => 'timeout'],
+                    $verdict->events,
+                );
+
+                return [
+                    'draft' => $draft,
+                    'verdict' => $verdict,
+                    'usage' => $usageTotal,
+                    'lastUsage' => $lastUsage,
+                    'lastLatencyMs' => $lastLatencyMs,
+                    'finishReason' => $finishReason,
+                ];
+            }
+
+            if ($response->toolCalls !== []) {
+                $verdict = $this->retryAsBlock($verdict);
+            } else {
+                $draft = $response->content;
+                $verdict = $this->guards->check($draft, $facts, $ctx);
+                $this->emitGuardrailEvents($onEvent, $verdict);
+                if ($verdict->retry !== null) {
+                    $verdict = $this->retryAsBlock($verdict);
+                }
+            }
+        } elseif ($verdict->retry !== null) {
+            $verdict = $this->retryAsBlock($verdict);
+        }
+
+        return [
+            'draft' => $draft,
+            'verdict' => $verdict,
+            'usage' => $usageTotal,
+            'lastUsage' => $lastUsage,
+            'lastLatencyMs' => $lastLatencyMs,
+            'finishReason' => $finishReason,
+        ];
+    }
+
+    private function retryAsBlock(GuardrailVerdict $verdict): GuardrailVerdict
+    {
+        return GuardrailVerdict::block(
+            $verdict->blockedBy ?? 'channel',
+            $verdict->handoffReason ?? HandoffReason::Error,
+            $verdict->detail,
+            $verdict->events,
+        );
+    }
+
+    private function emitGuardrailEvents(?Closure $onEvent, GuardrailVerdict $verdict): void
+    {
+        if ($onEvent === null) {
+            return;
+        }
+
+        foreach ($verdict->events as $event) {
+            $onEvent('guardrail', $event);
+        }
     }
 
     private function assertPrincipalMatches(AgentConversation $conversation, AgentPrincipal $principal): void
@@ -320,30 +478,6 @@ final class AgentRuntime
             || $stored->audience !== $principal->audience) {
             throw new LogicException('Principal does not match conversation facts.');
         }
-    }
-
-    private function budgetHandoff(AgentConversation $conversation, AgentDefinition $definition, AiAgent $agent): ?HandoffMatch
-    {
-        $maxTurns = (int) ($agent->settings['max_turns'] ?? $definition->maxTurns());
-        $assistantCount = $conversation->messages()
-            ->where('role', AgentMessageRole::Assistant->value)
-            ->count();
-
-        if ($assistantCount >= $maxTurns) {
-            return new HandoffMatch(HandoffReason::BudgetExceeded, self::CANNED_BUDGET, ['detail' => 'max_turns']);
-        }
-
-        $tokens = (int) AiUsageEvent::query()
-            ->where('agent_conversation_id', $conversation->id)
-            ->selectRaw('coalesce(sum(input_tokens + cached_input_tokens + output_tokens + reasoning_tokens), 0) as total')
-            ->value('total');
-
-        $budget = (int) config('agents.conversation_token_budget');
-        if ($tokens >= $budget) {
-            return new HandoffMatch(HandoffReason::BudgetExceeded, self::CANNED_BUDGET, ['detail' => 'conversation_token_budget']);
-        }
-
-        return null;
     }
 
     /**
@@ -429,8 +563,10 @@ final class AgentRuntime
         ?int $latencyMs,
         string $finishReason,
         ?string $blockedBy = null,
+        ?FactBag $facts = null,
+        ?AgentPrincipal $principal = null,
     ): AgentConversationMessage {
-        return DB::transaction(function () use ($conversation, $content, $toolCalls, $model, $usage, $latencyMs, $finishReason, $blockedBy): AgentConversationMessage {
+        return DB::transaction(function () use ($conversation, $content, $toolCalls, $model, $usage, $latencyMs, $finishReason, $blockedBy, $facts, $principal): AgentConversationMessage {
             return AgentConversationMessage::query()->create([
                 'agent_conversation_id' => $conversation->id,
                 'sequence' => $this->nextSequence($conversation),
@@ -443,6 +579,8 @@ final class AgentRuntime
                 'latency_ms' => $latencyMs,
                 'finish_reason' => $finishReason,
                 'blocked_by' => $blockedBy,
+                'fact_keys' => $facts?->all(),
+                'principal_verification' => $principal?->verification->value,
             ]);
         });
     }
@@ -498,6 +636,7 @@ final class AgentRuntime
     /**
      * @param  list<AgentToolInvocation>  $invocations
      * @param  array<string, mixed>|null  $detail
+     * @param  list<AiUsageEvent>  $usageEvents
      */
     private function finishWithHandoff(
         AgentContext $ctx,
@@ -507,11 +646,15 @@ final class AgentRuntime
         HandoffTriggerSource $source,
         string $draft,
         ?array $detail = null,
-        ?AiUsageEvent $usage = null,
+        array $usageEvents = [],
         ?string $blockedBy = null,
         bool $persistAssistant = true,
     ): AgentTurn {
+        $draft = DisclosureGuard::appendIfNeeded($draft, $ctx);
         $handoff = $this->writeHandoff($ctx->conversation, $reason, $source, $detail);
+        $state = $reason === HandoffReason::BudgetExceeded
+            ? ConversationState::Closed
+            : ConversationState::AwaitingHuman;
 
         if ($persistAssistant) {
             $this->persistAssistantMessage(
@@ -523,10 +666,12 @@ final class AgentRuntime
                 null,
                 'handoff',
                 $blockedBy,
+                $facts,
+                $ctx->principal,
             );
         }
 
-        $this->touchConversation($ctx->conversation, ConversationState::AwaitingHuman);
+        $this->touchConversation($ctx->conversation, $state);
 
         return new AgentTurn(
             $draft,
@@ -534,8 +679,8 @@ final class AgentRuntime
             $facts,
             $invocations,
             $handoff,
-            $usage,
-            ConversationState::AwaitingHuman,
+            $usageEvents,
+            $state,
             $blockedBy,
         );
     }
@@ -548,16 +693,82 @@ final class AgentRuntime
         HandoffTriggerSource $source,
     ): AgentTurn {
         $this->persistUserMessage($ctx->conversation, $input);
+        $site = $this->siteFor($principal);
 
         return $this->finishWithHandoff(
             $ctx,
-            FactBag::fromCustomerMessage($input),
+            FactBag::fromCustomerMessage($input, $site),
             [],
             $match->reason,
             $source,
             $match->cannedDraft,
             $match->detail,
         );
+    }
+
+    /**
+     * Reserve an ai_usage_events row, call the driver, then settle with real tokens.
+     *
+     * @param  list<array<string, mixed>>  $messages
+     * @param  list<AgentTool>  $toolObjects
+     * @param  list<AiUsageEvent>  $usageEvents
+     */
+    private function streamMetered(
+        AiAgent $agent,
+        AgentConversation $conversation,
+        array $messages,
+        array $toolObjects,
+        string $model,
+        ?Closure $onEvent,
+        array &$usageEvents,
+    ): ModelResponse {
+        $callId = (string) Str::uuid7();
+        AiUsageEvent::reserve(
+            $callId,
+            null,
+            null,
+            'agent',
+            RequestId::get(),
+            $agent->id,
+            $conversation->id,
+        );
+
+        try {
+            $response = $this->driver->stream(
+                $messages,
+                $toolObjects,
+                $model,
+                $onEvent === null ? null : fn (string $delta) => $onEvent('token', ['delta' => $delta]),
+            );
+        } catch (ModelTimeoutException $e) {
+            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, model: $model);
+            if ($failed !== null) {
+                $usageEvents[] = $failed;
+            }
+            SystemEvent::record('ai.turn.failed', $conversation, [
+                'error' => 'timeout',
+                'detail' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        } catch (Throwable $e) {
+            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, model: $model);
+            if ($failed !== null) {
+                $usageEvents[] = $failed;
+            }
+            SystemEvent::record('ai.turn.failed', $conversation, [
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+
+        $settled = AiUsageEvent::settle($callId, $response->usage, AiUsageEvent::STATUS_OK, null, $model);
+        if ($settled !== null) {
+            $usageEvents[] = $settled;
+        }
+
+        return $response;
     }
 
     /**
@@ -579,51 +790,27 @@ final class AgentRuntime
         });
     }
 
-    private function settleUsage(
-        AiAgent $agent,
-        AgentConversation $conversation,
-        Usage $usage,
-        string $model,
-        int $toolCalls,
-        string $status = AiUsageEvent::STATUS_OK,
-    ): ?AiUsageEvent {
-        $callId = (string) Str::uuid7();
-
-        $event = AiUsageEvent::reserve(
-            $callId,
-            null,
-            null,
-            'agent',
-            RequestId::get(),
-            $agent->id,
-            $conversation->id,
-        );
-
-        $settled = AiUsageEvent::settle(
-            $callId,
-            $usage,
-            $status,
-            null,
-            $model,
-        );
-
-        if ($settled !== null && $toolCalls > 0) {
-            $settled->tool_calls = $toolCalls;
-            $settled->save();
-        }
-
-        return $settled ?? $event;
-    }
-
     private function touchConversation(AgentConversation $conversation, ConversationState $state): void
     {
         $conversation->state = $state;
         $conversation->last_turn_at = now();
+        if ($state === ConversationState::Closed && $conversation->closed_at === null) {
+            $conversation->closed_at = now();
+        }
         $conversation->save();
     }
 
     private function nextSequence(AgentConversation $conversation): int
     {
         return (int) $conversation->messages()->max('sequence') + 1;
+    }
+
+    private function siteFor(AgentPrincipal $principal): ?Site
+    {
+        if ($principal->siteId === null) {
+            return null;
+        }
+
+        return Site::query()->find($principal->siteId);
     }
 }

@@ -14,6 +14,7 @@ services:
     volumes:
       - .:/app
       - .docker/prod.supervisord.conf:/opt/docker/etc/supervisor.d/jobs.conf
+      - .docker/nginx-vhost-common.d/sse.conf:/opt/docker/etc/nginx/vhost.common.d/sse.conf
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.keevaris-api.rule=Host(`test2.keevaris.local`)"

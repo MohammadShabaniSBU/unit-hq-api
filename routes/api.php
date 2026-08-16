@@ -340,6 +340,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::post('notes', [Controllers\NoteController::class, 'store']);
 
+    Route::get('ai/agents', [Controllers\AiAgentController::class, 'index']);
+    Route::get('ai/demo-personas', [Controllers\AiDemoPersonaController::class, 'index']);
+    Route::get('agent-conversations', [Controllers\AgentConversationController::class, 'index']);
+    Route::post('agent-conversations', [Controllers\AgentConversationController::class, 'store']);
+    Route::get('agent-conversations/{agentConversation}', [Controllers\AgentConversationController::class, 'show']);
+    Route::post('agent-conversations/{agentConversation}/turns', [Controllers\AgentConversationController::class, 'storeTurn'])
+        ->middleware('throttle:ai-turns');
+    Route::post('agent-conversations/{agentConversation}/close', [Controllers\AgentConversationController::class, 'close']);
+
     Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
     Route::post('copilot/conversations', [Controllers\CopilotController::class, 'store']);
     Route::get('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'show']);

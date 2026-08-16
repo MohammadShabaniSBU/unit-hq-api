@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Models\Site;
+use App\Support\Ai\Guards\DraftToken;
+use App\Support\Ai\Guards\DraftTokenExtractor;
+
 /**
  * Tokens a turn is licensed to emit. Grounding (S22-03) diffs the draft against this.
  */
@@ -14,6 +18,9 @@ final class FactBag
 
     /** @var array<string, true> */
     private array $moneyAmounts = [];
+
+    /** @var array<string, true> */
+    private array $percents = [];
 
     public function money(string $amount, string $currency): self
     {
@@ -42,12 +49,18 @@ final class FactBag
     {
         $this->addToken($date);
 
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
+            $this->addToken(substr($date, 8, 2).'/'.substr($date, 5, 2).'/'.substr($date, 0, 4));
+            $this->addToken(substr($date, 8, 2).'-'.substr($date, 5, 2).'-'.substr($date, 0, 4));
+        }
+
         return $this;
     }
 
     public function identifier(string $identifier): self
     {
         $this->addToken($identifier);
+        $this->addToken(strtoupper($identifier));
 
         return $this;
     }
@@ -62,6 +75,17 @@ final class FactBag
         return $this;
     }
 
+    public function percent(string $rate): self
+    {
+        $normalized = self::normalizePercent($rate);
+        $this->percents[$normalized] = true;
+        $this->addToken($normalized);
+        $this->addToken($normalized.'%');
+        $this->addToken($normalized.' %');
+
+        return $this;
+    }
+
     public function merge(self $other): self
     {
         foreach ($other->tokens as $token => $_) {
@@ -69,6 +93,9 @@ final class FactBag
         }
         foreach ($other->moneyAmounts as $amount => $_) {
             $this->moneyAmounts[$amount] = true;
+        }
+        foreach ($other->percents as $percent => $_) {
+            $this->percents[$percent] = true;
         }
 
         return $this;
@@ -80,6 +107,11 @@ final class FactBag
             return true;
         }
 
+        $upper = strtoupper($candidate);
+        if (isset($this->tokens[$upper])) {
+            return true;
+        }
+
         $amount = self::tryNormalizeAmount($candidate);
         if ($amount !== null && isset($this->moneyAmounts[$amount])) {
             return true;
@@ -88,37 +120,54 @@ final class FactBag
         return false;
     }
 
+    public function containsPercent(string $candidate): bool
+    {
+        return isset($this->percents[self::normalizePercent($candidate)]);
+    }
+
     /**
      * @return list<string>
      */
     public function all(): array
     {
-        return array_keys($this->tokens);
+        return array_map(strval(...), array_keys($this->tokens));
     }
 
-    public static function fromCustomerMessage(string $input): self
+    /**
+     * @param  list<string|int>  $keys
+     */
+    public static function fromKeys(array $keys): self
     {
         $bag = new self;
-
-        if (preg_match_all('/€\s*(\d+[.,]\d{1,2})|(\d+[.,]\d{1,2})\s*€|(\d+[.,]\d{1,2})\s*EUR|EUR\s*(\d+[.,]\d{1,2})/iu', $input, $matches, PREG_SET_ORDER) !== false) {
-            foreach ($matches as $match) {
-                $raw = $match[1] ?? $match[2] ?? $match[3] ?? $match[4] ?? null;
-                if (is_string($raw) && $raw !== '') {
-                    $bag->money($raw, 'EUR');
-                }
+        foreach ($keys as $key) {
+            $key = (string) $key;
+            $bag->addToken($key);
+            $amount = self::tryNormalizeAmount($key);
+            if ($amount !== null) {
+                $bag->moneyAmounts[$amount] = true;
+            }
+            if (str_contains($key, '%')) {
+                $bag->percents[self::normalizePercent($key)] = true;
             }
         }
 
-        if (preg_match_all('/\b\d{4}-\d{2}-\d{2}\b/', $input, $dates) !== false) {
-            foreach ($dates[0] as $date) {
-                $bag->date($date);
-            }
-        }
+        return $bag;
+    }
 
-        if (preg_match_all('/\b[A-Z]-\d+\b/', $input, $ids) !== false) {
-            foreach ($ids[0] as $id) {
-                $bag->identifier($id);
-            }
+    public static function fromCustomerMessage(string $input, ?Site $site = null): self
+    {
+        $bag = new self;
+        $extractor = new DraftTokenExtractor;
+
+        foreach ($extractor->extract($input, $site) as $token) {
+            match ($token->type) {
+                DraftToken::Money => $bag->money($token->normalized, $token->currency ?? 'EUR'),
+                DraftToken::Percent => $bag->percent($token->normalized),
+                DraftToken::Date => $bag->date($token->normalized),
+                DraftToken::Identifier => $bag->identifier($token->raw),
+                DraftToken::Number => $bag->number($token->normalized),
+                default => null,
+            };
         }
 
         return $bag;
@@ -135,6 +184,20 @@ final class FactBag
         $normalized = self::tryNormalizeAmount($amount);
 
         return $normalized ?? number_format((float) $amount, 2, '.', '');
+    }
+
+    public static function normalizePercent(string $raw): string
+    {
+        $amount = self::tryNormalizeAmount($raw);
+        if ($amount === null) {
+            $cleaned = preg_replace('/[^\d,.\-]/u', '', $raw) ?? '';
+
+            return $cleaned !== '' ? $cleaned : $raw;
+        }
+
+        $trimmed = rtrim(rtrim($amount, '0'), '.');
+
+        return $trimmed !== '' ? $trimmed : '0';
     }
 
     public static function tryNormalizeAmount(string $raw): ?string

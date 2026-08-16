@@ -101,7 +101,8 @@ final class PricingQuoteTool implements AgentTool
             ->money($breakdown->net, $currency)
             ->money($breakdown->tax, $currency)
             ->money($breakdown->gross, $currency)
-            ->number($ratePct);
+            ->number($ratePct)
+            ->percent($ratePct);
 
         return ToolResult::ok(
             [
