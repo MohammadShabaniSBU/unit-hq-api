@@ -65,7 +65,7 @@ class AiAgent extends Model
 
     public function definition(): AgentDefinition
     {
-        return AgentRegistry::get($this->key);
+        return app(AgentRegistry::class)->get($this->key);
     }
 
     /** @return HasMany<AgentConversation, $this> */

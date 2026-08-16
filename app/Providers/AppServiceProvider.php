@@ -2,6 +2,18 @@
 
 namespace App\Providers;
 
+use App\Events\ChannelDeliveryFailed;
+use App\Events\ModelCreated;
+use App\Events\ModelDeleted;
+use App\Events\ModelUpdated;
+use App\Listeners\BroadcastCopilotFailed;
+use App\Listeners\BroadcastCopilotToolInvoking;
+use App\Listeners\IncrementAiUsageToolCalls;
+use App\Listeners\QueueAutomationMatching;
+use App\Listeners\RecordAgentFailoverUsage;
+use App\Listeners\RecordAgentUsage;
+use App\Listeners\SettleFailedAiUsage;
+use App\Listeners\WriteChannelSuppression;
 use App\Models\AccessEvent;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
@@ -25,22 +37,22 @@ use App\Models\Reservation;
 use App\Models\Task;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
-use App\Events\ChannelDeliveryFailed;
-use App\Events\ModelCreated;
-use App\Events\ModelDeleted;
-use App\Events\ModelUpdated;
-use App\Listeners\BroadcastCopilotFailed;
-use App\Listeners\BroadcastCopilotToolInvoking;
-use App\Listeners\IncrementAiUsageToolCalls;
-use App\Listeners\QueueAutomationMatching;
-use App\Listeners\RecordAgentFailoverUsage;
-use App\Listeners\RecordAgentUsage;
-use App\Listeners\SettleFailedAiUsage;
-use App\Listeners\WriteChannelSuppression;
 use App\Session\MorphDatabaseSessionHandler;
+use App\Support\Access\AccessProviderRegistry;
+use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\Agents\SalesAgentDefinition;
+use App\Support\Ai\Agents\SupportAgentDefinition;
+use App\Support\Ai\Drivers\FakeModelDriver;
+use App\Support\Ai\Drivers\LaravelAiDriver;
+use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Guards\GuardrailPipeline;
+use App\Support\Ai\Guards\HandoffEvaluator;
+use App\Support\Ai\Guards\NullGuardrailPipeline;
+use App\Support\Ai\Guards\NullHandoffEvaluator;
+use App\Support\Ai\Tools\EscalateTool;
+use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
-use App\Support\Access\AccessProviderRegistry;
 use App\Support\ESign\ESignProviderRegistry;
 use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
@@ -73,6 +85,31 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ESignProviderRegistry::class);
         $this->app->singleton(AccessProviderRegistry::class);
         $this->app->singleton(AnalyticsProviderRegistry::class);
+
+        $this->app->singleton(AgentRegistry::class, function (): AgentRegistry {
+            $registry = new AgentRegistry;
+            $registry->register(new SupportAgentDefinition);
+            $registry->register(new SalesAgentDefinition);
+
+            return $registry;
+        });
+
+        $this->app->singleton(ToolRegistry::class, function (): ToolRegistry {
+            $registry = new ToolRegistry;
+            $registry->register(new EscalateTool);
+
+            return $registry;
+        });
+
+        $this->app->singleton(HandoffEvaluator::class, NullHandoffEvaluator::class);
+        $this->app->singleton(GuardrailPipeline::class, NullGuardrailPipeline::class);
+
+        $this->app->singleton(ModelDriver::class, function ($app): ModelDriver {
+            return match ((string) config('agents.driver')) {
+                'fake' => new FakeModelDriver,
+                default => $app->make(LaravelAiDriver::class),
+            };
+        });
     }
 
     /**
@@ -100,31 +137,30 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Relation::morphMap([
-            'employee'         => Employee::class,
-            'contact'          => Contact::class,
-            'deal'             => Deal::class,
-            'offer'            => Offer::class,
-            'reservation'      => Reservation::class,
-            'unit'             => Unit::class,
-            'contract'         => Contract::class,
-            'insurance'        => Insurance::class,
-            'unit_class_rate'  => UnitClassRate::class,
-            'insurance_rate'   => InsuranceRate::class,
-            'task'             => Task::class,
-            'note'             => Note::class,
-            'invoice'          => Invoice::class,
-            'payment'          => Payment::class,
-            'autopay_attempt'  => AutopayAttempt::class,
-            'billing_run'      => BillingRun::class,
-            'delinquency'      => Delinquency::class,
-            'contract_notice'  => ContractNotice::class,
-            'access_point'             => AccessPoint::class,
-            'access_suspension'        => AccessSuspension::class,
-            'access_grant'             => AccessGrant::class,
-            'access_provider_account'  => AccessProviderAccount::class,
-            'access_event'             => AccessEvent::class,
+            'employee' => Employee::class,
+            'contact' => Contact::class,
+            'deal' => Deal::class,
+            'offer' => Offer::class,
+            'reservation' => Reservation::class,
+            'unit' => Unit::class,
+            'contract' => Contract::class,
+            'insurance' => Insurance::class,
+            'unit_class_rate' => UnitClassRate::class,
+            'insurance_rate' => InsuranceRate::class,
+            'task' => Task::class,
+            'note' => Note::class,
+            'invoice' => Invoice::class,
+            'payment' => Payment::class,
+            'autopay_attempt' => AutopayAttempt::class,
+            'billing_run' => BillingRun::class,
+            'delinquency' => Delinquency::class,
+            'contract_notice' => ContractNotice::class,
+            'access_point' => AccessPoint::class,
+            'access_suspension' => AccessSuspension::class,
+            'access_grant' => AccessGrant::class,
+            'access_provider_account' => AccessProviderAccount::class,
+            'access_event' => AccessEvent::class,
         ]);
-
 
         Session::extend('database', function ($app) {
             $config = $app->make('config');

@@ -7,12 +7,42 @@ namespace App\Support\Ai\Agents;
 use RuntimeException;
 
 /**
- * Resolves `ai_agents.key` to a code definition. Empty until S22-01 registers agents.
+ * Resolves `ai_agents.key` to a code definition (D-AI-6).
  */
 final class AgentRegistry
 {
-    public static function get(string $key): AgentDefinition
+    /** @var array<string, AgentDefinition> */
+    private array $definitions = [];
+
+    public function register(AgentDefinition $definition): void
     {
-        throw new RuntimeException("Agent definition [{$key}] is not registered.");
+        $this->definitions[$definition->key()] = $definition;
+    }
+
+    public function has(string $key): bool
+    {
+        return isset($this->definitions[$key]);
+    }
+
+    public function get(string $key): AgentDefinition
+    {
+        if (! isset($this->definitions[$key])) {
+            throw new RuntimeException("Agent definition [{$key}] is not registered.");
+        }
+
+        return $this->definitions[$key];
+    }
+
+    public function for(string $key): AgentDefinition
+    {
+        return $this->get($key);
+    }
+
+    /**
+     * @return array<string, AgentDefinition>
+     */
+    public function all(): array
+    {
+        return $this->definitions;
     }
 }

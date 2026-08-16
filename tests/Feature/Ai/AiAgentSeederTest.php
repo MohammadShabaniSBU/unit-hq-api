@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Ai;
 
 use App\Models\AiAgent;
+use App\Support\Ai\Agents\AgentRegistry;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,6 +27,10 @@ class AiAgentSeederTest extends TestCase
             config('agents.default_model'),
             AiAgent::query()->where('key', 'support')->value('model'),
         );
+
+        $registry = app(AgentRegistry::class);
+        $this->assertSame('support', $registry->get('support')->key());
+        $this->assertSame('sales', $registry->get('sales')->key());
     }
 
     #[Test]

@@ -236,6 +236,10 @@ convention, sprint `DatabaseSeeder` fixtures stay test-only and independent.
   and `anonymous`, without touching the database.
 - Every contact-scoped tool returns `denied: ownership` for a foreign
   `contract_id` / `contact_id`.
+- Sales definition claims **no** tool whose `requiredVerification()` is
+  `verified`. A sales conversation never reaches verified in practice; a
+  verified-only tool on sales is a category error (balance / contract /
+  access). Support may claim verified tools.
 - `billing.balance` with two currencies returns two entries and never a sum.
 - `pricing.quote` matches `BillingMath` to the cent for a known fixture.
 - `crm.create_contact` deduplicates on an existing `contact_channels` value.

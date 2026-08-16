@@ -6,6 +6,10 @@ return [
 
     'default_model' => env('AGENTS_DEFAULT_MODEL', 'claude-sonnet-4-6'),
 
+    'driver' => env('AGENTS_DRIVER', 'laravel'),
+
+    'enabled' => filter_var(env('AGENTS_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
     'demo_enabled' => env('AGENTS_DEMO_ENABLED', false),
 
     'max_turns' => 20,

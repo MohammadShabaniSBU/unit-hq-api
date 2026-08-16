@@ -105,6 +105,8 @@ class AiUsageEvent extends Model
         ?string $conversationId = null,
         string $purpose = 'copilot',
         ?string $requestId = null,
+        ?int $aiAgentId = null,
+        ?int $agentConversationId = null,
     ): ?self {
         if ($callId === null || $callId === '') {
             return null;
@@ -114,6 +116,8 @@ class AiUsageEvent extends Model
             ['call_id' => $callId],
             [
                 'employee_id' => $employeeId,
+                'ai_agent_id' => $aiAgentId,
+                'agent_conversation_id' => $agentConversationId,
                 'conversation_id' => $conversationId,
                 'purpose' => $purpose,
                 'status' => self::STATUS_STARTED,
