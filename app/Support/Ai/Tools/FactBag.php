@@ -154,23 +154,27 @@ final class FactBag
         return $bag;
     }
 
-    public static function fromCustomerMessage(string $input, ?Site $site = null): self
+    public function absorb(string $text, ?Site $site = null): self
     {
-        $bag = new self;
         $extractor = new DraftTokenExtractor;
 
-        foreach ($extractor->extract($input, $site) as $token) {
+        foreach ($extractor->extract($text, $site) as $token) {
             match ($token->type) {
-                DraftToken::Money => $bag->money($token->normalized, $token->currency ?? 'EUR'),
-                DraftToken::Percent => $bag->percent($token->normalized),
-                DraftToken::Date => $bag->date($token->normalized),
-                DraftToken::Identifier => $bag->identifier($token->raw),
-                DraftToken::Number => $bag->number($token->normalized),
+                DraftToken::Money => $this->money($token->normalized, $token->currency ?? 'EUR'),
+                DraftToken::Percent => $this->percent($token->normalized),
+                DraftToken::Date => $this->date($token->normalized),
+                DraftToken::Identifier => $this->identifier($token->raw),
+                DraftToken::Number => $this->number($token->normalized),
                 default => null,
             };
         }
 
-        return $bag;
+        return $this;
+    }
+
+    public static function fromCustomerMessage(string $input, ?Site $site = null): self
+    {
+        return (new self)->absorb($input, $site);
     }
 
     private function addToken(string $token): void

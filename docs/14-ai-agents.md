@@ -228,6 +228,8 @@ Other tool notes:
 
 - `facility.availability` goes through `App\Support\Occupancy\Availability`
   (invariant 5 / 36). Counts and classes, **not** unit identifiers.
+- `facility.site_info` and `kb.faq_lookup` absorb display tokens into
+  `FactBag` so quoted addresses, hours, and phones are licensed.
 - `billing.balance` returns an array keyed by currency and never a summed
   figure (invariant 30). Derived at read time (invariant 5).
 - `billing.next_charge` reads the contract's snapshotted cadence (invariant

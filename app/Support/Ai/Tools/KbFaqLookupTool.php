@@ -73,7 +73,7 @@ final class KbFaqLookupTool implements AgentTool
                 'snippet' => $snippet,
             ],
             $snippet,
-            new FactBag,
+            (new FactBag)->absorb($snippet, $site),
         );
     }
 }

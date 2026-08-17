@@ -94,12 +94,13 @@ final class FacilitySiteInfoTool implements AgentTool
         }
         $bits[] = "Timezone: {$site->timezone}.";
 
-        $facts = new FactBag;
+        $display = implode(' ', $bits);
+        $facts = (new FactBag)->absorb($display, $site);
         $facts->identifier((string) $site->id);
         if ($site->code !== null && $site->code !== '') {
             $facts->identifier($site->code);
         }
 
-        return ToolResult::ok($data, implode(' ', $bits), $facts);
+        return ToolResult::ok($data, $display, $facts);
     }
 }
