@@ -29,9 +29,14 @@ class CopilotVoiceController extends Controller
         /** @var Employee $employee */
         $employee = $request->user();
         $tokenUrl = (string) config('services.vocal_bridge.token_url');
+        $agentId = config('services.vocal_bridge.agent_id');
+        $headers = ['X-API-Key' => $key];
+        if (is_string($agentId) && $agentId !== '') {
+            $headers['X-Agent-Id'] = $agentId;
+        }
 
         try {
-            $response = Http::withHeaders(['X-API-Key' => $key])
+            $response = Http::withHeaders($headers)
                 ->timeout(8)
                 ->acceptJson()
                 ->post($tokenUrl, ['participant_name' => $employee->name]);

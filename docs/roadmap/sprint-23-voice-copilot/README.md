@@ -7,6 +7,8 @@ click-only tool approvals (invariant 60).
 
 Dashboard config that the integration needs: [`vb-config.json`](vb-config.json).
 Manual QA (panel has no test runner): [`MANUAL-QA.md`](MANUAL-QA.md).
+Account API keys also need `VOCAL_BRIDGE_AGENT_ID` (the agent UUID from the
+Vocal Bridge dashboard); agent-scoped keys do not.
 
 ## Ratified
 
