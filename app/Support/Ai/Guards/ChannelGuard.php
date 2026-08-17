@@ -12,6 +12,10 @@ use App\Support\Communications\Messages\SmsMessage;
 
 final class ChannelGuard implements OutboundGuard
 {
+    private const SUBJECT_LOOKAHEAD_LINES = 5;
+
+    private const SUBJECT_MAX_CHARS = 78;
+
     public function key(): string
     {
         return 'channel';
@@ -20,14 +24,8 @@ final class ChannelGuard implements OutboundGuard
     public function check(string $draft, FactBag $facts, AgentContext $ctx): GuardrailVerdict
     {
         $channel = $ctx->channel;
-        $body = $draft;
-        $subject = null;
+        [$subject, $body] = $this->extractSubject($draft);
         $detail = [];
-
-        if (preg_match('/^Subject:\s*(.+)\s*(?:\n|$)/i', $body, $match) === 1) {
-            $subject = trim($match[1]);
-            $body = ltrim((string) preg_replace('/^Subject:\s*.+\s*(?:\n|$)/i', '', $body, 1));
-        }
 
         if (! $channel->supportsHtml && $body !== strip_tags($body)) {
             $body = strip_tags($body);
@@ -52,13 +50,8 @@ final class ChannelGuard implements OutboundGuard
         }
 
         if ($channel->supportsSubject && ($subject === null || $subject === '')) {
-            return GuardrailVerdict::retry(
-                'Start the draft with a line of the form `Subject: …` followed by the body.',
-                'channel',
-                HandoffReason::Error,
-                $detail,
-                [['guard' => $this->key(), 'verdict' => 'retry', 'detail' => array_merge($detail, ['missing_subject' => true])]],
-            );
+            $subject = $this->synthesizeSubject($body);
+            $detail['subject_synthesized'] = true;
         }
 
         if ($channel->channel === AgentChannel::Whatsapp) {
@@ -75,5 +68,61 @@ final class ChannelGuard implements OutboundGuard
         }
 
         return GuardrailVerdict::pass($mutated, [$event], $subject);
+    }
+
+    /**
+     * @return array{0: string|null, 1: string}
+     */
+    private function extractSubject(string $draft): array
+    {
+        if (preg_match('/^Subject:\s*(.+)\s*(?:\n|$)/i', $draft, $match) === 1) {
+            $subject = trim($match[1]);
+            $body = ltrim((string) preg_replace('/^Subject:\s*.+\s*(?:\n|$)/i', '', $draft, 1));
+
+            return [$subject !== '' ? $subject : null, $body];
+        }
+
+        $lines = preg_split("/\r\n|\r|\n/", $draft);
+        if ($lines === false) {
+            return [null, $draft];
+        }
+
+        $limit = min(self::SUBJECT_LOOKAHEAD_LINES, count($lines));
+        for ($i = 0; $i < $limit; $i++) {
+            if (preg_match('/^Subject:\s*(.+)\s*$/i', trim($lines[$i]), $match) !== 1) {
+                continue;
+            }
+
+            $subject = trim($match[1]);
+            unset($lines[$i]);
+
+            return [$subject !== '' ? $subject : null, ltrim(implode("\n", $lines))];
+        }
+
+        return [null, $draft];
+    }
+
+    private function synthesizeSubject(string $body): string
+    {
+        $lines = preg_split("/\r\n|\r|\n/", $body);
+        $line = '';
+
+        foreach ($lines === false ? [] : $lines as $candidate) {
+            $candidate = trim((string) preg_replace('/\s+/u', ' ', strip_tags($candidate)));
+            if ($candidate !== '') {
+                $line = $candidate;
+                break;
+            }
+        }
+
+        if ($line === '') {
+            return 'Your enquiry';
+        }
+
+        if (mb_strlen($line) > self::SUBJECT_MAX_CHARS) {
+            $line = rtrim(mb_substr($line, 0, self::SUBJECT_MAX_CHARS));
+        }
+
+        return $line;
     }
 }

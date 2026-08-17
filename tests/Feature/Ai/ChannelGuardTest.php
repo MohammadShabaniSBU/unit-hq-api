@@ -68,9 +68,9 @@ class ChannelGuardTest extends TestCase
     }
 
     #[Test]
-    public function email_missing_subject_retries_once_then_hands_off(): void
+    public function email_missing_subject_is_synthesized(): void
     {
-        $this->driver->enqueueText('Here is the quote.')->enqueueText('Here is the quote.');
+        $this->driver->enqueueText('Here is the quote.');
 
         $conversation = $this->conversation(AgentChannel::Email);
         $turn = app(AgentRuntime::class)->turn(
@@ -79,9 +79,11 @@ class ChannelGuardTest extends TestCase
             'please email me a quote',
         );
 
-        $this->assertSame(2, $this->driver->callCount);
-        $this->assertSame(HandoffReason::Error, $turn->handoff?->reason);
-        $this->assertSame('channel', $turn->blockedBy);
+        $this->assertSame(1, $this->driver->callCount);
+        $this->assertNull($turn->handoff);
+        $this->assertNull($turn->blockedBy);
+        $this->assertSame('Here is the quote.', $turn->subject);
+        $this->assertStringContainsString('Here is the quote.', $turn->draft);
     }
 
     #[Test]
