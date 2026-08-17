@@ -27,11 +27,17 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
     private function __construct(
         private readonly array $credentials,
         private readonly string $baseUrl,
+        private readonly string $privateBaseUrl,
     ) {}
 
-    public static function make(array $credentials, string $baseUrl): static
+    public static function make(array $credentials, string $baseUrl, ?string $privateBaseUrl = null): static
     {
-        return new self($credentials, rtrim($baseUrl, '/'));
+        $public = rtrim($baseUrl, '/');
+        $private = is_string($privateBaseUrl) && $privateBaseUrl !== ''
+            ? rtrim($privateBaseUrl, '/')
+            : $public;
+
+        return new self($credentials, $public, $private);
     }
 
     public function credentialFields(): array
@@ -50,8 +56,8 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
             return VerificationResult::failed('Metabase API key is required.');
         }
 
-        if ($this->baseUrl === '') {
-            return VerificationResult::failed('Metabase base URL is required.');
+        if ($this->privateBaseUrl === '') {
+            return VerificationResult::failed('Metabase private base URL is required.');
         }
 
         try {
@@ -60,7 +66,7 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
                 'Accept' => 'application/json',
             ])
                 ->timeout(15)
-                ->get($this->baseUrl.'/api/user/current');
+                ->get($this->privateBaseUrl.'/api/user/current');
         } catch (\Throwable) {
             return VerificationResult::failed('Could not reach the Metabase instance.');
         }
@@ -105,7 +111,7 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
 
         $payload = [
             'resource' => [$kind => (int) $ref],
-            'params' => $locked,
+            'params' => (object) $locked,
             'exp' => $exp,
         ];
 
@@ -239,7 +245,7 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
             throw DiscoveryException::credentialsUnreadable();
         }
 
-        if ($this->baseUrl === '') {
+        if ($this->privateBaseUrl === '') {
             throw DiscoveryException::credentialsUnreadable();
         }
 
@@ -249,7 +255,7 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
                 'Accept' => 'application/json',
             ])
                 ->timeout(15)
-                ->get($this->baseUrl.$path);
+                ->get($this->privateBaseUrl.$path);
         } catch (ConnectionException) {
             throw DiscoveryException::unreachable();
         } catch (\Throwable) {

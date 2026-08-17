@@ -61,7 +61,8 @@ Archive-only — `DELETE` aliases archive.
 | Field | Notes |
 |---|---|
 | `provider` | Adapter key |
-| `display_name`, `base_url` | Not secrets; `base_url` is used for API calls without decrypting |
+| `display_name`, `base_url` | Not secrets. `base_url` is the public embed host for Metabase iframes, or the URL template for the generic iframe provider |
+| `private_base_url` | Metabase-only, not a secret. Used for API-key calls (verify, dashboard/question discovery) without decrypting credentials. Falls back to `base_url` when null |
 | `credentials` | `encrypted:array` — Metabase holds `embedding_secret_key` + `api_key`; iframe may be `{}` |
 | `connection_status` | `pending` \| `connected` \| `error` |
 

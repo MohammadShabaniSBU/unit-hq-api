@@ -166,7 +166,7 @@ class AppServiceProvider extends ServiceProvider
             $employeeId = (string) ($request->user()?->getAuthIdentifier() ?? 'guest');
             $key = (string) $request->route('key', '');
 
-            return Limit::perMinute(1)->by('insights-embed|'.$employeeId.'|'.$key);
+            return Limit::perMinute(10)->by('insights-embed|'.$employeeId.'|'.$key);
         });
 
         RateLimiter::for('ai-turns', function (Request $request) {

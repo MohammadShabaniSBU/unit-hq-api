@@ -11,7 +11,7 @@ interface AnalyticsProvider
     /**
      * @param  array<string, mixed>  $credentials
      */
-    public static function make(array $credentials, string $baseUrl): static;
+    public static function make(array $credentials, string $baseUrl, ?string $privateBaseUrl = null): static;
 
     /**
      * Form metadata for the settings UI.

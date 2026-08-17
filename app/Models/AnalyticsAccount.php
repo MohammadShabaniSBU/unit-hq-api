@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property AnalyticsProvider $provider
  * @property string            $display_name
  * @property string            $base_url
+ * @property string|null       $private_base_url
  * @property array             $credentials
  * @property bool              $is_default
  * @property CredentialStatus  $connection_status
@@ -38,6 +39,7 @@ class AnalyticsAccount extends Model
         'provider',
         'display_name',
         'base_url',
+        'private_base_url',
         'credentials',
         'is_default',
         'connection_status',

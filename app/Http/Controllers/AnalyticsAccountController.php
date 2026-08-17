@@ -76,13 +76,17 @@ class AnalyticsAccountController extends Controller
             'provider' => ['required', 'string', Rule::in($providerValues)],
             'display_name' => ['required', 'string', 'max:128'],
             'base_url' => ['required', 'string', 'max:255'],
+            'private_base_url' => ['required_if:provider,metabase', 'nullable', 'string', 'max:255'],
             'credentials' => ['nullable', 'array'],
             'credentials.*' => ['nullable', 'string'],
             'is_default' => ['sometimes', 'boolean'],
         ]);
 
         $providerValue = $validated['provider'];
-        $adapter = $this->registry->make($providerValue, [], $validated['base_url']);
+        $privateBaseUrl = $providerValue === AnalyticsProvider::Metabase->value
+            ? $this->normalizePrivateBaseUrl($validated['private_base_url'] ?? null)
+            : null;
+        $adapter = $this->registry->make($providerValue, [], $validated['base_url'], $privateBaseUrl);
         $fields = $adapter->credentialFields();
 
         if ($providerValue === AnalyticsProvider::Iframe->value) {
@@ -105,7 +109,7 @@ class AnalyticsAccountController extends Controller
             }
         }
 
-        $verifyAdapter = $this->registry->make($providerValue, $merged, $validated['base_url']);
+        $verifyAdapter = $this->registry->make($providerValue, $merged, $validated['base_url'], $privateBaseUrl);
         $verification = $verifyAdapter->verify();
 
         if ($verification->ok) {
@@ -123,6 +127,7 @@ class AnalyticsAccountController extends Controller
         $account = DB::transaction(function () use (
             $validated,
             $providerValue,
+            $privateBaseUrl,
             $merged,
             $status,
             $lastError,
@@ -141,6 +146,7 @@ class AnalyticsAccountController extends Controller
                 'provider' => AnalyticsProvider::from($providerValue),
                 'display_name' => $validated['display_name'],
                 'base_url' => $validated['base_url'],
+                'private_base_url' => $privateBaseUrl,
                 'credentials' => $merged,
                 'is_default' => $makeDefault,
                 'connection_status' => $status,
@@ -173,15 +179,20 @@ class AnalyticsAccountController extends Controller
         $validated = $request->validate([
             'display_name' => ['sometimes', 'string', 'max:128'],
             'base_url' => ['sometimes', 'string', 'max:255'],
+            'private_base_url' => ['sometimes', 'nullable', 'string', 'max:255'],
             'credentials' => ['nullable', 'array'],
             'credentials.*' => ['nullable', 'string'],
         ]);
 
         $providerValue = $analyticsAccount->provider->value;
-        $adapter = $this->registry->make($providerValue, [], $analyticsAccount->base_url);
-        $fields = $adapter->credentialFields();
-
         $baseUrl = $validated['base_url'] ?? $analyticsAccount->base_url;
+        $privateBaseUrl = $analyticsAccount->provider === AnalyticsProvider::Metabase
+            ? (array_key_exists('private_base_url', $validated)
+                ? $this->normalizePrivateBaseUrl($validated['private_base_url'])
+                : $analyticsAccount->private_base_url)
+            : null;
+        $adapter = $this->registry->make($providerValue, [], $baseUrl, $privateBaseUrl);
+        $fields = $adapter->credentialFields();
 
         if ($providerValue === AnalyticsProvider::Iframe->value) {
             IframeHostGuard::assertAllowed($baseUrl);
@@ -220,6 +231,7 @@ class AnalyticsAccountController extends Controller
         $analyticsAccount->fill([
             'display_name' => $validated['display_name'] ?? $analyticsAccount->display_name,
             'base_url' => $baseUrl,
+            'private_base_url' => $privateBaseUrl,
             'credentials' => $merged,
         ]);
         $analyticsAccount->save();
@@ -506,5 +518,16 @@ class AnalyticsAccountController extends Controller
         }
 
         return null;
+    }
+
+    private function normalizePrivateBaseUrl(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

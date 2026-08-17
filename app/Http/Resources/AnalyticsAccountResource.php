@@ -29,6 +29,7 @@ class AnalyticsAccountResource extends BaseResource
             'provider' => $providerValue,
             'display_name' => $this->display_name,
             'base_url' => $this->base_url,
+            'private_base_url' => $this->private_base_url,
             'credentials' => $unreadable ? [] : CredentialMasker::maskFields($credentials, $fields),
             'credentials_unreadable' => $unreadable,
             'is_default' => (bool) $this->is_default,

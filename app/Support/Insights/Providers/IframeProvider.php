@@ -19,7 +19,7 @@ final class IframeProvider implements AnalyticsProvider, SignsEmbedTokens
         private readonly string $baseUrl,
     ) {}
 
-    public static function make(array $credentials, string $baseUrl): static
+    public static function make(array $credentials, string $baseUrl, ?string $privateBaseUrl = null): static
     {
         return new self($baseUrl);
     }

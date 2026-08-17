@@ -48,7 +48,7 @@ final class AnalyticsProviderRegistry
     /**
      * @param  array<string, mixed>  $credentials
      */
-    public function make(string $provider, array $credentials, string $baseUrl): AnalyticsProvider
+    public function make(string $provider, array $credentials, string $baseUrl, ?string $privateBaseUrl = null): AnalyticsProvider
     {
         $class = $this->map[$provider] ?? null;
 
@@ -56,7 +56,7 @@ final class AnalyticsProviderRegistry
             throw new InvalidArgumentException('Unknown analytics provider: '.$provider);
         }
 
-        return $class::make($credentials, $baseUrl);
+        return $class::make($credentials, $baseUrl, $privateBaseUrl);
     }
 
     public function forAccount(AnalyticsAccount $account): AnalyticsProvider
@@ -65,7 +65,12 @@ final class AnalyticsProviderRegistry
         $credentials = CredentialMasker::readSafely($account, 'credentials') ?? [];
         $credentials = is_array($credentials) ? $credentials : [];
 
-        return $this->make($account->provider->value, $credentials, $account->base_url);
+        return $this->make(
+            $account->provider->value,
+            $credentials,
+            $account->base_url,
+            $account->private_base_url,
+        );
     }
 
     /**
