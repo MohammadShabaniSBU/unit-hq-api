@@ -282,11 +282,12 @@ discussing debt in ES/UK touches collections law. It is a hard escalation.
 
 ### Grounding
 
-Highest-value outbound guard. Extracts currency amounts, dates, unit-shaped
-identifiers, and percents from the draft; every token must be in the licensed
-`FactBag` (this turn's tools plus earlier unblocked assistant facts, plus
-numbers the customer themselves supplied). Invented `21%` VAT is the exact
-failure this exists for.
+Highest-value outbound guard. Extracts currency amounts, civil dates
+(`2026-08-17`, `17/08/2026`), unit-shaped identifiers, and percents from the
+draft; every token must be in the licensed `FactBag` (this turn's tools plus
+earlier unblocked assistant facts, plus numbers the customer themselves
+supplied). Relative-day words (`today` / `tomorrow`, and es/fr equivalents)
+are not dates. Invented `21%` VAT is the exact failure this exists for.
 
 ### Forbidden claims
 

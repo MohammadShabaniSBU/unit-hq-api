@@ -6,7 +6,6 @@ namespace App\Support\Ai\Guards;
 
 use App\Models\Site;
 use App\Support\Ai\Tools\FactBag;
-use App\Support\Time\SiteClock;
 
 final class DraftTokenExtractor
 {
@@ -25,7 +24,6 @@ final class DraftTokenExtractor
         $this->collectPercents($text, $tokens);
         $this->collectIsoDates($text, $tokens);
         $this->collectSlashDates($text, $tokens);
-        $this->collectRelativeDates($text, $tokens, $site);
         $this->collectUnitIds($text, $tokens);
         $this->collectBareDecimals($text, $tokens);
         $this->collectIntegers($text, $tokens);
@@ -127,44 +125,6 @@ final class DraftTokenExtractor
             }
 
             $normalized = $this->normalizeEuropeanDate($raw) ?? $raw;
-            $tokens[] = new DraftToken(DraftToken::Date, $raw, $normalized);
-        }
-    }
-
-    /**
-     * @param  list<DraftToken>  $tokens
-     */
-    private function collectRelativeDates(string $text, array &$tokens, ?Site $site): void
-    {
-        $pattern = '/\b(today|tomorrow|yesterday|hoy|mañana|manana|ayer|aujourd\'hui|demain|hier)\b/iu';
-        if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE) === false) {
-            return;
-        }
-
-        $deltas = [
-            'today' => 0,
-            'hoy' => 0,
-            "aujourd'hui" => 0,
-            'tomorrow' => 1,
-            'mañana' => 1,
-            'manana' => 1,
-            'demain' => 1,
-            'yesterday' => -1,
-            'ayer' => -1,
-            'hier' => -1,
-        ];
-
-        foreach ($matches[0] as [$raw, $offset]) {
-            if (! $this->claim((int) $offset, strlen($raw))) {
-                continue;
-            }
-
-            $folded = KeywordMatcher::fold($raw);
-            $delta = $deltas[$folded] ?? 0;
-            $normalized = $site !== null
-                ? SiteClock::today($site)->addDays($delta)->toDateString()
-                : $folded;
-
             $tokens[] = new DraftToken(DraftToken::Date, $raw, $normalized);
         }
     }
