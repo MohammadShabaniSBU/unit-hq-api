@@ -310,8 +310,10 @@ not blocked.
 
 SMS over `maxCharacters` → one shorter retry, then handoff. Segment maths
 are GSM-7 vs UCS-2. Email without a `Subject:` line is **filled in** from
-the first body line (or `Your enquiry`), not blocked. HTML in a plain-text
-channel is stripped. WhatsApp session-vs-template is advisory until S23.
+the first body line (or `Your enquiry`), not blocked. Lines before `Subject:`
+are discarded so the body is the sendable email, not model narration. HTML in
+a plain-text channel is stripped. The demo email skin renders Markdown. WhatsApp
+session-vs-template is advisory until S23.
 
 ### Prompt injection
 

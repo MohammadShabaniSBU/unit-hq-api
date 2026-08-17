@@ -12,7 +12,7 @@ use App\Support\Communications\Messages\SmsMessage;
 
 final class ChannelGuard implements OutboundGuard
 {
-    private const SUBJECT_LOOKAHEAD_LINES = 5;
+    private const SUBJECT_LOOKAHEAD_LINES = 10;
 
     private const SUBJECT_MAX_CHARS = 78;
 
@@ -24,8 +24,11 @@ final class ChannelGuard implements OutboundGuard
     public function check(string $draft, FactBag $facts, AgentContext $ctx): GuardrailVerdict
     {
         $channel = $ctx->channel;
-        [$subject, $body] = $this->extractSubject($draft);
+        [$subject, $body, $preambleStripped] = $this->extractSubject($draft);
         $detail = [];
+        if ($preambleStripped) {
+            $detail['preamble_stripped'] = true;
+        }
 
         if (! $channel->supportsHtml && $body !== strip_tags($body)) {
             $body = strip_tags($body);
@@ -71,7 +74,7 @@ final class ChannelGuard implements OutboundGuard
     }
 
     /**
-     * @return array{0: string|null, 1: string}
+     * @return array{0: string|null, 1: string, 2: bool}
      */
     private function extractSubject(string $draft): array
     {
@@ -79,12 +82,12 @@ final class ChannelGuard implements OutboundGuard
             $subject = trim($match[1]);
             $body = ltrim((string) preg_replace('/^Subject:\s*.+\s*(?:\n|$)/i', '', $draft, 1));
 
-            return [$subject !== '' ? $subject : null, $body];
+            return [$subject !== '' ? $subject : null, $body, false];
         }
 
         $lines = preg_split("/\r\n|\r|\n/", $draft);
         if ($lines === false) {
-            return [null, $draft];
+            return [null, $draft, false];
         }
 
         $limit = min(self::SUBJECT_LOOKAHEAD_LINES, count($lines));
@@ -94,12 +97,12 @@ final class ChannelGuard implements OutboundGuard
             }
 
             $subject = trim($match[1]);
-            unset($lines[$i]);
+            $body = ltrim(implode("\n", array_slice($lines, $i + 1)));
 
-            return [$subject !== '' ? $subject : null, ltrim(implode("\n", $lines))];
+            return [$subject !== '' ? $subject : null, $body, $i > 0];
         }
 
-        return [null, $draft];
+        return [null, $draft, false];
     }
 
     private function synthesizeSubject(string $body): string

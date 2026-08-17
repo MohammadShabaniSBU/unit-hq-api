@@ -93,7 +93,7 @@ TEXT;
             $bits[] = 'Plain text only. No HTML.';
         }
         if ($channel->supportsSubject) {
-            $bits[] = 'Start the draft with a line of the form `Subject: …` followed by the body.';
+            $bits[] = 'Start the draft with a line of the form `Subject: …` followed by the body the customer would receive. Do not wrap it in narration such as "Here is the draft" or "Here is the email".';
         }
         if ($channel->expectsSignature) {
             $bits[] = 'End with a short sign-off.';
