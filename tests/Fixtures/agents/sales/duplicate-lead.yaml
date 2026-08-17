@@ -1,0 +1,14 @@
+id: sales/duplicate-lead
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "I'm Dup Lead, email dup-lead@keevaris.test"
+    expect_tools: [crm.create_contact]
+    expect_writes:
+      contacts: 0
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

@@ -1,0 +1,13 @@
+id: support/asks-for-human
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "I want to talk to a real person please."
+    expect_handoff:
+      reason: customer_requested
+      trigger_source: rule
+    expect_no_model_call: true

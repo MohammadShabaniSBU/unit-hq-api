@@ -1,0 +1,9 @@
+id: support/wrong-expect
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "What are the hours?"
+    expect_tools: [billing.balance]

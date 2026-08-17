@@ -1,0 +1,13 @@
+id: support/unknown-policy
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "What is your unpublished midnight lock policy?"
+    expect_tools: [kb.faq_lookup, agent.escalate]
+    expect_handoff:
+      reason: unsupported_intent
+      trigger_source: model
+    expect_not_contains: "our unpublished"

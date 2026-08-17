@@ -15,6 +15,7 @@ final readonly class AgentTurn
     /**
      * @param  list<AgentToolInvocation>  $invocations
      * @param  list<AiUsageEvent>  $usageEvents
+     * @param  list<array<string, mixed>>  $guardrailEvents
      */
     public function __construct(
         public string $draft,
@@ -26,5 +27,6 @@ final readonly class AgentTurn
         public ConversationState $state,
         public ?string $blockedBy,
         public ?string $subject = null,
+        public array $guardrailEvents = [],
     ) {}
 }

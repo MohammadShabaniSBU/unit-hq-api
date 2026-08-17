@@ -1,0 +1,15 @@
+id: support/verified-balance
+agent: support
+channel: email
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "Hi, how much do I owe right now?"
+    expect_tools: [billing.balance]
+    forbid_tools: [contract.summary]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_contains_currency: EUR
+    expect_disclosure: true

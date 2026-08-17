@@ -1,0 +1,14 @@
+id: support/invoice-list
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_invoices
+turns:
+  - input: "Can you list my invoices?"
+    expect_tools: [billing.invoices]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_not_contains: "http"
+    expect_disclosure: true

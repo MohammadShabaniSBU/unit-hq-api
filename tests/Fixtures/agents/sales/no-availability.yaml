@@ -1,0 +1,14 @@
+id: sales/no-availability
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+  site: empty
+turns:
+  - input: "Do you have anything free at that site?"
+    expect_tools: [facility.availability]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_contains: "No units available"
+    expect_disclosure: true

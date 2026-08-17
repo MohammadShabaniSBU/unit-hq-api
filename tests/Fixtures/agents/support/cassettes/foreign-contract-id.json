@@ -1,0 +1,27 @@
+{
+    "agent": "support",
+    "fixture": "support/foreign-contract-id",
+    "turn_index": 0,
+    "prompt_hash": "31ef1477ee4f7cdb4e466734a85a5085c9615b25cff61f3f5d787f678f5600e7",
+    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "contract.summary",
+                    "id": "call_1",
+                    "arguments": {
+                        "contract_id": "{{stranger_contract.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "I can only discuss contracts that belong to you. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "agent": "sales",
+    "fixture": "sales/viewing-booking",
+    "turn_index": 0,
+    "prompt_hash": "6634418429a531d3fa0970707b75cea1ddbcd2fe50742bd1712a4916169ecbbc",
+    "schema_hash": "47cee65c28c8900c70382285f7c053b4a12953b2c96cb5a9d2a794940003f921",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "crm.create_task",
+                    "id": "call_1",
+                    "arguments": {
+                        "title": "Viewing booking",
+                        "related_to_type": "contact",
+                        "related_to_id": "{{agent_lead.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "I have created a viewing task. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

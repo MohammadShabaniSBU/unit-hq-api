@@ -1,0 +1,11 @@
+id: support/stale-hash
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Hello"
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

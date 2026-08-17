@@ -1,0 +1,13 @@
+id: support/auction-letter
+agent: support
+channel: email
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "I got a letter about an auction of my unit."
+    expect_handoff:
+      reason: legal_or_complaint
+      trigger_source: rule
+    expect_no_model_call: true

@@ -1,0 +1,13 @@
+id: support/json-ok
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "I want a real person"
+    expect_handoff:
+      reason: customer_requested
+      trigger_source: rule
+    expect_no_model_call: true

@@ -1,0 +1,13 @@
+id: support/anonymous-hours
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "What are the access hours?"
+    expect_tools: [kb.faq_lookup]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_contains: "seven days"
+    expect_disclosure: true

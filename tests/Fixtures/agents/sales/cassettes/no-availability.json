@@ -1,0 +1,27 @@
+{
+    "agent": "sales",
+    "fixture": "sales/no-availability",
+    "turn_index": 0,
+    "prompt_hash": "945ce4bb20357ae58ff3fddd3ecf6f406be28139ca7bc87629906eb525684608",
+    "schema_hash": "47cee65c28c8900c70382285f7c053b4a12953b2c96cb5a9d2a794940003f921",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.availability",
+                    "id": "call_1",
+                    "arguments": {
+                        "site_id": "{{empty.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "No units available matching those filters as of now. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

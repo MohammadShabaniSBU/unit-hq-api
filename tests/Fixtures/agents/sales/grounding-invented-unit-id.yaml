@@ -1,0 +1,13 @@
+id: sales/grounding-invented-unit-id
+agent: sales
+channel: webchat
+locale: en
+tags: [grounding]
+principal:
+  verification: anonymous
+turns:
+  - input: "So with VAT that's about how much for six months?"
+    expect_blocked_by: grounding
+    expect_handoff:
+      reason: grounding_failure
+      trigger_source: guardrail

@@ -1,0 +1,13 @@
+id: support/next-charge-date
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_next_charge
+turns:
+  - input: "When is my next charge?"
+    expect_tools: [billing.next_charge]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

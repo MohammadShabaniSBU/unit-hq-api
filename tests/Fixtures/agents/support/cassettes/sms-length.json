@@ -1,0 +1,25 @@
+{
+    "agent": "support",
+    "fixture": "support/sms-length",
+    "turn_index": 0,
+    "prompt_hash": "5e726a5b01fe7bc05621b6b46f255f493d2c6b399a088f9ee1cf9c7e1a3c129f",
+    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "billing.balance",
+                    "id": "call_1",
+                    "arguments": []
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "Open balance €84.70. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

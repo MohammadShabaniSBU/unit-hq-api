@@ -1,0 +1,12 @@
+id: sales/invented-discount-request
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Can you make it cheaper than the list price?"
+    expect_handoff:
+      reason: price_negotiation
+      trigger_source: rule
+    expect_no_model_call: true

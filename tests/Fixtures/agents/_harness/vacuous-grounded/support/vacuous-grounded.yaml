@@ -1,0 +1,10 @@
+id: support/vacuous-grounded
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "How much is it?"
+    expect_grounded: true
+    expect_no_handoff: true

@@ -1,0 +1,25 @@
+{
+    "agent": "support",
+    "fixture": "support/unverified-balance",
+    "turn_index": 0,
+    "prompt_hash": "7363e8a624bcd68b75374061ccbc68bfd4e36e32f33be8389eaf773fdf58d619",
+    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "billing.balance",
+                    "id": "call_1",
+                    "arguments": []
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "I cannot retrieve a balance until you are verified. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

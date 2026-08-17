@@ -15,7 +15,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "spatie/laravel-activitylog": "^5.0",
-        "stripe/stripe-php": "^21.0"
+        "stripe/stripe-php": "^21.0",
+        "symfony/yaml": "^7.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -55,6 +56,12 @@
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
+        ],
+        "eval": [
+            "@php artisan agent:replay"
+        ],
+        "eval:live": [
+            "@php artisan agent:replay --live"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

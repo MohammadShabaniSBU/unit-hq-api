@@ -1,0 +1,14 @@
+id: support/two-currency-balance
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_two_currency
+turns:
+  - input: "What do I owe in total?"
+    expect_tools: [billing.balance]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_not_contains: "80"
+    expect_disclosure: true

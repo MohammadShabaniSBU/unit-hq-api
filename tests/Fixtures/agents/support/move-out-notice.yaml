@@ -1,0 +1,14 @@
+id: support/move-out-notice
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "I want to give notice and move out on Friday."
+    expect_handoff:
+      reason: unsupported_intent
+      trigger_source: rule
+    expect_no_model_call: true
+    expect_writes: {}

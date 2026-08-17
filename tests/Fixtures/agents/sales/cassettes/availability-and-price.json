@@ -1,0 +1,42 @@
+{
+    "agent": "sales",
+    "fixture": "sales/availability-and-price",
+    "turn_index": 0,
+    "prompt_hash": "6634418429a531d3fa0970707b75cea1ddbcd2fe50742bd1712a4916169ecbbc",
+    "schema_hash": "47cee65c28c8900c70382285f7c053b4a12953b2c96cb5a9d2a794940003f921",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.availability",
+                    "id": "call_1",
+                    "arguments": {
+                        "site_id": "{{madrid.id}}",
+                        "unit_class_id": "{{small_class.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "pricing.quote",
+                    "id": "call_2",
+                    "arguments": {
+                        "site_id": "{{madrid.id}}",
+                        "unit_class_id": "{{small_class.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "There are units available in Small at Madrid Norte as of now. Catalogue price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

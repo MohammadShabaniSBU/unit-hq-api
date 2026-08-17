@@ -1,0 +1,14 @@
+{
+    "agent": "support",
+    "fixture": "support/wrong-expect",
+    "turn_index": 0,
+    "prompt_hash": "d80001f0722256b6777e4c1134f64c01dd4e1d35d96386bbba3049de6e57827a",
+    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "responses": [
+        {
+            "content": "Hello there. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

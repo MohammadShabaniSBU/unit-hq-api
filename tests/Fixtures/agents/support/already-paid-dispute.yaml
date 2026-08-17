@@ -1,0 +1,13 @@
+id: support/already-paid-dispute
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "I already paid this invoice, you charged twice."
+    expect_handoff:
+      reason: unsupported_intent
+      trigger_source: rule
+    expect_no_model_call: true

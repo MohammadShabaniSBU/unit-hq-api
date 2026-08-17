@@ -320,6 +320,7 @@ final class AgentRuntime
                 $usageEvents,
                 $outbound->blockedBy,
                 persistAssistant: false,
+                guardrailEvents: $outbound->events,
             );
         }
 
@@ -354,6 +355,7 @@ final class AgentRuntime
             ConversationState::Active,
             null,
             $outbound->subject,
+            $outbound->events,
         );
     }
 
@@ -641,6 +643,7 @@ final class AgentRuntime
      * @param  list<AgentToolInvocation>  $invocations
      * @param  array<string, mixed>|null  $detail
      * @param  list<AiUsageEvent>  $usageEvents
+     * @param  list<array<string, mixed>>  $guardrailEvents
      */
     private function finishWithHandoff(
         AgentContext $ctx,
@@ -653,6 +656,7 @@ final class AgentRuntime
         array $usageEvents = [],
         ?string $blockedBy = null,
         bool $persistAssistant = true,
+        array $guardrailEvents = [],
     ): AgentTurn {
         $draft = DisclosureGuard::appendIfNeeded($draft, $ctx);
         $handoff = $this->writeHandoff($ctx->conversation, $reason, $source, $detail);
@@ -686,6 +690,7 @@ final class AgentRuntime
             $usageEvents,
             $state,
             $blockedBy,
+            guardrailEvents: $guardrailEvents,
         );
     }
 

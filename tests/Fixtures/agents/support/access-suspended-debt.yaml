@@ -1,0 +1,13 @@
+id: support/access-suspended-debt
+agent: support
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_delinquent
+turns:
+  - input: "Why is my access suspended?"
+    expect_handoff:
+      reason: delinquency
+      trigger_source: rule
+    expect_no_model_call: true

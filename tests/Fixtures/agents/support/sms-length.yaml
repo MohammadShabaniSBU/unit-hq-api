@@ -1,0 +1,14 @@
+id: support/sms-length
+agent: support
+channel: sms
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "Balance please"
+    expect_tools: [billing.balance]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_contains_currency: EUR
+    expect_disclosure: true

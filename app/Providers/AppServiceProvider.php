@@ -43,6 +43,7 @@ use App\Support\Access\AccessProviderRegistry;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Agents\SalesAgentDefinition;
 use App\Support\Ai\Agents\SupportAgentDefinition;
+use App\Support\Ai\Drivers\CassetteDriver;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\LaravelAiDriver;
 use App\Support\Ai\Drivers\ModelDriver;
@@ -138,6 +139,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ModelDriver::class, function ($app): ModelDriver {
             return match ((string) config('agents.driver')) {
                 'fake' => new FakeModelDriver,
+                'cassette' => new CassetteDriver,
                 default => $app->make(LaravelAiDriver::class),
             };
         });

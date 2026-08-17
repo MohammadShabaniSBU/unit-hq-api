@@ -1,0 +1,14 @@
+id: sales/viewing-booking
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Book me a viewing please."
+    expect_tools: [crm.create_task]
+    expect_writes:
+      tasks: 1
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

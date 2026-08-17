@@ -1,0 +1,15 @@
+id: sales/lead-capture
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Please take my details: Ada Lovelace, ada-new@keevaris.test"
+    expect_tools: [crm.create_contact, crm.create_deal]
+    expect_writes:
+      contacts: 1
+      deals: 1
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

@@ -1,0 +1,13 @@
+id: support/auction-letter-es
+agent: support
+channel: email
+locale: es
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "Me ha llegado una carta de subasta de mi unidad."
+    expect_handoff:
+      reason: legal_or_complaint
+      trigger_source: rule
+    expect_no_model_call: true

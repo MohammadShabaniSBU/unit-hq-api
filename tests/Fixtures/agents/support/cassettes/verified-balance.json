@@ -1,0 +1,25 @@
+{
+    "agent": "support",
+    "fixture": "support/verified-balance",
+    "turn_index": 0,
+    "prompt_hash": "6c3d5783b2913d61015b801f7d71d2eaf0a40473e711b5b86e7943773b84bf1e",
+    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "billing.balance",
+                    "id": "call_1",
+                    "arguments": []
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "Subject: Your balance\n\nOpen balance is €84.70. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

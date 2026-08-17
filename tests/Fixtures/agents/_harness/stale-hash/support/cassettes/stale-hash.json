@@ -1,0 +1,14 @@
+{
+    "agent": "support",
+    "fixture": "support/stale-hash",
+    "turn_index": 0,
+    "prompt_hash": "deadbeef",
+    "schema_hash": "deadbeef",
+    "responses": [
+        {
+            "content": "Hello. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

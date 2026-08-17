@@ -1,0 +1,12 @@
+id: sales/quote-with-catalogue-discount
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "What catalogue promotions apply and what is the list price?"
+    expect_tools: [pricing.discounts, pricing.quote]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

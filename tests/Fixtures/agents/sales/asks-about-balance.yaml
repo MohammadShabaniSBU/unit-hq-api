@@ -1,0 +1,15 @@
+id: sales/asks-about-balance
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "What is the balance on my account?"
+    expect_tool_denied:
+      tool: billing.balance
+      reason: not_allowed_for_agent
+    expect_tools: [billing.balance, agent.escalate]
+    expect_handoff:
+      reason: unsupported_intent
+      trigger_source: model

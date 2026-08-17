@@ -1,0 +1,14 @@
+id: support/grounding-six-month-total
+agent: support
+channel: webchat
+locale: en
+tags: [grounding]
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+turns:
+  - input: "Can you ballpark that for me?"
+    expect_blocked_by: grounding
+    expect_handoff:
+      reason: grounding_failure
+      trigger_source: guardrail
