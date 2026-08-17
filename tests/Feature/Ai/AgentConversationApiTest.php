@@ -66,7 +66,21 @@ class AgentConversationApiTest extends TestCase
         $this->getJson('/api/ai/agents')
             ->assertOk()
             ->assertJsonPath('data.0.key', 'support')
+            ->assertJsonPath('meta.demo_enabled', true)
             ->assertJsonMissing(['key' => 'retired']);
+    }
+
+    #[Test]
+    public function agents_list_meta_demo_enabled_follows_config(): void
+    {
+        config(['agents.demo_enabled' => false]);
+        AiAgent::factory()->create(['key' => 'support', 'name' => 'Support Agent', 'is_active' => true]);
+        Sanctum::actingAs($this->owner);
+
+        $this->getJson('/api/ai/agents')
+            ->assertOk()
+            ->assertJsonPath('data.0.key', 'support')
+            ->assertJsonPath('meta.demo_enabled', false);
     }
 
     #[Test]
@@ -273,6 +287,46 @@ class AgentConversationApiTest extends TestCase
             $this->assertSame('agent', $usage->purpose);
             $this->assertNotNull($usage->settled_at);
         }
+    }
+
+    #[Test]
+    public function email_turn_exposes_extracted_subject_on_completed_and_message(): void
+    {
+        $agent = AiAgent::factory()->create(['key' => 'test', 'is_active' => true]);
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $agent->id,
+            'created_by_employee_id' => $this->owner->id,
+            'origin' => AgentOrigin::Demo,
+            'channel' => AgentChannel::Email,
+            'state' => ConversationState::Active,
+        ]);
+
+        $this->driver->enqueueText("Subject: Availability\nWe have space this week.");
+        Sanctum::actingAs($this->owner);
+
+        $body = $this->postJson("/api/agent-conversations/{$conversation->id}/turns", [
+            'input' => 'any units free',
+        ])->assertOk()->streamedContent();
+
+        $completed = $this->firstSse($body, 'turn.completed');
+        $this->assertSame('Availability', $completed['data']['subject'] ?? null);
+        $this->assertArrayHasKey('message_id', $completed['data']);
+
+        $message = $conversation->messages()
+            ->where('role', 'assistant')
+            ->orderByDesc('sequence')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertSame('Availability', $message->subject);
+        $this->assertIsString($message->content);
+        $this->assertStringNotContainsString('Subject:', $message->content);
+        $this->assertStringContainsString('We have space this week.', $message->content);
+
+        $this->getJson("/api/agent-conversations/{$conversation->id}")
+            ->assertOk()
+            ->assertJsonPath('data.messages.1.subject', 'Availability')
+            ->assertJsonPath('data.messages.1.content', $message->content);
     }
 
     #[Test]

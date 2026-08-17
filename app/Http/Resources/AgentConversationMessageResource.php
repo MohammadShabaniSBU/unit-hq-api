@@ -24,6 +24,7 @@ class AgentConversationMessageResource extends BaseResource
             'latency_ms' => $this->latency_ms,
             'finish_reason' => $this->finish_reason,
             'blocked_by' => $this->blocked_by,
+            'subject' => $this->subject,
             'fact_keys' => $this->fact_keys,
             'created_at' => $this->datetime($this->created_at),
         ];

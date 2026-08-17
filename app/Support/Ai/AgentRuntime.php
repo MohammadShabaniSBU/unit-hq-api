@@ -303,6 +303,7 @@ final class AgentRuntime
                 $outbound->blockedBy,
                 $facts,
                 $principal,
+                $outbound->subject,
             );
 
             return $this->finishWithHandoff(
@@ -337,6 +338,7 @@ final class AgentRuntime
                 $finishReason,
                 facts: $facts,
                 principal: $principal,
+                subject: $outbound->subject,
             );
         }
 
@@ -565,8 +567,9 @@ final class AgentRuntime
         ?string $blockedBy = null,
         ?FactBag $facts = null,
         ?AgentPrincipal $principal = null,
+        ?string $subject = null,
     ): AgentConversationMessage {
-        return DB::transaction(function () use ($conversation, $content, $toolCalls, $model, $usage, $latencyMs, $finishReason, $blockedBy, $facts, $principal): AgentConversationMessage {
+        return DB::transaction(function () use ($conversation, $content, $toolCalls, $model, $usage, $latencyMs, $finishReason, $blockedBy, $facts, $principal, $subject): AgentConversationMessage {
             return AgentConversationMessage::query()->create([
                 'agent_conversation_id' => $conversation->id,
                 'sequence' => $this->nextSequence($conversation),
@@ -579,6 +582,7 @@ final class AgentRuntime
                 'latency_ms' => $latencyMs,
                 'finish_reason' => $finishReason,
                 'blocked_by' => $blockedBy,
+                'subject' => $subject,
                 'fact_keys' => $facts?->all(),
                 'principal_verification' => $principal?->verification->value,
             ]);

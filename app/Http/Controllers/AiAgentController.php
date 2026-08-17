@@ -18,9 +18,12 @@ class AiAgentController extends Controller
 
         $agents = AiAgent::query()->active()->orderBy('key')->get();
 
-        return $this->success(
-            AiAgentResource::collection($agents)->resolve(),
-            'Agents retrieved successfully.',
-        );
+        return response()->json([
+            'message' => 'Agents retrieved successfully.',
+            'data' => AiAgentResource::collection($agents)->resolve(),
+            'meta' => [
+                'demo_enabled' => filter_var(config('agents.demo_enabled'), FILTER_VALIDATE_BOOLEAN),
+            ],
+        ]);
     }
 }

@@ -65,6 +65,7 @@ final class AgentTurnSse
                 'message_id' => $message instanceof AgentConversationMessage ? $message->id : null,
                 'blocked_by' => $turn->blockedBy,
                 'state' => $turn->state->value,
+                'subject' => $turn->subject,
             ]);
         }, 200, [
             'Content-Type' => 'text/event-stream; charset=UTF-8',
