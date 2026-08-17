@@ -54,7 +54,10 @@ class CopilotVoiceController extends Controller
         }
 
         $payload = $response->json();
-        if (! is_array($payload) || ! is_string($payload['token'] ?? null) || ! is_string($payload['url'] ?? null)) {
+        $connectionUrl = is_array($payload)
+            ? ($payload['url'] ?? $payload['livekit_url'] ?? null)
+            : null;
+        if (! is_array($payload) || ! is_string($payload['token'] ?? null) || ! is_string($connectionUrl) || $connectionUrl === '') {
             Log::warning('vocal_bridge.token_unavailable', ['status' => $response->status()]);
 
             return $this->error('errors.voice.token_unavailable', [], 502);
@@ -71,13 +74,13 @@ class CopilotVoiceController extends Controller
 
         return $this->created([
             'session_id' => $session->id,
-            'url' => $payload['url'],
+            'url' => $connectionUrl,
             'token' => $payload['token'],
             'room_name' => $payload['room_name'] ?? '',
             'participant_identity' => $payload['participant_identity'] ?? '',
             'expires_in' => $payload['expires_in'] ?? 0,
             'agent_mode' => $payload['agent_mode'] ?? null,
-            'livekit_url' => $payload['livekit_url'] ?? null,
+            'livekit_url' => $payload['livekit_url'] ?? $connectionUrl,
         ], 'Voice token created.');
     }
 
