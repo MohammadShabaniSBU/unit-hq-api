@@ -15,11 +15,14 @@ use LogicException;
  */
 final class SchemaOnlySdkTool implements Tool
 {
-    public function __construct(private readonly AgentTool $tool) {}
+    public function __construct(
+        private readonly AgentTool $tool,
+        private readonly string $wireName,
+    ) {}
 
     public function name(): string
     {
-        return $this->tool->key();
+        return $this->wireName;
     }
 
     public function description(): string

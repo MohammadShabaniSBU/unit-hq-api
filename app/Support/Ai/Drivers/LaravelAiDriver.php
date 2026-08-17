@@ -43,8 +43,12 @@ final class LaravelAiDriver implements ModelDriver
         $provider = $this->manager->textProvider($providerName);
         $gateway = $this->stepGateway($provider);
 
-        [$instructions, $sdkMessages] = $this->toSdkMessages($messages);
-        $sdkTools = array_map(fn (AgentTool $tool): SchemaOnlySdkTool => new SchemaOnlySdkTool($tool), $tools);
+        $names = ProviderToolName::fromTools($tools);
+        [$instructions, $sdkMessages] = $this->toSdkMessages($messages, $names);
+        $sdkTools = array_map(
+            fn (AgentTool $tool): SchemaOnlySdkTool => new SchemaOnlySdkTool($tool, $names->toWire($tool->key())),
+            $tools,
+        );
         $timeoutSeconds = max(1, (int) ceil(((int) config('agents.turn_timeout_ms')) / 1000));
         $stepContext = new StepContext(stepNumber: 0, isFinalStep: true);
 
@@ -89,7 +93,7 @@ final class LaravelAiDriver implements ModelDriver
             throw new ModelTimeoutException('Provider returned no step response.');
         }
 
-        return $this->toModelResponse($step);
+        return $this->toModelResponse($step, $names);
     }
 
     private function stepGateway(TextProvider $provider): StepTextGateway
@@ -120,7 +124,7 @@ final class LaravelAiDriver implements ModelDriver
      * @param  list<array<string, mixed>>  $messages
      * @return array{0: ?string, 1: list<object>}
      */
-    private function toSdkMessages(array $messages): array
+    private function toSdkMessages(array $messages, ProviderToolName $names): array
     {
         $instructions = null;
         $sdk = [];
@@ -139,12 +143,12 @@ final class LaravelAiDriver implements ModelDriver
                 'user' => new UserMessage($content),
                 'assistant' => new AssistantMessage(
                     $content,
-                    $this->toSdkToolCalls($message['tool_calls'] ?? []),
+                    $this->toSdkToolCalls($message['tool_calls'] ?? [], $names),
                 ),
                 'tool' => new ToolResultMessage(collect([
                     new ToolResult(
                         (string) ($message['tool_call_id'] ?? ''),
-                        (string) ($message['tool_name'] ?? ''),
+                        $names->toWire((string) ($message['tool_name'] ?? '')),
                         $message['arguments'] ?? [],
                         $content,
                     ),
@@ -160,11 +164,11 @@ final class LaravelAiDriver implements ModelDriver
      * @param  list<array{name?: string, id?: string, arguments?: array<string, mixed>}>  $calls
      * @return Collection<int, ToolCall>
      */
-    private function toSdkToolCalls(array $calls): Collection
+    private function toSdkToolCalls(array $calls, ProviderToolName $names): Collection
     {
         return collect($calls)->map(fn (array $call): ToolCall => new ToolCall(
             (string) ($call['id'] ?? ''),
-            (string) ($call['name'] ?? ''),
+            $names->toWire((string) ($call['name'] ?? '')),
             $call['arguments'] ?? [],
         ));
     }
@@ -185,12 +189,12 @@ final class LaravelAiDriver implements ModelDriver
         return $return instanceof StepResponse ? $return : null;
     }
 
-    private function toModelResponse(StepResponse $step): ModelResponse
+    private function toModelResponse(StepResponse $step, ProviderToolName $names): ModelResponse
     {
         $toolCalls = [];
         foreach ($step->toolCalls as $call) {
             $toolCalls[] = [
-                'name' => $call->name,
+                'name' => $names->fromWire($call->name),
                 'id' => $call->id,
                 'arguments' => $call->arguments,
             ];

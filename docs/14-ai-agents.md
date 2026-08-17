@@ -141,7 +141,7 @@ is a defect (invariant 56).
 stream(messages, tools, model, ?onDelta): ModelResponse
 ```
 
-- `LaravelAiDriver` — production, Laravel AI SDK.
+- `LaravelAiDriver` — production, Laravel AI SDK. Live providers receive underscore wire names (`facility_availability`); catalogue keys stay dotted (`facility.availability`).
 - `CassetteDriver` — deterministic replay for `php artisan agent:replay`
   (default, CI-safe, no network). Live recording uses `RecordingModelDriver`.
 
