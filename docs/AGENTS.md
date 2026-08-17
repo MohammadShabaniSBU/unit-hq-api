@@ -17,6 +17,7 @@ Before writing code, consult the doc that matches the task:
 | Insights, embedded analytics, reporting schema | `11-insights.md` |
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
 | Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
+| AI agents / copilot / tools / guardrails | `14-ai-agents.md` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
 | **Always, before committing** | `09-conventions-and-invariants.md` |
@@ -36,5 +37,8 @@ Before writing code, consult the doc that matches the task:
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
 - Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.
 - Embed tokens are minted server-side only; dynamic params are always locked.
+- Customer-facing agents never write to the ledger, mutate contracts, grant
+  access, or confirm payment. No money, date, or unit identifier in agent output
+  originates from the model.
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

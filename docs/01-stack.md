@@ -8,7 +8,10 @@
 - **Architecture:** business logic lives in **controllers + models** — there is deliberately **no `app/Services/` layer**. Multi-step operations use explicit DB transactions. Shared billing math / orchestration: `App\Support\Billing\` (`BillingMath`, `ContractBilling`).
 - **API response shape** via `ApiResponsable`: `{ message, data }`, paginated responses include `{ meta }`.
 - **Tests:** PHPUnit with SQLite in-memory.
-- **AI Copilot:** built with the Laravel AI SDK (agent conversations stored in DB).
+- **AI:** internal Copilot plus customer-facing agents (support / sales) on a
+  shared tool-and-guardrail runtime in `App\Support\Ai\`. Conversations and
+  traces stored in DB. Demo surface at panel `/demo/chat`, gated by
+  `agents.demo_enabled`.
 - **Dev tooling:** Telescope (dev only).
 
 ## Frontend — `unit-hq-panel/`
@@ -33,6 +36,9 @@
 - **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights
 - **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), **Insights** (analytics connections + report builder), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
 - **Copilot** — AI conversations (sidebar), separate from Inbox
+- **Demo** — `/demo/chat`: agent console (agent / channel / persona /
+  verification pickers, channel-skinned conversation, tool-and-guardrail trace).
+  Flag-gated; not an operator surface.
 
 ## Quick start
 

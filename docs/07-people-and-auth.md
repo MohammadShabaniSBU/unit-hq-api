@@ -65,6 +65,12 @@ A **global site selector** scopes the portal context, with two carve-outs:
 
 `GET /api/user` returns `roles`, `permissions`, and `company_permissions`.
 
+**Customer-facing agents are a different axis (D-AI-2).** Employee RBAC does
+not authorize agent tools. A Contact principal is gated on `VerificationLevel`
++ ownership of the row, never on `employee_roles`. The operator running
+`/demo/chat` holds `Permission::AiAgentUse`; that is harness access, not the
+principal the agent is talking to. See `14-ai-agents.md`.
+
 ## Extensibility models
 
 | Table | Purpose |

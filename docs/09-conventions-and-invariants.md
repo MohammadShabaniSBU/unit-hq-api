@@ -165,7 +165,7 @@
     read time from `ai_model_prices` (invariant 5 / 2 pattern: effective-dated catalogue,
     never an in-place rate `UPDATE`). Estimated cost never reconciles to the provider
     invoice — retries, failovers, cached tokens and rounding all diverge. The figure
-    attributes spend between employees; it is not an accounting record and must not be
+    attributes spend between employees **or agents**; it is not an accounting record and must not be
     presented as one. Never return a single summed cost across currencies (invariant 30).
 49. **Analytics provider credentials follow the shared credential rules.** Invariants 26 and
     27 apply unchanged to `analytics_accounts` — encrypted at rest, masked last-4 in responses,
@@ -194,6 +194,48 @@
     model output about a contact and are in scope for `contacts:redact`. A summary is never
     shown to a contact and is never an input to billing, delinquency, or any automated
     decision.
+54. **A customer-facing agent never writes to the ledger, mutates a contract,
+    grants access, issues an invoice, or confirms a payment.** Not with
+    confirmation, not with an operator in the loop, not behind a flag — those are
+    operator actions reached through operator surfaces. Permitted agent writes are
+    exactly the automation allowlist: `Contact`, `Deal`, `Task`, `Note`.
+    Contract / Reservation / Offer creation is a transactional path
+    (`ContractBilling`, offer acceptance), not a field map — the same reasoning that
+    excluded them from `CreateObjectAllowlist`. Payment confirmation remains
+    rail-specific (invariant 11); an agent stating that a payment cleared is a
+    defect regardless of what the ledger says. Enforced by `AgentToolWriteGuardTest`.
+55. **No money, date, or unit identifier in agent output originates from the
+    model.** Every figure comes from a `ToolResult` and is rendered by the tool
+    through `BillingMath`; the model quotes the rendered string. `GroundingGuard`
+    diffs the draft against the turn's `FactBag` and suppresses anything untraced.
+    With exclusive tax and per-row currency (D1, invariant 30), a model performing
+    its own arithmetic is a guaranteed defect, not a risk. A suppressed draft
+    becomes a handoff and is never delivered. Enforced by `GroundingGuardTest` and
+    the `agent:replay` grounding fixtures.
+56. **`AgentPrincipal` is explicit and re-validated at every tool call site.**
+    It is passed as an argument, never resolved from the container, the request, a
+    static, or a job payload inside a tool, and never cached as an authorization
+    scope on a model. `agent_conversations` stores the facts (`contact_id`,
+    `verification_level`); the principal is rebuilt from them per turn. This is the
+    subject of the request, not an ambient scope — the discipline invariant 46
+    protects, applied to a different axis (D-AI-1). Authorization gates run *before*
+    `AgentTool::handle()` is reached; a tool that only checks internally is a defect.
+    Enforced by `AgentPrincipalTest` and `ToolDispatchTest`.
+57. **Agent conversations are a reasoning trace, not the message store.**
+    Invariant 38 is unchanged: a `messages` row means exactly one real send or
+    receipt. Agent drafts are never `messages` rows. When channels land, the trace
+    links to the canonical thread via `agent_conversations.message_thread_id`; the
+    thread stays the truth and the Inbox stays the single surface.
+58. **Agent definitions, tools, prompts, and permissions are code;
+    `ai_agents` rows are instances.** An `ai_agents.key` with no `AgentDefinition`,
+    or a definition claiming an unregistered tool key, is a defect, not data —
+    `AgentDefinitionCoverageTest` / `AgentToolCoverageTest`. Same grep-as-test
+    discipline as invariant 43. `ai_agents.settings` holds tuning knobs only, never
+    the prompt or the tool list.
+59. **`agent_conversations.origin` is never null, and demo traffic is excluded
+    by an explicit filter at each call site.** Never a global scope (invariant 46).
+    Demo conversations must not reach Insights, eval corpora, or any operator-facing
+    metric. Enforced by `AgentConversationConstraintTest`.
 
 ## Code conventions
 

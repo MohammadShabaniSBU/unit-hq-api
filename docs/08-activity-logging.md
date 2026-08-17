@@ -27,9 +27,10 @@ Three logging tiers on two tables:
 | `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned`; object-customization layout mutations; attribute value upserts on Unit |
 | `comms` | 2 | `offer.sent` |
 | `billing` | 2 | Billing run events (`billing.run.completed`); reserved for further billing attribute/events |
+| `ai` | 2 | Customer-facing agent lifecycle (`agent.conversation.started`, `agent.handoff`, `agent.guardrail.blocked`). Properties never carry draft text |
 
 Tier-1 (system_events): `billing.contract.failed` — per-contract failure inside a billing run
-(isolated; run continues).
+(isolated; run continues). `ai.turn.failed` — agent driver errors and timeouts.
 
 ## Event naming
 
@@ -59,6 +60,19 @@ Tier-1 (system_events): `billing.contract.failed` — per-contract failure insid
 | `ai.summary.started` / `.committed` / `.failed` | Tier-1 `system_events` | Contact or Deal | Payload: `summary_id`, optional `error_code`. **Never the body.** |
 | `ai.summary.generated` | Tier-2 `crm` | Contact or Deal | Properties: `summary_id`, `model`, `prompt_version`, `source_counts`. **Never the body.** |
 
+### Customer-facing agents (Tier-2 `ai`)
+
+Turns live in `agent_conversation_messages`; the activity log is **not** a
+transcript. Properties never carry draft text.
+
+| Event | Subject | Properties |
+|---|---|---|
+| `agent.conversation.started` | `AgentConversation` | `agent_key`, `channel`, `origin`, `audience`, `verification_level` |
+| `agent.handoff` | `AgentConversation` | `reason`, `trigger_source` |
+| `agent.guardrail.blocked` | `AgentConversation` | `guard`, `blocked_by` — **never the draft text** |
+
+See `14-ai-agents.md`.
+
 ## API
 
 - `GET /api/activities` — filters: `subject_type`+`subject_id`, `log_name[]`, causer, date range. Paginated. Hides disabled tier-2 channels unless `include_disabled=1` and caller is a `User` (superadmin).
@@ -75,3 +89,4 @@ Tier-1 (system_events): `billing.contract.failed` — per-contract failure insid
 - **Interaction** — CRM comms timeline (`06-communications.md`)
 - **Notes** — append-only operator comments
 - **`stripe_webhook_events`** — Stripe idempotency only; new rows carry `site_id` (legacy may be null)
+- **Agent traces** — `agent_conversation_messages` / `agent_tool_invocations` / `agent_handoffs` (`14-ai-agents.md`); not these tables

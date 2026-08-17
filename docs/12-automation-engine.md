@@ -91,7 +91,9 @@ Offer are **deliberately excluded**: creating one is not a plain insert — it
 needs a real transactional path (`ContractBilling` for contracts, the offer
 acceptance transaction for offers) that a generic field-mapping handler cannot
 safely replicate. Dedicated nodes calling those paths are the intended future
-extension, not a widened allowlist (`10-open-decisions.md`).
+extension, not a widened allowlist (`10-open-decisions.md`). Customer-facing
+agent writes reuse the same four types (`14-ai-agents.md`); they never create
+a Contract, Reservation, or Offer either.
 
 ## Run lifecycle
 
@@ -189,5 +191,7 @@ server-side for those.
   pre-filters, `logic.branch`, and run guards (this is the authoritative
   reference; don't restate operator/typing rules here)
 - `13-playbooks.md` — linear playbook definitions that compile into automations
+- `14-ai-agents.md` — customer-facing agent writes reuse the same four
+  `CreateObjectAllowlist` types (`Contact`, `Deal`, `Task`, `Note`)
 - `10-open-decisions.md` — decided/deferred items for the engine (fan-out,
   email-received activation, `create_object` allowlist scope)
