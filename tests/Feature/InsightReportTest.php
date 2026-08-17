@@ -12,15 +12,19 @@ use App\Enums\InsightReportSource;
 use App\Enums\InsightResourceKind;
 use App\Enums\InsightSiteScopeMode;
 use App\Enums\InsightVisibility;
+use App\Enums\InsightValidationStatus;
 use App\Models\AnalyticsAccount;
 use App\Models\Employee;
+use App\Models\InsightProvisionedResource;
 use App\Models\InsightReport;
 use App\Models\InsightReportParam;
 use App\Support\Insights\NativeReports;
+use App\Support\Insights\Provisioning\MetabaseBlueprints;
 use Database\Seeders\InsightReportSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -176,16 +180,50 @@ class InsightReportTest extends TestCase
     }
 
     #[Test]
-    public function system_report_cannot_be_archived(): void
+    public function system_report_can_be_archived_and_unarchived(): void
     {
         $this->seed(InsightReportSeeder::class);
-        $report = InsightReport::query()->where('native_key', 'dashboard')->firstOrFail();
+        $report = InsightReport::query()->where('native_key', 'rent-roll')->firstOrFail();
 
         $this->postJson("/api/settings/insight-reports/{$report->id}/archive")
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['insight_report']);
+            ->assertOk();
+
+        $this->assertNotNull($report->fresh()->archived_at);
+        $this->assertDatabaseHas('system_events', [
+            'event' => 'insights.report.archived',
+        ]);
+
+        $nav = $this->getJson('/api/insights')->assertOk()->json('data');
+        $this->assertFalse(collect($nav)->contains('key', 'rent-roll'));
+
+        $this->getJson('/api/reports/rent-roll')->assertNotFound();
+
+        $this->postJson("/api/settings/insight-reports/{$report->id}/unarchive")
+            ->assertOk();
 
         $this->assertNull($report->fresh()->archived_at);
+        $this->assertDatabaseHas('system_events', [
+            'event' => 'insights.report.unarchived',
+        ]);
+
+        $nav = $this->getJson('/api/insights')->assertOk()->json('data');
+        $this->assertTrue(collect($nav)->contains('key', 'rent-roll'));
+
+        $this->getJson('/api/reports/rent-roll')->assertOk();
+    }
+
+    #[Test]
+    public function system_report_cannot_change_native_key(): void
+    {
+        $this->seed(InsightReportSeeder::class);
+        $report = InsightReport::query()->where('native_key', 'rent-roll')->firstOrFail();
+
+        $this->patchJson("/api/settings/insight-reports/{$report->id}", [
+            'native_key' => 'occupancy',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['native_key']);
+
+        $this->assertSame('rent-roll', $report->fresh()->native_key);
     }
 
     #[Test]
@@ -262,6 +300,40 @@ class InsightReportTest extends TestCase
         $output = Artisan::output();
         $this->assertStringContainsString('demo', $output);
         $this->assertStringContainsString('ghost-report', $output);
+    }
+
+    #[Test]
+    public function insights_check_reads_persisted_validation_without_http(): void
+    {
+        $this->seed(InsightReportSeeder::class);
+        $account = $this->makeAccount();
+        $report = $this->makeEmbeddedReport([
+            'key' => 'mb-rent-roll',
+            'analytics_account_id' => $account->id,
+            'resource_ref' => '40',
+            'validation_status' => InsightValidationStatus::ParamMismatch,
+            'validation_detail' => ['message' => 'embedding_mode_mismatch'],
+        ]);
+
+        InsightProvisionedResource::query()->create([
+            'blueprint_key' => 'rent-roll',
+            'analytics_account_id' => $account->id,
+            'insight_report_id' => $report->id,
+            'resource_kind' => InsightResourceKind::Dashboard,
+            'resource_ref' => '40',
+            'card_refs' => ['Open occupancies' => 11],
+            'definition_hash' => MetabaseBlueprints::hash('rent-roll'),
+            'provisioned_at' => now(),
+        ]);
+
+        Http::fake();
+        $exit = Artisan::call('insights:check');
+        $this->assertSame(0, $exit);
+        Http::assertNothingSent();
+        $this->assertStringContainsString(
+            'run insights:validate, then insights:provision --force',
+            Artisan::output(),
+        );
     }
 
     #[Test]

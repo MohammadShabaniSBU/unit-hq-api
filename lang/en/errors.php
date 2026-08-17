@@ -159,7 +159,6 @@ return [
         'iframe_host_not_allowlisted' => 'Host ":host" is not on the iframe allowlist.',
         'already_archived' => 'This analytics account is already archived.',
         'not_archived' => 'This analytics account is not archived.',
-        'system_report_archive' => 'System insight reports cannot be archived.',
         'system_report_immutable' => 'System insight reports cannot change source or targeting.',
         'report_already_archived' => 'This insight report is already archived.',
         'report_not_archived' => 'This insight report is not archived.',

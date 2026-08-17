@@ -32,6 +32,7 @@ use App\Models\DepositSettlement;
 use App\Models\Employee;
 use App\Models\EsignEnvelope;
 use App\Models\EsignProviderAccount;
+use App\Models\InsightReport;
 use App\Models\LegalEntity;
 use App\Models\Site;
 use App\Models\TemplateFamily;
@@ -57,6 +58,7 @@ use App\Support\Reports\RentRollReport;
 use App\Support\Reports\ReportFilters;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ContractDocumentTemplateSeeder;
+use Database\Seeders\InsightReportSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -184,6 +186,29 @@ class DashboardTest extends TestCase
             $api->json('data.meta.cards.occupancy.value'),
         );
         $api->assertJsonPath('data.meta.trends.collections.axis', 'zero_based');
+    }
+
+    public function test_archived_native_drops_matching_card(): void
+    {
+        $this->seed(InsightReportSeeder::class);
+        $this->seedOccupiedUnit('A-101', '2026-01-01', null);
+
+        $filters = new ReportFilters(siteIds: [$this->site->id], asOf: '2026-06-15');
+
+        $before = (new DashboardReport)->runBounded($filters);
+        $this->assertArrayHasKey('monthly_rent', $before->meta['cards']);
+
+        $report = InsightReport::query()->where('native_key', 'rent-roll')->firstOrFail();
+        $report->update(['archived_at' => now()]);
+
+        $after = (new DashboardReport)->runBounded($filters);
+        $this->assertArrayNotHasKey('monthly_rent', $after->meta['cards']);
+        $this->assertArrayHasKey('occupancy', $after->meta['cards']);
+
+        $report->update(['archived_at' => null]);
+
+        $restored = (new DashboardReport)->runBounded($filters);
+        $this->assertArrayHasKey('monthly_rent', $restored->meta['cards']);
     }
 
     public function test_deltas_month_boundary(): void

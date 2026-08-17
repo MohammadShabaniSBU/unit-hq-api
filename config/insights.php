@@ -51,4 +51,16 @@ return [
     */
     'discovery_cache_seconds' => max(1, (int) env('INSIGHTS_DISCOVERY_CACHE_SECONDS', 60)),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Metabase database name (provisioning only)
+    |--------------------------------------------------------------------------
+    |
+    | Name (or numeric id) of the Metabase database that maps to Keevaris.
+    | Used by `insights:provision` to resolve GET /api/database. Never read
+    | on the embed mint path.
+    |
+    */
+    'metabase_database' => env('INSIGHTS_METABASE_DATABASE', 'keevaris'),
+
 ];

@@ -145,7 +145,6 @@ return [
         'iframe_host_not_allowlisted' => 'L’hôte « :host » n’est pas dans la liste d’autorisation iframe.',
         'already_archived' => 'Ce compte analytics est déjà archivé.',
         'not_archived' => 'Ce compte analytics n’est pas archivé.',
-        'system_report_archive' => 'Les rapports insights système ne peuvent pas être archivés.',
         'system_report_immutable' => 'Les rapports insights système ne peuvent pas changer de source ni de ciblage.',
         'report_already_archived' => 'Ce rapport insights est déjà archivé.',
         'report_not_archived' => 'Ce rapport insights n’est pas archivé.',

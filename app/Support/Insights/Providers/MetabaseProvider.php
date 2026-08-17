@@ -125,8 +125,9 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
         }
 
         $options = is_array($report->options) ? $report->options : [];
-        if ($options !== []) {
-            $url .= '#'.$this->hashQuery($options);
+        $hash = $this->hashQuery($options);
+        if ($hash !== '') {
+            $url .= '#'.$hash;
         }
 
         return $url;
@@ -328,6 +329,7 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
 
     /**
      * Metabase appearance flags expect `true`/`false` literals, not `1`/`0`.
+     * Panel-only keys (e.g. `height`) must not leak into the embed hash.
      *
      * @param  array<string, mixed>  $options
      */
@@ -335,7 +337,12 @@ final class MetabaseProvider implements AnalyticsProvider, SignsEmbedTokens, Lis
     {
         $normalized = [];
 
-        foreach ($options as $key => $value) {
+        foreach (['bordered', 'titled', 'theme', 'downloads'] as $key) {
+            if (! array_key_exists($key, $options)) {
+                continue;
+            }
+
+            $value = $options[$key];
             $normalized[$key] = match (true) {
                 is_bool($value) => $value ? 'true' : 'false',
                 default => $value,

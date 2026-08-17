@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\InsightReport;
 use App\Support\Auth\Permission;
 use App\Support\Reports\CsvExporter;
 use App\Support\Reports\ReportFilters;
@@ -37,6 +38,14 @@ class ReportController extends Controller
         Gate::authorize($permission->value);
 
         if (! ReportRegistry::has($name)) {
+            return $this->notFound('Report not found.');
+        }
+
+        $nativeRow = InsightReport::query()
+            ->where('native_key', $name)
+            ->first();
+
+        if ($nativeRow !== null && $nativeRow->isArchived()) {
             return $this->notFound('Report not found.');
         }
 

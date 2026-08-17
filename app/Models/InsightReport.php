@@ -19,7 +19,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Registry row for a native or embedded Insights report (S21-03).
- * Archive-only; system native rows cannot be archived or repointed.
+ * Archive-only; system native rows may be archived/unarchived but never repointed.
  *
  * @property int                     $id
  * @property string                  $key
@@ -164,5 +164,11 @@ class InsightReport extends Model
     public function params(): HasMany
     {
         return $this->hasMany(InsightReportParam::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** @return HasMany<InsightProvisionedResource, $this> */
+    public function provisionedResources(): HasMany
+    {
+        return $this->hasMany(InsightProvisionedResource::class);
     }
 }

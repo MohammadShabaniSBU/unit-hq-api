@@ -44,7 +44,7 @@ One table, two sources, operator-ordered.
 | Labels | Operator-created: per-locale JSONB on `labels`. Native: i18n via `native_key` (I4) |
 | Site scope | `site_scope_mode`: `inherit` (default) \| `ignore` (I6) |
 | Visibility | Enum stub `all` \| `company_only` \| `site_staff`; only `all` honoured until RBAC (I5) |
-| System rows | Seeded natives (`is_system`): reorder, hide, relabel OK; never archive or repoint |
+| System rows | Seeded natives (`is_system`) may be archived and unarchived, but never repointed: `source`, `native_key`, `analytics_account_id`, `resource_kind` and `resource_ref` stay immutable. Unarchive is always available, so a built-in can never be permanently lost, and the native seeder never resurrects an archived built-in. |
 
 There is no second “integrations” nav and no hard-coded Insights page list in the
 panel. The route is `/insights/[key]`: native keys resolve through
@@ -62,7 +62,7 @@ Archive-only — `DELETE` aliases archive.
 |---|---|
 | `provider` | Adapter key |
 | `display_name`, `base_url` | Not secrets. `base_url` is the public embed host for Metabase iframes, or the URL template for the generic iframe provider |
-| `private_base_url` | Metabase-only, not a secret. Used for API-key calls (verify, dashboard/question discovery) without decrypting credentials. Falls back to `base_url` when null |
+| `private_base_url` | Metabase-only, not a secret. Used for API-key calls (verify, dashboard/question discovery, `insights:provision`) without decrypting credentials. Falls back to `base_url` when null |
 | `credentials` | `encrypted:array` — Metabase holds `embedding_secret_key` + `api_key`; iframe may be `{}` |
 | `connection_status` | `pending` \| `connected` \| `error` |
 
@@ -86,11 +86,12 @@ Adapters do **not** expose a `capabilities()` boolean map. Capability is
 | `SignsEmbedTokens` | `embedUrl(InsightReport, array $resolvedParams): string` | Token minting / URL construction |
 | `ListsResources` | `resources(string $kind): array` | Discovery picker |
 | `DescribesResourceParams` | `resourceParams(string $kind, string $ref): array` | Param schema at save time |
+| `ProvisionsResources` | `make`, `resolveDatabaseId`, `ensureCollection`, `dryRunQuery`, `upsertCard`, `upsertDashboard`, `enableEmbedding`, `archiveResource` | Console-only writes (`insights:provision`). Not on the embed path. |
 
 | Provider | Interfaces |
 |---|---|
-| Metabase | All four |
-| iframe | `AnalyticsProvider` + `SignsEmbedTokens` only (free-text `resource_ref`; no discovery) |
+| Metabase | All five (`AnalyticsProvider`, `SignsEmbedTokens`, `ListsResources`, `DescribesResourceParams`, plus console-only `ProvisionsResources` on `MetabaseProvisioner`) |
+| iframe | `AnalyticsProvider` + `SignsEmbedTokens` only (free-text `resource_ref`; no discovery; no provisioner) |
 
 The panel shows a browse picker only when the account’s adapter implements
 `ListsResources`. `lists_resources` / `describes_params` are derived per request
@@ -157,6 +158,15 @@ exception message, or the panel bundle. The panel receives a URL and renders
 it; it never constructs one. Remint on expiry−60s and on site change when
 `site_scope_mode = inherit`.
 
+### Embed chrome (`insight_reports.options`)
+
+| Key | Where it applies | Notes |
+|---|---|---|
+| `bordered`, `titled`, `downloads`, `theme` | Metabase hash (`#bordered=true&…`) | Appearance flags signed into the static-embed URL |
+| `height` | Panel iframe only | Optional CSS length (`800px`, `70vh`, …). Pins the iframe and **skips** iframe-resizer. Not forwarded to Metabase |
+
+Metabase OSS static embeds size to content via iframe-resizer (parent script at `{origin}/app/iframeResizer.js`, v4.3.2). The panel derives `origin` from the minted embed URL. If the handshake fails, the iframe stays at a 320px floor — never zero height. Do not hide or crop the “Powered by Metabase” banner (OSS licence). Generic `iframe` provider reports never load the resizer; they use `height` when set, otherwise the same floor.
+
 ---
 
 ## The `analytics` read schema as a contract
@@ -207,6 +217,32 @@ Embedded analytics does not replace everything. These stay in the app:
 
 ---
 
+## Provisioning
+
+`php artisan insights:provision` is a deploy-time operator action that upserts
+the shipped Metabase dashboards from `App\Support\Insights\Provisioning\MetabaseBlueprints`,
+enables static embedding with a locked optional `site_id`, and registers each
+dashboard as an embedded (`is_system = false`) row in `insight_reports`.
+
+It is **not scheduled**. Param drift on those rows is already covered by
+`insights:validate` (they are `source = embedded`). Do not add a second
+scheduler entry for provisioned reports. `insights:check` is local and
+HTTP-free: it reads persisted `validation_status` and tells the operator to
+run `insights:validate`, then `insights:provision --force`.
+
+The write adapter is `MetabaseProvisioner`, not `MetabaseProvider`. The embed
+path stays read-only. Bookkeeping lives in `insight_provisioned_resources`
+(definition hash + remote ids), not on the operator-owned `insight_reports` row.
+
+Config: `INSIGHTS_METABASE_DATABASE` (provisioning only). Tested against
+Metabase OSS v0.50+ — see [ops/metabase-ro-role.sql](ops/metabase-ro-role.sql).
+
+This release's occupancy columns on `analytics.mv_unit_state_daily` (`enabled`,
+`area`) were added by editing the genesis analytics migration because no
+environment had run it. **Deploy requires `migrate:fresh`.**
+
+---
+
 ## Table index
 
 | Table / object | Role |
@@ -214,8 +250,9 @@ Embedded analytics does not replace everything. These stay in the app:
 | `analytics_accounts` | Provider credentials + connection status (company-scoped) |
 | `insight_reports` | Registry row — native or embedded; nav order, labels, scope |
 | `insight_report_params` | Param bindings per report (static/dynamic × locked/default) |
+| `insight_provisioned_resources` | Command bookkeeping: blueprint hash + remote card/dashboard ids |
 | `analytics.v_revenue` | Reporting contract — revenue charges |
 | `analytics.v_payments` | Reporting contract — payments |
 | `analytics.v_rent_roll` | Reporting contract — open rent roll |
-| `analytics.mv_unit_state_daily` | Reporting contract — daily unit state (refreshed) |
+| `analytics.mv_unit_state_daily` | Reporting contract — daily unit state (refreshed); columns include `enabled` and `area` (`unit_classes.size`) |
 | `analytics.v_pipeline_events` | Reporting contract — pipeline funnel events |

@@ -159,7 +159,6 @@ return [
         'iframe_host_not_allowlisted' => 'El host ":host" no está en la lista de permitidos de iframe.',
         'already_archived' => 'Esta cuenta de analytics ya está archivada.',
         'not_archived' => 'Esta cuenta de analytics no está archivada.',
-        'system_report_archive' => 'Los informes de insights del sistema no se pueden archivar.',
         'system_report_immutable' => 'Los informes de insights del sistema no pueden cambiar de origen ni de destino.',
         'report_already_archived' => 'Este informe de insights ya está archivado.',
         'report_not_archived' => 'Este informe de insights no está archivado.',

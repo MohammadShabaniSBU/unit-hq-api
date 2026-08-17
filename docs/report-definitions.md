@@ -87,7 +87,7 @@ alone (`totals_by_currency` in the report meta), independent of site.
 |---|---|---|
 | Occupied unit | Unidad ocupada | An open `unit_occupancies` row covering the as-of date. |
 | Rentable unit | Unidad alquilable | Non-archived unit that is **not** under a blocking non-reservation hold on that date. |
-| Blocking hold | Bloqueo no alquilable | Hold types `maintenance`, `damaged`, `staff`, `other` — the unit cannot be rented, so it is excluded from the denominator. Reservation / overlock holds do **not** remove a unit from rentable. |
+| Blocking hold | Bloqueo no alquilable | Hold types `maintenance`, `damaged`, `staff_use`, `other` — the unit cannot be rented, so it is excluded from the denominator. Reservation / overlock holds do **not** remove a unit from rentable. |
 
 A unit you cannot rent must not count against occupancy. That is the industry
 standard this product ships.
@@ -96,8 +96,8 @@ standard this product ships.
 
 **Formula:** occupied m² ÷ rentable m².
 
-Same occupied / rentable rules as unit occupancy. Area comes from unit
-dimensions (`units` floor area).
+Same occupied / rentable rules as unit occupancy. Area is the unit's class
+`size` (`unit_classes.size`, `numeric(8,2)`), not a per-unit floor-area column.
 
 ### Economic occupancy / Ocupación económica
 

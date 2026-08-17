@@ -7,12 +7,14 @@ namespace App\Support\Reports;
 use App\Enums\AutopayAttemptStatus;
 use App\Enums\DepositPayoutStatus;
 use App\Enums\EsignEnvelopeStatus;
+use App\Enums\InsightReportSource;
 use App\Models\AutopayAttempt;
 use App\Models\CommsTriage;
 use App\Models\Contract;
 use App\Models\Delinquency;
 use App\Models\DepositSettlement;
 use App\Models\EsignEnvelope;
+use App\Models\InsightReport;
 use App\Models\Unit;
 use App\Support\Billing\BillingMath;
 use Carbon\CarbonImmutable;
@@ -150,6 +152,22 @@ final class DashboardReport extends AbstractReport
         $occSeries = OccupancyMetrics::monthlySeries($asOf, $siteIds, null, $asOf);
         $collectionsSeries = CollectionsReport::monthlySeries($siteIds, $asOf);
 
+        $trends = [
+            'occupancy' => [
+                'series' => $occSeries,
+                'axis' => 'labelled',
+                'note' => 'Occupancy axis may zoom; scale is labelled.',
+            ],
+            'collections' => [
+                'series' => $collectionsSeries,
+                'axis' => 'zero_based',
+                'note' => 'Collected-vs-charged bars use a zero-based axis.',
+            ],
+        ];
+        $attention = $this->attentionRow($siteIds);
+
+        $this->omitArchivedNatives($cards, $trends, $attention);
+
         return new ReportResult(
             columns: [],
             rows: [],
@@ -157,25 +175,71 @@ final class DashboardReport extends AbstractReport
                 'as_of' => $asOf,
                 'prior_as_of' => $priorAsOf,
                 'cards' => $cards,
-                'trends' => [
-                    'occupancy' => [
-                        'series' => $occSeries,
-                        'axis' => 'labelled',
-                        'note' => 'Occupancy axis may zoom; scale is labelled.',
-                    ],
-                    'collections' => [
-                        'series' => $collectionsSeries,
-                        'axis' => 'zero_based',
-                        'note' => 'Collected-vs-charged bars use a zero-based axis.',
-                    ],
-                ],
-                'attention' => $this->attentionRow($siteIds),
+                'trends' => $trends,
+                'attention' => $attention,
                 'definitions' => 'docs/report-definitions.md',
                 'notes' => [
                     'Dashboard KPIs are card-zoom of the full report query classes — one computation, two zoom levels.',
                 ],
             ],
         );
+    }
+
+    /**
+     * Drop dashboard surfaces whose native report is archived.
+     * A missing seeder row is not archived — the card stays (I-Archive-1).
+     *
+     * @param  array<string, mixed>  $cards
+     * @param  array<string, mixed>  $trends
+     * @param  list<array{key: string, count: int, to: string, filters: array<string, mixed>}>  $attention
+     */
+    private function omitArchivedNatives(array &$cards, array &$trends, array &$attention): void
+    {
+        $archived = InsightReport::query()
+            ->where('source', InsightReportSource::Native)
+            ->whereNotNull('archived_at')
+            ->whereNotNull('native_key')
+            ->pluck('native_key')
+            ->all();
+
+        if ($archived === []) {
+            return;
+        }
+
+        $archivedSet = array_fill_keys($archived, true);
+
+        $cardMap = [
+            'occupancy' => 'occupancy',
+            'monthly_rent' => 'rent-roll',
+            'overdue' => 'ageing',
+            'movement_net' => 'movement',
+        ];
+        foreach ($cardMap as $cardKey => $nativeKey) {
+            if (isset($archivedSet[$nativeKey])) {
+                unset($cards[$cardKey]);
+            }
+        }
+
+        $trendMap = [
+            'occupancy' => 'occupancy',
+            'collections' => 'collections',
+        ];
+        foreach ($trendMap as $trendKey => $nativeKey) {
+            if (isset($archivedSet[$nativeKey])) {
+                unset($trends[$trendKey]);
+            }
+        }
+
+        $attention = array_values(array_filter(
+            $attention,
+            static function (array $chip) use ($archivedSet): bool {
+                if ($chip['key'] === 'pending_deposit_payouts') {
+                    return ! isset($archivedSet['deposit-liability']);
+                }
+
+                return true;
+            },
+        ));
     }
 
     /**

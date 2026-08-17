@@ -127,6 +127,8 @@ return new class extends Migration
                 u.id AS unit_id,
                 u.site_id,
                 u.unit_class_id,
+                u.enabled AS enabled,
+                uc.size AS area,
                 CASE
                     WHEN o.id IS NOT NULL THEN 'occupied'
                     WHEN h.id IS NOT NULL THEN h.hold_type
@@ -139,6 +141,7 @@ return new class extends Migration
                     interval '1 day'
                 ) AS d(day)
             CROSS JOIN units u
+            JOIN unit_classes uc ON uc.id = u.unit_class_id
             LEFT JOIN LATERAL (
                 SELECT o.*
                 FROM unit_occupancies o

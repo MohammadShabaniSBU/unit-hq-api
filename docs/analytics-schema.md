@@ -11,6 +11,14 @@ Changes are **additive**: new views/columns may appear; existing view names and
 column meanings do not change in place. Altering a view ships as a new migration
 (`CREATE OR REPLACE VIEW`), never an edit to a shipped migration file.
 
+**Exception (2026-08-17):** `enabled` and `area` were added to
+`analytics.mv_unit_state_daily` by editing
+`2026_08_06_100000_create_analytics_schema.php` in place because no environment
+had run that migration. This release **requires `migrate:fresh`**. Additive view
+changes after this still ship as new migrations. A materialized-view column
+change on a live database is DROP + CREATE plus recreating
+`mv_unit_state_daily_day_unit_uidx` and `mv_unit_state_daily_site_day_idx`.
+
 ## Currency rule
 
 Every monetary view exposes a `currency` column. **Never sum amounts across
@@ -48,7 +56,8 @@ currency, `started_on`, `billed_through`.
 ### `analytics.mv_unit_state_daily`
 
 Materialized date spine × unit. State is `occupied`, a non-overlock `hold_type`,
-or `available`. Precedence and exclusive ends match
+or `available`. Also projects `enabled` (`units.enabled`) and `area`
+(`unit_classes.size`). Precedence and exclusive ends match
 `App\Support\Occupancy\Availability`. Refresh with:
 
 ```bash
@@ -79,6 +88,18 @@ One row per funnel transition:
 
 Columns: `event_type`, `occurred_at`, `site_id` (nullable when unresolved),
 `subject_type`, `subject_id`.
+
+## Known additive follow-ups
+
+These are gaps, not defects in the objects that ship:
+
+- **`mv_unit_state_daily`** — economic occupancy still needs catalogue-as-of-day
+  (class×site price). Unit and area occupancy of enabled units are provisioned.
+- **`v_pipeline_events`** — add `deal_id` correlation and an `offer.viewed`
+  event so conversion (not just volumes) can be provisioned.
+- **New views the `BLOCKED` list needs:** `v_open_charges` (ageing),
+  `v_allocations` (collections / daily-close), `v_deposit_liability`,
+  `v_movement_events`.
 
 ## Role
 

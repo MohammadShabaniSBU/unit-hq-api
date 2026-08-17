@@ -2,6 +2,11 @@
 -- Run as a database superuser / owner against the application database.
 -- The application never creates roles; do not put this in a migration.
 --
+-- Provisioning (`php artisan insights:provision`) is tested against
+-- Metabase OSS v0.50+. Dashcard layout uses PUT /api/dashboard/{id}
+-- (replaced POST /api/dashboard/{id}/cards in v0.49); there is no
+-- compatibility fallback for older instances.
+--
 -- Usage (psql):
 --   \set pw '''your-strong-password'''
 --   \i docs/ops/metabase-ro-role.sql

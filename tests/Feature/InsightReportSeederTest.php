@@ -59,4 +59,19 @@ class InsightReportSeederTest extends TestCase
         $this->assertSame(InsightVisibility::CompanyOnly, $report->visibility);
         $this->assertSame(10, InsightReport::query()->where('source', 'native')->count());
     }
+
+    #[Test]
+    public function rerun_does_not_resurrect_archived_native(): void
+    {
+        $this->seed(InsightReportSeeder::class);
+
+        $report = InsightReport::query()->where('native_key', 'rent-roll')->firstOrFail();
+        $report->update(['archived_at' => now()]);
+
+        $this->seed(InsightReportSeeder::class);
+
+        $rows = InsightReport::query()->where('native_key', 'rent-roll')->get();
+        $this->assertCount(1, $rows);
+        $this->assertNotNull($rows->first()?->archived_at);
+    }
 }

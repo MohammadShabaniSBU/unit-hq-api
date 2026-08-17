@@ -182,7 +182,10 @@
     constructs one. TTL ≤ 10 minutes.
 52. **Insight reports and analytics accounts are archive-only.** `archived_at`,
     `POST …/archive` / `…/unarchive`, `DELETE` aliases archive. Built-in (`is_system`) reports
-    can be hidden and relabelled but never archived or repointed.
+    may be archived and unarchived, but never repointed: `source`, `native_key`,
+    `analytics_account_id`, `resource_kind` and `resource_ref` stay immutable. Unarchive is
+    always available, so a built-in can never be permanently lost, and the native seeder never
+    resurrects an archived built-in.
 53. **`ai_summaries` is a regenerable derived artefact, not history.** Its `status`
     (`queued` → `running` → `succeeded` \| `failed`) is deliberately mutable and invariant 3
     does not apply — but the *body* is never edited in place. Regeneration inserts a new row

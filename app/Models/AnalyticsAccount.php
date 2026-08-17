@@ -98,6 +98,12 @@ class AnalyticsAccount extends Model
         return $this->hasMany(InsightReport::class);
     }
 
+    /** @return HasMany<InsightProvisionedResource, $this> */
+    public function provisionedResources(): HasMany
+    {
+        return $this->hasMany(InsightProvisionedResource::class);
+    }
+
     /** @return BelongsTo<Employee, $this> */
     public function createdBy(): BelongsTo
     {

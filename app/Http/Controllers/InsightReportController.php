@@ -41,7 +41,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Insight report registry (S21-03): nav feed + settings CRUD.
- * Archive-only; system native rows cannot be archived or repointed.
+ * Archive-only; system native rows may be archived/unarchived but never repointed.
  */
 class InsightReportController extends Controller
 {
@@ -420,14 +420,14 @@ class InsightReportController extends Controller
             ]);
         }
 
-        if ($insightReport->is_system) {
-            throw ValidationException::withMessages([
-                'insight_report' => [__('errors.insights.system_report_archive')],
-            ]);
-        }
-
         $insightReport->archived_at = null;
         $insightReport->save();
+
+        SystemEvent::record('insights.report.unarchived', $insightReport, [
+            'report_key' => $insightReport->key,
+            'is_system' => $insightReport->is_system,
+            'native_key' => $insightReport->native_key,
+        ]);
 
         return $this->success(
             InsightReportResource::make($insightReport->fresh()->load(['params', 'analyticsAccount']))->resolve(),
@@ -449,12 +449,6 @@ class InsightReportController extends Controller
 
     private function archiveReport(InsightReport $report): void
     {
-        if ($report->is_system) {
-            throw ValidationException::withMessages([
-                'insight_report' => [__('errors.insights.system_report_archive')],
-            ]);
-        }
-
         if ($report->isArchived()) {
             throw ValidationException::withMessages([
                 'insight_report' => [__('errors.insights.report_already_archived')],
@@ -463,6 +457,12 @@ class InsightReportController extends Controller
 
         $report->archived_at = now();
         $report->save();
+
+        SystemEvent::record('insights.report.archived', $report, [
+            'report_key' => $report->key,
+            'is_system' => $report->is_system,
+            'native_key' => $report->native_key,
+        ]);
     }
 
     /**
