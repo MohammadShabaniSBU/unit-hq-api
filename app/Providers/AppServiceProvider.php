@@ -175,6 +175,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by('ai-turns|'.$employeeId);
         });
 
+        RateLimiter::for('copilot-voice-token', function (Request $request) {
+            $employeeId = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
+
+            return Limit::perMinute(10)->by('copilot-voice-token|'.$employeeId);
+        });
+
         Relation::morphMap([
             'employee' => Employee::class,
             'contact' => Contact::class,

@@ -52,4 +52,18 @@ class ChannelProfileTest extends TestCase
         $this->assertTrue($whatsapp->requiresTemplateOutsideWindow);
         $this->assertSame(3, $whatsapp->targetSentences);
     }
+
+    #[Test]
+    public function voice_is_short_spoken_plain_text(): void
+    {
+        $voice = ChannelProfile::for(AgentChannel::Voice);
+
+        $this->assertSame(600, $voice->maxCharacters);
+        $this->assertSame(0, $voice->segmentSize);
+        $this->assertFalse($voice->supportsHtml);
+        $this->assertFalse($voice->supportsSubject);
+        $this->assertFalse($voice->requiresTemplateOutsideWindow);
+        $this->assertFalse($voice->expectsSignature);
+        $this->assertSame(2, $voice->targetSentences);
+    }
 }

@@ -93,4 +93,65 @@ class CopilotDispatchTest extends TestCase
         Queue::assertPushedOn('ai', BroadcastAgent::class);
         Queue::assertPushed(BroadcastAgent::class, 1);
     }
+
+    #[Test]
+    public function voice_source_constructs_agent_with_spoken_instructions(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => 'Voice',
+            'site_scope_snapshot' => null,
+        ]);
+
+        CrmCopilotAgent::fake(['Two free units at the main site.'])->preventStrayPrompts();
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", [
+            'message' => 'How many units are free?',
+            'client_message_id' => (string) Str::uuid(),
+            'source' => 'voice',
+        ])->assertAccepted();
+
+        CrmCopilotAgent::assertQueued(function (QueuedAgentPrompt $prompt): bool {
+            $agent = $prompt->agent;
+
+            return $agent instanceof CrmCopilotAgent
+                && $agent->voice === true
+                && str_contains((string) $agent->instructions(), 'at most two short spoken sentences');
+        });
+    }
+
+    #[Test]
+    public function omitted_source_keeps_text_instructions(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => 'Text',
+            'site_scope_snapshot' => null,
+        ]);
+
+        CrmCopilotAgent::fake(['Hello from the queue.'])->preventStrayPrompts();
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", [
+            'message' => 'Find my contacts',
+            'client_message_id' => (string) Str::uuid(),
+        ])->assertAccepted();
+
+        CrmCopilotAgent::assertQueued(function (QueuedAgentPrompt $prompt): bool {
+            $agent = $prompt->agent;
+
+            return $agent instanceof CrmCopilotAgent
+                && $agent->voice === false
+                && ! str_contains((string) $agent->instructions(), 'at most two short spoken sentences');
+        });
+    }
 }

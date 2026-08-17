@@ -71,6 +71,16 @@ transcript. Properties never carry draft text.
 | `agent.handoff` | `AgentConversation` | `reason`, `trigger_source` |
 | `agent.guardrail.blocked` | `AgentConversation` | `guard`, `blocked_by` — **never the draft text** |
 
+### Copilot voice (Tier-3 `core`)
+
+Voice minutes are per-install COGS. Turns persist as normal
+`copilot_conversation_messages`; the activity log is **not** a transcript.
+
+| Event | Subject | Properties |
+|---|---|---|
+| `copilot.voice.session_started` | `CopilotVoiceSession` | `employee_id` |
+| `copilot.voice.session_ended` | `CopilotVoiceSession` | `employee_id`, `duration_seconds`, `turn_count`, `end_reason` (`hangup` \| `error` \| `timeout`) — **never the transcript** |
+
 See `14-ai-agents.md`.
 
 ## API

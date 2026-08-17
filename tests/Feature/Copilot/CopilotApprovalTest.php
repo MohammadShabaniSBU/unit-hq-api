@@ -147,4 +147,36 @@ class CopilotApprovalTest extends TestCase
 
         CrmCopilotAgent::assertNeverQueued();
     }
+
+    #[Test]
+    public function voice_source_on_decisions_constructs_spoken_agent(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => 'Voice resume',
+            'site_scope_snapshot' => null,
+        ]);
+
+        CrmCopilotAgent::fake(['Task created.'])->preventStrayPrompts();
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/decisions", [
+            'decisions' => [
+                'call_abc' => ['action' => 'approve'],
+            ],
+            'source' => 'voice',
+        ])->assertAccepted();
+
+        CrmCopilotAgent::assertQueued(function (QueuedAgentPrompt $prompt): bool {
+            $agent = $prompt->agent;
+
+            return $agent instanceof CrmCopilotAgent
+                && $agent->voice === true
+                && str_contains((string) $agent->instructions(), 'at most two short spoken sentences');
+        });
+    }
 }

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'vocal_bridge' => [
+        'key' => env('VOCAL_BRIDGE_API_KEY'),
+        'token_url' => env('VOCAL_BRIDGE_TOKEN_URL', 'https://vocalbridgeai.com/api/v1/token'),
+    ],
+
 ];

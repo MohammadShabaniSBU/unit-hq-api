@@ -187,5 +187,10 @@ return [
         'param_unresolved' => 'A required insight param could not be resolved.',
         'site_required' => 'This report requires a single site; choose one.',
     ],
+    'voice' => [
+        'not_configured' => 'Copilot voice is not configured. Set VOCAL_BRIDGE_API_KEY on the server.',
+        'token_unavailable' => 'The voice service could not issue a session token. Try again shortly.',
+        'session_already_ended' => 'This voice session has already ended.',
+    ],
 ];
 

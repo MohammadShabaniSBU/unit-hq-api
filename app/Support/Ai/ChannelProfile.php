@@ -72,6 +72,16 @@ final readonly class ChannelProfile
                 expectsSignature: false,
                 targetSentences: 8,
             ),
+            AgentChannel::Voice => new self(
+                channel: $channel,
+                maxCharacters: 600,
+                segmentSize: 0,
+                supportsHtml: false,
+                supportsSubject: false,
+                requiresTemplateOutsideWindow: false,
+                expectsSignature: false,
+                targetSentences: 2,
+            ),
         };
     }
 }

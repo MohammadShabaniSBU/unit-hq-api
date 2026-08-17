@@ -187,5 +187,10 @@ return [
         'param_unresolved' => 'No se pudo resolver un parámetro de insights obligatorio.',
         'site_required' => 'Este informe requiere un solo sitio; elija uno.',
     ],
+    'voice' => [
+        'not_configured' => 'La voz del copiloto no está configurada. Defina VOCAL_BRIDGE_API_KEY en el servidor.',
+        'token_unavailable' => 'El servicio de voz no pudo emitir un token de sesión. Inténtelo de nuevo en breve.',
+        'session_already_ended' => 'Esta sesión de voz ya ha terminado.',
+    ],
 ];
 

@@ -40,5 +40,7 @@ Before writing code, consult the doc that matches the task:
 - Customer-facing agents never write to the ledger, mutate contracts, grant
   access, or confirm payment. No money, date, or unit identifier in agent output
   originates from the model.
+- Copilot tool approvals are click-only; voice never authorises a write
+  (invariant 60).
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

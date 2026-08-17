@@ -36,7 +36,10 @@ class CrmCopilotAgent implements Agent, Conversational, HasMiddleware, HasTools
     use Promptable;
     use RemembersConversations;
 
-    public function __construct(public Employee $employee) {}
+    public function __construct(
+        public Employee $employee,
+        public bool $voice = false,
+    ) {}
 
     public function middleware(): array
     {
@@ -62,7 +65,7 @@ class CrmCopilotAgent implements Agent, Conversational, HasMiddleware, HasTools
 
     public function instructions(): Stringable|string
     {
-        return <<<'PROMPT'
+        $prompt = <<<'PROMPT'
 You are a helpful CRM copilot assistant for a storage rental platform. Your role is to help users manage their contacts and deals efficiently.
 
 You have one read tool, FetchObjects, that can retrieve: contacts, deals, offers, reservations, contracts,
@@ -90,6 +93,19 @@ When helping users:
 
 Be conversational, helpful, and efficient in your responses.
 PROMPT;
+
+        if (! $this->voice) {
+            return $prompt;
+        }
+
+        return $prompt."\n\n".<<<'VOICE'
+This turn is spoken aloud. Answer in at most two short spoken sentences.
+No markdown, no bullet lists, no tables, no headings, no emoji.
+Never speak ids, uuids or URLs. Refer to records by name and unit number.
+Currency as words with the figure intact ("one hundred twenty euros"), never €120.00.
+If the answer is a list of more than three records, say how many there are and that the detail is on screen. Do not enumerate.
+If a tool needs approval, say what you are about to do in one sentence and stop.
+VOICE;
     }
 
     public function tools(): iterable

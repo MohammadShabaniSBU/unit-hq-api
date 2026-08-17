@@ -112,6 +112,23 @@ class AgentConversationApiTest extends TestCase
     }
 
     #[Test]
+    public function channel_voice_is_rejected(): void
+    {
+        config(['agents.demo_enabled' => true]);
+        $agent = AiAgent::factory()->create(['key' => 'support', 'is_active' => true]);
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/agent-conversations', [
+            'agent_key' => $agent->key,
+            'channel' => AgentChannel::Voice->value,
+            'origin' => AgentOrigin::Demo->value,
+            'verification_level' => VerificationLevel::Anonymous->value,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('channel');
+    }
+
+    #[Test]
     public function verification_level_is_prohibited_for_non_demo_origins(): void
     {
         $agent = AiAgent::factory()->create(['key' => 'support', 'is_active' => true]);

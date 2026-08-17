@@ -408,6 +408,7 @@ final class RoutePermissions
             'PATCH /api/attribute-definitions/{attributeDefinition}' => Permission::SettingsManage, // AttributeDefinitionController@update
             'PATCH /api/attribute-values' => Permission::ContactManage, // AttributeValueController@upsert — actual permission resolved per entityType via AttributeEntityType::managePermission(), not a single static case
             'PATCH /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
+            'PATCH /api/copilot/voice/sessions/{session}' => Permission::CopilotVoiceUse, // CopilotVoiceController@update
             'PATCH /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
             'PATCH /api/settings/access/points/{accessPoint}' => Permission::AccessManage, // AccessPointController@update — access point catalogue
             'PATCH /api/settings/activity-log' => Permission::SettingsManage, // Facility\SettingController@updateActivityLog
@@ -432,6 +433,7 @@ final class RoutePermissions
             'POST /api/copilot/conversations' => Permission::ContactView, // CopilotController@store — placeholder until enum case exists
             'POST /api/copilot/conversations/{conversation}/messages' => Permission::ContactView, // CopilotController@storeMessage — placeholder until enum case exists
             'POST /api/copilot/conversations/{conversation}/decisions' => Permission::ContactView, // CopilotController@storeDecisions — placeholder until enum case exists
+            'POST /api/copilot/voice/token' => Permission::CopilotVoiceUse, // CopilotVoiceController@store
 
             'POST /api/playbooks' => Permission::PlaybookManage, // PlaybookController@store
             'POST /api/playbooks/{playbook}/activate' => Permission::PlaybookManage, // PlaybookController@activate

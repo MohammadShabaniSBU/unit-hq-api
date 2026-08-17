@@ -239,6 +239,10 @@
     by an explicit filter at each call site.** Never a global scope (invariant 46).
     Demo conversations must not reach Insights, eval corpora, or any operator-facing
     metric. Enforced by `AgentConversationConstraintTest`.
+60. **Tool approvals are resolved by click only; a voice channel never authorises
+    a write.** Voice input produces prompts, never decisions. An STT false positive
+    must not approve `CreateTask` / `CreateContact` / any other write tool. The
+    post-approval continuation may be *spoken*, but the operator clicked.
 
 ## Code conventions
 

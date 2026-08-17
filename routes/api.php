@@ -355,6 +355,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'destroy']);
     Route::post('copilot/conversations/{conversation}/messages', [Controllers\CopilotController::class, 'storeMessage']);
     Route::post('copilot/conversations/{conversation}/decisions', [Controllers\CopilotController::class, 'storeDecisions']);
+    Route::post('copilot/voice/token', [Controllers\CopilotVoiceController::class, 'store'])
+        ->middleware('throttle:copilot-voice-token');
+    Route::patch('copilot/voice/sessions/{session}', [Controllers\CopilotVoiceController::class, 'update']);
 
     Route::get('deals/options', [Controllers\DealController::class, 'options']);
     Route::get('deals/filters/schema', [Controllers\DealController::class, 'filterSchema']);

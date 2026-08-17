@@ -59,5 +59,5 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 - `11-insights.md` — report registry, analytics accounts, embeds, `analytics` schema contract
 - `12-automation-engine.md` — automation nodes/edges/runs, triggers, node handlers, run lifecycle
 - `13-playbooks.md` — Playbooks (debt process / lead chase), compiled onto the automation engine
-- `14-ai-agents.md` — customer-facing support/sales agents, principal, tools, guardrails, demo `/demo/chat`
+- `14-ai-agents.md` — customer-facing support/sales agents, principal, tools, guardrails, demo `/demo/chat`; employee copilot voice (Vocal Bridge)
 - `AGENTS.md` — short index for AI assistants

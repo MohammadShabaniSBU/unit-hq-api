@@ -93,6 +93,7 @@ class CopilotController extends Controller
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:8000'],
             'client_message_id' => ['required', 'uuid'],
+            'source' => ['sometimes', 'string', 'in:text,voice'],
         ]);
 
         if ($conversation->title === 'New conversation') {
@@ -120,6 +121,7 @@ class CopilotController extends Controller
             'decisions.*' => ['required', 'array'],
             'decisions.*.action' => ['required', 'string', 'in:approve,reject'],
             'decisions.*.result' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'source' => ['sometimes', 'string', 'in:text,voice'],
         ]);
 
         $normalized = [];
@@ -132,7 +134,12 @@ class CopilotController extends Controller
         $decisions = Decisions::from($normalized)->rejectRemaining();
 
         return $this->accepted(
-            CopilotDispatcher::dispatchDecisions($conversation, $employee, $decisions),
+            CopilotDispatcher::dispatchDecisions(
+                $conversation,
+                $employee,
+                $decisions,
+                $validated['source'] ?? 'text',
+            ),
             'Copilot decisions accepted.',
         );
     }

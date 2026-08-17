@@ -66,6 +66,7 @@ enum Permission: string
     case AiSummaryView = 'ai_summary.view';
     case AiSummaryGenerate = 'ai_summary.generate';
     case AiAgentUse = 'ai_agent.use';
+    case CopilotVoiceUse = 'copilot_voice.use';
 
     // Cross-cutting
     case ReportView = 'report.view';

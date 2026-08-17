@@ -27,7 +27,7 @@ final class CopilotDispatcher
     private const IDEMPOTENCY_TTL_SECONDS = 600;
 
     /**
-     * @param  array{message: string, client_message_id: string}  $validated
+     * @param  array{message: string, client_message_id: string, source?: string}  $validated
      * @return array{call_id: string, conversation_id: string, channel: string}
      */
     public static function dispatchTurn(
@@ -46,6 +46,7 @@ final class CopilotDispatcher
             $conversation,
             $employee,
             $validated['message'],
+            $validated['source'] ?? 'text',
         );
 
         Cache::put($cacheKey, $payload, self::IDEMPOTENCY_TTL_SECONDS);
@@ -62,8 +63,9 @@ final class CopilotDispatcher
         CopilotConversation $conversation,
         Employee $employee,
         Decisions $decisions,
+        string $source = 'text',
     ): array {
-        return self::dispatchPrompt($conversation, $employee, $decisions);
+        return self::dispatchPrompt($conversation, $employee, $decisions, $source);
     }
 
     /**
@@ -73,9 +75,11 @@ final class CopilotDispatcher
         CopilotConversation $conversation,
         Employee $employee,
         Decisions|string $prompt,
+        string $source = 'text',
     ): array {
         $channelName = "copilot.{$conversation->id}";
         $channel = new PrivateChannel($channelName);
+        $voice = $source === 'voice';
 
         // Stamp correlation before the PendingDispatch destructs and pushes the job.
         $callId = (string) Str::uuid7();
@@ -85,9 +89,10 @@ final class CopilotDispatcher
             'ai_purpose' => 'copilot',
             'conversation_id' => $conversation->id,
             'request_id' => RequestId::get(),
+            'source' => $source,
         ]);
 
-        $queued = (new CrmCopilotAgent($employee))
+        $queued = (new CrmCopilotAgent($employee, voice: $voice))
             ->continue($conversation->id, as: $employee)
             ->broadcastOnQueue($prompt, $channel);
 

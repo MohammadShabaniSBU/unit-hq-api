@@ -11,4 +11,5 @@ enum AgentChannel: string
     case Whatsapp = 'whatsapp';
     case Webchat = 'webchat';
     case Internal = 'internal';
+    case Voice = 'voice';
 }

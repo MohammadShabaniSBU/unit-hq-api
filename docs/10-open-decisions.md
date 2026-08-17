@@ -68,6 +68,10 @@
 - **D-AI-5 — No RAG in v1.** Curated per-site FAQ snippets in `config/ai-knowledge/`, retrieved by key, not by embedding. A self-storage FAQ fits in a prompt. `pgvector` does not exist in the SQLite test path. Add retrieval when the curated set stops fitting.
 - **D-AI-6 — Agent definitions and tools are code; `ai_agents` rows are instances.** An `ai_agents.key` with no matching `AgentDefinition` is a defect, not data — enforced by `AgentDefinitionCoverageTest`. Same grep-as-test discipline as `Permission` (invariant 43). `ai_agents.settings` holds tuning knobs only, never the prompt or the tool list.
 - **D-AI-7 — `agent_conversations.origin` is non-null from day one** (`demo` / `inbox` / `webchat`). One column keeps demo traffic out of Insights and out of eval corpora permanently. Adding it later means backfilling — the D3 / I5 reasoning. Demo exclusion is an explicit filter at each call site, never a global scope (invariant 46 / 59).
+- **D-V1 — Adaptive Vocal Bridge response mode.** VB may rephrase copilot text for speech. The VB agent prompt forbids altering figures, dates, names, unit codes, or currency amounts.
+- **D-V2 — Filler-then-push on slow turns.** App→Agent client action `copilot_answer_ready`. The `onAIAgentQuery` promise always settles (hang-guard at 25s if Reverb drops).
+- **D-V3 — Voice continues the active `CopilotConversation`.** No new conversation per call. Accepts the existing staleness of `site_scope_snapshot`.
+- **D-V4 — Tool approvals are click-only, never voice.** Invariant 60. Voice produces prompts, never decisions.
 
 ## Blocking for S23
 
@@ -146,6 +150,10 @@
 | Additional `analytics` views | Demand-driven. Five ship with the Insights pluggable surface; there is no target catalogue. |
 | Scheduled report delivery | Metabase has subscriptions; do we surface them, or build our own on the comms stack? Duplicating delivery is how two unsubscribe lists appear. |
 | Per-report caching | Provider-side caching only for now. |
+| Per-locale Vocal Bridge agents | v1 is one VB agent with `language: multi` auto-detect. Panel ships en/es/fr. |
+| VB credentials in env vs Settings | `VOCAL_BRIDGE_API_KEY` is env today. A Settings-managed encrypted account (as `communication_accounts` does) is the follow-up if operators must rotate without a deploy. |
+| Voice for customer-facing agents | Employee copilot only this sprint. `AgentChannel::Voice` exists for ChannelProfile exhaustiveness; `POST /api/agent-conversations` rejects it. |
+| Agent→App UI navigation actions | Natural follow-up once the transcript loop is trusted. v1 is App→Agent `copilot_answer_ready` only. |
 
 ## Active WIP
 

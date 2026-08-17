@@ -173,5 +173,10 @@ return [
         'param_unresolved' => 'Un paramètre insights requis n’a pas pu être résolu.',
         'site_required' => 'Ce rapport nécessite un seul site ; choisissez-en un.',
     ],
+    'voice' => [
+        'not_configured' => 'La voix du copilote n’est pas configurée. Définissez VOCAL_BRIDGE_API_KEY sur le serveur.',
+        'token_unavailable' => 'Le service vocal n’a pas pu émettre de jeton de session. Réessayez sous peu.',
+        'session_already_ended' => 'Cette session vocale est déjà terminée.',
+    ],
 ];
 

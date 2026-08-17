@@ -77,7 +77,7 @@ class AgentConversationController extends Controller
 
         $validated = $request->validate([
             'agent_key' => ['required', 'string'],
-            'channel' => ['required', Rule::enum(AgentChannel::class)],
+            'channel' => ['required', Rule::enum(AgentChannel::class)->except([AgentChannel::Voice])],
             'origin' => ['required', Rule::enum(AgentOrigin::class)],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
             'verification_level' => [
