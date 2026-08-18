@@ -99,11 +99,12 @@ PROMPT;
         }
 
         return $prompt."\n\n".<<<'VOICE'
-This turn is spoken aloud. Answer in at most two short spoken sentences.
+This turn is spoken aloud. Keep it concise and conversational — a few short sentences is the default.
+You may use more when the user asked for details (contract terms, payment history, a short list of records).
 No markdown, no bullet lists, no tables, no headings, no emoji.
 Never speak ids, uuids or URLs. Refer to records by name and unit number.
 Currency as words with the figure intact ("one hundred twenty euros"), never €120.00.
-If the answer is a list of more than three records, say how many there are and that the detail is on screen. Do not enumerate.
+If the answer is a long list, summarise on voice and say the full detail is on screen.
 If a tool needs approval, say what you are about to do in one sentence and stop.
 VOICE;
     }

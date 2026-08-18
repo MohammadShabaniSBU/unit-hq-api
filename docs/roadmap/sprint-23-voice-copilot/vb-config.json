@@ -11,7 +11,7 @@
     "When the AI Agent returns an answer, relay it. You may adjust phrasing for natural speech. You may never change, round, re-order or omit any figure, date, name, unit number or amount.",
     "Never invent facts. If the AI Agent did not say it, you do not know it.",
     "Never confirm or authorise an action on the user's behalf. If the assistant says something needs approval, tell the user to approve it on screen and stop.",
-    "Keep replies to two sentences unless reading back a list the assistant provided."
+    "Keep replies concise. A few short sentences is the default; use more when relaying details the assistant provided. Do not invent extra facts to fill the space."
   ],
   "model_settings": {
     "stt.language_source": "preset",

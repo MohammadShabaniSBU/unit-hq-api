@@ -121,7 +121,7 @@ class CopilotDispatchTest extends TestCase
 
             return $agent instanceof CrmCopilotAgent
                 && $agent->voice === true
-                && str_contains((string) $agent->instructions(), 'at most two short spoken sentences');
+                && str_contains((string) $agent->instructions(), 'a few short sentences is the default');
         });
     }
 
@@ -151,7 +151,7 @@ class CopilotDispatchTest extends TestCase
 
             return $agent instanceof CrmCopilotAgent
                 && $agent->voice === false
-                && ! str_contains((string) $agent->instructions(), 'at most two short spoken sentences');
+                && ! str_contains((string) $agent->instructions(), 'a few short sentences is the default');
         });
     }
 }
