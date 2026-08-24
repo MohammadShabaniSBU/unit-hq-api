@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\AiAgent;
+use App\Support\Ai\Enums\WritePolicyMode;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -26,13 +27,22 @@ class AiAgentSeeder extends Seeder
             ],
         );
 
-        AiAgent::query()->updateOrCreate(
+        $sales = AiAgent::query()->updateOrCreate(
             ['key' => 'sales'],
             [
                 'name' => 'Sales Agent',
                 'description' => null,
                 'model' => $model,
                 'is_active' => true,
+            ],
+        );
+
+        $sales->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_offer'],
+            [
+                'mode' => WritePolicyMode::Commit,
+                'max_per_conversation' => 2,
+                'max_per_day' => 50,
             ],
         );
     }

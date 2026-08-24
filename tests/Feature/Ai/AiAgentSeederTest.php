@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\Enums\WritePolicyMode;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -31,6 +33,16 @@ class AiAgentSeederTest extends TestCase
         $registry = app(AgentRegistry::class);
         $this->assertSame('support', $registry->get('support')->key());
         $this->assertSame('sales', $registry->get('sales')->key());
+
+        $sales = AiAgent::query()->where('key', 'sales')->firstOrFail();
+        $policy = AgentWritePolicy::query()
+            ->where('ai_agent_id', $sales->id)
+            ->where('tool_key', 'sales.create_offer')
+            ->first();
+        $this->assertNotNull($policy);
+        $this->assertSame(WritePolicyMode::Commit, $policy->mode);
+        $this->assertSame(2, $policy->max_per_conversation);
+        $this->assertSame(50, $policy->max_per_day);
     }
 
     #[Test]
@@ -43,5 +55,6 @@ class AiAgentSeederTest extends TestCase
 
         $this->assertSame($before, AiAgent::query()->orderBy('key')->get(['id', 'key', 'name', 'model'])->toArray());
         $this->assertSame(2, AiAgent::query()->count());
+        $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'sales.create_offer')->count());
     }
 }

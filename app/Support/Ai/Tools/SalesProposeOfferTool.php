@@ -4,19 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
-use App\Models\Discount;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
-use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
-use App\Support\Billing\BillingMath;
-use App\Support\Discounts\DiscountSurface;
-use App\Support\Fiscal\TaxResolver;
-use Illuminate\Validation\ValidationException;
 
 final class SalesProposeOfferTool implements AgentTool
 {
@@ -27,7 +21,7 @@ final class SalesProposeOfferTool implements AgentTool
 
     public function description(): string
     {
-        return 'Build a structured catalogue proposal (line items, tax, discount label, term). Persists nothing — no Offer row, no token, no send.';
+        return 'Quote a catalogue proposal first (line items, tax, discount label, term). Persists nothing — no Offer row, no token, no send. Call sales.create_offer only after the prospect agrees.';
     }
 
     public function schema(): array
@@ -89,56 +83,38 @@ final class SalesProposeOfferTool implements AgentTool
             ->where('unit_class_id', $class->id)
             ->with('price')
             ->first();
-        $price = $rate?->price;
-        if ($price === null) {
+        if ($rate === null) {
             return ToolResult::notFound('No current catalogue price for that class at this site.');
         }
 
-        try {
-            $taxRate = TaxResolver::resolve(null, $class->tax_rate_code, $site);
-        } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: 'Tax rate could not be resolved for this jurisdiction.';
-
-            return ToolResult::error((string) $message, HandoffReason::Error);
+        $discountId = isset($arguments['discount_id']) ? (int) $arguments['discount_id'] : null;
+        $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $discountId);
+        if ($line instanceof ToolResult) {
+            return $line;
         }
 
-        $ratePct = $taxRate !== null ? (string) $taxRate->rate : '0.00';
-        $breakdown = BillingMath::applyTax((string) $price->amount, $ratePct);
-        $currency = (string) $price->currency;
         $billing = Setting::billing();
         $count = $billing->defaultBillingIntervalCount;
         $interval = $billing->defaultBillingInterval;
         $term = $count === 1 ? "every {$interval}" : "every {$count} {$interval}s";
 
-        $discountLabel = null;
-        $discountId = isset($arguments['discount_id']) ? (int) $arguments['discount_id'] : null;
-        if ($discountId !== null) {
-            $discount = Discount::query()->active()->whereKey($discountId)->first();
-            if ($discount === null) {
-                return ToolResult::notFound('Catalogue discount not found.');
-            }
-            $resolved = DiscountSurface::resolve($discount, locale: $principal->locale);
-            $discountLabel = $resolved['promo_line'] ?? $discount->name;
-        }
-
         $moveIn = isset($arguments['move_in_date']) ? (string) $arguments['move_in_date'] : null;
-        $priceDisplay = MoneyDisplay::withTax($breakdown, $currency, $principal->locale, $ratePct);
 
         $facts = (new FactBag)
-            ->money($breakdown->net, $currency)
-            ->money($breakdown->tax, $currency)
-            ->money($breakdown->gross, $currency)
-            ->number($ratePct)
-            ->percent($ratePct);
+            ->money($line->net, $line->currency)
+            ->money($line->tax, $line->currency)
+            ->money($line->gross, $line->currency)
+            ->number($line->ratePct)
+            ->percent($line->ratePct);
         if ($moveIn !== null && $moveIn !== '') {
             $facts->date($moveIn);
         }
 
         $bits = [
-            "Proposal for {$class->label} at {$site->name}: {$priceDisplay}, billed {$term}.",
+            "Proposal for {$class->label} at {$site->name}: {$line->display}, billed {$term}.",
         ];
-        if ($discountLabel !== null) {
-            $bits[] = "Catalogue discount: {$discountLabel}.";
+        if ($line->discountLabel !== null) {
+            $bits[] = "Catalogue discount: {$line->discountLabel}.";
         }
         if ($moveIn !== null && $moveIn !== '') {
             $bits[] = "Proposed move-in {$moveIn}.";
@@ -153,19 +129,19 @@ final class SalesProposeOfferTool implements AgentTool
                 'line_items' => [
                     [
                         'label' => $class->label,
-                        'net' => $breakdown->net,
-                        'tax' => $breakdown->tax,
-                        'gross' => $breakdown->gross,
-                        'rate' => $ratePct,
-                        'currency' => $currency,
+                        'net' => $line->net,
+                        'tax' => $line->tax,
+                        'gross' => $line->gross,
+                        'rate' => $line->ratePct,
+                        'currency' => $line->currency,
                     ],
                 ],
-                'net' => $breakdown->net,
-                'tax' => $breakdown->tax,
-                'gross' => $breakdown->gross,
-                'currency' => $currency,
-                'discount_id' => $discountId,
-                'discount_label' => $discountLabel,
+                'net' => $line->net,
+                'tax' => $line->tax,
+                'gross' => $line->gross,
+                'currency' => $line->currency,
+                'discount_id' => $line->discountId,
+                'discount_label' => $line->discountLabel,
                 'term' => $term,
                 'move_in_date' => $moveIn,
                 'persisted' => false,

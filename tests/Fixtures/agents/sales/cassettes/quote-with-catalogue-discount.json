@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/quote-with-catalogue-discount",
     "turn_index": 0,
-    "prompt_hash": "6634418429a531d3fa0970707b75cea1ddbcd2fe50742bd1712a4916169ecbbc",
-    "schema_hash": "47cee65c28c8900c70382285f7c053b4a12953b2c96cb5a9d2a794940003f921",
+    "prompt_hash": "771722d0e4c955921c239e29310dd7f4617b5eea626490b76850a5e10ad91c3f",
+    "schema_hash": "d351ef49595bcfd0da03c81514c4bb03a4f00a92384f62b8959c2064fbc658ef",
     "responses": [
         {
             "content": "",

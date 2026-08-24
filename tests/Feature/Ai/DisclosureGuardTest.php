@@ -9,6 +9,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\ChannelProfile;
@@ -18,6 +19,8 @@ use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\DisclosureGuard;
+use App\Support\Ai\Guards\DraftToken;
+use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,6 +139,31 @@ class DisclosureGuardTest extends TestCase
         $this->assertNull($second->handoff);
         $this->assertNull($second->blockedBy);
         $this->assertStringContainsString('84,70', $second->draft);
+    }
+
+    #[Test]
+    public function licensed_offer_url_survives_disclosure_at_anonymous(): void
+    {
+        $token = str_repeat('a1', 32);
+        $url = 'http://localhost:3000/preview/offer/'.$token;
+        $extracted = app(DraftTokenExtractor::class)->extract($url);
+        $identifierTypes = array_values(array_filter(
+            $extracted,
+            static fn (DraftToken $draft): bool => $draft->type === DraftToken::Identifier,
+        ));
+        $this->assertSame([], $identifierTypes);
+
+        $facts = (new FactBag)->identifier($url)->absorb("Public link: {$url}.");
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+
+        $verdict = app(DisclosureGuard::class)->check(
+            "Here is your offer: {$url}",
+            $facts,
+            $ctx,
+        );
+
+        $this->assertTrue($verdict->passed);
     }
 
     private function conversation(): AgentConversation

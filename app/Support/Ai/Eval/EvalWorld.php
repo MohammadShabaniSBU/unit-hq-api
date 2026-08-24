@@ -7,6 +7,7 @@ namespace App\Support\Ai\Eval;
 use App\Enums\AccessSuspensionReason;
 use App\Enums\ContactChannelType;
 use App\Enums\ContactSource;
+use App\Enums\DealStatus;
 use App\Enums\InvoiceKind;
 use App\Enums\InvoiceSeriesKind;
 use App\Enums\InvoiceStatus;
@@ -18,6 +19,7 @@ use App\Models\ContactChannel;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\Country;
+use App\Models\Deal;
 use App\Models\Delinquency;
 use App\Models\Discount;
 use App\Models\Employee;
@@ -64,6 +66,10 @@ final class EvalWorld
     public Contact $duplicateLead;
 
     public Contact $agentLead;
+
+    public Deal $agentDeal;
+
+    public UnitClassRate $madridSmallRate;
 
     public Contact $stranger;
 
@@ -134,6 +140,10 @@ final class EvalWorld
 
         $world->cataloguePrice($world->madrid, '70.00', 'EUR');
         $world->cataloguePrice($world->london, '80.00', 'GBP');
+        $world->madridSmallRate = UnitClassRate::query()
+            ->where('site_id', $world->madrid->id)
+            ->where('unit_class_id', $world->smallClass->id)
+            ->firstOrFail();
 
         TaxRate::query()->create([
             'name' => 'VAT ES',
@@ -324,6 +334,12 @@ final class EvalWorld
             'email' => 'agent-lead@keevaris.test',
             'source' => ContactSource::AiAgent,
         ]);
+        $world->agentDeal = Deal::factory()->create([
+            'contact_id' => $world->agentLead->id,
+            'site_id' => $world->madrid->id,
+            'status' => DealStatus::Qualified,
+            'desired_unit_class_id' => $world->smallClass->id,
+        ]);
 
         $model = (string) config('agents.default_model');
         $world->support = AiAgent::query()->updateOrCreate(
@@ -373,6 +389,8 @@ final class EvalWorld
             '{{tenant_next_charge.id}}' => (string) $this->tenantNextCharge->id,
             '{{duplicate_lead.id}}' => (string) $this->duplicateLead->id,
             '{{agent_lead.id}}' => (string) $this->agentLead->id,
+            '{{agent_deal.id}}' => (string) $this->agentDeal->id,
+            '{{madrid_small_rate.id}}' => (string) $this->madridSmallRate->id,
             '{{stranger.id}}' => (string) $this->stranger->id,
             '{{stranger_contract.id}}' => (string) $this->strangerContract->id,
             '{{balance_contract.id}}' => (string) $this->balanceContract->id,

@@ -156,7 +156,48 @@ final class ToolDispatcher
             }
 
             $type = $rules['type'] ?? 'string';
-            $coerced[$key] = $this->coerceValue($arguments[$key], $type);
+            $value = $this->coerceValue($arguments[$key], $type);
+
+            if ($type === 'array' && is_array($value) && isset($rules['items']) && is_array($rules['items'])) {
+                /** @var array<string, array<string, mixed>> $items */
+                $items = $rules['items'];
+                $value = $this->coerceArrayItems($value, $items);
+            }
+
+            $coerced[$key] = $value;
+        }
+
+        return $coerced;
+    }
+
+    /**
+     * One level only: copy schema item keys and coerce scalars. Extra keys are dropped.
+     *
+     * @param  list<mixed>  $items
+     * @param  array<string, array<string, mixed>>  $itemSchema
+     * @return list<array<string, mixed>>
+     */
+    private function coerceArrayItems(array $items, array $itemSchema): array
+    {
+        $coerced = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item) || array_is_list($item)) {
+                $coerced[] = $item;
+
+                continue;
+            }
+
+            $row = [];
+            foreach ($itemSchema as $field => $rules) {
+                if (! array_key_exists($field, $item) || $item[$field] === null || $item[$field] === '') {
+                    continue;
+                }
+
+                $type = $rules['type'] ?? 'string';
+                $row[$field] = $this->coerceValue($item[$field], $type);
+            }
+            $coerced[] = $row;
         }
 
         return $coerced;
@@ -198,6 +239,71 @@ final class ToolDispatcher
 
             if (isset($rules['enum']) && ! in_array($arguments[$key], $rules['enum'], true)) {
                 return "Argument [{$key}] is not an allowed value.";
+            }
+
+            if ($type === 'array' && is_array($arguments[$key])) {
+                $itemError = $this->validateArrayItems($key, $arguments[$key], $rules);
+                if ($itemError !== null) {
+                    return $itemError;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * One level only: min/max length and object-shaped item fields. No nested arrays.
+     *
+     * @param  list<mixed>  $items
+     * @param  array<string, mixed>  $rules
+     */
+    private function validateArrayItems(string $key, array $items, array $rules): ?string
+    {
+        $count = count($items);
+        $min = isset($rules['min']) ? (int) $rules['min'] : null;
+        $max = isset($rules['max']) ? (int) $rules['max'] : null;
+
+        if ($min !== null && $count < $min) {
+            return "Argument [{$key}] must have at least {$min} item(s).";
+        }
+
+        if ($max !== null && $count > $max) {
+            return "Argument [{$key}] must have at most {$max} item(s).";
+        }
+
+        if (! isset($rules['items']) || ! is_array($rules['items'])) {
+            return null;
+        }
+
+        /** @var array<string, array<string, mixed>> $itemSchema */
+        $itemSchema = $rules['items'];
+
+        foreach ($items as $index => $item) {
+            if (! is_array($item) || array_is_list($item)) {
+                return "Argument [{$key}][{$index}] must be an object.";
+            }
+
+            foreach ($itemSchema as $field => $fieldRules) {
+                $required = (bool) ($fieldRules['required'] ?? false);
+                $present = array_key_exists($field, $item) && $item[$field] !== null && $item[$field] !== '';
+
+                if ($required && ! $present) {
+                    return "Missing required argument [{$key}][{$index}].{$field}.";
+                }
+
+                if (! $present) {
+                    continue;
+                }
+
+                $type = $fieldRules['type'] ?? 'string';
+                if (! $this->valueMatchesType($item[$field], $type)) {
+                    return "Argument [{$key}][{$index}].{$field} must be {$type}.";
+                }
+
+                if (isset($fieldRules['enum']) && ! in_array($item[$field], $fieldRules['enum'], true)) {
+                    return "Argument [{$key}][{$index}].{$field} is not an allowed value.";
+                }
             }
         }
 

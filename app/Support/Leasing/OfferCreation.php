@@ -6,8 +6,10 @@ namespace App\Support\Leasing;
 
 use App\Enums\AttributeEntityType;
 use App\Models\Offer;
+use App\Models\Setting;
 use App\Models\Unit;
 use App\Support\Attributes\AppliesCreateAttributes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -45,5 +47,19 @@ final class OfferCreation
 
             return $offer;
         });
+    }
+
+    public static function defaultExpiry(): Carbon
+    {
+        $settings = Setting::leasing();
+        $value = $settings->defaultOfferExpirationValue;
+        $unit = $settings->defaultOfferExpirationUnit;
+
+        return match ($unit) {
+            'minutes' => now()->addMinutes($value),
+            'hours' => now()->addHours($value),
+            'weeks' => now()->addWeeks($value),
+            default => now()->addDays($value),
+        };
     }
 }

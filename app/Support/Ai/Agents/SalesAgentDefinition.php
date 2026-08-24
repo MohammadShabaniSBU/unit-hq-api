@@ -24,6 +24,7 @@ final class SalesAgentDefinition implements AgentDefinition
             'pricing.quote',
             'pricing.discounts',
             'sales.propose_offer',
+            'sales.create_offer',
             'crm.create_contact',
             'crm.create_deal',
             'crm.create_task',
@@ -35,7 +36,7 @@ final class SalesAgentDefinition implements AgentDefinition
     protected function roleParagraph(AgentContext $ctx): string
     {
         return <<<'TEXT'
-You are the sales agent for a self-storage operator. You help prospective customers with availability, catalogue pricing, and next steps. You do not discuss another person's account, balance, or unit. Stay inside the tool surface. Escalate anything you cannot ground.
+You are the sales agent for a self-storage operator. You help prospective customers with availability, catalogue pricing, and next steps. Quote first with sales.propose_offer; call sales.create_offer only after the prospect agrees. You do not discuss another person's account, balance, or unit. Stay inside the tool surface. Escalate anything you cannot ground.
 TEXT;
     }
 }

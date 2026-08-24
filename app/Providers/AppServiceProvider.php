@@ -66,6 +66,7 @@ use App\Support\Ai\Tools\FacilitySiteInfoTool;
 use App\Support\Ai\Tools\KbFaqLookupTool;
 use App\Support\Ai\Tools\PricingDiscountsTool;
 use App\Support\Ai\Tools\PricingQuoteTool;
+use App\Support\Ai\Tools\SalesCreateOfferTool;
 use App\Support\Ai\Tools\SalesProposeOfferTool;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Communications\ProviderRegistry;
@@ -118,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new PricingQuoteTool);
             $registry->register(new PricingDiscountsTool);
             $registry->register(new SalesProposeOfferTool);
+            $registry->register(new SalesCreateOfferTool);
             $registry->register(new CrmCreateContactTool);
             $registry->register(new CrmCreateDealTool);
             $registry->register(new CrmCreateTaskTool);

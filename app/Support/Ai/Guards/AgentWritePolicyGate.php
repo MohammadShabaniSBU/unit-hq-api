@@ -7,6 +7,7 @@ namespace App\Support\Ai\Guards;
 use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\CanonicalJson;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
@@ -62,12 +63,7 @@ final class AgentWritePolicyGate
      */
     public function idempotencyKey(int $conversationId, string $toolKey, array $normalisedArgs): string
     {
-        $canonical = json_encode(
-            $this->sortRecursive($normalisedArgs),
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        );
-
-        return hash('sha256', $conversationId.'|'.$toolKey.'|'.($canonical !== false ? $canonical : ''));
+        return hash('sha256', $conversationId.'|'.$toolKey.'|'.CanonicalJson::encode($normalisedArgs));
     }
 
     /**
@@ -150,24 +146,5 @@ final class AgentWritePolicyGate
         }
 
         return null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $value
-     * @return array<string, mixed>
-     */
-    private function sortRecursive(array $value): array
-    {
-        if (! array_is_list($value)) {
-            ksort($value);
-        }
-
-        foreach ($value as $key => $item) {
-            if (is_array($item)) {
-                $value[$key] = $this->sortRecursive($item);
-            }
-        }
-
-        return $value;
     }
 }

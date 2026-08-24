@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Ai\CanonicalJson;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\PendingActionStatus;
 use App\Support\Auth\Concerns\VisibleToEmployee;
@@ -84,12 +85,7 @@ class AgentPendingAction extends Model
      */
     public static function canonicalPayload(array $payload): string
     {
-        $canonical = json_encode(
-            self::sortRecursive($payload),
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        );
-
-        return $canonical !== false ? $canonical : '';
+        return CanonicalJson::encode($payload);
     }
 
     /** @param  Builder<static>  $query */
@@ -134,24 +130,5 @@ class AgentPendingAction extends Model
     public function result(): MorphTo
     {
         return $this->morphTo();
-    }
-
-    /**
-     * @param  array<string, mixed>  $value
-     * @return array<string, mixed>
-     */
-    private static function sortRecursive(array $value): array
-    {
-        if (! array_is_list($value)) {
-            ksort($value);
-        }
-
-        foreach ($value as $key => $item) {
-            if (is_array($item)) {
-                $value[$key] = self::sortRecursive($item);
-            }
-        }
-
-        return $value;
     }
 }

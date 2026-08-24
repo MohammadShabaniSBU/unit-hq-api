@@ -4,16 +4,29 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Enums\ContactSource;
+use App\Enums\DealStatus;
+use App\Models\Contact;
+use App\Models\Country;
+use App\Models\Deal;
+use App\Models\Employee;
+use App\Models\Site;
+use App\Models\TaxRate;
+use App\Models\Unit;
+use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\GroundingGuard;
 use App\Support\Ai\Tools\FactBag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\Ai\DispatchesAgentTools;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 class GroundingGuardTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use DispatchesAgentTools;
     use RefreshDatabase;
 
@@ -95,5 +108,60 @@ class GroundingGuardTest extends TestCase
         );
 
         $this->assertTrue($verdict->passed);
+    }
+
+    #[Test]
+    public function licensed_offer_amount_passes_and_unlicensed_is_suppressed(): void
+    {
+        $employee = Employee::factory()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
+        $class = UnitClass::factory()->create(['tax_rate_code' => 'vat', 'label' => 'Small']);
+        [$rate] = $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+            'amount' => '70.00',
+            'currency' => 'EUR',
+        ]);
+        TaxRate::query()->create([
+            'name' => 'VAT ES',
+            'code' => 'vat',
+            'rate' => '21.00',
+            'jurisdiction' => 'ES',
+            'is_default' => false,
+            'effective_from' => '2020-01-01',
+            'effective_to' => null,
+            'created_by' => $employee->id,
+        ]);
+        Unit::factory()->create([
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'enabled' => true,
+        ]);
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $deal = Deal::factory()->create([
+            'contact_id' => $contact->id,
+            'site_id' => $site->id,
+            'status' => DealStatus::Qualified,
+            'desired_unit_class_id' => $class->id,
+        ]);
+
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $deal->id,
+            'options' => [[
+                'unit_class_rate_id' => $rate->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+
+        $pass = app(GroundingGuard::class)->check('The offer is €84.70.', $result->facts, $ctx);
+        $this->assertTrue($pass->passed);
+
+        $fail = app(GroundingGuard::class)->check('The offer is €12.00.', $result->facts, $ctx);
+        $this->assertFalse($fail->passed);
+        $this->assertSame('grounding', $fail->blockedBy);
+        $this->assertSame('€12.00', $fail->detail['token'] ?? null);
     }
 }

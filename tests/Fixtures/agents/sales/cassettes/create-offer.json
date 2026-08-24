@@ -1,6 +1,6 @@
 {
     "agent": "sales",
-    "fixture": "sales/propose-offer",
+    "fixture": "sales/create-offer",
     "turn_index": 0,
     "prompt_hash": "771722d0e4c955921c239e29310dd7f4617b5eea626490b76850a5e10ad91c3f",
     "schema_hash": "d351ef49595bcfd0da03c81514c4bb03a4f00a92384f62b8959c2064fbc658ef",
@@ -9,18 +9,23 @@
             "content": "",
             "tool_calls": [
                 {
-                    "name": "sales.propose_offer",
+                    "name": "sales.create_offer",
                     "id": "call_1",
                     "arguments": {
-                        "site_id": "{{madrid.id}}",
-                        "unit_class_id": "{{small_class.id}}"
+                        "deal_id": "{{agent_deal.id}}",
+                        "options": [
+                            {
+                                "unit_class_rate_id": "{{madrid_small_rate.id}}",
+                                "label": "Small"
+                            }
+                        ]
                     }
                 }
             ],
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Here is a catalogue proposal at €84.70 (incl. 21% tax; net €70.00). Nothing has been sent or saved. I am an automated assistant.",
+            "content": "Here is a draft offer at €84.70 (incl. 21% tax; net €70.00). The public link is ready. Nothing has been sent. I am an automated assistant.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

@@ -6,6 +6,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AgentWritePolicy;
 use App\Models\Contact;
+use App\Models\Site;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Enums\ToolDeniedReason;
@@ -18,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\Ai\DispatchesAgentTools;
+use Tests\Support\Ai\ProposableSpyTool;
 use Tests\Support\Ai\SpyTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
@@ -195,8 +197,8 @@ class ToolDispatchTest extends TestCase
     public function mode_propose_denies_requires_approval_before_handle(): void
     {
         $contact = Contact::factory()->create();
-        $site = \App\Models\Site::factory()->create();
-        $spy = new \Tests\Support\Ai\ProposableSpyTool(siteId: $site->id);
+        $site = Site::factory()->create();
+        $spy = new ProposableSpyTool(siteId: $site->id);
         app(ToolRegistry::class)->register($spy);
         $definition = new TestAgentDefinition('test-propose', ['test.spy']);
         app(AgentRegistry::class)->register($definition);
@@ -255,5 +257,113 @@ class ToolDispatchTest extends TestCase
         $this->assertSame(ToolInvocationStatus::Denied, $result->status);
         $this->assertSame(ToolDeniedReason::Verification, $result->deniedReason);
         $this->assertFalse($spy->handleCalled);
+    }
+
+    #[Test]
+    public function nested_array_rejects_length_outside_min_max_before_handle(): void
+    {
+        $spy = $this->registerNestedSpy();
+        $definition = new TestAgentDefinition('test-nested', ['test.nested']);
+
+        $empty = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::anonymous(null, 'en'),
+            'test.nested',
+            ['options' => []],
+        );
+        $this->assertSame(ToolInvocationStatus::Error, $empty->status);
+        $this->assertFalse($spy->handleCalled);
+
+        $tooMany = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::anonymous(null, 'en'),
+            'test.nested',
+            ['options' => array_fill(0, 5, ['unit_class_rate_id' => 1, 'label' => 'A'])],
+        );
+        $this->assertSame(ToolInvocationStatus::Error, $tooMany->status);
+        $this->assertFalse($spy->handleCalled);
+    }
+
+    #[Test]
+    public function nested_array_rejects_missing_item_field_before_handle(): void
+    {
+        $spy = $this->registerNestedSpy();
+        $definition = new TestAgentDefinition('test-nested', ['test.nested']);
+
+        $result = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::anonymous(null, 'en'),
+            'test.nested',
+            ['options' => [['unit_class_rate_id' => 1]]],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertFalse($spy->handleCalled);
+    }
+
+    #[Test]
+    public function nested_array_strips_unknown_item_keys_before_handle(): void
+    {
+        $spy = $this->registerNestedSpy(throwOnHandle: false);
+        $definition = new TestAgentDefinition('test-nested', ['test.nested']);
+
+        $result = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::anonymous(null, 'en'),
+            'test.nested',
+            ['options' => [[
+                'unit_class_rate_id' => '7',
+                'label' => 'Small',
+                'percent' => 90,
+                'amount' => '12.00',
+            ]]],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertTrue($spy->handleCalled);
+        $this->assertSame([
+            'options' => [[
+                'unit_class_rate_id' => 7,
+                'label' => 'Small',
+            ]],
+        ], $spy->lastArguments);
+    }
+
+    private function registerNestedSpy(bool $throwOnHandle = true): SpyTool
+    {
+        $spy = new SpyTool(
+            key: 'test.nested',
+            required: VerificationLevel::Anonymous,
+            contactKeys: [],
+            throwOnHandle: $throwOnHandle,
+            schema: [
+                'options' => [
+                    'type' => 'array',
+                    'required' => true,
+                    'min' => 1,
+                    'max' => 4,
+                    'items' => [
+                        'unit_class_rate_id' => [
+                            'type' => 'integer',
+                            'required' => true,
+                            'description' => 'Rate id',
+                        ],
+                        'label' => [
+                            'type' => 'string',
+                            'required' => true,
+                            'description' => 'Label',
+                        ],
+                        'discount_id' => [
+                            'type' => 'integer',
+                            'required' => false,
+                            'description' => 'Catalogue discount',
+                        ],
+                    ],
+                ],
+            ],
+        );
+        app(ToolRegistry::class)->register($spy);
+
+        return $spy;
     }
 }

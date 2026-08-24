@@ -13,6 +13,7 @@ use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\Leasing\LeasingActor;
 use App\Support\RecordsActivity;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -72,7 +73,7 @@ final class PendingActionCommit
             /** @var array<string, mixed> $freshPayload */
             $freshPayload = is_array($fresh->data['payload'] ?? null) ? $fresh->data['payload'] : [];
 
-            if (AgentPendingAction::canonicalPayload($freshPayload) !== AgentPendingAction::canonicalPayload($row->payload)) {
+            if (CanonicalJson::encode($freshPayload) !== CanonicalJson::encode($row->payload)) {
                 $reason = 'Catalogue or inputs changed since this proposal was made.';
                 $row->failure_reason = $reason;
                 $row->save();
@@ -155,7 +156,7 @@ final class PendingActionCommit
         return 'Proposal could not be committed.';
     }
 
-    private function createdSubject(ToolResult $result): ?\Illuminate\Database\Eloquent\Model
+    private function createdSubject(ToolResult $result): ?Model
     {
         if ($result->resultType === null || $result->resultId === null) {
             return null;

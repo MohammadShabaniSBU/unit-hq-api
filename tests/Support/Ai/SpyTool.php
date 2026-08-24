@@ -16,9 +16,12 @@ final class SpyTool implements AgentTool
 {
     public bool $handleCalled = false;
 
+    /** @var array<string, mixed> */
+    public array $lastArguments = [];
+
     /**
      * @param  list<string>  $contactKeys
-     * @param  array<string, array{type: string, required?: bool, enum?: list<string>, description?: string}>  $schema
+     * @param  array<string, array<string, mixed>>  $schema
      */
     public function __construct(
         private readonly string $key = 'test.spy',
@@ -72,6 +75,7 @@ final class SpyTool implements AgentTool
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $this->handleCalled = true;
+        $this->lastArguments = $arguments;
 
         if ($this->throwOnHandle) {
             throw new LogicException('SpyTool::handle() must not be called.');

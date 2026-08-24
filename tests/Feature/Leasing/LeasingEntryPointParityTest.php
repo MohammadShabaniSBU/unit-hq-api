@@ -26,10 +26,11 @@ class LeasingEntryPointParityTest extends TestCase
     ];
 
     /** @var list<string> */
-    private const CONTROLLER_FILES = [
+    private const FORBIDDEN_NEEDLE_FILES = [
         'Http/Controllers/OfferController.php',
         'Http/Controllers/OfferOptionController.php',
         'Http/Controllers/ReservationController.php',
+        'Support/Ai/Tools/SalesCreateOfferTool.php',
     ];
 
     /** @var list<string> */
@@ -76,9 +77,9 @@ class LeasingEntryPointParityTest extends TestCase
     }
 
     #[Test]
-    public function controllers_do_not_contain_forbidden_create_needles(): void
+    public function controllers_and_create_offer_tool_do_not_contain_forbidden_create_needles(): void
     {
-        foreach (self::CONTROLLER_FILES as $relative) {
+        foreach (self::FORBIDDEN_NEEDLE_FILES as $relative) {
             $contents = File::get(app_path($relative));
             foreach (self::CONTROLLER_FORBIDDEN as $needle) {
                 $this->assertStringNotContainsString(
