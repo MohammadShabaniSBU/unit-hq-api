@@ -291,8 +291,8 @@ class StageSeeder extends Seeder
             }
         }
 
-        // ~120 units/site × 5 Madrid sites. Crowd + cast target ~80% occupancy
-        // without exhausting a class (cast still pins SS2–SS6 at MAD-01).
+        // ~120 units/site × 5 Madrid sites. Crowd + cast target ~80% occupancy.
+        // Cast still prefers SS2–SS6 at MAD-01; vacantUnit falls back if a class is full.
         foreach ($unitClasses as $unitClass) {
             foreach ($sites as $site) {
                 foreach (range(1, 10) as $n) {
