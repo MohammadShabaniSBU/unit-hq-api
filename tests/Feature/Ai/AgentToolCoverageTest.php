@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\AgentWritePolicy;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Tools\ToolRegistry;
+use Database\Seeders\AiAgentSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AgentToolCoverageTest extends TestCase
 {
+    use RefreshDatabase;
+
     #[Test]
     public function every_registered_tool_has_schema_description_and_appears_in_a_definition(): void
     {
@@ -31,6 +36,20 @@ class AgentToolCoverageTest extends TestCase
                 $key,
                 $claimed,
                 "Tool [{$key}] is registered but claimed by no AgentDefinition.",
+            );
+        }
+    }
+
+    #[Test]
+    public function every_write_policy_tool_key_resolves_in_the_registry(): void
+    {
+        $this->seed(AiAgentSeeder::class);
+
+        $registry = app(ToolRegistry::class);
+        foreach (AgentWritePolicy::query()->pluck('tool_key') as $key) {
+            $this->assertTrue(
+                $registry->has($key),
+                "agent_write_policies.tool_key [{$key}] is not registered in ToolRegistry.",
             );
         }
     }

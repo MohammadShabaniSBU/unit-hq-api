@@ -10,4 +10,6 @@ enum ToolDeniedReason: string
     case Ownership = 'ownership';
     case NotAllowedForAgent = 'not_allowed_for_agent';
     case SiteScope = 'site_scope';
+    case QuotaExceeded = 'quota_exceeded';
+    case RequiresApproval = 'requires_approval';
 }

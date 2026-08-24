@@ -21,19 +21,39 @@ final readonly class ToolResult
         public ?ToolDeniedReason $deniedReason = null,
         public ?string $message = null,
         public ?HandoffReason $handoffReason = null,
+        public bool $replayed = false,
+        public ?string $idempotencyKey = null,
+        public ?string $resultType = null,
+        public ?int $resultId = null,
     ) {}
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public static function ok(array $data, string $display, FactBag $facts, ?HandoffReason $handoffReason = null): self
-    {
+    public static function ok(
+        array $data,
+        string $display,
+        FactBag $facts,
+        ?HandoffReason $handoffReason = null,
+        bool $replayed = false,
+        ?string $idempotencyKey = null,
+        ?string $resultType = null,
+        ?int $resultId = null,
+    ): self {
+        if ($replayed) {
+            $data['replayed'] = true;
+        }
+
         return new self(
             ToolInvocationStatus::Ok,
             $data,
             $display,
             $facts,
             handoffReason: $handoffReason,
+            replayed: $replayed,
+            idempotencyKey: $idempotencyKey,
+            resultType: $resultType,
+            resultId: $resultId,
         );
     }
 
@@ -69,6 +89,23 @@ final readonly class ToolResult
             new FactBag,
             message: $message,
             handoffReason: $handoffReason,
+        );
+    }
+
+    public function withIdempotencyKey(string $key): self
+    {
+        return new self(
+            $this->status,
+            $this->data,
+            $this->display,
+            $this->facts,
+            $this->deniedReason,
+            $this->message,
+            $this->handoffReason,
+            $this->replayed,
+            $key,
+            $this->resultType,
+            $this->resultId,
         );
     }
 }

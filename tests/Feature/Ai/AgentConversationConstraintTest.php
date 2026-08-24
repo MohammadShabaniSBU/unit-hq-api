@@ -8,6 +8,7 @@ use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\AgentHandoff;
 use App\Models\AgentToolInvocation;
+use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Contact;
@@ -134,6 +135,7 @@ class AgentConversationConstraintTest extends TestCase
             AgentConversationMessage::class,
             AgentToolInvocation::class,
             AgentHandoff::class,
+            AgentWritePolicy::class,
         ] as $class) {
             $this->assertNotContains(
                 HasAutomationTriggers::class,

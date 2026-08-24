@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support\Ai;
 
 use App\Models\AgentConversation;
+use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
 use App\Models\Employee;
 use App\Support\Ai\AgentContext;
@@ -35,8 +36,12 @@ trait DispatchesAgentTools
         return app(ToolDispatcher::class)->dispatch($definition, $principal, $toolKey, $arguments, $ctx);
     }
 
-    protected function writeContext(AgentPrincipal $principal, string $agentKey, ?Employee $employee = null): AgentContext
-    {
+    protected function writeContext(
+        AgentPrincipal $principal,
+        string $agentKey,
+        ?Employee $employee = null,
+        AgentOrigin $origin = AgentOrigin::Demo,
+    ): AgentContext {
         $employee ??= Employee::factory()->create();
         $agent = AiAgent::factory()->create([
             'key' => $agentKey.'-'.uniqid(),
@@ -46,7 +51,7 @@ trait DispatchesAgentTools
         $conversation = AgentConversation::factory()->create([
             'ai_agent_id' => $agent->id,
             'audience' => $principal->audience,
-            'origin' => AgentOrigin::Demo,
+            'origin' => $origin,
             'channel' => AgentChannel::Webchat,
             'employee_id' => $principal->audience === AgentAudience::Internal ? $principal->employeeId : null,
             'created_by_employee_id' => $employee->id,
@@ -57,6 +62,8 @@ trait DispatchesAgentTools
             'locale' => $principal->locale,
         ]);
 
+        $agent->load('writePolicies');
+
         return new AgentContext(
             $principal,
             ChannelProfile::for(AgentChannel::Webchat),
@@ -64,5 +71,34 @@ trait DispatchesAgentTools
             $conversation,
             $agent,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    protected function recordInvocation(
+        AgentContext $ctx,
+        string $toolKey,
+        array $arguments,
+        ToolResult $result,
+        AgentPrincipal $principal,
+    ): AgentToolInvocation {
+        $factKeys = $result->facts->all();
+
+        return AgentToolInvocation::query()->create([
+            'agent_conversation_id' => $ctx->conversation->id,
+            'tool_key' => $toolKey,
+            'arguments' => $arguments,
+            'result' => $result->data !== [] ? $result->data : null,
+            'result_summary' => $result->display !== '' ? $result->display : $result->message,
+            'status' => $result->status,
+            'denied_reason' => $result->deniedReason,
+            'required_verification' => null,
+            'principal_verification' => $principal->verification,
+            'idempotency_key' => $result->idempotencyKey,
+            'result_type' => $result->resultType,
+            'result_id' => $result->resultId,
+            'fact_keys' => $factKeys !== [] ? $factKeys : null,
+        ]);
     }
 }

@@ -16,12 +16,17 @@ final class SpyTool implements AgentTool
 {
     public bool $handleCalled = false;
 
+    /**
+     * @param  list<string>  $contactKeys
+     * @param  array<string, array{type: string, required?: bool, enum?: list<string>, description?: string}>  $schema
+     */
     public function __construct(
         private readonly string $key = 'test.spy',
         private readonly VerificationLevel $required = VerificationLevel::Verified,
-        /** @var list<string> */
         private readonly array $contactKeys = ['contact_id'],
         private readonly bool $throwOnHandle = true,
+        private readonly bool $write = false,
+        private readonly array $schema = [],
     ) {}
 
     public function key(): string
@@ -36,6 +41,10 @@ final class SpyTool implements AgentTool
 
     public function schema(): array
     {
+        if ($this->schema !== []) {
+            return $this->schema;
+        }
+
         return [
             'contact_id' => [
                 'type' => 'integer',
@@ -52,7 +61,7 @@ final class SpyTool implements AgentTool
 
     public function isWrite(): bool
     {
-        return false;
+        return $this->write;
     }
 
     public function contactScopedArgumentKeys(): array
@@ -68,6 +77,6 @@ final class SpyTool implements AgentTool
             throw new LogicException('SpyTool::handle() must not be called.');
         }
 
-        return ToolResult::ok(['ok' => true], 'spy ok', new FactBag);
+        return ToolResult::ok(['ok' => true], 'spy ok', new FactBag, resultType: 'task', resultId: 1);
     }
 }

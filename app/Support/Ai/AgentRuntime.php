@@ -21,6 +21,7 @@ use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
+use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\DisclosureGuard;
 use App\Support\Ai\Guards\GuardrailPipeline;
@@ -34,6 +35,7 @@ use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\RequestId;
 use Closure;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\Data\Usage;
@@ -64,7 +66,7 @@ final class AgentRuntime
 
         $this->assertPrincipalMatches($conversation, $principal);
 
-        $conversation->loadMissing('aiAgent');
+        $conversation->loadMissing(['aiAgent.writePolicies']);
         $agent = $conversation->aiAgent;
         if (! $agent->is_active || $agent->archived_at !== null) {
             throw new RuntimeException('Agent is not active.');
@@ -618,25 +620,52 @@ final class AgentRuntime
         ToolResult $result,
         int $durationMs,
     ): AgentToolInvocation {
+        if ($result->replayed && $result->idempotencyKey !== null) {
+            return $this->existingOkInvocation($conversation, $result->idempotencyKey);
+        }
+
         $required = $this->tools->has($call['name'])
             ? $this->tools->get($call['name'])->requiredVerification()
             : null;
 
-        return DB::transaction(function () use ($conversation, $assistantMessage, $principal, $call, $result, $durationMs, $required): AgentToolInvocation {
-            return AgentToolInvocation::query()->create([
-                'agent_conversation_id' => $conversation->id,
-                'agent_conversation_message_id' => $assistantMessage->id,
-                'tool_key' => $call['name'],
-                'arguments' => $call['arguments'],
-                'result' => $result->data !== [] ? $result->data : null,
-                'result_summary' => $result->display !== '' ? $result->display : $result->message,
-                'status' => $result->status,
-                'denied_reason' => $result->deniedReason,
-                'required_verification' => $required,
-                'principal_verification' => $principal->verification,
-                'duration_ms' => $durationMs,
-            ]);
-        });
+        $factKeys = $result->facts->all();
+
+        try {
+            return DB::transaction(function () use ($conversation, $assistantMessage, $principal, $call, $result, $durationMs, $required, $factKeys): AgentToolInvocation {
+                return AgentToolInvocation::query()->create([
+                    'agent_conversation_id' => $conversation->id,
+                    'agent_conversation_message_id' => $assistantMessage->id,
+                    'tool_key' => $call['name'],
+                    'arguments' => $call['arguments'],
+                    'result' => $result->data !== [] ? $result->data : null,
+                    'result_summary' => $result->display !== '' ? $result->display : $result->message,
+                    'status' => $result->status,
+                    'denied_reason' => $result->deniedReason,
+                    'required_verification' => $required,
+                    'principal_verification' => $principal->verification,
+                    'duration_ms' => $durationMs,
+                    'idempotency_key' => $result->idempotencyKey,
+                    'result_type' => $result->resultType,
+                    'result_id' => $result->resultId,
+                    'fact_keys' => $factKeys !== [] ? $factKeys : null,
+                ]);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            if ($result->idempotencyKey === null) {
+                throw $e;
+            }
+
+            return $this->existingOkInvocation($conversation, $result->idempotencyKey);
+        }
+    }
+
+    private function existingOkInvocation(AgentConversation $conversation, string $idempotencyKey): AgentToolInvocation
+    {
+        return AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('idempotency_key', $idempotencyKey)
+            ->where('status', ToolInvocationStatus::Ok)
+            ->firstOrFail();
     }
 
     /**

@@ -26,6 +26,10 @@ use Illuminate\Support\Carbon;
  * @property VerificationLevel|null $required_verification
  * @property VerificationLevel|null $principal_verification
  * @property int|null $duration_ms
+ * @property string|null $idempotency_key
+ * @property string|null $result_type
+ * @property int|null $result_id
+ * @property array<int, string|int>|null $fact_keys
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
  * @property-read AgentConversationMessage|null $message
@@ -46,6 +50,10 @@ class AgentToolInvocation extends Model
         'required_verification',
         'principal_verification',
         'duration_ms',
+        'idempotency_key',
+        'result_type',
+        'result_id',
+        'fact_keys',
     ];
 
     protected function casts(): array
@@ -57,6 +65,8 @@ class AgentToolInvocation extends Model
             'denied_reason' => ToolDeniedReason::class,
             'required_verification' => VerificationLevel::class,
             'principal_verification' => VerificationLevel::class,
+            'fact_keys' => 'array',
+            'result_id' => 'integer',
         ];
     }
 

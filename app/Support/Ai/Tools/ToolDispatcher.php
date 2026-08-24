@@ -8,10 +8,15 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Guards\AgentWritePolicyGate;
 
 final class ToolDispatcher
 {
-    public function __construct(private readonly ToolRegistry $registry) {}
+    public function __construct(
+        private readonly ToolRegistry $registry,
+        private readonly AgentWritePolicyGate $writePolicy,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $arguments
@@ -35,11 +40,23 @@ final class ToolDispatcher
         }
 
         $tool = $this->registry->get($toolKey);
+        $policy = $ctx !== null ? $this->writePolicy->resolvePolicy($ctx, $toolKey) : null;
 
-        if (! $principal->verification->satisfies($tool->requiredVerification())) {
+        $off = $this->writePolicy->denyIfOff($policy);
+        if ($off !== null) {
+            return $off;
+        }
+
+        $propose = $this->writePolicy->denyIfPropose($policy);
+        if ($propose !== null) {
+            return $propose;
+        }
+
+        $required = $this->writePolicy->effectiveVerification($tool, $policy);
+        if (! $principal->verification->satisfies($required)) {
             return ToolResult::denied(
                 ToolDeniedReason::Verification,
-                "Verification level [{$principal->verification->value}] does not satisfy [{$tool->requiredVerification()->value}].",
+                "Verification level [{$principal->verification->value}] does not satisfy [{$required->value}].",
             );
         }
 
@@ -47,6 +64,8 @@ final class ToolDispatcher
         if ($schemaError !== null) {
             return ToolResult::error($schemaError);
         }
+
+        $arguments = $this->coerceArguments($tool, $arguments);
 
         foreach ($tool->contactScopedArgumentKeys() as $key) {
             $value = $arguments[$key] ?? null;
@@ -58,7 +77,60 @@ final class ToolDispatcher
             }
         }
 
-        return $tool->handle($principal, $arguments, $ctx);
+        if ($ctx !== null && $tool->isWrite()) {
+            $replay = $this->writePolicy->replay($ctx, $tool, $arguments);
+            if ($replay !== null) {
+                return $replay;
+            }
+
+            $quota = $this->writePolicy->denyIfQuotaExceeded($ctx, $tool, $policy);
+            if ($quota !== null) {
+                return $quota;
+            }
+        }
+
+        $result = $tool->handle($principal, $arguments, $ctx);
+
+        if (
+            $ctx !== null
+            && $tool->isWrite()
+            && $result->status === ToolInvocationStatus::Ok
+        ) {
+            $result = $result->withIdempotencyKey(
+                $this->writePolicy->idempotencyKey($ctx->conversation->id, $tool->key(), $arguments),
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function coerceArguments(AgentTool $tool, array $arguments): array
+    {
+        $coerced = [];
+
+        foreach ($tool->schema() as $key => $rules) {
+            if (! array_key_exists($key, $arguments) || $arguments[$key] === null || $arguments[$key] === '') {
+                continue;
+            }
+
+            $type = $rules['type'] ?? 'string';
+            $coerced[$key] = $this->coerceValue($arguments[$key], $type);
+        }
+
+        return $coerced;
+    }
+
+    private function coerceValue(mixed $value, string $type): mixed
+    {
+        return match ($type) {
+            'integer' => is_int($value) ? $value : (int) $value,
+            'number' => is_int($value) || is_float($value) ? $value : (float) $value,
+            default => $value,
+        };
     }
 
     private function validateArguments(AgentTool $tool, array $arguments): ?string

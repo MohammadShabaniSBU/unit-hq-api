@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Collection<int, AgentConversation> $conversations
+ * @property-read Collection<int, AgentWritePolicy> $writePolicies
  */
 class AiAgent extends Model
 {
@@ -72,5 +73,11 @@ class AiAgent extends Model
     public function conversations(): HasMany
     {
         return $this->hasMany(AgentConversation::class);
+    }
+
+    /** @return HasMany<AgentWritePolicy, $this> */
+    public function writePolicies(): HasMany
+    {
+        return $this->hasMany(AgentWritePolicy::class);
     }
 }

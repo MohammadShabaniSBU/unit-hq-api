@@ -16,7 +16,7 @@ class AiAgentController extends Controller
     {
         Gate::authorize(Permission::AiAgentUse->value);
 
-        $agents = AiAgent::query()->active()->orderBy('key')->get();
+        $agents = AiAgent::query()->active()->with('writePolicies')->orderBy('key')->get();
 
         return response()->json([
             'message' => 'Agents retrieved successfully.',

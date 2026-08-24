@@ -90,6 +90,8 @@ final class CrmCreateContactTool implements AgentTool
                 ],
                 "An existing contact matched ({$matched->first_name} {$matched->last_name}). No new contact was created.",
                 (new FactBag)->identifier((string) $matched->id)->number($matched->id),
+                resultType: 'contact',
+                resultId: $matched->id,
             );
         }
 
@@ -146,6 +148,8 @@ final class CrmCreateContactTool implements AgentTool
             ],
             "Created contact {$contact->first_name} {$contact->last_name} (id {$contact->id}).",
             (new FactBag)->identifier((string) $contact->id)->number($contact->id),
+            resultType: 'contact',
+            resultId: $contact->id,
         );
     }
 

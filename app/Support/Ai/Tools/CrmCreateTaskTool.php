@@ -102,6 +102,8 @@ final class CrmCreateTaskTool implements AgentTool
             ],
             "Created task {$task->id}: {$task->title}.",
             (new FactBag)->identifier((string) $task->id)->number($task->id),
+            resultType: 'task',
+            resultId: $task->id,
         );
     }
 }

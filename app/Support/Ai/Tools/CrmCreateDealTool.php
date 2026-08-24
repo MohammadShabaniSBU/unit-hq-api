@@ -117,6 +117,8 @@ final class CrmCreateDealTool implements AgentTool
             ],
             "Opened deal {$deal->id} for contact {$contact->id}.",
             (new FactBag)->identifier((string) $deal->id)->number($deal->id)->number($contact->id),
+            resultType: 'deal',
+            resultId: $deal->id,
         );
     }
 }

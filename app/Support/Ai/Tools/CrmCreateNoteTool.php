@@ -94,6 +94,8 @@ final class CrmCreateNoteTool implements AgentTool
             ],
             "Logged note {$note->id}.",
             (new FactBag)->identifier((string) $note->id)->number($note->id),
+            resultType: 'note',
+            resultId: $note->id,
         );
     }
 }

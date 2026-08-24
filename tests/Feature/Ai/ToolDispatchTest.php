@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\AgentWritePolicy;
+use App\Models\Contact;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Enums\ToolDeniedReason;
@@ -11,13 +13,19 @@ use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\Ai\DispatchesAgentTools;
 use Tests\Support\Ai\SpyTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
 
 class ToolDispatchTest extends TestCase
 {
+    use DispatchesAgentTools;
+    use RefreshDatabase;
+
     private ToolDispatcher $dispatcher;
 
     private SpyTool $spy;
@@ -128,5 +136,115 @@ class ToolDispatchTest extends TestCase
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
         $this->assertTrue($ok->handleCalled);
+    }
+
+    #[Test]
+    public function absent_policy_is_commit_unlimited(): void
+    {
+        $ok = new SpyTool(key: 'test.ok', required: VerificationLevel::Anonymous, throwOnHandle: false, write: true);
+        app(ToolRegistry::class)->register($ok);
+        $definition = new TestAgentDefinition('test-ok', ['test.ok']);
+        app(AgentRegistry::class)->register($definition);
+        $contact = Contact::factory()->create();
+        $ctx = $this->writeContext(AgentPrincipal::verified($contact->id, null, 'en'), 'test-ok');
+
+        $result = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::verified($contact->id, null, 'en'),
+            'test.ok',
+            ['contact_id' => $contact->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertTrue($ok->handleCalled);
+        $this->assertNotNull($result->idempotencyKey);
+    }
+
+    #[Test]
+    public function mode_off_denies_before_handle_without_database_touch(): void
+    {
+        $contact = Contact::factory()->create();
+        $principal = AgentPrincipal::verified($contact->id, null, 'en');
+        $ctx = $this->writeContext($principal, 'test');
+        AgentWritePolicy::factory()->off()->create([
+            'ai_agent_id' => $ctx->agent->id,
+            'tool_key' => 'test.spy',
+        ]);
+        $ctx->agent->load('writePolicies');
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $result = $this->dispatcher->dispatch(
+            $this->definition,
+            $principal,
+            'test.spy',
+            ['contact_id' => $contact->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Denied, $result->status);
+        $this->assertSame(ToolDeniedReason::NotAllowedForAgent, $result->deniedReason);
+        $this->assertFalse($this->spy->handleCalled);
+        $this->assertSame([], DB::getQueryLog());
+    }
+
+    #[Test]
+    public function mode_propose_denies_requires_approval_before_handle(): void
+    {
+        $contact = Contact::factory()->create();
+        $principal = AgentPrincipal::verified($contact->id, null, 'en');
+        $ctx = $this->writeContext($principal, 'test');
+        AgentWritePolicy::factory()->propose()->create([
+            'ai_agent_id' => $ctx->agent->id,
+            'tool_key' => 'test.spy',
+        ]);
+        $ctx->agent->load('writePolicies');
+
+        $result = $this->dispatcher->dispatch(
+            $this->definition,
+            $principal,
+            'test.spy',
+            ['contact_id' => $contact->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Denied, $result->status);
+        $this->assertSame(ToolDeniedReason::RequiresApproval, $result->deniedReason);
+        $this->assertFalse($this->spy->handleCalled);
+    }
+
+    #[Test]
+    public function raised_verification_denies_an_otherwise_sufficient_principal(): void
+    {
+        $spy = new SpyTool(
+            key: 'test.anon',
+            required: VerificationLevel::Anonymous,
+            throwOnHandle: true,
+        );
+        app(ToolRegistry::class)->register($spy);
+        $definition = new TestAgentDefinition('test-anon', ['test.anon']);
+        app(AgentRegistry::class)->register($definition);
+
+        $ctx = $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'test-anon');
+        AgentWritePolicy::factory()->create([
+            'ai_agent_id' => $ctx->agent->id,
+            'tool_key' => 'test.anon',
+            'min_verification' => VerificationLevel::Verified,
+        ]);
+        $ctx->agent->load('writePolicies');
+
+        $result = $this->dispatcher->dispatch(
+            $definition,
+            AgentPrincipal::anonymous(null, 'en'),
+            'test.anon',
+            ['contact_id' => 1],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Denied, $result->status);
+        $this->assertSame(ToolDeniedReason::Verification, $result->deniedReason);
+        $this->assertFalse($spy->handleCalled);
     }
 }
