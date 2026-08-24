@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Fiscal;
 
 use App\Models\Invoice;
+use App\Support\Time\DateFormat;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\View;
 
@@ -42,7 +43,9 @@ final class InvoiceRenderer
             'full_number' => $invoice->full_number,
             'kind' => $kind,
             'kind_label' => trans('invoices.kinds.'.$kind, [], $locale),
-            'issue_date' => $invoice->issue_date?->toDateString(),
+            'issue_date' => $invoice->issue_date
+                ? DateFormat::display($invoice->issue_date)
+                : null,
             'currency' => $invoice->currency,
             'locale' => $locale,
             'rectifies_full_number' => $invoice->rectifiesInvoice?->full_number,
@@ -71,8 +74,12 @@ final class InvoiceRenderer
             ],
             'lines' => $invoice->lines->map(fn ($line) => [
                 'description' => $line->description,
-                'period_start' => $line->period_start?->toDateString(),
-                'period_end' => $line->period_end?->toDateString(),
+                'period_start' => $line->period_start
+                    ? DateFormat::display($line->period_start)
+                    : null,
+                'period_end' => $line->period_end
+                    ? DateFormat::display($line->period_end)
+                    : null,
                 'net_amount' => (string) $line->net_amount,
                 'tax_rate_snapshot' => (string) $line->tax_rate_snapshot,
                 'tax_amount' => (string) $line->tax_amount,

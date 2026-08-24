@@ -11,8 +11,11 @@ class BrandingController extends Controller
 {
     public function show(): JsonResponse
     {
+        $general = Setting::general();
+
         return $this->success([
-            'company_name' => Setting::general()->companyName,
+            'company_name' => $general->companyName,
+            'date_format' => $general->dateFormat,
         ]);
     }
 }

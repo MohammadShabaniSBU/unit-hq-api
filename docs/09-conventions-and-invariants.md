@@ -82,6 +82,9 @@
 32. **Date boundaries resolve through the owning site's timezone** (`App\Support\Time\SiteClock`).
     Bare `Carbon::today()` and `->toDateString()` on a timestamp are defects in any code that
     produces or compares a DATE. Cross-site "today" is computed per site.
+    **Display format is separate:** `GeneralSettings.date_format` (`d/m/y` | `m/d/y` | `d-m-y`,
+    default `d/m/y`) never changes storage or API JSON (still `Y-m-d` / datetime). Human-facing
+    dates use `App\Support\Time\DateFormat` (API) or the panel `useOrgDateFormat()` helper.
 33. **`tax_rates.jurisdiction` is `NULL` (applies anywhere) or ISO 3166-1 alpha-2 with an
     optional ISO 3166-2 subdivision** (`ES`, `ES-CN`, `FR`). Validated on write.
 35. **One contract, one currency.** `contracts.currency` is resolved from the contract's items
