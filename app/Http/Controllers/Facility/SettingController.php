@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Facility;
 use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\Auth\Permission;
 use App\Support\Billing\SupportedCurrencies;
+use App\Support\Time\DateFormat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class SettingController extends Controller
 {
@@ -34,6 +35,7 @@ class SettingController extends Controller
             'company_contact_email' => ['sometimes', 'required', 'email', 'max:255'],
             'phone'                 => ['sometimes', 'required', 'string', 'max:50'],
             'email_accent_color'    => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'date_format'           => ['sometimes', 'required', 'string', Rule::in(DateFormat::values())],
         ]);
 
         Setting::setGeneral(
@@ -42,6 +44,7 @@ class SettingController extends Controller
                 companyContactEmail: $validated['company_contact_email'] ?? null,
                 phone: $validated['phone'] ?? null,
                 emailAccentColor: $validated['email_accent_color'] ?? null,
+                dateFormat: $validated['date_format'] ?? null,
             )
         );
 

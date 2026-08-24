@@ -19,6 +19,7 @@ use App\Models\SystemEvent;
 use App\Models\Unit;
 use App\Support\Communications\SiteLocale;
 use App\Support\RecordsActivity;
+use App\Support\Time\DateFormat;
 use App\Support\Time\SiteClock;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -839,9 +840,10 @@ final class InvoiceIssuer
             $unitNumber = $unit->unit_number;
         }
 
-        $start = $charge->period_start?->format('d M Y');
-        $end = $charge->period_end?->format('d M Y');
-        $period = ($start !== null && $end !== null) ? "{$start} – {$end}" : null;
+        $period = DateFormat::displayPeriod(
+            $charge->period_start,
+            $charge->period_end,
+        );
 
         $key = match ($type) {
             ChargeType::Rent => 'invoices.lines.rent',

@@ -2,6 +2,8 @@
 
 namespace App\Settings;
 
+use App\Support\Time\DateFormat;
+
 readonly class GeneralSettings implements SettingsPayload
 {
     public function __construct(
@@ -10,6 +12,7 @@ readonly class GeneralSettings implements SettingsPayload
         public string $phone,
         public string $sendWindowStart = '09:00',
         public string $emailAccentColor = '#1d4ed8',
+        public string $dateFormat = DateFormat::DEFAULT,
     ) {}
 
     public static function default(): static
@@ -20,6 +23,7 @@ readonly class GeneralSettings implements SettingsPayload
             phone: '',
             sendWindowStart: '09:00',
             emailAccentColor: '#1d4ed8',
+            dateFormat: DateFormat::DEFAULT,
         );
     }
 
@@ -37,6 +41,9 @@ readonly class GeneralSettings implements SettingsPayload
                 ? $data['send_window_start']
                 : '09:00',
             emailAccentColor: $accent,
+            dateFormat: DateFormat::normalize(
+                is_string($data['date_format'] ?? null) ? $data['date_format'] : null
+            ),
         );
     }
 
@@ -48,6 +55,7 @@ readonly class GeneralSettings implements SettingsPayload
             'phone'                 => $this->phone,
             'send_window_start'     => $this->sendWindowStart,
             'email_accent_color'    => $this->emailAccentColor,
+            'date_format'           => $this->dateFormat,
         ];
     }
 
@@ -57,6 +65,7 @@ readonly class GeneralSettings implements SettingsPayload
         ?string $phone = null,
         ?string $sendWindowStart = null,
         ?string $emailAccentColor = null,
+        ?string $dateFormat = null,
     ): static {
         return new self(
             companyName: $companyName ?? $this->companyName,
@@ -64,6 +73,7 @@ readonly class GeneralSettings implements SettingsPayload
             phone: $phone ?? $this->phone,
             sendWindowStart: $sendWindowStart ?? $this->sendWindowStart,
             emailAccentColor: $emailAccentColor ?? $this->emailAccentColor,
+            dateFormat: $dateFormat !== null ? DateFormat::normalize($dateFormat) : $this->dateFormat,
         );
     }
 }

@@ -29,12 +29,13 @@ class BrandingEndpointTest extends TestCase
         $response->assertJson([
             'data' => [
                 'company_name' => 'Camden Lock Self Storage',
+                'date_format' => 'd/m/y',
             ],
         ]);
 
         $data = $response->json('data');
         $this->assertIsArray($data);
-        $this->assertSame(['company_name'], array_keys($data));
+        $this->assertSame(['company_name', 'date_format'], array_keys($data));
         $this->assertArrayNotHasKey('company_contact_email', $data);
         $this->assertArrayNotHasKey('phone', $data);
         $this->assertArrayNotHasKey('send_window_start', $data);

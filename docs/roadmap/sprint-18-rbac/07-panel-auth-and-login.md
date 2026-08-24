@@ -140,9 +140,11 @@ Spanish needs it *before* logging in.
 - `POST /api/login` — gains throttling; 429 with a translatable key.
 - Optional, decide before building: the brand panel's second line shows the operator's name
   ("Camden Lock Self Storage"). `GET /api/settings/general` is authenticated as of task 00,
-  so this needs either a minimal public `GET /api/branding` returning display name only —
-  an allowlist entry justifiable as pre-auth display data with no business content — or the
-  line is dropped. **Do not reopen `/settings/general` to make this work.**
+  so this needs either a minimal public `GET /api/branding` returning display-safe fields
+  (`company_name`, `date_format`) — an allowlist entry justifiable as pre-auth display data
+  with no PII or secrets — or the line is dropped. **Do not reopen `/settings/general` to make
+  this work.** `date_format` is on branding so public pages (login, invite, offer, pay) and
+  operators without `SettingsManage` still render dates in the org format.
 
 ## Panel surface
 

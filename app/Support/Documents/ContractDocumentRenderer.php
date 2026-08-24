@@ -15,6 +15,7 @@ use App\Support\Automation\TokenResolver;
 use App\Support\Communications\TemplateBuilderContext;
 use App\Support\ESign\ESignProviderRegistry;
 use App\Support\Fiscal\InvoiceIssuer;
+use App\Support\Time\DateFormat;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\View;
 use Illuminate\Validation\ValidationException;
@@ -255,7 +256,7 @@ final class ContractDocumentRenderer
             'items' => $rows,
             'deposit' => (string) $contract->deposit_amount,
             'currency' => (string) $contract->currency,
-            'move_in' => $moveIn?->toDateString(),
+            'move_in' => $moveIn ? DateFormat::display($moveIn) : null,
             'notice_period_days' => $contract->notice_period_days,
             'cadence' => $cadence,
         ];
