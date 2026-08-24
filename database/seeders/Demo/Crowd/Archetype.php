@@ -16,17 +16,23 @@ enum Archetype: string
     case SeriousDelinquent = 'serious_delinquent';
     case Churner = 'churner';
     case UpsizerDownsizer = 'upsizer_downsizer';
+    case ReservationPending = 'reservation_pending';
+    case ReservationExpired = 'reservation_expired';
+    case ReservationCancelled = 'reservation_cancelled';
 
     public function targetCount(): int
     {
         return match ($this) {
-            self::Browser => 110,
-            self::QuickSigner => 75,
-            self::ConsideredSigner => 40,
-            self::SlowPayer => 25,
+            self::Browser => 220,
+            self::QuickSigner => 140,
+            self::ConsideredSigner => 240,
+            self::SlowPayer => 35,
             self::SeriousDelinquent => 8,
-            self::Churner => 45,
-            self::UpsizerDownsizer => 10,
+            self::Churner => 80,
+            self::UpsizerDownsizer => 12,
+            self::ReservationPending => 32,
+            self::ReservationExpired => 16,
+            self::ReservationCancelled => 10,
         };
     }
 }

@@ -28,9 +28,9 @@ final class DemoScript
      */
     private const CAST = [
         'marcus' => [
-            'name' => 'Marcus Webb',
+            'name' => 'Marcos Vega',
             'story' => 'Upsize transfer with retained rate (+€40 after size-question SMS)',
-            'path' => 'Contacts → Marcus Webb → Contracts tab — two occupancies on one contract',
+            'path' => 'Contacts → Marcos Vega → Contracts tab — two occupancies on one contract',
         ],
         'lucia' => [
             'name' => 'Lucía Ferrer',
@@ -38,7 +38,7 @@ final class DemoScript
             'path' => 'Delinquency board → Lucía row → case timeline — point at denied-entry Interaction',
         ],
         'tom' => [
-            'name' => 'Tom Bradley',
+            'name' => 'Tomás Blanco',
             'story' => 'Promise-keeper: wrap-up payment_promised, paid day 4 — cured history',
             'path' => 'Delinquency → cured / collections — promise-kept rate',
         ],
@@ -48,7 +48,7 @@ final class DemoScript
             'path' => 'Contacts → Amara Okafor → contract / rent roll',
         ],
         'jean_luc' => [
-            'name' => 'Jean-Luc Perrin',
+            'name' => 'Javier Peña',
             'story' => 'Awaiting contract, envelope declined with reason',
             'path' => 'Contracts → Awaiting tab — declined chip',
         ],
@@ -58,7 +58,7 @@ final class DemoScript
             'path' => 'Contracts → Awaiting tab — expiring row',
         ],
         'derek' => [
-            'name' => 'Derek Hoyle',
+            'name' => 'Diego Hoyos',
             'story' => '60+ → write-off → ended involuntary',
             'path' => 'Contracts → Ended — involuntary + write-off',
         ],
@@ -68,9 +68,9 @@ final class DemoScript
             'path' => 'Inbox → Pilar Santos — open WhatsApp window near top',
         ],
         'hannah' => [
-            'name' => 'Hannah Cole',
+            'name' => 'Ana Coloma',
             'story' => 'Autopay failing: insufficient_funds ×2, amber chip',
-            'path' => 'Contacts → Hannah Cole → contract autopay attempts',
+            'path' => 'Contacts → Ana Coloma → contract autopay attempts',
         ],
         'rafa' => [
             'name' => 'Rafa Núñez',
@@ -78,7 +78,7 @@ final class DemoScript
             'path' => 'Inbox / Rafa thread — request-payment round trip (paid)',
         ],
         'ingrid' => [
-            'name' => 'Ingrid Weiss',
+            'name' => 'Inés Valdés',
             'story' => 'Notice-given, move-out next week',
             'path' => 'Contracts → Notice tab',
         ],
@@ -88,7 +88,7 @@ final class DemoScript
             'path' => 'Contracts → Pending tab',
         ],
         'grace' => [
-            'name' => 'Grace Lin',
+            'name' => 'Gracia Lin',
             'story' => 'Funnel mid: offer viewed, lead-chase enrolment live',
             'path' => 'Funnel / open deal + enrolment',
         ],
@@ -98,7 +98,7 @@ final class DemoScript
             'path' => 'Inbox → suppressed badge / bounced thread',
         ],
         'viktor' => [
-            'name' => 'Viktor Palenik',
+            'name' => 'Víctor Palencia',
             'story' => 'Cancelled never-moved-in + lost deal',
             'path' => 'Contracts → Cancelled; Contacts → lost',
         ],
@@ -108,9 +108,9 @@ final class DemoScript
             'path' => 'Contacts → Nadia → rate-change / notices',
         ],
         'kellys' => [
-            'name' => 'The Kellys (Pat Kelly)',
+            'name' => 'Los Keller (Patricia Keller)',
             'story' => 'Two units, one contact; vacated unit with deposit deduction',
-            'path' => 'Contacts → Pat Kelly → multi-contract + settlement',
+            'path' => 'Contacts → Patricia Keller → multi-contract + settlement',
         ],
         'front_desk' => [
             'name' => 'Front-desk misc',
@@ -168,7 +168,7 @@ final class DemoScript
             '4. **Lucía Ferrer\'s case** — timeline with denied-entry Interaction; overlock on the unit.',
             '5. **Unit map** — overlock glyphs on delinquent units.',
             '6. **Rent roll** — occupied rows feeding the monthly-rent card.',
-            '7. **Funnel** — walk-in vs remote split; Grace Lin mid-chase.',
+            '7. **Funnel** — walk-in vs remote split; Gracia Lin mid-chase.',
             '',
             '## Numbers that must match',
             '',

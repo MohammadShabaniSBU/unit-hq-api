@@ -21,11 +21,11 @@ final class BrowserCompiler
      */
     public static function compile(string $handle, DemoRng $rng): array
     {
-        $enrol = CrowdSupport::enrolDay($rng);
+        $enrol = CrowdSupport::enrolDay($rng, band: 'late');
         $fate = $rng->pickWeighted([
-            'quiet' => 40,
-            'lost' => 30,
-            'lead_chase' => 30,
+            'quiet' => 70,
+            'lost' => 10,
+            'lead_chase' => 20,
         ]);
 
         $script = [
@@ -66,10 +66,10 @@ final class BrowserCompiler
                 CrowdSupport::markLost($world, $handle);
             };
         } elseif ($fate === 'lead_chase') {
-            // Deal create auto-enrols the live lead-chase playbook; stay quiet until loss.
-            $exit = $enrol + $rng->int(14, 40);
-            $script[$exit] = static function (DemoWorld $world) use ($handle): void {
-                CrowdSupport::markLost($world, $handle);
+            // Stay enrolled in lead-chase through seed-end so the funnel stays full.
+            $quiet = $enrol + $rng->int(5, 14);
+            $script[$quiet] = static function (DemoWorld $world) use ($handle): void {
+                CrowdSupport::markUnresponsive($world, $handle);
             };
         } else {
             $quiet = $enrol + $rng->int(5, 21);

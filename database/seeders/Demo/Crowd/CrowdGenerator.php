@@ -8,6 +8,9 @@ use Database\Seeders\Demo\Crowd\Archetypes\BrowserCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\ChurnerCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\ConsideredSignerCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\QuickSignerCompiler;
+use Database\Seeders\Demo\Crowd\Archetypes\ReservationCancelledCompiler;
+use Database\Seeders\Demo\Crowd\Archetypes\ReservationExpiredCompiler;
+use Database\Seeders\Demo\Crowd\Archetypes\ReservationPendingCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\SeriousDelinquentCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\SlowPayerCompiler;
 use Database\Seeders\Demo\Crowd\Archetypes\UpsizerDownsizerCompiler;
@@ -69,7 +72,7 @@ final class CrowdGenerator
                 $handle,
                 $this->rng,
                 withScheduledRate: $index < 3, // ~3 scheduled ahead of seed-end
-                withDiscount: $index < 2,
+                withDiscount: $index < 20,
             ),
             Archetype::SlowPayer => SlowPayerCompiler::compile(
                 $handle,
@@ -97,6 +100,9 @@ final class CrowdGenerator
             ),
             Archetype::Churner => ChurnerCompiler::compile($handle, $this->rng),
             Archetype::UpsizerDownsizer => UpsizerDownsizerCompiler::compile($handle, $this->rng),
+            Archetype::ReservationPending => ReservationPendingCompiler::compile($handle, $this->rng),
+            Archetype::ReservationExpired => ReservationExpiredCompiler::compile($handle, $this->rng),
+            Archetype::ReservationCancelled => ReservationCancelledCompiler::compile($handle, $this->rng),
         };
     }
 }

@@ -14,7 +14,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * The Kellys — two units, one contact.
+ * Los Keller — two units, one contact.
  *
  * One unit vacated last month with a deposit deduction; the other stays active.
  * Multi-contract panel + settlement with deduction.
@@ -36,9 +36,9 @@ final class TheKellys extends Journey
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'kellys', 'Pat', 'Kelly', [
-                    'email' => 'pat.kelly@demo.keevaris.test',
-                    'company' => 'The Kellys',
+                JourneySupport::createContact($world, 'kellys', 'Patricia', 'Keller', [
+                    'email' => 'patricia.keller@demo.keevaris.test',
+                    'company' => 'Los Keller',
                 ]);
                 JourneySupport::openDeal($world, 'kellys', $site);
                 $unitA = JourneySupport::vacantUnit($site, 'SS3');

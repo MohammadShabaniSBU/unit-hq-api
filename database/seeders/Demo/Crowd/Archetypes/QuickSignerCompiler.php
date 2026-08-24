@@ -25,9 +25,10 @@ final class QuickSignerCompiler
         bool $withRateChange = false,
         bool $withDiscount = false,
     ): array {
-        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60);
+        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60, band: 'early');
         $signDay = $enrol + $rng->int(1, 5);
         $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;
+        $withInsurance = $rng->bool(0.5);
 
         $script = [
             $enrol => static function (DemoWorld $world) use ($handle, $rng): void {
@@ -42,7 +43,7 @@ final class QuickSignerCompiler
                     'sent',
                 );
             },
-            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
+            $signDay => static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick, $withInsurance): void {
                 $deal = $world->get("{$handle}.deal");
                 $site = Site::query()->findOrFail((int) $deal->site_id);
                 $unit = CrowdSupport::vacantUnit($site, $rng);
@@ -53,6 +54,7 @@ final class QuickSignerCompiler
                     CrowdSupport::dateOn($signDay),
                     discountId: $discountPick['discount_id'] ?? null,
                     commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
+                    withInsurance: $withInsurance,
                 );
                 JourneySupport::markSteadyPayer($world, $handle);
             },

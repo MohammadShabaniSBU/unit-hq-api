@@ -19,7 +19,7 @@ use PHPUnit\Framework\Assert;
  * Amara Okafor — long-stay free-time promo (DISC-02).
  *
  * Walk-in signed ~3 weeks before seed-end; still inside the €0 free window
- * (rent-roll visible). Remote-signer coverage remains on Jean-Luc / Sofía.
+ * (rent-roll visible). Remote-signer coverage remains on Javier / Sofía.
  */
 final class AmaraOkafor extends Journey
 {

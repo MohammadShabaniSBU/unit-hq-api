@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\ContractStatus;
+use App\Enums\ReservationStatus;
+use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\Deal;
+use App\Models\Offer;
+use App\Models\Reservation;
+use App\Models\Site;
+use App\Models\Unit;
 use Database\Seeders\Demo\DemoPipeline;
 use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoScript;
@@ -74,9 +83,27 @@ class DemoSeedCommand extends Command
             ],
         );
 
-        if ($totalMs > 300_000) {
-            $this->warn(sprintf('Wall-clock %.1f min exceeds 5-minute target.', $totalMs / 60_000));
+        if ($totalMs > 600_000) {
+            $this->warn(sprintf('Wall-clock %.1f min exceeds 10-minute target.', $totalMs / 60_000));
         }
+
+        $this->newLine();
+        $this->info('World snapshot:');
+        $this->table(
+            ['Metric', 'Count'],
+            [
+                ['Sites', (string) Site::query()->count()],
+                ['Units', (string) Unit::query()->count()],
+                ['Contacts', (string) Contact::query()->count()],
+                ['Deals', (string) Deal::query()->count()],
+                ['Offers', (string) Offer::query()->count()],
+                ['Reservations (pending)', (string) Reservation::query()->where('status', ReservationStatus::Pending)->count()],
+                ['Reservations (expired)', (string) Reservation::query()->where('status', ReservationStatus::Expired)->count()],
+                ['Reservations (cancelled)', (string) Reservation::query()->where('status', ReservationStatus::Cancelled)->count()],
+                ['Contracts (active)', (string) Contract::query()->where('status', ContractStatus::Active)->count()],
+                ['Contracts (all)', (string) Contract::query()->count()],
+            ],
+        );
 
         try {
             DemoRbacGrants::verifyOrFail();

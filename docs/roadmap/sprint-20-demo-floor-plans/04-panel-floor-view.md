@@ -62,7 +62,7 @@ Rendering it as "blocked" would misstate occupancy on the one screen operators u
 should not treat any stored blob as trusted markup. Prefer parsing to a document and appending
 nodes over `v-html` on a raw string.
 
-**Shapes with no matching unit** (the `PAR-01` orphans from task 03) get a neutral hatched fill and
+**Shapes with no matching unit** (the `MAD-05` orphans from task 03) get a neutral hatched fill and
 no tooltip. They must not throw, and they must not be counted in the legend totals.
 
 **Conventions:** composable `useSiteMaps(siteId)` / `useSiteMap(siteMapId)` per the `useXxx` /
@@ -110,7 +110,7 @@ rather than deriving state in the browser.
 - [ ] An overlocked occupied unit renders as occupied with the overlock stroke, not as blocked.
 - [ ] An overdue occupied unit is visually distinct from a current one.
 - [ ] Legend colours match `UnitStateBadge` exactly — same mapping module, not a copy.
-- [ ] `PAR-01` Third floor renders: 2 orphan shapes are inert and hatched, 3 uncovered units are
+- [ ] `MAD-05` Planta 3 renders: 2 orphan shapes are inert and hatched, 3 uncovered units are
       absent from the plan and the page does not error.
 - [ ] A site with no map shows the empty state, not a blank frame or a spinner.
 - [ ] Hovering an occupied unit shows tenant and a working contract link.

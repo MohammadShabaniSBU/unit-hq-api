@@ -15,7 +15,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Grace Lin — funnel mid-stage.
+ * Gracia Lin — funnel mid-stage.
  *
  * Deal in negotiation, offer viewed not accepted, lead-chase step 3 of 4
  * (timed so daily resume advances through the first three actions).
@@ -36,8 +36,8 @@ final class GraceLin extends Journey
         return [
             $enrolDay => static function (DemoWorld $world): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'grace', 'Grace', 'Lin', [
-                    'email' => 'grace.lin@demo.keevaris.test',
+                JourneySupport::createContact($world, 'grace', 'Gracia', 'Lin', [
+                    'email' => 'gracia.lin@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'grace', $site, DealStatus::Negotiating);
                 JourneySupport::createOffer($world, 'grace', $site, 'SS6', 'sent');

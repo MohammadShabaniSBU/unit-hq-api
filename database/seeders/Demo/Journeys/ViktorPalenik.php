@@ -12,7 +12,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Viktor Palenik — cancelled never-moved-in + lost deal.
+ * Víctor Palencia — cancelled never-moved-in + lost deal.
  */
 final class ViktorPalenik extends Journey
 {
@@ -30,8 +30,8 @@ final class ViktorPalenik extends Journey
         return [
             $startDay => static function (DemoWorld $world) use ($startDay, $end): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'viktor', 'Viktor', 'Palenik', [
-                    'email' => 'viktor.palenik@demo.keevaris.test',
+                JourneySupport::createContact($world, 'viktor', 'Víctor', 'Palencia', [
+                    'email' => 'victor.palencia@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'viktor', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');

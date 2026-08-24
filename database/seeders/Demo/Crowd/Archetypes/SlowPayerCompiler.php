@@ -21,7 +21,7 @@ final class SlowPayerCompiler
      */
     public static function compile(string $handle, DemoRng $rng, bool $withDiscount = false): array
     {
-        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 90);
+        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 90, band: 'early');
         $signDay = $enrol + $rng->int(1, 6);
         $lag = $rng->int(1, 14);
         $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;

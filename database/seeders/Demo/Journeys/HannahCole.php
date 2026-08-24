@@ -12,7 +12,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Hannah Cole — autopay-failing.
+ * Ana Coloma — autopay-failing.
  *
  * Card on file, then insufficient_funds twice; manual retry remains pending.
  * End state: amber autopay chip + failed attempts.
@@ -35,8 +35,8 @@ final class HannahCole extends Journey
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'hannah', 'Hannah', 'Cole', [
-                    'email' => 'hannah.cole@demo.keevaris.test',
+                JourneySupport::createContact($world, 'hannah', 'Ana', 'Coloma', [
+                    'email' => 'ana.coloma@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'hannah', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');

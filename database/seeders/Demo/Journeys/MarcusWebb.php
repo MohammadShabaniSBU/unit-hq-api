@@ -16,7 +16,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Marcus Webb — the mockup conversation made real.
+ * Marcos Vega — the mockup conversation made real.
  *
  * An 8 m² (SS4) tenant in Madrid for most of the simulation. Near seed-end he
  * texts asking for something bigger; we transfer him to SS6 and bump the rate
@@ -36,8 +36,8 @@ final class MarcusWebb extends Journey
         return [
             0 => static function (DemoWorld $world): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'marcus', 'Marcus', 'Webb', [
-                    'email' => 'marcus.webb@demo.keevaris.test',
+                JourneySupport::createContact($world, 'marcus', 'Marcos', 'Vega', [
+                    'email' => 'marcos.vega@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'marcus', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
@@ -53,12 +53,12 @@ final class MarcusWebb extends Journey
                 JourneySupport::inboundSms(
                     $world,
                     'marcus',
-                    'Hi — do you have anything bigger than my 8m²? Looking to upsize.',
+                    'Hola — ¿tienen algo más grande que mis 8 m²? Quiero ampliar.',
                 );
                 JourneySupport::sendSms(
                     $world,
                     'marcus',
-                    'We can move you to a larger unit. I will prepare the transfer.',
+                    'Podemos moverle a una unidad más grande. Preparo el traslado.',
                 );
 
                 $site = $world->site('madrid');
@@ -101,7 +101,7 @@ final class MarcusWebb extends Journey
         Assert::assertTrue(
             Message::query()
                 ->whereHas('thread', static fn ($q) => $q->where('contact_id', $world->contact('marcus.contact')->id))
-                ->where('body_text', 'like', '%bigger%')
+                ->where('body_text', 'like', '%ampliar%')
                 ->exists(),
             'Marcus SMS size question should exist',
         );

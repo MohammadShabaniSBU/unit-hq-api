@@ -74,7 +74,7 @@ final class FrontDeskMisc extends Journey
                 $world->aircall()->unknownMissed('+34999000111');
             },
             $finaleDay => static function (DemoWorld $world) use ($end): void {
-                $site = $world->site('barcelona');
+                $site = $world->site('oeste');
                 JourneySupport::createContact($world, 'wa_closing', 'Carmen', 'Vega', [
                     'email' => 'carmen.vega@demo.keevaris.test',
                     'phone' => '+34600111003',

@@ -10,9 +10,9 @@ of an empty page, and the map-upload validator gets exercised against real data 
 
 Three things are true in `dev` today:
 
-1. **`site_maps` is never populated by the demo world.** `StageSeeder` creates 5 sites, 20 unit
-   classes and 2 000 units, and zero maps. Anything in the panel that renders a floor plan has
-   nothing to render, and no demo can show it.
+1. **`site_maps` is never populated by the demo world.** `StageSeeder` creates 5 Madrid sites,
+   12 unit classes and 600 units, and (before this sprint) zero maps. Anything in the panel that
+   renders a floor plan has nothing to render, and no demo can show it.
 2. **`SiteMapIdMatcher` cannot match the SVGs we actually author.** It collects `//*[@id]` and
    intersects with `units.unit_number`. Hand-authored plans put the unit number in
    `data-unit-number` and use `id="unit-1"`, so the matcher reports **every shape as an orphan and
@@ -31,8 +31,8 @@ Checked against `dev` — do not re-derive:
 | Fact | Where |
 |---|---|
 | `site_maps` = `site_id`, `floor_name`, `svg_map` (text), `sort_order`; unique `(site_id, floor_name)` | `2026_08_05_000590_create_site_maps_table.php` |
-| 5 demo sites: `MAD-01`, `BCN-01`, `VLC-01`, `LON-01`, `PAR-01` | `StageSeeder` |
-| 20 unit classes (`SS1..SS10`, `AL1..AL10`) × 20 units × 5 sites = **400 units per site, 2 000 total** | `StageSeeder` |
+| 5 demo sites: `MAD-01`…`MAD-05` (Centro / Norte / Sur / Este / Oeste) | `StageSeeder` |
+| 12 unit classes (`SS1..SS8`, `AL1..AL4`) × 10 units × 5 sites = **120 units per site, 600 total** | `StageSeeder` |
 | `unit_number` format is `{SITE_CODE}-{CLASS_CODE}-{NN}`, e.g. `MAD-01-SS3-07` | `StageSeeder` |
 | Unit geometry lives on `units.actual_width` / `actual_depth` (metres). `unit_classes` carries `size` (m²) only — **there are no class W×D columns** | `StageSeeder`, `UnitClass` |
 | `enshrined/svg-sanitize` 0.22 explicitly preserves `data-*` and `aria-*` attributes, plus `class`, `id`, `viewBox`, `transform`, `<style>`, `<title>`, `<text>` | `Sanitizer::isDataAttribute()`, `data/AllowedAttributes.php` |
@@ -76,7 +76,7 @@ changes.** Task 03 therefore forbids RNG in the generation path entirely — flo
 deterministic sort, not a shuffle. This is the one thing in this sprint that can break unrelated
 tests.
 
-**2 000 shapes across 20 documents.** Roughly 1.2 MB of SVG text into Postgres. That is fine to
+**600 shapes across 20 documents.** Roughly 0.4 MB of SVG text into Postgres. That is fine to
 store and fine to generate, but `GET /api/sites/{site}/maps?with_svg=1` returning four floors at
 once is ~250 KB. Task 04 must fetch one floor at a time.
 
