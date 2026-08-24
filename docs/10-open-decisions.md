@@ -155,6 +155,7 @@
 | VB credentials in env vs Settings | `VOCAL_BRIDGE_API_KEY` is env today. A Settings-managed encrypted account (as `communication_accounts` does) is the follow-up if operators must rotate without a deploy. |
 | Voice for customer-facing agents | Employee copilot only this sprint. `AgentChannel::Voice` exists for ChannelProfile exhaustiveness; `POST /api/agent-conversations` rejects it. |
 | Agent→App UI navigation actions | Natural follow-up once the transcript loop is trusted. v1 is App→Agent `copilot_answer_ready` only. |
+| Agent reservation active-hold uniqueness | **Option 1 taken (S24-01):** in-transaction check inside `ReservationCreation::create` under the existing `lockForUpdate` on the candidate unit, scoped to `source = ai_agent`, plus supporting index `(contact_id, status)`. Operator double-holds stay legal. **Known gap:** two concurrent agent creates that pick *different* units of the same class do not share that lock, so a double-insert is still possible. **Rejected for now:** (2) denormalise `site_id` / `unit_class_id` onto `reservations` for a Postgres partial unique — derived state (invariant 5). (3) exclusion constraint — overkill. Revisit only if (1) proves insufficient in production. |
 
 ## Active WIP
 

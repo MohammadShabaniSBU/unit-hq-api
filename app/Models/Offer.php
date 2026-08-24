@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PipelineSource;
 use App\Models\Concerns\HasNotes;
 use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,20 +26,22 @@ use Illuminate\Support\Carbon;
  * offers does NOT hold a back-reference to reservations. The FK is one-way:
  * reservations.offer_option_id → offer_options.id.
  *
- * @property int         $id
- * @property int         $deal_id
- * @property int         $contact_id
- * @property string      $token
- * @property string      $status       draft|sent|viewed|accepted|expired
- * @property Carbon      $expires_at
+ * @property int $id
+ * @property int $deal_id
+ * @property int $contact_id
+ * @property string $token
+ * @property string $status draft|sent|viewed|accepted|expired
+ * @property Carbon $expires_at
  * @property Carbon|null $sent_at
  * @property Carbon|null $first_viewed_at
  * @property Carbon|null $accepted_at
- * @property Carbon      $created_at
- * @property Carbon      $updated_at
- *
+ * @property PipelineSource $source
+ * @property int|null $ai_agent_id
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Deal                            $deal
  * @property-read Contact                         $contact
+ * @property-read AiAgent|null                    $aiAgent
  * @property-read Collection<int, OfferOption>    $options
  * @property-read Collection<int, OfferDelivery>  $deliveries
  * @property-read Collection<int, Note>             $notes
@@ -59,15 +62,18 @@ class Offer extends Model
         'sent_at',
         'first_viewed_at',
         'accepted_at',
+        'source',
+        'ai_agent_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'expires_at'       => 'datetime',
-            'sent_at'          => 'datetime',
-            'first_viewed_at'  => 'datetime',
-            'accepted_at'      => 'datetime',
+            'expires_at' => 'datetime',
+            'sent_at' => 'datetime',
+            'first_viewed_at' => 'datetime',
+            'accepted_at' => 'datetime',
+            'source' => PipelineSource::class,
         ];
     }
 
@@ -151,6 +157,12 @@ class Offer extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    /** @return BelongsTo<AiAgent, Offer> */
+    public function aiAgent(): BelongsTo
+    {
+        return $this->belongsTo(AiAgent::class);
     }
 
     /** @return HasMany<OfferOption> */

@@ -26,6 +26,8 @@ final class OfferCreation
     ): Offer {
         return DB::transaction(function () use ($attributes, $options, $customAttributes, $actor): Offer {
             $attributes['token'] ??= Str::random(64);
+            $attributes['source'] = $actor->pipelineSource();
+            $attributes['ai_agent_id'] = $actor->aiAgentId();
 
             $offer = Offer::query()->create($attributes);
 

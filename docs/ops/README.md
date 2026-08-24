@@ -20,3 +20,9 @@ Or interactively:
 ```
 
 Rotate by `ALTER ROLE metabase_ro PASSWORD '…'`. Drop and recreate only if grants drift; the SQL is idempotent for grants after a one-time `CREATE ROLE`.
+
+## Agent recall
+
+File: [`agents-recall.md`](./agents-recall.md)
+
+Undo agent-created offers and reservations after `AGENTS_ENABLED=false` stops new turns. Dry-run is the default; commit with `--dry-run=false`. Accepted offers and contracted reservations are reported, never reversed.

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\PipelineSource;
 use App\Enums\ReservationStatus;
-use App\Support\Auth\Concerns\VisibleToEmployee;
 use App\Models\Concerns\HasNotes;
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,25 +21,27 @@ use Illuminate\Support\Carbon;
  * Unit availability is derived from unit_occupancies / unit_holds (invariant 36).
  * Reservation create writes a reservation hold; is_available is never stored.
  *
- * @property int                $id
- * @property int                $unit_id
- * @property int                $contact_id
- * @property int|null           $price_id
- * @property int|null           $deal_id
- * @property ReservationStatus  $status
- * @property int|null           $offer_option_id
- * @property Carbon             $expires_at
- * @property Carbon             $created_at
- * @property Carbon             $updated_at
- *
+ * @property int $id
+ * @property int $unit_id
+ * @property int $contact_id
+ * @property int|null $price_id
+ * @property int|null $deal_id
+ * @property ReservationStatus $status
+ * @property int|null $offer_option_id
+ * @property PipelineSource $source
+ * @property int|null $ai_agent_id
+ * @property Carbon $expires_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Unit              $unit
  * @property-read Contact           $contact
  * @property-read Price|null        $price
  * @property-read Deal|null         $deal
  * @property-read OfferOption|null  $offerOption
+ * @property-read AiAgent|null      $aiAgent
  * @property-read Contract|null     $contract
  * @property-read UnitHold|null     $hold
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Note> $notes
+ * @property-read Collection<int, Note> $notes
  */
 class Reservation extends Model
 {
@@ -51,13 +55,16 @@ class Reservation extends Model
         'offer_option_id',
         'status',
         'expires_at',
+        'source',
+        'ai_agent_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'status'     => ReservationStatus::class,
+            'status' => ReservationStatus::class,
             'expires_at' => 'datetime',
+            'source' => PipelineSource::class,
         ];
     }
 
@@ -164,6 +171,12 @@ class Reservation extends Model
     public function offerOption(): BelongsTo
     {
         return $this->belongsTo(OfferOption::class);
+    }
+
+    /** @return BelongsTo<AiAgent, Reservation> */
+    public function aiAgent(): BelongsTo
+    {
+        return $this->belongsTo(AiAgent::class);
     }
 
     /** @return HasOne<Contract, Reservation> */

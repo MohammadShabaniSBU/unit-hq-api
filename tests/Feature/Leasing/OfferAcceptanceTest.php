@@ -6,6 +6,8 @@ namespace Tests\Feature\Leasing;
 
 use App\Enums\DealStatus;
 use App\Enums\HoldType;
+use App\Enums\PipelineSource;
+use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Country;
@@ -178,6 +180,26 @@ class OfferAcceptanceTest extends TestCase
         $this->assertSame(1, Reservation::query()->count());
     }
 
+    #[Test]
+    public function public_accept_stamps_public_link_not_the_offer_source(): void
+    {
+        $agent = AiAgent::factory()->create();
+        $unit = $this->makeUnit('AVL-1');
+        $option = $this->makeOption($unit, 'sent', null, [
+            'source' => PipelineSource::AiAgent,
+            'ai_agent_id' => $agent->id,
+        ]);
+
+        $this->postJson("/api/offer-options/{$option->id}/select")->assertOk();
+
+        $this->assertSame(PipelineSource::AiAgent, $option->offer->fresh()->source);
+        $this->assertSame($agent->id, $option->offer->fresh()->ai_agent_id);
+
+        $reservation = Reservation::query()->where('offer_option_id', $option->id)->firstOrFail();
+        $this->assertSame(PipelineSource::PublicLink, $reservation->source);
+        $this->assertNull($reservation->ai_agent_id);
+    }
+
     private function makeUnit(string $number): Unit
     {
         return Unit::factory()->create([
@@ -188,7 +210,10 @@ class OfferAcceptanceTest extends TestCase
         ]);
     }
 
-    private function makeOption(Unit $unit, string $status, mixed $expiresAt = null): OfferOption
+    /**
+     * @param  array<string, mixed>  $offerAttributes
+     */
+    private function makeOption(Unit $unit, string $status, mixed $expiresAt = null, array $offerAttributes = []): OfferOption
     {
         $offer = Offer::query()->create([
             'deal_id' => $this->deal->id,
@@ -196,6 +221,7 @@ class OfferAcceptanceTest extends TestCase
             'token' => Str::random(64),
             'status' => $status,
             'expires_at' => $expiresAt ?? now()->addDays(7),
+            ...$offerAttributes,
         ]);
 
         return OfferOption::query()->create([

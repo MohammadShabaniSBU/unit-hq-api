@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Leasing;
 
 use App\Enums\AttributeEntityType;
+use App\Enums\PipelineSource;
 use App\Enums\ReservationStatus;
 use App\Models\Deal;
 use App\Models\Reservation;
@@ -15,6 +16,7 @@ use App\Models\UnitClassRate;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -105,6 +107,23 @@ final class ReservationCreation
                 ]);
             }
 
+            if ($actor->pipelineSource() === PipelineSource::AiAgent) {
+                $alreadyHeld = Reservation::query()
+                    ->where('source', PipelineSource::AiAgent)
+                    ->where('contact_id', $contactId)
+                    ->where('status', ReservationStatus::Pending)
+                    ->whereHas('unit', function (Builder $query) use ($siteId, $unitClassId): void {
+                        $query->where('site_id', $siteId)->where('unit_class_id', $unitClassId);
+                    })
+                    ->exists();
+
+                if ($alreadyHeld) {
+                    throw ValidationException::withMessages([
+                        'unit_class_id' => ['An agent already holds a unit in this class for this contact at this site.'],
+                    ]);
+                }
+            }
+
             $selectedUnit->load('site');
 
             $reservationData = [
@@ -166,7 +185,7 @@ final class ReservationCreation
         Unit $unit,
         LeasingActor $actor,
     ): Reservation {
-        $reservation = self::persist($attributes);
+        $reservation = self::persist($attributes, $actor);
         ReservationHolds::write($reservation, $unit, $actor->employeeId());
 
         return $reservation;
@@ -175,8 +194,11 @@ final class ReservationCreation
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private static function persist(array $attributes): Reservation
+    private static function persist(array $attributes, LeasingActor $actor): Reservation
     {
+        $attributes['source'] = $actor->pipelineSource();
+        $attributes['ai_agent_id'] = $actor->aiAgentId();
+
         return Reservation::query()->create($attributes);
     }
 }

@@ -6,6 +6,8 @@ namespace Tests\Feature\Leasing;
 
 use App\Enums\DealStatus;
 use App\Enums\HoldType;
+use App\Enums\PipelineSource;
+use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Country;
@@ -18,7 +20,10 @@ use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Leasing\LeasingActor;
+use App\Support\Leasing\ReservationCreation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\AuthenticatesAsEmployee;
 use Tests\Support\CreatesCataloguePrices;
@@ -164,6 +169,65 @@ class ReservationCreationTest extends TestCase
         $this->assertSame($unit->id, $hold->unit_id);
         $this->assertNull($hold->released_at);
         $this->assertSame($this->employee->id, (int) $hold->created_by);
+    }
+
+    #[Test]
+    public function agent_actor_rejects_second_pending_hold_for_same_contact_site_class(): void
+    {
+        $this->makeUnit('AVL-1');
+        $this->makeUnit('AVL-2');
+        $agent = AiAgent::factory()->create();
+
+        $this->createViaAgent($agent);
+
+        try {
+            $this->createViaAgent($agent);
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('unit_class_id', $e->errors());
+        }
+
+        $this->assertSame(1, Reservation::query()->count());
+        $this->assertSame(PipelineSource::AiAgent, Reservation::query()->firstOrFail()->source);
+    }
+
+    #[Test]
+    public function employee_actor_may_create_two_pending_holds_for_the_same_class(): void
+    {
+        $this->makeUnit('AVL-1');
+        $this->makeUnit('AVL-2');
+
+        $payload = [
+            'site_id' => $this->site->id,
+            'unit_class_id' => $this->unitClass->id,
+            'contact_id' => $this->contact->id,
+            'expires_at' => now()->addDays(3)->toIso8601String(),
+        ];
+
+        $this->postJson('/api/reservations', $payload)->assertCreated();
+        $this->postJson('/api/reservations', $payload)->assertCreated();
+
+        $this->assertSame(2, Reservation::query()->count());
+        Reservation::query()->each(function (Reservation $reservation): void {
+            $this->assertSame(PipelineSource::Operator, $reservation->source);
+            $this->assertNull($reservation->ai_agent_id);
+        });
+    }
+
+    private function createViaAgent(AiAgent $agent): Reservation
+    {
+        return ReservationCreation::create(
+            $this->site->id,
+            $this->unitClass->id,
+            $this->contact->id,
+            null,
+            null,
+            now()->addDays(3),
+            null,
+            null,
+            [],
+            LeasingActor::agent($agent),
+        );
     }
 
     private function makeUnit(string $number): Unit
