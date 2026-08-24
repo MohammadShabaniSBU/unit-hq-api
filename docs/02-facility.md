@@ -23,8 +23,10 @@ The physical storage facility (also called "Center").
 
 SVG floor plans for the visual unit map. A site may have multiple floors (`floor_name` unique per site).
 
+- **Builder scene:** Operators draw a floor in the panel map builder. The source of truth for round-trip editing is `site_maps.scene` (JSON: versioned items — `unit` and `entrance` in v1 — plus an optional `backgroundSvg` fragment). On write the API compiles the scene through `FloorMapCompiler` into `svg_map`. Unassigned unit items stay in the scene only and are **not** emitted as shapes, so they never enter matching.
+- **Paste SVG** remains supported (advanced). A write that sends `svg_map` stores the sanitized document and sets `scene` to `null`. Opening that map in the builder hydrates a scene from the SVG (`g.storage-unit`, entrance groups, leftover markup as background) and the next save persists `scene`.
 - **Shape-matching convention:** SVG shapes carry `data-unit-number` matching `units.unit_number` for the same `site_id`. Maps with no `data-unit-number` anywhere fall back to matching element `id`, for plans drawn against the pre-S20 convention. Structural ids (layers, rows, groups) are never treated as shapes. Upload validation reports three buckets — `matched`, `orphan_shapes`, `uncovered_units`.
-- SVG is sanitized on write (scripts, event handlers, `foreignObject`, external hrefs stripped).
+- SVG is sanitized on write (scripts, event handlers, `foreignObject`, external hrefs stripped). Status colours are never baked into stored SVG (invariant 5).
 
 ## UnitClass — the sellable product
 

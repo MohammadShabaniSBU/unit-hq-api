@@ -20,6 +20,10 @@ class SiteMapResource extends BaseResource
                 array_key_exists('svg_map', $this->resource->getAttributes()),
                 $this->svg_map
             ),
+            'scene'      => $this->when(
+                array_key_exists('scene', $this->resource->getAttributes()),
+                $this->scene
+            ),
             // Only present on create/update/validate responses — buckets of
             // SVG element ids vs. site units.unit_number (see SiteMapIdMatcher).
             'id_match'   => $this->when(isset($this->id_match), $this->id_match),

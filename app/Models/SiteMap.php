@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,13 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * SVG floor plan for a site. A site may have multiple maps (e.g. per floor).
  *
- * @property int    $id
- * @property int    $site_id
- * @property string $floor_name
- * @property string $svg_map
- * @property int    $sort_order
- * @property Carbon $created_at
- * @property Carbon $updated_at
+ * @property int                          $id
+ * @property int                          $site_id
+ * @property string                       $floor_name
+ * @property string                       $svg_map
+ * @property array<string, mixed>|null    $scene
+ * @property int                          $sort_order
+ * @property Carbon                       $created_at
+ * @property Carbon                       $updated_at
  *
  * @property-read Site $site
  */
@@ -28,6 +31,7 @@ class SiteMap extends Model
         'site_id',
         'floor_name',
         'svg_map',
+        'scene',
         'sort_order',
     ];
 
@@ -35,6 +39,7 @@ class SiteMap extends Model
     {
         return [
             'sort_order' => 'integer',
+            'scene' => 'array',
         ];
     }
 
