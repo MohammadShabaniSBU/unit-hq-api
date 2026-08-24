@@ -90,21 +90,19 @@ class StageSeeder extends Seeder
         $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
 
         $spain = Country::query()->where('code', 'ES')->firstOrFail();
-        $uk = Country::query()->where('code', 'GB')->firstOrFail();
-        $france = Country::query()->where('code', 'FR')->firstOrFail();
 
         $legalEntity = LegalEntity::query()->firstOrCreate(
-            ['tax_id' => 'PENDING-GESTOR'],
+            ['tax_id' => 'B12345674'],
             [
-                'legal_name' => 'PENDING GESTOR',
-                'trading_name' => null,
+                'legal_name' => 'Trasteros Madrid SL',
+                'trading_name' => 'Keevaris Madrid',
                 'tax_id_type' => TaxIdType::Nif,
-                'vat_number' => null,
+                'vat_number' => 'ESB12345674',
                 'country_code' => 'ES',
-                'address_line1' => 'Calle Placeholder 1',
+                'address_line1' => 'Calle de Fuencarral 45',
                 'address_line2' => null,
                 'city' => 'Madrid',
-                'postal_code' => '28001',
+                'postal_code' => '28004',
                 'fiscal_regime' => FiscalRegime::None,
                 'sepa_creditor_id' => null,
                 'archived_at' => null,
@@ -146,29 +144,12 @@ class StageSeeder extends Seeder
             ]],
         ]);
 
-        $ukPolicy = $this->seedDelinquencyPolicy('UK standard', [
-            ['offset_days' => 7, 'action' => DelinquencyPolicyAction::AssessLateFee, 'params' => [
-                'type' => 'flat', 'amount' => '10.00',
-            ]],
-            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'overdue',
-            ]],
-            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RevokeAccess, 'params' => []],
-            ['offset_days' => 14, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
-            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'final_demand',
-            ]],
-            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::CreateTask, 'params' => [
-                'title_key' => 'delinquency.task.final_demand', 'urgent' => true,
-            ]],
-        ]);
-
         $siteDefs = [
-            ['handle' => 'madrid', 'name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['handle' => 'barcelona', 'name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['handle' => 'valencia', 'name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['handle' => 'london', 'name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $ukPolicy->id],
-            ['handle' => 'paris', 'name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => null],
+            ['handle' => 'madrid', 'name' => 'Madrid Centro', 'code' => 'MAD-01', 'address' => 'Calle de Fuencarral 45', 'city' => 'Madrid', 'postal_code' => '28004', 'state_region' => 'Madrid', 'location' => ['lat' => 40.4253, 'lng' => -3.7035], 'contact_phone' => '+34910001001', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['handle' => 'norte', 'name' => 'Madrid Norte', 'code' => 'MAD-02', 'address' => 'Avenida de Burgos 89', 'city' => 'Madrid', 'postal_code' => '28036', 'state_region' => 'Madrid', 'location' => ['lat' => 40.4851, 'lng' => -3.6732], 'contact_phone' => '+34910001002', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['handle' => 'sur', 'name' => 'Madrid Sur', 'code' => 'MAD-03', 'address' => 'Avenida de Córdoba 21', 'city' => 'Madrid', 'postal_code' => '28026', 'state_region' => 'Madrid', 'location' => ['lat' => 40.3889, 'lng' => -3.6938], 'contact_phone' => '+34910001003', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['handle' => 'este', 'name' => 'Madrid Este', 'code' => 'MAD-04', 'address' => 'Calle de Alcalá 412', 'city' => 'Madrid', 'postal_code' => '28027', 'state_region' => 'Madrid', 'location' => ['lat' => 40.4362, 'lng' => -3.6321], 'contact_phone' => '+34910001004', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
+            ['handle' => 'oeste', 'name' => 'Madrid Oeste', 'code' => 'MAD-05', 'address' => 'Paseo de Extremadura 154', 'city' => 'Madrid', 'postal_code' => '28011', 'state_region' => 'Madrid', 'location' => ['lat' => 40.4098, 'lng' => -3.7394], 'contact_phone' => '+34910001005', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
         ];
 
         $sites = collect();
@@ -182,39 +163,50 @@ class StageSeeder extends Seeder
         }
 
         $vatFrom = CarbonImmutable::parse(CastExecutor::SIM_START)->subYear()->toDateString();
-        foreach (
-            [
-                ['jurisdiction' => 'ES', 'rate' => '21.00', 'is_default' => true],
-                ['jurisdiction' => 'FR', 'rate' => '20.00', 'is_default' => false],
-                ['jurisdiction' => 'GB', 'rate' => '20.00', 'is_default' => false],
-            ] as $vat
-        ) {
-            TaxRate::query()->create([
-                'name' => 'VAT ('.$vat['jurisdiction'].')',
-                'code' => 'vat',
-                'rate' => $vat['rate'],
-                'jurisdiction' => $vat['jurisdiction'],
-                'is_default' => $vat['is_default'],
-                'effective_from' => $vatFrom,
-                'effective_to' => null,
-                'created_by' => $manager->id,
-            ]);
-        }
+        TaxRate::query()->create([
+            'name' => 'IVA 21%',
+            'code' => 'vat',
+            'rate' => '21.00',
+            'jurisdiction' => 'ES',
+            'is_default' => true,
+            'effective_from' => $vatFrom,
+            'effective_to' => null,
+            'created_by' => $manager->id,
+        ]);
+        TaxRate::query()->create([
+            'name' => 'Exento (seguro)',
+            'code' => 'exempt',
+            'rate' => '0.00',
+            'jurisdiction' => 'ES',
+            'is_default' => false,
+            'effective_from' => $vatFrom,
+            'effective_to' => null,
+            'created_by' => $manager->id,
+        ]);
 
         (new DiscountCatalogueSeeder)->run($manager);
 
         $unitClasses = collect();
-        foreach (range(1, 10) as $n) {
+        foreach (
+            [
+                ['code' => 'SS1', 'label' => 'Trastero 5 m²', 'size' => 5.00],
+                ['code' => 'SS2', 'label' => 'Trastero 6 m²', 'size' => 6.00],
+                ['code' => 'SS3', 'label' => 'Trastero 7 m²', 'size' => 7.00],
+                ['code' => 'SS4', 'label' => 'Trastero 8 m²', 'size' => 8.00],
+                ['code' => 'SS5', 'label' => 'Trastero 9 m²', 'size' => 9.00],
+                ['code' => 'SS6', 'label' => 'Trastero 10 m²', 'size' => 10.00],
+                ['code' => 'SS7', 'label' => 'Trastero 11 m²', 'size' => 11.00],
+                ['code' => 'SS8', 'label' => 'Trastero 12 m²', 'size' => 12.00],
+                ['code' => 'AL1', 'label' => 'Trastero 10 m² XL', 'size' => 10.00],
+                ['code' => 'AL2', 'label' => 'Trastero 12 m² XL', 'size' => 12.00],
+                ['code' => 'AL3', 'label' => 'Trastero 14 m² XL', 'size' => 14.00],
+                ['code' => 'AL4', 'label' => 'Trastero 16 m² XL', 'size' => 16.00],
+            ] as $classDef
+        ) {
             $unitClasses->push(UnitClass::factory()->create([
-                'code' => "SS{$n}",
-                'label' => "SS Unit {$n}",
-                'size' => 5.00 + ($n - 1),
-                'tax_rate_code' => 'vat',
-            ]));
-            $unitClasses->push(UnitClass::factory()->create([
-                'code' => "AL{$n}",
-                'label' => "AL Unit {$n}",
-                'size' => 10.00 + ($n - 1) * 2,
+                'code' => $classDef['code'],
+                'label' => $classDef['label'],
+                'size' => $classDef['size'],
                 'tax_rate_code' => 'vat',
             ]));
         }
@@ -267,7 +259,7 @@ class StageSeeder extends Seeder
 
         foreach (
             [
-                ['name' => 'Basic', 'coverage' => 3000, 'amount' => 3],
+                ['name' => 'Básico', 'coverage' => 3000, 'amount' => 3],
                 ['name' => 'Premium', 'coverage' => 5000, 'amount' => 5],
             ] as $insuranceData
         ) {
@@ -275,7 +267,7 @@ class StageSeeder extends Seeder
                 'name' => $insuranceData['name'],
                 'coverage' => $insuranceData['coverage'],
                 'currency' => 'EUR',
-                'tax_rate_code' => 'vat',
+                'tax_rate_code' => 'exempt',
             ]);
 
             foreach ($sites as $site) {
@@ -299,12 +291,11 @@ class StageSeeder extends Seeder
             }
         }
 
-        // ~200 concurrent tenants across 5 sites; crowd RNG can pile onto one
-        // class (cast personas also hard-require SS2–SS6 at Madrid late in the
-        // window). 5/class was exhausting MAD-01 SS5 before Nadia/Ingrid/Amara.
+        // ~120 units/site × 5 Madrid sites. Crowd + cast target ~80% occupancy
+        // without exhausting a class (cast still pins SS2–SS6 at MAD-01).
         foreach ($unitClasses as $unitClass) {
             foreach ($sites as $site) {
-                foreach (range(1, 20) as $n) {
+                foreach (range(1, 10) as $n) {
                     // Direct create — UnitFactory::definition() still runs unique()
                     // even when unit_number is overridden, which exhausted A-###.
                     Unit::query()->create([
@@ -492,14 +483,14 @@ class StageSeeder extends Seeder
                 ['site_id' => $site->id, 'channel' => Channel::Sms],
                 [
                     'account_id' => $sms->id,
-                    'from_number' => '+15550001111',
+                    'from_number' => '+34600000001',
                 ]
             );
             SiteSenderIdentity::query()->firstOrCreate(
                 ['site_id' => $site->id, 'channel' => Channel::Whatsapp],
                 [
                     'account_id' => $whatsapp->id,
-                    'from_number' => '+15550009999',
+                    'from_number' => '+34600000002',
                 ]
             );
         }

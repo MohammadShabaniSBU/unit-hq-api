@@ -33,18 +33,18 @@ final class FloorPlanStage
      * }
      */
     private const IMPERFECT_MAP = [
-        'site_code' => 'PAR-01',
-        'floor_name' => 'Third floor',
+        'site_code' => 'MAD-05',
+        'floor_name' => 'Planta 3',
         'uncovered_units' => 3,
-        'orphan_shapes' => ['PAR-01-XX-01', 'PAR-01-XX-02'],
+        'orphan_shapes' => ['MAD-05-XX-01', 'MAD-05-XX-02'],
     ];
 
     /** @var array<int, array{floor_name: string, sort_order: int, entry: bool}> */
     private const FLOORS = [
-        ['floor_name' => 'Ground floor', 'sort_order' => 0, 'entry' => true],
-        ['floor_name' => 'First floor', 'sort_order' => 1, 'entry' => false],
-        ['floor_name' => 'Second floor', 'sort_order' => 2, 'entry' => false],
-        ['floor_name' => 'Third floor', 'sort_order' => 3, 'entry' => false],
+        ['floor_name' => 'Planta baja', 'sort_order' => 0, 'entry' => true],
+        ['floor_name' => 'Planta 1', 'sort_order' => 1, 'entry' => false],
+        ['floor_name' => 'Planta 2', 'sort_order' => 2, 'entry' => false],
+        ['floor_name' => 'Planta 3', 'sort_order' => 3, 'entry' => false],
     ];
 
     /**
@@ -102,7 +102,7 @@ final class FloorPlanStage
                 ])
                 ->values();
 
-            $chunks = $units->chunk(100)->values();
+            $chunks = $units->chunk(max(1, (int) ceil($units->count() / count(self::FLOORS))))->values();
 
             foreach (self::FLOORS as $index => $floor) {
                 /** @var Collection<int, Unit> $chunk */

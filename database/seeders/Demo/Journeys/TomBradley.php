@@ -12,7 +12,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Tom Bradley — promise-keeper.
+ * Tomás Blanco — promise-keeper.
  *
  * Misses a cycle, staff call and wrap up as payment_promised, then he pays
  * within four days. End state: cured history + wrap-up feeding promise-kept rate.
@@ -35,8 +35,8 @@ final class TomBradley extends Journey
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'tom', 'Tom', 'Bradley', [
-                    'email' => 'tom.bradley@demo.keevaris.test',
+                JourneySupport::createContact($world, 'tom', 'Tomás', 'Blanco', [
+                    'email' => 'tomas.blanco@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'tom', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');

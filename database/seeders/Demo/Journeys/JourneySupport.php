@@ -19,8 +19,10 @@ use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyStepAction;
 use App\Enums\DelinquencyStepTrigger;
 use App\Enums\DepositSettlementOutcome;
+use App\Enums\HoldType;
 use App\Enums\PaymentRequestStatus;
 use App\Enums\PlaybookKind;
+use App\Enums\ReservationStatus;
 use App\Enums\TaxIdType;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
@@ -45,6 +47,8 @@ use App\Models\DepositSettlementLine;
 use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\EsignEnvelope;
+use App\Models\Insurance;
+use App\Models\InsuranceRate;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\Offer;
@@ -53,13 +57,16 @@ use App\Models\OfferOption;
 use App\Models\PaymentMethod;
 use App\Models\PaymentRequest;
 use App\Models\Playbook;
+use App\Models\Reservation;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Models\SystemEvent;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
+use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Models\WhatsappTemplate;
 use App\Support\Access\AccessSync;
@@ -263,6 +270,7 @@ final class JourneySupport
         string $mode = 'immediate',
         ?int $discountId = null,
         ?int $commitmentWeeks = null,
+        bool $withInsurance = false,
     ): Contract {
         $contact = $world->contact("{$handle}.contact");
         $deal = $world->has("{$handle}.deal") ? $world->get("{$handle}.deal") : null;
@@ -297,6 +305,7 @@ final class JourneySupport
             $site,
             $discountId,
             $commitmentWeeks,
+            $withInsurance,
         ): Contract {
             $contract = Contract::query()->create([
                 'contact_id' => $contact->id,
@@ -357,7 +366,11 @@ final class JourneySupport
                 $item = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->with('price')->firstOrFail();
             }
 
-            $agreed = CurrencyGuard::assertItemsAgree(collect([$item]));
+            if ($withInsurance) {
+                self::attachInsuranceItem($contract, $site, $moveIn->toDateString(), $createdBy !== null ? (int) $createdBy : null);
+            }
+
+            $agreed = CurrencyGuard::assertItemsAgree($contract->items()->whereNull('effective_to')->with('price')->get());
             $contract->forceFill(['currency' => $agreed])->save();
 
             $items = $contract->items()->whereNull('effective_to')->with('price')->get();
@@ -1378,6 +1391,9 @@ final class JourneySupport
         Site $site,
         string $unitClassCode = 'SS4',
         string $status = 'sent',
+        ?int $discountId = null,
+        ?Unit $unit = null,
+        CarbonInterface|string|null $expiresAt = null,
     ): Offer {
         $contact = $world->contact("{$handle}.contact");
         $deal = $world->has("{$handle}.deal")
@@ -1390,22 +1406,34 @@ final class JourneySupport
             ->where('site_id', $site->id)
             ->firstOrFail();
 
+        $unitId = $unit?->id;
+        if ($unitId === null) {
+            try {
+                $unitId = self::vacantUnit($site, $unitClassCode)->id;
+            } catch (RuntimeException) {
+                $unitId = Unit::query()
+                    ->where('site_id', $site->id)
+                    ->where('unit_class_id', $class->id)
+                    ->value('id');
+            }
+        }
+
         $offer = Offer::query()->create([
             'deal_id' => $deal->id,
             'contact_id' => $contact->id,
             'token' => Str::random(64),
             'status' => $status,
             'sent_at' => in_array($status, ['sent', 'viewed', 'accepted'], true) ? now() : null,
-            'expires_at' => now()->addDays(14),
+            'expires_at' => $expiresAt !== null
+                ? CarbonImmutable::parse($expiresAt)
+                : now()->addDays(30),
         ]);
 
         OfferOption::query()->create([
             'offer_id' => $offer->id,
             'unit_class_rate_id' => $rate->id,
-            'unit_id' => Unit::query()
-                ->where('site_id', $site->id)
-                ->where('unit_class_id', $class->id)
-                ->value('id'),
+            'unit_id' => $unitId,
+            'discount_id' => $discountId,
             'label' => $class->label,
             'display_order' => 0,
         ]);
@@ -1428,6 +1456,306 @@ final class JourneySupport
             'status' => 'viewed',
             'first_viewed_at' => now(),
         ])->save();
+    }
+
+    /**
+     * Public offer accept: select the first option, write a pending reservation + hold.
+     */
+    public static function acceptOffer(
+        DemoWorld $world,
+        string $handle,
+        CarbonInterface|string|null $expiresAt = null,
+    ): Reservation {
+        /** @var Offer $offer */
+        $offer = $world->get("{$handle}.offer");
+        $offerOption = OfferOption::query()
+            ->where('offer_id', $offer->id)
+            ->orderBy('display_order')
+            ->orderBy('id')
+            ->firstOrFail();
+
+        $reservation = DB::transaction(function () use ($offerOption, $expiresAt): Reservation {
+            $offer = Offer::query()->whereKey($offerOption->offer_id)->lockForUpdate()->firstOrFail();
+
+            if ($offer->expires_at->isPast()) {
+                throw ValidationException::withMessages(['offer' => ['This offer has expired.']]);
+            }
+            if ($offer->status === 'accepted') {
+                throw ValidationException::withMessages(['offer' => ['This offer has already been accepted.']]);
+            }
+
+            $unitId = $offerOption->unit_id;
+            if ($unitId !== null) {
+                $candidate = Unit::query()->with('site')->whereKey($unitId)->lockForUpdate()->first();
+                if ($candidate === null || ! $candidate->isAvailableOn(SiteClock::today($candidate->site))) {
+                    $unitId = null;
+                }
+            }
+
+            $unitId ??= Unit::resolveUnitIdForRate($offerOption->unit_class_rate_id);
+            if ($unitId === null) {
+                throw new RuntimeException('No available unit found for the selected offer option.');
+            }
+
+            $now = now();
+            $offerOption->update(['selected_at' => $now]);
+            $offer->update([
+                'status' => 'accepted',
+                'accepted_at' => $now,
+            ]);
+
+            $offerOption->loadMissing('unitClassRate.price');
+            $cataloguePriceId = $offerOption->unitClassRate?->price?->id;
+            if ($cataloguePriceId === null) {
+                throw new RuntimeException('No current catalogue price for the selected offer option.');
+            }
+
+            $reservation = Reservation::query()->create([
+                'unit_id' => $unitId,
+                'contact_id' => $offer->contact_id,
+                'deal_id' => $offer->deal_id,
+                'price_id' => $cataloguePriceId,
+                'offer_option_id' => $offerOption->id,
+                'status' => ReservationStatus::Pending,
+                'expires_at' => $expiresAt !== null
+                    ? CarbonImmutable::parse($expiresAt)
+                    : self::reservationExpiresAt(),
+            ]);
+
+            $unit = Unit::query()->with('site')->findOrFail($unitId);
+            self::writeReservationHold($reservation, $unit, Employee::query()->value('id'));
+
+            SystemEvent::record('offer.accept.committed', $offer, [
+                'offer_option_id' => $offerOption->id,
+                'unit_id' => $unitId,
+            ]);
+            $props = [
+                'offer_option_id' => $offerOption->id,
+                'unit_id' => $unitId,
+            ];
+            RecordsActivity::core('offer.accepted', $offer, $props);
+            $offer->loadMissing('contact');
+            if ($offer->contact !== null) {
+                RecordsActivity::core('offer.accepted', $offer->contact, $props);
+            }
+
+            return $reservation;
+        });
+
+        $world->remember("{$handle}.offer", $offer->fresh() ?? $offer);
+        $world->remember("{$handle}.reservation", $reservation);
+        $heldUnit = $reservation->unit()->first();
+        if ($heldUnit !== null) {
+            $world->remember("{$handle}.unit", $heldUnit);
+        }
+
+        return $reservation;
+    }
+
+    /**
+     * Convert a pending reservation through ContractSigning (same path as the HTTP convert).
+     */
+    public static function convertReservation(
+        DemoWorld $world,
+        string $handle,
+        string $startDate,
+        ?string $moveInDate = null,
+        string $mode = 'immediate',
+        bool $withInsurance = false,
+        ?int $commitmentWeeks = null,
+        ?float $deposit = null,
+    ): Contract {
+        $reservation = self::reservation($world, $handle)->fresh([
+            'unit.unitClass',
+            'unit.site.country',
+            'deal',
+            'price',
+            'offerOption.discount',
+            'offerOption.unitClassRate.price',
+        ]);
+
+        if ($reservation->contract()->exists()) {
+            throw new RuntimeException("Reservation for {$handle} already has a contract.");
+        }
+        if (in_array($reservation->status, [ReservationStatus::Cancelled, ReservationStatus::Expired], true)) {
+            throw new RuntimeException("Reservation for {$handle} cannot be converted.");
+        }
+
+        $contact = $world->contact("{$handle}.contact");
+        $deal = $reservation->deal;
+        $unit = $reservation->unit;
+        if ($unit === null) {
+            throw new RuntimeException("Reservation for {$handle} has no unit.");
+        }
+        $amount = self::catalogueAmount($unit);
+        $moveIn = CarbonImmutable::parse($moveInDate ?? $startDate)->startOfDay();
+        $site = $unit->site()->with('country')->firstOrFail();
+        $today = SiteClock::today($site);
+        $billing = Setting::billing();
+        $leasing = Setting::leasing();
+        $createdBy = Employee::query()->value('id');
+        $remote = $mode === 'remote';
+        $status = $remote
+            ? ContractStatus::AwaitingSignature
+            : ($moveIn->toDateString() > $today->toDateString()
+                ? ContractStatus::Pending
+                : ContractStatus::Active);
+        $discount = $reservation->offerOption?->discount;
+
+        $contract = DB::transaction(function () use (
+            $reservation,
+            $contact,
+            $deal,
+            $unit,
+            $startDate,
+            $moveIn,
+            $amount,
+            $deposit,
+            $billing,
+            $leasing,
+            $createdBy,
+            $remote,
+            $status,
+            $site,
+            $discount,
+            $commitmentWeeks,
+            $withInsurance,
+        ): Contract {
+            $contract = Contract::query()->create([
+                'contact_id' => $contact->id,
+                'reservation_id' => $reservation->id,
+                'deal_id' => $deal instanceof Deal ? $deal->id : $reservation->deal_id,
+                'start_date' => $startDate,
+                'status' => $status->value,
+                'notice_period_days' => $leasing->defaultNoticePeriodDays,
+                'move_out_settlement' => $billing->moveOutSettlement,
+                'transfer_billing' => $billing->transferBilling,
+                'signed_at' => null,
+                'billing_interval' => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'billing_anchor_model' => $billing->billingAnchorModel,
+                'proration_method' => $billing->prorationMethod,
+                'move_in_date' => $moveIn->toDateString(),
+                'deposit_amount' => $deposit ?? $billing->defaultDepositAmount,
+                'currency' => $site->currency ?: 'EUR',
+            ]);
+
+            $taxRate = TaxResolver::resolve(
+                null,
+                $unit->unitClass?->tax_rate_code ?? UnitClass::query()->find($unit->unit_class_id)?->tax_rate_code,
+                $site,
+                $moveIn,
+            );
+
+            $price = ResolvesContractItemPrice::forSigning(
+                'unit',
+                (int) $unit->id,
+                BillingMath::round2($amount),
+                (int) $unit->site_id,
+                $createdBy !== null ? (int) $createdBy : null,
+                $reservation->price,
+            );
+
+            $item = $contract->items()->create([
+                'item_type' => 'unit',
+                'item_id' => $unit->id,
+                'price_id' => $price->id,
+                'effective_from' => $moveIn->toDateString(),
+                'effective_to' => null,
+                'tax_rate_id' => $taxRate?->id,
+                'tax_rate_snapshot' => $taxRate?->rate,
+            ]);
+            $item->load('price');
+
+            if ($discount instanceof Discount) {
+                AttachesDiscount::compileAndApply(
+                    $contract,
+                    $discount,
+                    BillingMath::round2($amount),
+                    (string) $item->price->currency,
+                    $moveIn->toDateString(),
+                    $commitmentWeeks,
+                    $createdBy !== null ? (int) $createdBy : null,
+                );
+            }
+
+            if ($withInsurance) {
+                self::attachInsuranceItem($contract, $site, $moveIn->toDateString(), $createdBy !== null ? (int) $createdBy : null);
+            }
+
+            $items = $contract->items()->whereNull('effective_to')->with('price')->get();
+            $agreed = CurrencyGuard::assertItemsAgree($items);
+            $contract->forceFill(['currency' => $agreed])->save();
+
+            self::releaseReservationHold($reservation);
+
+            if ($remote) {
+                ContractSigning::writeSignatureHolds($contract, $items, $createdBy !== null ? (int) $createdBy : null);
+            } else {
+                ContractSigning::complete(
+                    $contract,
+                    null,
+                    $createdBy !== null ? (int) $createdBy : null,
+                    now(),
+                );
+            }
+
+            $reservation->update(['status' => ReservationStatus::Confirmed->value]);
+
+            return $contract->fresh(['items.price', 'contact', 'occupancies']) ?? $contract;
+        });
+
+        $world->remember("{$handle}.contract", $contract);
+        $world->remember("{$handle}.unit", $unit);
+        $world->remember("{$handle}.reservation", $reservation->fresh() ?? $reservation);
+
+        if ($deal instanceof Deal && ! $remote) {
+            $deal->forceFill(['status' => DealStatus::ClosedWon])->save();
+        }
+
+        if (! $remote) {
+            $contact->forceFill(['status' => ContactLifecycleStatus::Tenant])->save();
+        }
+
+        return $contract;
+    }
+
+    public static function cancelReservation(DemoWorld $world, string $handle): Reservation
+    {
+        $reservation = self::reservation($world, $handle);
+
+        DB::transaction(function () use ($reservation): void {
+            self::releaseReservationHold($reservation);
+            $reservation->forceFill(['status' => ReservationStatus::Cancelled])->save();
+            RecordsActivity::core('reservation.cancelled', $reservation, [
+                'unit_id' => $reservation->unit_id,
+                'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
+            ]);
+        });
+
+        $fresh = $reservation->fresh() ?? $reservation;
+        $world->remember("{$handle}.reservation", $fresh);
+
+        return $fresh;
+    }
+
+    /**
+     * Board-column expiry. Hold ends_on already covers read-time blocking (invariant 13);
+     * we also flip status + release so the expired column and inventory stay honest.
+     */
+    public static function expireReservation(DemoWorld $world, string $handle): Reservation
+    {
+        $reservation = self::reservation($world, $handle);
+
+        DB::transaction(function () use ($reservation): void {
+            self::releaseReservationHold($reservation);
+            $reservation->forceFill(['status' => ReservationStatus::Expired])->save();
+        });
+
+        $fresh = $reservation->fresh() ?? $reservation;
+        $world->remember("{$handle}.reservation", $fresh);
+
+        return $fresh;
     }
 
     /**
@@ -1498,6 +1826,99 @@ final class JourneySupport
         }
 
         return $value;
+    }
+
+    public static function reservation(DemoWorld $world, string $handle): Reservation
+    {
+        $value = $world->get("{$handle}.reservation");
+        if (! $value instanceof Reservation) {
+            throw new RuntimeException("Handle {$handle}.reservation is not a Reservation.");
+        }
+
+        return $value;
+    }
+
+    private static function attachInsuranceItem(
+        Contract $contract,
+        Site $site,
+        string $moveInDate,
+        ?int $createdBy,
+    ): void {
+        $insurance = Insurance::query()->orderBy('id')->firstOrFail();
+        $rate = InsuranceRate::query()
+            ->with('price')
+            ->where('insurance_id', $insurance->id)
+            ->where('site_id', $site->id)
+            ->firstOrFail();
+        $catalogue = $rate->price;
+        if ($catalogue === null) {
+            throw new RuntimeException("No insurance catalogue price for site {$site->code}.");
+        }
+
+        $moveIn = CarbonImmutable::parse($moveInDate)->startOfDay();
+        $taxRate = TaxResolver::resolve(null, $insurance->tax_rate_code, $site, $moveIn);
+        $price = ResolvesContractItemPrice::forSigning(
+            'insurance',
+            (int) $insurance->id,
+            BillingMath::round2((string) $catalogue->amount),
+            (int) $site->id,
+            $createdBy,
+            $catalogue,
+        );
+
+        $contract->items()->create([
+            'item_type' => 'insurance',
+            'item_id' => $insurance->id,
+            'price_id' => $price->id,
+            'effective_from' => $moveIn->toDateString(),
+            'effective_to' => null,
+            'tax_rate_id' => $taxRate?->id,
+            'tax_rate_snapshot' => $taxRate?->rate,
+        ]);
+    }
+
+    private static function writeReservationHold(Reservation $reservation, Unit $unit, ?int $createdBy = null): UnitHold
+    {
+        $unit->loadMissing('site');
+        $site = $unit->site;
+        $startsOn = SiteClock::today($site);
+        $endsOn = SiteClock::dateAt($site, $reservation->expires_at)->addDay();
+
+        OccupancyGuard::assertVacant($unit->id, $startsOn, $endsOn);
+        HoldGuard::assertUnheld($unit->id, $startsOn, $endsOn);
+
+        return UnitHold::query()->create([
+            'unit_id' => $unit->id,
+            'hold_type' => HoldType::Reservation,
+            'reservation_id' => $reservation->id,
+            'starts_on' => $startsOn->format('Y-m-d'),
+            'ends_on' => $endsOn->format('Y-m-d'),
+            'released_at' => null,
+            'reason' => null,
+            'created_by' => $createdBy,
+        ]);
+    }
+
+    private static function releaseReservationHold(Reservation $reservation): void
+    {
+        UnitHold::query()
+            ->where('reservation_id', $reservation->id)
+            ->whereNull('released_at')
+            ->update(['released_at' => now()]);
+    }
+
+    private static function reservationExpiresAt(): CarbonImmutable
+    {
+        $settings = Setting::leasing();
+        $value = $settings->defaultReservationExpirationValue;
+        $unit = $settings->defaultReservationExpirationUnit;
+
+        return match ($unit) {
+            'minutes' => now()->addMinutes($value)->toImmutable(),
+            'hours' => now()->addHours($value)->toImmutable(),
+            'weeks' => now()->addWeeks($value)->toImmutable(),
+            default => now()->addDays($value)->toImmutable(),
+        };
     }
 
     /**

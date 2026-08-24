@@ -11,7 +11,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Ingrid Weiss — notice-given, mid-notice.
+ * Inés Valdés — notice-given, mid-notice.
  *
  * Move-out scheduled for next week at seed-end. Notice tab row + stop-line.
  */
@@ -31,8 +31,8 @@ final class IngridWeiss extends Journey
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
                 $site = $world->site('madrid');
-                JourneySupport::createContact($world, 'ingrid', 'Ingrid', 'Weiss', [
-                    'email' => 'ingrid.weiss@demo.keevaris.test',
+                JourneySupport::createContact($world, 'ingrid', 'Inés', 'Valdés', [
+                    'email' => 'ines.valdes@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'ingrid', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');

@@ -6,7 +6,6 @@ namespace Database\Seeders\Demo\Crowd\Archetypes;
 
 use App\Enums\DealStatus;
 use App\Models\EsignEnvelope;
-use App\Models\Site;
 use Database\Seeders\Demo\Comms\ContentLibrary;
 use Database\Seeders\Demo\Crowd\CrowdSupport;
 use Database\Seeders\Demo\Crowd\DemoRng;
@@ -14,8 +13,7 @@ use Database\Seeders\Demo\DemoWorld;
 use Database\Seeders\Demo\Journeys\JourneySupport;
 
 /**
- * Longer funnel, viewed offers, some remote signatures.
- * Negotiator slice: two inbound replies to the offer email before accepting.
+ * Longer funnel: viewed offer → accept (reservation) → convert. Some remote signatures.
  */
 final class ConsideredSignerCompiler
 {
@@ -28,27 +26,32 @@ final class ConsideredSignerCompiler
         bool $withScheduledRate = false,
         bool $withDiscount = false,
     ): array {
-        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60);
+        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 60, band: 'early');
         $viewDay = $enrol + $rng->int(3, 10);
         $reply1 = $viewDay + 1;
         $reply2 = $viewDay + 3;
         $signDay = max($reply2 + 1, $viewDay + $rng->int(2, 12));
         $remote = $rng->bool(0.45);
         $negotiator = $rng->bool(0.55);
+        $withInsurance = $rng->bool(0.5);
         $library = new ContentLibrary($rng);
         $discountPick = $withDiscount ? CrowdSupport::pickDiscount($rng) : null;
 
         $script = [
-            $enrol => static function (DemoWorld $world) use ($handle, $rng): void {
+            $enrol => static function (DemoWorld $world) use ($handle, $rng, $discountPick): void {
                 CrowdSupport::createCrowdContact($world, $handle, $rng);
                 $site = CrowdSupport::pickSite($world, $rng);
+                $unit = CrowdSupport::vacantUnit($site, $rng);
+                $class = $unit->unitClass()->first();
                 JourneySupport::openDeal($world, $handle, $site, DealStatus::OfferSent);
                 JourneySupport::createOffer(
                     $world,
                     $handle,
                     $site,
-                    $rng->pick(CrowdSupport::UNIT_CLASSES),
+                    $class?->code ?? $rng->pick(CrowdSupport::UNIT_CLASSES),
                     'sent',
+                    discountId: $discountPick['discount_id'] ?? null,
+                    unit: $unit,
                 );
             },
             $viewDay => static function (DemoWorld $world) use ($handle): void {
@@ -70,17 +73,14 @@ final class ConsideredSignerCompiler
         }
 
         if ($remote) {
-            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
-                $deal = $world->get("{$handle}.deal");
-                $site = Site::query()->findOrFail((int) $deal->site_id);
-                $unit = CrowdSupport::vacantUnit($site, $rng);
-                JourneySupport::walkInSign(
+            $script[$signDay] = static function (DemoWorld $world) use ($handle, $signDay, $discountPick, $withInsurance): void {
+                JourneySupport::acceptOffer($world, $handle);
+                JourneySupport::convertReservation(
                     $world,
                     $handle,
-                    $unit,
                     CrowdSupport::dateOn($signDay),
                     mode: 'remote',
-                    discountId: $discountPick['discount_id'] ?? null,
+                    withInsurance: $withInsurance,
                     commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::sendEnvelope($world, $handle);
@@ -99,16 +99,13 @@ final class ConsideredSignerCompiler
                 JourneySupport::markSteadyPayer($world, $handle);
             };
         } else {
-            $script[$signDay] = static function (DemoWorld $world) use ($handle, $rng, $signDay, $discountPick): void {
-                $deal = $world->get("{$handle}.deal");
-                $site = Site::query()->findOrFail((int) $deal->site_id);
-                $unit = CrowdSupport::vacantUnit($site, $rng);
-                JourneySupport::walkInSign(
+            $script[$signDay] = static function (DemoWorld $world) use ($handle, $signDay, $discountPick, $withInsurance): void {
+                JourneySupport::acceptOffer($world, $handle);
+                JourneySupport::convertReservation(
                     $world,
                     $handle,
-                    $unit,
                     CrowdSupport::dateOn($signDay),
-                    discountId: $discountPick['discount_id'] ?? null,
+                    withInsurance: $withInsurance,
                     commitmentWeeks: $discountPick['commitment_weeks'] ?? null,
                 );
                 JourneySupport::markSteadyPayer($world, $handle);

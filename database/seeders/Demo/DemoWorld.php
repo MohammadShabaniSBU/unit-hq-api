@@ -244,10 +244,10 @@ final class DemoWorld
     {
         $handles = [
             'MAD-01' => 'madrid',
-            'BCN-01' => 'barcelona',
-            'VLC-01' => 'valencia',
-            'LON-01' => 'london',
-            'PAR-01' => 'paris',
+            'MAD-02' => 'norte',
+            'MAD-03' => 'sur',
+            'MAD-04' => 'este',
+            'MAD-05' => 'oeste',
         ];
 
         foreach ($handles as $code => $handle) {

@@ -23,7 +23,7 @@ use RuntimeException;
 final class CrowdSupport
 {
     /** @var list<string> */
-    public const SITE_HANDLES = ['madrid', 'barcelona', 'valencia', 'london', 'paris'];
+    public const SITE_HANDLES = ['madrid', 'norte', 'sur', 'este', 'oeste'];
 
     /** @var list<string> */
     public const UNIT_CLASSES = [
@@ -47,18 +47,37 @@ final class CrowdSupport
     }
 
     /**
-     * Enrolment weighted toward months 2–10 of the 14-month window.
+     * Enrolment day. `$band` shapes occupancy: signers early, browsers late.
+     *
+     * @param  'early'|'mid'|'late'|'end'  $band
      */
-    public static function enrolDay(DemoRng $rng, int $minTenureDays = 0): int
+    public static function enrolDay(DemoRng $rng, int $minTenureDays = 0, string $band = 'mid'): int
     {
         $span = self::simSpanDays();
-        $earliest = 30;
+        $earliest = 20;
         $latest = max($earliest, $span - max(14, $minTenureDays) - 7);
 
-        // Triangular-ish: peak mid-window (months 2–10 ≈ days 30–300).
-        $peak = (int) (($earliest + min(300, $latest)) / 2);
-
-        return $rng->gaussInt($peak, 70, $earliest, $latest);
+        return match ($band) {
+            'early' => $rng->gaussInt(
+                (int) (($earliest + min(160, $latest)) / 2),
+                45,
+                $earliest,
+                min($latest, 220),
+            ),
+            'late' => $rng->gaussInt(
+                min($span - 25, 340),
+                35,
+                max(220, $span - 140),
+                $span - 5,
+            ),
+            'end' => $rng->int(max(0, $span - 12), max(1, $span - 2)),
+            default => $rng->gaussInt(
+                (int) (($earliest + min(300, $latest)) / 2),
+                70,
+                $earliest,
+                $latest,
+            ),
+        };
     }
 
     public static function dateOn(int $dayOffset): string
@@ -152,8 +171,8 @@ final class CrowdSupport
      */
     public static function person(DemoRng $rng, string $handle): array
     {
-        $first = fake()->firstName();
-        $last = fake()->lastName();
+        $first = fake('es_ES')->firstName();
+        $last = fake('es_ES')->lastName();
         $email = strtolower(str_replace('_', '.', $handle)).'.'.substr((string) $rng->int(1000, 9999), 0).'@demo.keevaris.test';
 
         return [

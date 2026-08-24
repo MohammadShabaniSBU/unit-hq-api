@@ -24,7 +24,7 @@ final class ChurnerCompiler
     {
         $tenureDays = $rng->int(90, 365);
         $span = CrowdSupport::simSpanDays();
-        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: $tenureDays);
+        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: $tenureDays, band: 'early');
         $signDay = $enrol + $rng->int(1, 5);
         $vacateDay = min($span - 3, $signDay + $tenureDays);
         if ($vacateDay <= $signDay + 60) {

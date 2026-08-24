@@ -15,7 +15,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Derek Hoyle — non-payment vacate.
+ * Diego Hoyos — non-payment vacate.
  *
  * Deep delinquency into the 60+ bucket, write-off cure, then ended involuntary.
  */
@@ -37,12 +37,12 @@ final class DerekHoyle extends Journey
 
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
-                $site = $world->site('london');
-                JourneySupport::createContact($world, 'derek', 'Derek', 'Hoyle', [
-                    'email' => 'derek.hoyle@demo.keevaris.test',
-                    'billing_country_code' => 'GB',
-                    'billing_city' => 'London',
-                    'billing_postal_code' => 'E1 1AA',
+                $site = $world->site('oeste');
+                JourneySupport::createContact($world, 'derek', 'Diego', 'Hoyos', [
+                    'email' => 'diego.hoyos@demo.keevaris.test',
+                    'billing_country_code' => 'ES',
+                    'billing_city' => 'Madrid',
+                    'billing_postal_code' => '28008',
                 ]);
                 JourneySupport::openDeal($world, 'derek', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');

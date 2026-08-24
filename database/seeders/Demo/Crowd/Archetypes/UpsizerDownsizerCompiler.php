@@ -23,7 +23,7 @@ final class UpsizerDownsizerCompiler
      */
     public static function compile(string $handle, DemoRng $rng): array
     {
-        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 120);
+        $enrol = CrowdSupport::enrolDay($rng, minTenureDays: 120, band: 'early');
         $signDay = $enrol + $rng->int(1, 4);
         $transferDay = $signDay + $rng->int(60, 200);
         $span = CrowdSupport::simSpanDays();

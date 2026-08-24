@@ -3,8 +3,8 @@
 ## Context
 
 The loop that runs the world: 14 months of ticks executing cast scripts, crowd
-archetype events, and the daily jobs — tuned to finish under five minutes. The crowd
-turns eighteen stories into a facility of 350.
+archetype events, and the daily jobs — tuned to finish under ten minutes. The crowd
+turns eighteen stories into a Madrid facility of ~800 contacts and ~80% occupancy.
 
 ## Scope
 
@@ -16,19 +16,23 @@ turns eighteen stories into a facility of 350.
 
 | Archetype | ~n | Journey shape |
 |---|---|---|
-| Browser | 55 | Contact + deal, goes quiet or lost; some get lead-chase then exit |
-| Quick signer | 70 | Enquiry → offer → walk-in sign within days → steady payer |
-| Considered signer | 40 | Longer funnel, viewed offers, some remote signatures |
+| Browser | 220 | Contact + deal, late enrolment; most stay open (quiet / lead-chase); few lost |
+| Quick signer | 140 | Enquiry → offer → walk-in sign within days → steady payer; ~50% insurance |
+| Considered signer | 240 | Offer → view → **accept (reservation)** → convert; some remote signatures; ~50% insurance |
 | Steady tenant | (from signers) | Autopay or link-payer, zero drama — the occupancy backbone |
-| Slow payer | 25 | Drifts 1-14 days late, playbook touches, always cures |
+| Slow payer | 35 | Drifts 1-14 days late, playbook touches, always cures |
 | Serious delinquent | 8 | Deep buckets; 2 reach overlock; 1 vacates non-payment |
-| Churner | 45 | 3–12 month tenures ending in clean vacates across the timeline |
-| Upsizer/downsizer | 10 | Historical transfers with rate deltas |
+| Churner | 80 | 3–12 month tenures ending in clean vacates across the timeline |
+| Upsizer/downsizer | 12 | Historical transfers with rate deltas |
+| Reservation pending | 32 | Offer accepted near seed-end; live hold |
+| Reservation expired | 16 | Accepted, then expired (status + released hold) |
+| Reservation cancelled | 10 | Accepted, then cancelled + lost |
 
-Generation: enrolment dates scattered across the 14 months (weighted toward
-months 2–10 so seed-end occupancy ≈ 85% and the trend *rises* — a demo wants a good
-story); parameters (unit class, payment behaviour offsets, amounts) from the seeded
-RNG. Archetypes compile to the same day-script format as personas — one executor.
+Generation: signers enrol **early** so occupancy climbs toward ~80–85%; browsers enrol
+**late** so the open-lead pool stays 250–350 at seed-end. Parameters (unit class,
+payment behaviour offsets, amounts) from the seeded RNG. Archetypes compile to the
+same day-script format as personas — one executor. Considered signers never skip the
+reservation: offer accept writes the hold (invariant 12).
 
 ## The loop
 
@@ -39,7 +43,7 @@ tenant — bounded per day). Sundays skip texture (realism, and a runtime lever)
 
 **Runtime budget** (instrumented per phase, printed): billing/delinquency runs are
 cursor/idempotency-cheap on no-op days by design — *trust but verify*; if the
-14-month wall exceeds 5 minutes, levers in order: weekly delinquency ticks between
+14-month wall exceeds 10 minutes, levers in order: weekly delinquency ticks between
 events, access sync only on nudge days (it's nudge-driven anyway; the hourly
 authoritative pass becomes weekly in-sim), crowd texture batch-size. Record the
 final timings in the PR.
@@ -51,7 +55,7 @@ final timings in the PR.
 - [ ] Occupancy trend rises to ~85%; every ageing bucket populated; churn spread
       across the year (movement report non-degenerate).
 - [ ] Deterministic: two runs, identical row counts + spot-checked ids/amounts.
-- [ ] Wall-clock < 5 min on the dev machine, timings printed.
+- [ ] Wall-clock < 10 min on the dev machine, timings printed.
 - [ ] Jobs run through their real entry points (the schedule-order list is code,
       not copy — assert against the Kernel's actual command list where feasible).
 
@@ -59,4 +63,4 @@ final timings in the PR.
 
 None in PHPUnit. Matrix bands, determinism, trends, and wall-clock budget are
 checked manually on `php artisan demo:seed` (timings print; two runs with the
-same `DEMO_SEED` should match). Soft target under 5 min; investigate if over 10.
+same `DEMO_SEED` should match). Soft target under 10 min; investigate if over 15.

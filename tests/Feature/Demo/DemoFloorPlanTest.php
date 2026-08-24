@@ -20,7 +20,7 @@ use Tests\TestCase;
 /**
  * S20-03: demo stage floor plans.
  *
- * StageSeeder runs once for the class (transactions disabled) so the 2 000-unit
+ * StageSeeder runs once for the class (transactions disabled) so the 600-unit
  * stage is not rebuilt per method. Schema is wiped in tearDownAfterClass so
  * later RefreshDatabase suites start clean.
  */
@@ -75,7 +75,7 @@ class DemoFloorPlanTest extends TestCase
             $this->assertCount(4, $maps);
             $this->assertSame([0, 1, 2, 3], $maps->pluck('sort_order')->all());
             $this->assertSame(
-                ['Ground floor', 'First floor', 'Second floor', 'Third floor'],
+                ['Planta baja', 'Planta 1', 'Planta 2', 'Planta 3'],
                 $maps->pluck('floor_name')->all()
             );
             $this->assertCount(4, $maps->pluck('floor_name')->unique());
@@ -88,8 +88,8 @@ class DemoFloorPlanTest extends TestCase
 
         foreach ($maps as $map) {
             if (
-                $map->site->code === 'PAR-01'
-                && $map->floor_name === 'Third floor'
+                $map->site->code === 'MAD-05'
+                && $map->floor_name === 'Planta 3'
             ) {
                 continue;
             }
@@ -106,7 +106,7 @@ class DemoFloorPlanTest extends TestCase
     public function test_site_units_are_fully_covered(): void
     {
         $intactCodes = Site::query()
-            ->where('code', '!=', 'PAR-01')
+            ->where('code', '!=', 'MAD-05')
             ->pluck('code');
 
         foreach ($intactCodes as $code) {
@@ -130,22 +130,22 @@ class DemoFloorPlanTest extends TestCase
             sort($union);
 
             $this->assertSame($unitNumbers, $union, "{$code} units must be fully covered");
-            $this->assertCount(400, $union);
+            $this->assertCount(120, $union);
         }
     }
 
     public function test_imperfect_map_reports_expected_buckets(): void
     {
-        $site = Site::query()->where('code', 'PAR-01')->firstOrFail();
+        $site = Site::query()->where('code', 'MAD-05')->firstOrFail();
         $map = SiteMap::query()
             ->where('site_id', $site->id)
-            ->where('floor_name', 'Third floor')
+            ->where('floor_name', 'Planta 3')
             ->firstOrFail();
 
         $result = SiteMapIdMatcher::match($site, $map->svg_map);
 
         $this->assertSame(
-            ['PAR-01-XX-01', 'PAR-01-XX-02'],
+            ['MAD-05-XX-01', 'MAD-05-XX-02'],
             $result['orphan_shapes']
         );
 
@@ -165,7 +165,7 @@ class DemoFloorPlanTest extends TestCase
         $uncovered = array_values(array_diff($unitNumbers, array_keys($matched)));
         sort($uncovered);
 
-        $this->assertCount(3, $uncovered, 'PAR-01 site should report exactly 3 uncovered units');
+        $this->assertCount(3, $uncovered, 'MAD-05 site should report exactly 3 uncovered units');
     }
 
     public function test_stored_svg_is_already_sanitized(): void

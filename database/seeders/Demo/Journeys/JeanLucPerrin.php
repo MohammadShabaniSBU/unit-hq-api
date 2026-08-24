@@ -14,7 +14,7 @@ use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
 
 /**
- * Jean-Luc Perrin — awaiting-declined.
+ * Javier Peña — awaiting-declined.
  *
  * Remote envelope declined with a reason. End state: awaiting signature with
  * declined attention chip.
@@ -34,12 +34,12 @@ final class JeanLucPerrin extends Journey
 
         return [
             $startDay => static function (DemoWorld $world) use ($startDay): void {
-                $site = $world->site('paris');
-                JourneySupport::createContact($world, 'jean_luc', 'Jean-Luc', 'Perrin', [
-                    'email' => 'jeanluc.perrin@demo.keevaris.test',
-                    'billing_country_code' => 'FR',
-                    'billing_city' => 'Paris',
-                    'billing_postal_code' => '75001',
+                $site = $world->site('madrid');
+                JourneySupport::createContact($world, 'jean_luc', 'Javier', 'Peña', [
+                    'email' => 'javier.pena@demo.keevaris.test',
+                    'billing_country_code' => 'ES',
+                    'billing_city' => 'Madrid',
+                    'billing_postal_code' => '28001',
                 ]);
                 JourneySupport::openDeal($world, 'jean_luc', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');

@@ -2,13 +2,13 @@
 
 ## Goal
 
-One command produces a **living facility**: ~350 contacts across the lifecycle, deals
-in every stage, offers in every state, contracts in every status (active, pending,
-notice, awaiting-signature incl. declined/expiring, ended, cancelled), a delinquency
-book spread across every ageing bucket with overlocks and suspensions, hundreds of
-messages across all four channels, twelve months of billing/occupancy history feeding
-every S16 trend — and a printed **demo script** telling you which persona shows which
-story.
+One command produces a **living Madrid facility**: ~800 contacts across the lifecycle, deals
+in every stage, offers in every state, **reservations** (pending / expired / cancelled /
+converted), contracts in every status (active, pending, notice, awaiting-signature incl.
+declined/expiring, ended, cancelled), a delinquency book spread across every ageing bucket
+with overlocks and suspensions, hundreds of messages across all four channels, twelve months
+of billing/occupancy history feeding every S16 trend — and a printed **demo script** telling
+you which persona shows which story.
 
 ## The architecture: simulate, don't stage
 
@@ -36,11 +36,12 @@ history* — the cross-surface fixtures pass on the demo data by construction.
 ## Two layers of population
 
 - **The cast** (~18 named personas): hand-authored journeys hitting every demo story
-  — Marcus Webb's upsize (the original mockup conversation, made real), the full
+  — Marcos Vega's upsize (the original mockup conversation, made real), the full
   delinquency ladder with a denied door, the remote signer, the promise-keeper, the
   WhatsApp window dance. These are the people you *show*.
-- **The crowd** (~330 contacts): weighted archetypes (browser → lost, quick signer,
-  steady tenant, slow payer, churned…) generated deterministically to fill the
+- **The crowd** (~810 contacts): weighted archetypes (browser → open lead, quick
+  walk-in, considered signer via offer→reservation→convert, reservation pending/
+  expired/cancelled, slow payer, churned…) generated deterministically to fill the
   distributions below. These make the pages *full*.
 
 Deterministic RNG throughout (the house rule); `DEMO_SEED` env overrides for variety.
@@ -49,10 +50,13 @@ Deterministic RNG throughout (the house rule); `DEMO_SEED` env overrides for var
 
 | Domain | Distribution |
 |---|---|
-| Contacts | ~350: 60 prospects, 40 leads, 30 opportunities, 170 tenants, 45 past, 5 lost |
-| Deals | every stage populated; ~25 open |
-| Offers | draft / sent / viewed / accepted / expired all present; ~2 declined-ish paths |
-| Contracts | ~180 active · 8 notice · 5 pending · 6 awaiting-signature (1 declined, 1 expiring ≤3d, 1 viewed) · ~60 ended (mix vacated/non-payment) · 5 cancelled |
+| Geography | 5 Madrid sites (MAD-01…05), EUR, `Europe/Madrid`, IVA 21% on units / insurance exempt |
+| Inventory | 12 classes × 10 units × 5 sites = **600 units**; occupancy climbs toward **~80–85%** |
+| Contacts | ~800: 250–350 open prospects/leads, ~450 tenants, remainder past/lost |
+| Deals | every stage populated; open funnel stays full (browsers enrol late) |
+| Offers | draft / sent / viewed / accepted / expired all present |
+| Reservations | ~32 live pending · ~16 expired · ~10 cancelled · considered signers convert via reservation |
+| Contracts | ~450 active · notice/pending/awaiting-signature (declined + expiring) · ended mix · cancelled |
 | Transfers | ~12 historical (up/down/same mix) · rate changes ~20 applied + 3 scheduled |
 | Discounts | ≥15 contracts with provenance (percent + free_time); Nadia 20% veteran; Amara in €0 free window |
 | Delinquency | open cases in every bucket 1-7…60+; ~6 overlocked; 3 suspended; 2 paused; promise-flags present; cured history |
@@ -72,10 +76,13 @@ Deterministic RNG throughout (the house rule); `DEMO_SEED` env overrides for var
 
 ## Risks
 
-**Runtime.** 420 simulated days × jobs is real work; target < 5 minutes wall-clock.
+**Runtime.** 420 simulated days × jobs is real work; target < 10 minutes wall-clock.
 Levers, in order: run heavy jobs (billing/delinquency) on their natural cadence not
 daily where equivalent, scope syncs to touched contracts, batch the crowd's
 uneventful days. Measure in 02; a 20-minute seeder dies of disuse.
+
+**Spain is a demo-stage choice, not a product lock.** `demo:seed` builds Madrid /
+EUR / IVA. `DatabaseSeeder` (test fixtures with BCN/LON/PAR) stays untouched.
 
 **Existing seeders stay.** The per-sprint fixtures serve the test suite; the demo
 world is opt-in (`php artisan demo:seed` on a fresh migrate). Never entangle them —
