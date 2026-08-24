@@ -31,6 +31,7 @@ final class EvalAssertions
         'access_suspensions',
         'offers',
         'reservations',
+        'unit_holds',
     ];
 
     /**

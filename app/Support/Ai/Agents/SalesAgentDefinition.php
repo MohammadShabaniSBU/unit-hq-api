@@ -25,6 +25,7 @@ final class SalesAgentDefinition implements AgentDefinition
             'pricing.discounts',
             'sales.propose_offer',
             'sales.create_offer',
+            'sales.create_reservation',
             'crm.create_contact',
             'crm.create_deal',
             'crm.create_task',

@@ -1,0 +1,17 @@
+id: sales/create-reservation
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: channel_asserted
+  contact: agent_lead
+turns:
+  - input: "Please hold a small unit for me in Madrid."
+    expect_tools: [sales.create_reservation]
+    expect_tool_denied:
+      tool: sales.create_reservation
+      reason: requires_approval
+    expect_writes: {}
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

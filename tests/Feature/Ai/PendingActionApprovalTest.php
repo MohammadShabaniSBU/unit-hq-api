@@ -12,6 +12,7 @@ use App\Models\Price;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
+use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use App\Support\Ai\Enums\PendingActionStatus;
 use App\Support\Ai\Guards\CannedReply;
@@ -119,6 +120,27 @@ class PendingActionApprovalTest extends TestCase
 
         $this->assertSame(PendingActionStatus::Pending, $pending->fresh()->status);
         $this->assertSame(0, Reservation::query()->count());
+    }
+
+    #[Test]
+    public function occupying_the_last_unit_between_repropose_and_commit_returns_422(): void
+    {
+        $pending = $this->queueProposal();
+        $this->reservationTool->beforeCommit = function (): void {
+            $this->occupy($this->unit);
+        };
+        Sanctum::actingAs($this->employee);
+
+        $this->postJson("/api/agent-pending-actions/{$pending->id}/approve")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['failure_reason']);
+
+        $fresh = $pending->fresh();
+        $this->assertSame(PendingActionStatus::Pending, $fresh->status);
+        $this->assertNotNull($fresh->failure_reason);
+        $this->assertNull($fresh->result_id);
+        $this->assertSame(0, Reservation::query()->count());
+        $this->assertSame(0, UnitHold::query()->count());
     }
 
     #[Test]

@@ -45,5 +45,14 @@ class AiAgentSeeder extends Seeder
                 'max_per_day' => 50,
             ],
         );
+
+        $sales->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_reservation'],
+            [
+                'mode' => WritePolicyMode::Propose,
+                'max_per_conversation' => 1,
+                'max_per_day' => 20,
+            ],
+        );
     }
 }

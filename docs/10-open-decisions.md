@@ -156,6 +156,7 @@
 | Voice for customer-facing agents | Employee copilot only this sprint. `AgentChannel::Voice` exists for ChannelProfile exhaustiveness; `POST /api/agent-conversations` rejects it. |
 | Agent→App UI navigation actions | Natural follow-up once the transcript loop is trusted. v1 is App→Agent `copilot_answer_ready` only. |
 | Agent reservation active-hold uniqueness | **Option 1 taken (S24-01):** in-transaction check inside `ReservationCreation::create` under the existing `lockForUpdate` on the candidate unit, scoped to `source = ai_agent`, plus supporting index `(contact_id, status)`. Operator double-holds stay legal. **Known gap:** two concurrent agent creates that pick *different* units of the same class do not share that lock, so a double-insert is still possible. **Rejected for now:** (2) denormalise `site_id` / `unit_class_id` onto `reservations` for a Postgres partial unique — derived state (invariant 5). (3) exclusion constraint — overkill. Revisit only if (1) proves insufficient in production. |
+| Promoting `sales.create_reservation` to `commit` | Not a date. Bar: 200+ replayed conversations through `agent:replay` with zero grounding suppressions on reservation turns, zero cross-site holds, zero duplicate holds, and a measured approval rate above 90% (operators were rubber-stamping, so the click was buying nothing). Never promote on a calendar date. |
 
 ## Active WIP
 

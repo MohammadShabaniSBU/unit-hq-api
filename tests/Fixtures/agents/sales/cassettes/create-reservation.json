@@ -1,25 +1,26 @@
 {
     "agent": "sales",
-    "fixture": "sales/no-availability",
+    "fixture": "sales/create-reservation",
     "turn_index": 0,
-    "prompt_hash": "432e69c7147fa00da48b93c68d6d02c293b402f1991bc39ee1c2ed6cb33edd44",
+    "prompt_hash": "875efa58824f4013736b5f476f99d4b4b784c321efe38e2381d0aa09e07660f1",
     "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
     "responses": [
         {
             "content": "",
             "tool_calls": [
                 {
-                    "name": "facility.availability",
+                    "name": "sales.create_reservation",
                     "id": "call_1",
                     "arguments": {
-                        "site_id": "{{empty.id}}"
+                        "deal_id": "{{agent_deal.id}}",
+                        "unit_class_id": "{{small_class.id}}"
                     }
                 }
             ],
             "finish_reason": "tool_calls"
         },
         {
-            "content": "No units available matching those filters as of now. I am an automated assistant.",
+            "content": "I've asked a colleague to confirm that — you'll hear back shortly. I am an automated assistant.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

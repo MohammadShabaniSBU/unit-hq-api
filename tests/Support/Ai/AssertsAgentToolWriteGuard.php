@@ -21,6 +21,7 @@ trait AssertsAgentToolWriteGuard
         'access_suspensions',
         'offers',
         'reservations',
+        'unit_holds',
     ];
 
     protected function startWriteGuard(): void

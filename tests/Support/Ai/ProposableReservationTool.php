@@ -18,6 +18,7 @@ use App\Support\Ai\Tools\ToolResult;
 use App\Support\Leasing\LeasingActor;
 use App\Support\Leasing\ReservationCreation;
 use App\Support\Time\SiteClock;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 
 final class ProposableReservationTool implements ProposableTool
@@ -26,6 +27,9 @@ final class ProposableReservationTool implements ProposableTool
 
     /** @var array<string, mixed>|null */
     public ?array $lastCommitPayload = null;
+
+    /** @var (callable(): void)|null */
+    public $beforeCommit = null;
 
     public function key(): string
     {
@@ -143,18 +147,35 @@ final class ProposableReservationTool implements ProposableTool
     ): ToolResult {
         $this->lastCommitPayload = $payload;
 
-        $reservation = ReservationCreation::create(
-            (int) $payload['site_id'],
-            (int) $payload['unit_class_id'],
-            (int) $payload['contact_id'],
-            (int) $payload['deal_id'],
-            null,
-            null,
-            null,
-            null,
-            [],
-            $actor,
-        );
+        if ($this->beforeCommit !== null) {
+            ($this->beforeCommit)();
+        }
+
+        try {
+            $reservation = ReservationCreation::create(
+                (int) $payload['site_id'],
+                (int) $payload['unit_class_id'],
+                (int) $payload['contact_id'],
+                (int) $payload['deal_id'],
+                null,
+                null,
+                null,
+                null,
+                [],
+                $actor,
+            );
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->filter()->first();
+            $message = is_string($message) && $message !== ''
+                ? $message
+                : 'Reservation could not be created.';
+
+            if (str_contains($message, 'No available unit')) {
+                return ToolResult::notFound($message);
+            }
+
+            return ToolResult::error($message);
+        }
 
         return ToolResult::ok(
             ['reservation_id' => $reservation->id],

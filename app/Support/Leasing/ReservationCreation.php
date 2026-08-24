@@ -107,21 +107,11 @@ final class ReservationCreation
                 ]);
             }
 
-            if ($actor->pipelineSource() === PipelineSource::AiAgent) {
-                $alreadyHeld = Reservation::query()
-                    ->where('source', PipelineSource::AiAgent)
-                    ->where('contact_id', $contactId)
-                    ->where('status', ReservationStatus::Pending)
-                    ->whereHas('unit', function (Builder $query) use ($siteId, $unitClassId): void {
-                        $query->where('site_id', $siteId)->where('unit_class_id', $unitClassId);
-                    })
-                    ->exists();
-
-                if ($alreadyHeld) {
-                    throw ValidationException::withMessages([
-                        'unit_class_id' => ['An agent already holds a unit in this class for this contact at this site.'],
-                    ]);
-                }
+            if ($actor->pipelineSource() === PipelineSource::AiAgent
+                && self::agentHasActiveHold($contactId, $siteId, $unitClassId)) {
+                throw ValidationException::withMessages([
+                    'unit_class_id' => ['An agent already holds a unit in this class for this contact at this site.'],
+                ]);
             }
 
             $selectedUnit->load('site');
@@ -157,6 +147,18 @@ final class ReservationCreation
 
             return $reservation;
         });
+    }
+
+    public static function agentHasActiveHold(int $contactId, int $siteId, int $unitClassId): bool
+    {
+        return Reservation::query()
+            ->where('source', PipelineSource::AiAgent)
+            ->where('contact_id', $contactId)
+            ->where('status', ReservationStatus::Pending)
+            ->whereHas('unit', function (Builder $query) use ($siteId, $unitClassId): void {
+                $query->where('site_id', $siteId)->where('unit_class_id', $unitClassId);
+            })
+            ->exists();
     }
 
     public static function defaultExpiry(): Carbon

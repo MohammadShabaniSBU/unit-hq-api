@@ -98,6 +98,7 @@ class AgentToolWriteGuardTest extends TestCase
             // Deliberately invalid: missing options so validation fails before handle()
             // and the all-tools sweep still treats offers as forbidden.
             'sales.create_offer' => ['deal_id' => 1],
+            'sales.create_reservation' => ['deal_id' => 1],
             default => [],
         };
     }

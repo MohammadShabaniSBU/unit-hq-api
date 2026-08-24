@@ -43,6 +43,15 @@ class AiAgentSeederTest extends TestCase
         $this->assertSame(WritePolicyMode::Commit, $policy->mode);
         $this->assertSame(2, $policy->max_per_conversation);
         $this->assertSame(50, $policy->max_per_day);
+
+        $hold = AgentWritePolicy::query()
+            ->where('ai_agent_id', $sales->id)
+            ->where('tool_key', 'sales.create_reservation')
+            ->first();
+        $this->assertNotNull($hold);
+        $this->assertSame(WritePolicyMode::Propose, $hold->mode);
+        $this->assertSame(1, $hold->max_per_conversation);
+        $this->assertSame(20, $hold->max_per_day);
     }
 
     #[Test]
@@ -56,5 +65,6 @@ class AiAgentSeederTest extends TestCase
         $this->assertSame($before, AiAgent::query()->orderBy('key')->get(['id', 'key', 'name', 'model'])->toArray());
         $this->assertSame(2, AiAgent::query()->count());
         $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'sales.create_offer')->count());
+        $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'sales.create_reservation')->count());
     }
 }

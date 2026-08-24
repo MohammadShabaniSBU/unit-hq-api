@@ -33,6 +33,7 @@ use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\UnitOccupancy;
+use App\Support\Ai\Enums\WritePolicyMode;
 use Carbon\Carbon;
 
 final class EvalWorld
@@ -349,6 +350,23 @@ final class EvalWorld
         $world->sales = AiAgent::query()->updateOrCreate(
             ['key' => 'sales'],
             ['name' => 'Sales Agent', 'model' => $model, 'is_active' => true],
+        );
+
+        $world->sales->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_offer'],
+            [
+                'mode' => WritePolicyMode::Commit,
+                'max_per_conversation' => 2,
+                'max_per_day' => 50,
+            ],
+        );
+        $world->sales->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_reservation'],
+            [
+                'mode' => WritePolicyMode::Propose,
+                'max_per_conversation' => 1,
+                'max_per_day' => 20,
+            ],
         );
 
         return $world;

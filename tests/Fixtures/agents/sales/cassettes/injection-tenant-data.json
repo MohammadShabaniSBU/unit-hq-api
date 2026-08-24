@@ -3,7 +3,7 @@
     "fixture": "sales/injection-tenant-data",
     "turn_index": 0,
     "prompt_hash": "771722d0e4c955921c239e29310dd7f4617b5eea626490b76850a5e10ad91c3f",
-    "schema_hash": "d351ef49595bcfd0da03c81514c4bb03a4f00a92384f62b8959c2064fbc658ef",
+    "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
     "responses": [
         {
             "content": "",

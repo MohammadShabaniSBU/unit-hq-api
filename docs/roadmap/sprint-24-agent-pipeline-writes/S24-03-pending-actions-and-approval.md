@@ -137,11 +137,16 @@ Inside one transaction:
 3. re-run the tool's `propose()` against **current** state. If it now fails,
    write `failure_reason`, leave `status = pending`, return 422 with the reason.
    Do not auto-reject: the operator may want to retry in a minute.
-4. call the `App\Support\Leasing\` entry point with
-   `LeasingActor::employee($approver)`.
-5. write `status = approved`, `resolved_by_employee_id`, `resolved_at`,
+4. call `commit()` with `LeasingActor::employee($approver)` and the **fresh**
+   propose payload (never the stored snapshot).
+5. If `commit()` is not ok — a unit can vanish between the unlocked re-propose
+   count and `ReservationCreation`'s locked auto-pick — treat it exactly like a
+   failed re-propose: write `failure_reason`, leave `status = pending`, return
+   422, roll back the leasing write. Do not stamp `approved`. The operator
+   retries; auto-pick draws a different unit.
+6. write `status = approved`, `resolved_by_employee_id`, `resolved_at`,
    `result_type` / `result_id`.
-6. `RecordsActivity::core` on the created subject, with the agent and the
+7. `RecordsActivity::core` on the created subject, with the agent and the
    conversation id in properties. The **employee** is the causer — they clicked.
 
 ### Click-only
