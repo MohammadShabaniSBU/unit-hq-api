@@ -133,7 +133,6 @@ final class CrowdSupport
     public static function vacantUnit(Site $site, DemoRng $rng): Unit
     {
         $classes = self::UNIT_CLASSES;
-        // Shuffle deterministically via RNG picks without mutating shared const.
         $order = [];
         $pool = $classes;
         while ($pool !== []) {
@@ -142,28 +141,33 @@ final class CrowdSupport
             array_splice($pool, $idx, 1);
         }
 
-        foreach ($order as $code) {
-            if (! UnitClass::query()->where('code', $code)->exists()) {
-                continue;
+        $sites = collect([$site])->concat(
+            Site::query()->where('id', '!=', $site->id)->orderBy('id')->get()
+        );
+
+        foreach ($sites as $candidate) {
+            foreach ($order as $code) {
+                if (! UnitClass::query()->where('code', $code)->exists()) {
+                    continue;
+                }
+                try {
+                    return JourneySupport::vacantUnit($candidate, $code);
+                } catch (RuntimeException) {
+                    continue;
+                }
             }
-            try {
-                return JourneySupport::vacantUnit($site, $code);
-            } catch (RuntimeException) {
-                continue;
+
+            $all = UnitClass::query()->orderBy('code')->pluck('code');
+            foreach ($all as $code) {
+                try {
+                    return JourneySupport::vacantUnit($candidate, (string) $code);
+                } catch (RuntimeException) {
+                    continue;
+                }
             }
         }
 
-        // Last resort: any class at site.
-        $all = UnitClass::query()->orderBy('code')->pluck('code');
-        foreach ($all as $code) {
-            try {
-                return JourneySupport::vacantUnit($site, (string) $code);
-            } catch (RuntimeException) {
-                continue;
-            }
-        }
-
-        throw new RuntimeException("No vacant unit at site {$site->code} for crowd enrolment.");
+        throw new RuntimeException('No vacant unit in the demo facility for crowd enrolment.');
     }
 
     /**

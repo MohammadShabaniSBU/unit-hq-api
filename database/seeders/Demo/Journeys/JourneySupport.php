@@ -373,6 +373,10 @@ final class JourneySupport
             $agreed = CurrencyGuard::assertItemsAgree($contract->items()->whereNull('effective_to')->with('price')->get());
             $contract->forceFill(['currency' => $agreed])->save();
 
+            if ($deal instanceof Deal && (int) $deal->site_id !== (int) $unit->site_id) {
+                $deal->forceFill(['site_id' => $unit->site_id])->save();
+            }
+
             $items = $contract->items()->whereNull('effective_to')->with('price')->get();
 
             if ($remote) {
@@ -391,6 +395,7 @@ final class JourneySupport
 
         $world->remember("{$handle}.contract", $contract);
         $world->remember("{$handle}.unit", $unit);
+        $world->remember("{$handle}.site", $site);
 
         if ($deal instanceof Deal && ! $remote) {
             $deal->forceFill(['status' => DealStatus::ClosedWon])->save();
@@ -1484,18 +1489,20 @@ final class JourneySupport
                 throw ValidationException::withMessages(['offer' => ['This offer has already been accepted.']]);
             }
 
-            $unitId = $offerOption->unit_id;
-            if ($unitId !== null) {
-                $candidate = Unit::query()->with('site')->whereKey($unitId)->lockForUpdate()->first();
-                if ($candidate === null || ! $candidate->isAvailableOn(SiteClock::today($candidate->site))) {
-                    $unitId = null;
-                }
-            }
+            $expires = $expiresAt !== null
+                ? CarbonImmutable::parse($expiresAt)
+                : self::reservationExpiresAt();
 
-            $unitId ??= Unit::resolveUnitIdForRate($offerOption->unit_class_rate_id);
-            if ($unitId === null) {
-                throw new RuntimeException('No available unit found for the selected offer option.');
-            }
+            $offerOption->loadMissing(['unitClassRate.site', 'unit.site']);
+            $clockSite = $offerOption->unitClassRate?->site
+                ?? $offerOption->unit?->site
+                ?? Site::query()->orderBy('id')->firstOrFail();
+            $holdFrom = SiteClock::today($clockSite);
+            $holdTo = SiteClock::dateAt($clockSite, $expires)->addDay();
+
+            $unit = self::pickUnitForOfferOption($offerOption, $holdFrom, $holdTo);
+            $deal = Deal::query()->find($offer->deal_id);
+            self::retargetOfferOption($offerOption, $unit, $deal instanceof Deal ? $deal : null);
 
             $now = now();
             $offerOption->update(['selected_at' => $now]);
@@ -1504,34 +1511,31 @@ final class JourneySupport
                 'accepted_at' => $now,
             ]);
 
-            $offerOption->loadMissing('unitClassRate.price');
+            $offerOption->load('unitClassRate.price');
             $cataloguePriceId = $offerOption->unitClassRate?->price?->id;
             if ($cataloguePriceId === null) {
                 throw new RuntimeException('No current catalogue price for the selected offer option.');
             }
 
             $reservation = Reservation::query()->create([
-                'unit_id' => $unitId,
+                'unit_id' => $unit->id,
                 'contact_id' => $offer->contact_id,
                 'deal_id' => $offer->deal_id,
                 'price_id' => $cataloguePriceId,
                 'offer_option_id' => $offerOption->id,
                 'status' => ReservationStatus::Pending,
-                'expires_at' => $expiresAt !== null
-                    ? CarbonImmutable::parse($expiresAt)
-                    : self::reservationExpiresAt(),
+                'expires_at' => $expires,
             ]);
 
-            $unit = Unit::query()->with('site')->findOrFail($unitId);
             self::writeReservationHold($reservation, $unit, Employee::query()->value('id'));
 
             SystemEvent::record('offer.accept.committed', $offer, [
                 'offer_option_id' => $offerOption->id,
-                'unit_id' => $unitId,
+                'unit_id' => $unit->id,
             ]);
             $props = [
                 'offer_option_id' => $offerOption->id,
-                'unit_id' => $unitId,
+                'unit_id' => $unit->id,
             ];
             RecordsActivity::core('offer.accepted', $offer, $props);
             $offer->loadMissing('contact');
@@ -1544,9 +1548,12 @@ final class JourneySupport
 
         $world->remember("{$handle}.offer", $offer->fresh() ?? $offer);
         $world->remember("{$handle}.reservation", $reservation);
-        $heldUnit = $reservation->unit()->first();
+        $heldUnit = $reservation->unit()->with('site')->first();
         if ($heldUnit !== null) {
             $world->remember("{$handle}.unit", $heldUnit);
+            if ($heldUnit->site !== null) {
+                $world->remember("{$handle}.site", $heldUnit->site);
+            }
         }
 
         return $reservation;
@@ -1836,6 +1843,107 @@ final class JourneySupport
         }
 
         return $value;
+    }
+
+    /**
+     * Prefer the pinned unit/class, then any class at the site, then any Madrid site.
+     * Offer pins are candidates — occupancy may have moved on by accept day.
+     */
+    private static function pickUnitForOfferOption(
+        OfferOption $offerOption,
+        CarbonImmutable $holdFrom,
+        CarbonImmutable $holdTo,
+    ): Unit {
+        if ($offerOption->unit_id !== null) {
+            $pinned = Unit::query()->with('site')->whereKey($offerOption->unit_id)->lockForUpdate()->first();
+            if ($pinned !== null && $pinned->enabled) {
+                try {
+                    OccupancyGuard::assertVacant($pinned->id, $holdFrom, $holdTo);
+                    HoldGuard::assertUnheld($pinned->id, $holdFrom, $holdTo);
+
+                    return $pinned;
+                } catch (ValidationException) {
+                    // Class or unit taken since the offer was written.
+                }
+            }
+        }
+
+        $preferredSiteId = $offerOption->unitClassRate?->site_id ?? $offerOption->unit?->site_id;
+        $preferredClassId = $offerOption->unitClassRate?->unit_class_id ?? $offerOption->unit?->unit_class_id;
+
+        $filters = [];
+        if ($preferredSiteId !== null && $preferredClassId !== null) {
+            $filters[] = ['site_id' => $preferredSiteId, 'class_id' => $preferredClassId];
+        }
+        if ($preferredSiteId !== null) {
+            $filters[] = ['site_id' => $preferredSiteId, 'class_id' => null];
+        }
+        $filters[] = ['site_id' => null, 'class_id' => null];
+
+        foreach ($filters as $filter) {
+            $unit = self::firstUnitAvailableOn($filter['site_id'], $filter['class_id'], $holdFrom, $holdTo);
+            if ($unit !== null) {
+                return $unit;
+            }
+        }
+
+        throw new RuntimeException('No available unit found for the selected offer option.');
+    }
+
+    private static function firstUnitAvailableOn(
+        ?int $siteId,
+        ?int $classId,
+        CarbonImmutable $from,
+        CarbonImmutable $to,
+    ): ?Unit {
+        $query = Unit::query()
+            ->with('site')
+            ->where('enabled', true)
+            ->availableOn($from)
+            ->orderBy('site_id')
+            ->orderBy('unit_number');
+        if ($siteId !== null) {
+            $query->where('site_id', $siteId);
+        }
+        if ($classId !== null) {
+            $query->where('unit_class_id', $classId);
+        }
+
+        foreach ($query->cursor() as $unit) {
+            try {
+                OccupancyGuard::assertVacant($unit->id, $from, $to);
+                HoldGuard::assertUnheld($unit->id, $from, $to);
+
+                return $unit;
+            } catch (ValidationException) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    private static function retargetOfferOption(OfferOption $option, Unit $unit, ?Deal $deal): void
+    {
+        $rate = UnitClassRate::query()
+            ->where('unit_class_id', $unit->unit_class_id)
+            ->where('site_id', $unit->site_id)
+            ->firstOrFail();
+
+        if ((int) $option->unit_id !== (int) $unit->id
+            || (int) $option->unit_class_rate_id !== (int) $rate->id
+        ) {
+            $option->forceFill([
+                'unit_id' => $unit->id,
+                'unit_class_rate_id' => $rate->id,
+            ])->save();
+            $option->unsetRelation('unitClassRate');
+            $option->unsetRelation('unit');
+        }
+
+        if ($deal instanceof Deal && (int) $deal->site_id !== (int) $unit->site_id) {
+            $deal->forceFill(['site_id' => $unit->site_id])->save();
+        }
     }
 
     private static function attachInsuranceItem(
