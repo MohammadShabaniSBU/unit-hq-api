@@ -63,7 +63,7 @@ class ContactSummaryContextTest extends TestCase
         $this->assertSame('Ada Lovelace', $payload['identity']['name']);
         $this->assertSame(['email'], $payload['channel_types']);
         $this->assertArrayNotHasKey('email', $payload['identity']);
-        $this->assertSame('A note with…', $payload['notes'][0]['content']);
+        $this->assertSame('A note wit…', $payload['notes'][0]['content']);
         $this->assertSame(64, strlen($context->digest()));
     }
 

@@ -6,8 +6,10 @@ namespace Tests\Feature\Copilot;
 
 use App\Models\CopilotVoiceSession;
 use App\Models\Employee;
+use App\Models\EmployeeRole;
+use App\Models\Role;
+use App\Models\Site;
 use App\Support\Auth\Permission;
-use Database\Factories\EmployeeFactory;
 use Database\Seeders\RbacSystemRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Events\MessageLogged;
@@ -31,7 +33,14 @@ class CopilotVoiceTest extends TestCase
     public function token_forbidden_without_voice_permission(): void
     {
         $employee = Employee::factory()->withoutRoleGrant()->create();
-        EmployeeFactory::grantCompanyRole($employee, 'leasing_agent');
+        $site = Site::factory()->create();
+        $roleId = (int) Role::query()->where('key', 'leasing_agent')->value('id');
+        EmployeeRole::query()->create([
+            'employee_id' => $employee->id,
+            'role_id' => $roleId,
+            'site_id' => $site->id,
+            'granted_by' => null,
+        ]);
         Sanctum::actingAs($employee);
 
         $this->assertFalse($employee->fresh()?->can(Permission::CopilotVoiceUse->value));

@@ -53,7 +53,7 @@ final class ChannelGuard implements OutboundGuard
         }
 
         if ($channel->supportsSubject && ($subject === null || $subject === '')) {
-            $subject = $this->synthesizeSubject($body);
+            $subject = $this->synthesizeSubject($body, $ctx);
             $detail['subject_synthesized'] = true;
         }
 
@@ -105,7 +105,7 @@ final class ChannelGuard implements OutboundGuard
         return [null, $draft, false];
     }
 
-    private function synthesizeSubject(string $body): string
+    private function synthesizeSubject(string $body, AgentContext $ctx): string
     {
         $lines = preg_split("/\r\n|\r|\n/", $body);
         $line = '';
@@ -118,12 +118,32 @@ final class ChannelGuard implements OutboundGuard
             }
         }
 
+        $line = $this->stripTrailingDisclosure($line, $ctx);
+
         if ($line === '') {
             return 'Your enquiry';
         }
 
         if (mb_strlen($line) > self::SUBJECT_MAX_CHARS) {
             $line = rtrim(mb_substr($line, 0, self::SUBJECT_MAX_CHARS));
+        }
+
+        return $line;
+    }
+
+    private function stripTrailingDisclosure(string $line, AgentContext $ctx): string
+    {
+        $phrase = DisclosureGuard::phraseFor($ctx->conversation->locale ?? $ctx->principal->locale);
+        if ($phrase === '' || $line === '') {
+            return $line;
+        }
+
+        $suffix = ' '.$phrase;
+        $suffixLen = mb_strlen($suffix);
+        if (mb_strlen($line) >= $suffixLen
+            && mb_strtolower(mb_substr($line, -$suffixLen)) === mb_strtolower($suffix)
+        ) {
+            return rtrim(mb_substr($line, 0, mb_strlen($line) - $suffixLen));
         }
 
         return $line;

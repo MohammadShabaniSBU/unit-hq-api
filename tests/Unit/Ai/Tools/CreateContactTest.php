@@ -6,6 +6,7 @@ namespace Tests\Unit\Ai\Tools;
 
 use App\Ai\Tools\CreateContact;
 use App\Models\Contact;
+use App\Models\Site;
 use App\Support\Auth\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
@@ -22,11 +23,13 @@ class CreateContactTest extends TestCase
     public function creates_contact_when_employee_has_permission(): void
     {
         $employee = $this->employeeWithPermission(Permission::ContactManage);
+        $site = Site::factory()->create();
 
         $result = json_decode((new CreateContact($employee))->handle(new Request([
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada@example.com',
+            'site_id' => $site->id,
         ])), true);
 
         $this->assertTrue($result['success']);

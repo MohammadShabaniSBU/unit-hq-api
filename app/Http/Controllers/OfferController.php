@@ -10,17 +10,16 @@ use App\Http\Resources\OfferResource;
 use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\OfferOption;
-use App\Models\Unit;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
 use App\Support\Discounts\DiscountSurface;
 use App\Support\Facility\SiteMapLocator;
+use App\Support\Leasing\LeasingActor;
+use App\Support\Leasing\OfferCreation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class OfferController extends Controller
@@ -115,28 +114,16 @@ class OfferController extends Controller
         $attributes = $validated['attributes'] ?? [];
         unset($validated['options'], $validated['attributes']);
 
-        /** @var Employee|null $actor */
-        $actor = $request->user();
+        /** @var Employee $employee */
+        $employee = $request->user();
+        assert($employee instanceof Employee);
 
-        $offer = DB::transaction(function () use ($validated, $options, $attributes, $actor) {
-            $validated['token'] ??= Str::random(64);
-
-            $offer = Offer::query()->create($validated);
-
-            foreach ($options as $optionData) {
-                $optionData['unit_id'] = Unit::resolveUnitIdForRate($optionData['unit_class_rate_id']);
-                $offer->options()->create($optionData);
-            }
-
-            AppliesCreateAttributes::apply(
-                AttributeEntityType::Offer,
-                $offer,
-                $attributes,
-                $actor,
-            );
-
-            return $offer;
-        });
+        $offer = OfferCreation::create(
+            $validated,
+            $options,
+            $attributes,
+            LeasingActor::employee($employee),
+        );
 
         return $this->created(
             OfferResource::make($offer->load([

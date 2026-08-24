@@ -2,31 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\ReservationStatus;
-use App\Http\Controllers\Concerns\WritesReservationHolds;
 use App\Http\Resources\OfferOptionResource;
 use App\Http\Resources\OfferResource;
-use App\Models\Offer;
 use App\Models\OfferOption;
-use App\Models\Reservation;
-use App\Models\Setting;
-use App\Models\SystemEvent;
 use App\Models\Unit;
+use App\Support\Auth\Permission;
 use App\Support\Facility\SiteMapLocator;
-use App\Support\RecordsActivity;
-use App\Support\Time\SiteClock;
+use App\Support\Leasing\LeasingActor;
+use App\Support\Leasing\OfferAcceptance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
 
 class OfferOptionController extends Controller
 {
-    use WritesReservationHolds;
-
     public function store(Request $request): JsonResponse
     {
         Gate::authorize(Permission::OfferManage->value);
@@ -102,115 +91,8 @@ class OfferOptionController extends Controller
 
     public function select(OfferOption $offerOption): JsonResponse
     {
-        $offerOption->load(['offer', 'unitClassRate']);
-        $offer = $offerOption->offer;
-
-        if ($offer->expires_at->isPast()) {
-            throw ValidationException::withMessages([
-                'offer' => ['This offer has expired.'],
-            ]);
-        }
-
-        if ($offer->status === 'accepted') {
-            throw ValidationException::withMessages([
-                'offer' => ['This offer has already been accepted.'],
-            ]);
-        }
-
-        SystemEvent::record('offer.accept.started', $offer, [
-            'offer_option_id' => $offerOption->id,
-        ]);
-
-        $offer = DB::transaction(function () use ($offerOption): Offer {
-            $offer = Offer::query()->whereKey($offerOption->offer_id)->lockForUpdate()->firstOrFail();
-
-            if ($offer->expires_at->isPast()) {
-                throw ValidationException::withMessages(['offer' => ['This offer has expired.']]);
-            }
-
-            if ($offer->status === 'accepted') {
-                throw ValidationException::withMessages(['offer' => ['This offer has already been accepted.']]);
-            }
-
-            $unitId = $offerOption->unit_id;
-            if ($unitId !== null) {
-                $candidate = Unit::query()->with('site')->whereKey($unitId)->lockForUpdate()->first();
-                if ($candidate === null || ! $candidate->isAvailableOn(SiteClock::today($candidate->site))) {
-                    $unitId = null;
-                }
-            }
-
-            $unitId ??= Unit::resolveUnitIdForRate($offerOption->unit_class_rate_id);
-
-            if ($unitId === null) {
-                throw ValidationException::withMessages(['unit' => ['No available unit found for the selected option.']]);
-            }
-
-            $now = now();
-            $offerOption->update(['selected_at' => $now]);
-            $offer->update([
-                'status'      => 'accepted',
-                'accepted_at' => $now,
-            ]);
-
-            $offerOption->loadMissing('unitClassRate.price');
-
-            $cataloguePriceId = $offerOption->unitClassRate?->price?->id;
-            if ($cataloguePriceId === null) {
-                throw ValidationException::withMessages([
-                    'unit_class_rate_id' => ['No current catalogue price for the selected option.'],
-                ]);
-            }
-
-            $reservation = Reservation::query()->create([
-                'unit_id'         => $unitId,
-                'contact_id'      => $offer->contact_id,
-                'deal_id'         => $offer->deal_id,
-                'price_id'        => $cataloguePriceId,
-                'offer_option_id' => $offerOption->id,
-                'status'          => ReservationStatus::Pending,
-                'expires_at'      => $this->reservationExpiresAt(),
-            ]);
-
-            $unit = Unit::query()->with('site')->findOrFail($unitId);
-            $this->writeReservationHold($reservation, $unit);
-
-            SystemEvent::record('offer.accept.committed', $offer, [
-                'offer_option_id' => $offerOption->id,
-                'unit_id' => $unitId,
-            ]);
-
-            $props = [
-                'offer_option_id' => $offerOption->id,
-                'unit_id' => $unitId,
-            ];
-            RecordsActivity::core('offer.accepted', $offer, $props);
-            $offer->loadMissing('contact');
-            if ($offer->contact !== null) {
-                RecordsActivity::core('offer.accepted', $offer->contact, $props);
-            }
-
-            return $offer->fresh()->load([
-                'contact',
-                'deal',
-                'options' => fn ($q) => $q->with(OfferOption::unitClassRateEagerLoads())->orderBy('display_order'),
-            ]);
-        });
+        $offer = OfferAcceptance::accept($offerOption, LeasingActor::publicLink());
 
         return $this->success(OfferResource::make($offer), 'Offer option selected successfully.');
-    }
-
-    private function reservationExpiresAt(): Carbon
-    {
-        $settings = Setting::leasing();
-        $value    = $settings->defaultReservationExpirationValue;
-        $unit     = $settings->defaultReservationExpirationUnit;
-
-        return match ($unit) {
-            'minutes' => now()->addMinutes($value),
-            'hours'   => now()->addHours($value),
-            'weeks'   => now()->addWeeks($value),
-            default   => now()->addDays($value),
-        };
     }
 }

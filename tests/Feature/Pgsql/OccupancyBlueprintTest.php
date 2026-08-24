@@ -104,7 +104,7 @@ class OccupancyBlueprintTest extends TestCase
         $this->assertNotNull($row);
 
         $asOf = substr((string) $row->as_of, 0, 10);
-        $maxDay = DB::selectOne('select max(day)::text as d from analytics.mv_unit_state_daily');
+        $maxDay = DB::selectOne('select max(day)::date::text as d from analytics.mv_unit_state_daily');
         $this->assertSame($maxDay->d, $asOf);
 
         $snap = OccupancyMetrics::snapshot($asOf, [$site->id]);

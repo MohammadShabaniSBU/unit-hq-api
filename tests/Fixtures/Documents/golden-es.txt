@@ -78,7 +78,7 @@ Contrato de alquiler de trastero
  
  
  Fianza: 200.00 EUR
- Fecha de entrada: 2026-08-01
+ Fecha de entrada: 01/08/2026
  Plazo de preaviso: 14 días
  Periodicidad de facturación: month
  

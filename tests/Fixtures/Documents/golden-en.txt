@@ -78,7 +78,7 @@ Self-storage rental agreement
  
  
  Deposit: 200.00 EUR
- Move-in date: 2026-08-01
+ Move-in date: 01/08/2026
  Notice period: 14 days
  Billing cadence: month
  

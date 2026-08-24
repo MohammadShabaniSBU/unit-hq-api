@@ -49,7 +49,7 @@ class DocRendererTest extends TestCase
                 'A-101',
                 '125.50',
                 '200.00',
-                '2026-08-01',
+                '01/08/2026',
                 '{{signature}}',
             ]);
 

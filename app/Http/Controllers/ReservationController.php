@@ -9,22 +9,18 @@ use App\Enums\ReservationStatus;
 use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\GeneratesFirstPeriodCharges;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
-use App\Http\Controllers\Concerns\WritesReservationHolds;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\DiscountResource;
 use App\Http\Resources\ReservationCardResource;
 use App\Http\Resources\ReservationResource;
 use App\Models\Contract;
-use App\Models\Deal;
 use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\Reservation;
 use App\Models\Setting;
-use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
-use App\Models\UnitClassRate;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
 use App\Support\Billing\BillingMath;
@@ -40,6 +36,9 @@ use App\Support\Discounts\CommitmentWeeks;
 use App\Support\Discounts\VersionPlan;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Fiscal\TaxResolver;
+use App\Support\Leasing\LeasingActor;
+use App\Support\Leasing\ReservationCreation;
+use App\Support\Leasing\ReservationHolds;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -56,7 +55,6 @@ class ReservationController extends Controller
     use AppliesPortalSiteFilter;
     use GeneratesFirstPeriodCharges;
     use SearchesWithFilters;
-    use WritesReservationHolds;
 
     public function index(Request $request): JsonResponse
     {
@@ -151,93 +149,27 @@ class ReservationController extends Controller
         $attributes = $validated['attributes'] ?? [];
         unset($validated['attributes']);
 
-        /** @var Employee|null $actor */
-        $actor = $request->user();
+        /** @var Employee $employee */
+        $employee = $request->user();
+        assert($employee instanceof Employee);
 
-        $reservation = DB::transaction(function () use ($validated, $attributes, $actor): Reservation {
-            if (! empty($validated['deal_id'])) {
-                $deal = Deal::query()->findOrFail($validated['deal_id']);
+        $rawStatus = $validated['status'] ?? null;
+        $status = $rawStatus instanceof ReservationStatus
+            ? $rawStatus
+            : ($rawStatus !== null ? ReservationStatus::from((string) $rawStatus) : null);
 
-                if ($deal->site_id === null) {
-                    throw ValidationException::withMessages([
-                        'deal_id' => ['Selected deal is missing a site and cannot create a reservation.'],
-                    ]);
-                }
-
-                if ($deal->site_id !== $validated['site_id']) {
-                    throw ValidationException::withMessages([
-                        'site_id' => ['Selected site must match the deal site.'],
-                    ]);
-                }
-            }
-
-            $latestRate = UnitClassRate::query()
-                ->with('price')
-                ->where('site_id', $validated['site_id'])
-                ->where('unit_class_id', $validated['unit_class_id'])
-                ->first();
-
-            if ($latestRate === null || $latestRate->price === null) {
-                throw ValidationException::withMessages([
-                    'unit_class_id' => ['No active price configured for this unit class at the selected site.'],
-                ]);
-            }
-
-            // Explicit unit_id: lock without availability scope so occupied/held
-            // units surface OccupancyGuard / HoldGuard 422s. Auto-pick uses
-            // Availability + site-local today (D8).
-            if (! empty($validated['unit_id'])) {
-                $selectedUnit = Unit::query()
-                    ->where('site_id', $validated['site_id'])
-                    ->where('unit_class_id', $validated['unit_class_id'])
-                    ->where('enabled', true)
-                    ->whereKey($validated['unit_id'])
-                    ->lockForUpdate()
-                    ->first();
-            } else {
-                $site = Site::query()->findOrFail($validated['site_id']);
-                $selectedUnit = Unit::query()
-                    ->where('site_id', $validated['site_id'])
-                    ->where('unit_class_id', $validated['unit_class_id'])
-                    ->where('enabled', true)
-                    ->availableOn(SiteClock::today($site))
-                    ->lockForUpdate()
-                    ->inRandomOrder()
-                    ->first();
-            }
-
-            if (! $selectedUnit) {
-                throw ValidationException::withMessages([
-                    'unit_id' => ['No available unit found for the selected site and unit class.'],
-                ]);
-            }
-
-            $selectedUnit->load('site');
-
-            $reservationData = $validated;
-            unset($reservationData['site_id'], $reservationData['unit_class_id'], $reservationData['unit_id']);
-
-            $reservationData['unit_id'] = $selectedUnit->id;
-            $reservationData['price_id'] = $latestRate->price->id;
-
-            $reservation = Reservation::query()->create($reservationData);
-
-            $this->writeReservationHold($reservation, $selectedUnit);
-
-            AppliesCreateAttributes::apply(
-                AttributeEntityType::Reservation,
-                $reservation,
-                $attributes,
-                $actor,
-            );
-
-            RecordsActivity::core('reservation.created', $reservation, [
-                'unit_id' => $reservation->unit_id,
-                'hold_expires_at' => $reservation->expires_at?->toIso8601String(),
-            ]);
-
-            return $reservation;
-        });
+        $reservation = ReservationCreation::create(
+            (int) $validated['site_id'],
+            (int) $validated['unit_class_id'],
+            (int) $validated['contact_id'],
+            isset($validated['deal_id']) ? (int) $validated['deal_id'] : null,
+            isset($validated['unit_id']) ? (int) $validated['unit_id'] : null,
+            Carbon::parse($validated['expires_at']),
+            isset($validated['offer_option_id']) ? (int) $validated['offer_option_id'] : null,
+            $status,
+            $attributes,
+            LeasingActor::employee($employee),
+        );
 
         return $this->created(
             ReservationResource::make($reservation->load(['unit.site', 'unit.unitClass', 'contact', 'deal'])),
@@ -677,7 +609,7 @@ class ReservationController extends Controller
 
             // Release reservation hold before opening occupancy / signature hold —
             // same TX; half-open ranges allow occupancy to start on the release day.
-            $this->releaseReservationHold($reservation);
+            ReservationHolds::release($reservation);
 
             if ($remote) {
                 ContractSigning::writeSignatureHolds($contract, $contractItems, $createdBy);

@@ -62,7 +62,7 @@ class SmartBlockTest extends TestCase
         $this->assertSame('125.50', $terms['items'][0]['amount']);
         $this->assertSame('A-101', $terms['items'][0]['label']);
         $this->assertSame('200.00', $terms['deposit']);
-        $this->assertSame('2026-08-01', $terms['move_in']);
+        $this->assertSame('01/08/2026', $terms['move_in']);
 
         $itemsOn = $contractComplete->itemsOn($contractComplete->move_in_date);
         $expectedAmount = $itemsOn->first()?->base_rate !== null
