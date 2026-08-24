@@ -14,6 +14,7 @@ use App\Models\Unit;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
 use App\Support\Discounts\DiscountSurface;
+use App\Support\Facility\SiteMapLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -173,6 +174,23 @@ class OfferController extends Controller
             OfferResource::make($offer),
             'Offer retrieved successfully.'
         );
+    }
+
+    public function mapByToken(string $token, OfferOption $offerOption): JsonResponse
+    {
+        $offer = Offer::query()->where('token', $token)->firstOrFail();
+
+        if ($offerOption->offer_id !== $offer->id) {
+            abort(404);
+        }
+
+        $payload = SiteMapLocator::payloadForOption($offerOption);
+
+        if ($payload === null) {
+            return $this->notFound('No site map contains this unit.');
+        }
+
+        return $this->success($payload, 'Offer option map retrieved successfully.');
     }
 
     public function show(Offer $offer): JsonResponse
