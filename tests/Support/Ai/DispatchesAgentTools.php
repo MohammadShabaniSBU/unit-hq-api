@@ -16,6 +16,8 @@ use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\PendingActionRecorder;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolResult;
 
@@ -85,7 +87,7 @@ trait DispatchesAgentTools
     ): AgentToolInvocation {
         $factKeys = $result->facts->all();
 
-        return AgentToolInvocation::query()->create([
+        $invocation = AgentToolInvocation::query()->create([
             'agent_conversation_id' => $ctx->conversation->id,
             'tool_key' => $toolKey,
             'arguments' => $arguments,
@@ -100,5 +102,12 @@ trait DispatchesAgentTools
             'result_id' => $result->resultId,
             'fact_keys' => $factKeys !== [] ? $factKeys : null,
         ]);
+
+        if ($result->deniedReason === ToolDeniedReason::RequiresApproval) {
+            $invocation->loadMissing('conversation');
+            app(PendingActionRecorder::class)->record($invocation, $result);
+        }
+
+        return $invocation;
     }
 }

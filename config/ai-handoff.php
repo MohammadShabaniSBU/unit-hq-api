@@ -10,6 +10,12 @@ return [
         'fr' => 'Je suis un assistant automatisé.',
     ],
 
+    'pending_approval' => [
+        'en' => "I've asked a colleague to confirm that — you'll hear back shortly.",
+        'es' => 'He pedido a un colega que lo confirme — te responderemos en breve.',
+        'fr' => "J'ai demandé à un collègue de confirmer cela — vous aurez bientôt des nouvelles.",
+    ],
+
     'rules' => [
         'en' => [
             'legal_or_complaint' => [

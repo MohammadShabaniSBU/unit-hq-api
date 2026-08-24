@@ -22,4 +22,6 @@ return [
 
     'conversation_call_budget' => 40,
 
+    'pending_action_ttl_minutes' => (int) env('AGENTS_PENDING_ACTION_TTL_MINUTES', 120),
+
 ];

@@ -7,6 +7,7 @@ namespace App\Support\Auth;
 use App\Models\AccessEvent;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
+use App\Models\AgentPendingAction;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractNotice;
@@ -54,7 +55,8 @@ final class SitePath
             Deal::class,
             Contact::class,
             MessageThread::class,
-            Task::class => true,
+            Task::class,
+            AgentPendingAction::class => true,
             default => false,
         };
     }
@@ -92,6 +94,7 @@ final class SitePath
             Contact::class => self::contactDRbac1($q, $siteIds),
             MessageThread::class => self::viaMessageThread($q, $siteIds),
             Task::class => self::viaTaskable($q, $siteIds),
+            AgentPendingAction::class => $q->whereIn($q->getModel()->getTable().'.site_id', $siteIds),
             default => $q->whereRaw('1 = 0'),
         };
     }

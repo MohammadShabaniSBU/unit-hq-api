@@ -350,6 +350,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->middleware('throttle:ai-turns');
     Route::post('agent-conversations/{agentConversation}/close', [Controllers\AgentConversationController::class, 'close']);
 
+    Route::get('agent-pending-actions', [Controllers\AgentPendingActionController::class, 'index']);
+    Route::get('agent-pending-actions/badge', [Controllers\AgentPendingActionController::class, 'badge']);
+    Route::get('agent-pending-actions/{agentPendingAction}', [Controllers\AgentPendingActionController::class, 'show']);
+    Route::post('agent-pending-actions/{agentPendingAction}/approve', [Controllers\AgentPendingActionController::class, 'approve']);
+    Route::post('agent-pending-actions/{agentPendingAction}/reject', [Controllers\AgentPendingActionController::class, 'reject']);
+
     Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
     Route::post('copilot/conversations', [Controllers\CopilotController::class, 'store']);
     Route::get('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'show']);

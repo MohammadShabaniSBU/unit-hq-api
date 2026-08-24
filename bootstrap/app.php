@@ -55,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('delinquency:run')->daily();
         $schedule->command('comms:sweep-orphan-attachments')->daily();
         $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute();
+        $schedule->command('agents:sweep-pending-actions')->everyTenMinutes();
         // Authoritative WA template approval sync (webhooks are latency only).
         $schedule->command('whatsapp:sync-templates')->hourly();
         // E-sign: retry artifact download before completing; belt for provider expiry.

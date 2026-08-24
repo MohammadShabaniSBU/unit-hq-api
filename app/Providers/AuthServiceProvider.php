@@ -8,6 +8,7 @@ use App\Models\AccessEvent;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
 use App\Models\AgentConversation;
+use App\Models\AgentPendingAction;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\CopilotConversation;
@@ -26,6 +27,7 @@ use App\Policies\AccessEventPolicy;
 use App\Policies\AccessGrantPolicy;
 use App\Policies\AccessPointPolicy;
 use App\Policies\AgentConversationPolicy;
+use App\Policies\AgentPendingActionPolicy;
 use App\Policies\ContactPolicy;
 use App\Policies\ContractPolicy;
 use App\Policies\ConversationPolicy;
@@ -76,6 +78,7 @@ class AuthServiceProvider extends ServiceProvider
         AccessEvent::class => AccessEventPolicy::class,
         CopilotConversation::class => ConversationPolicy::class,
         AgentConversation::class => AgentConversationPolicy::class,
+        AgentPendingAction::class => AgentPendingActionPolicy::class,
     ];
 
     public function boot(): void

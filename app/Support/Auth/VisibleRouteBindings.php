@@ -7,6 +7,7 @@ namespace App\Support\Auth;
 use App\Models\AccessEvent;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
+use App\Models\AgentPendingAction;
 use App\Models\Contract;
 use App\Models\ContractNotice;
 use App\Models\Deal;
@@ -75,6 +76,8 @@ final class VisibleRouteBindings
         'unit_hold' => [UnitHold::class, [Permission::UnitHoldManage, Permission::UnitView]],
         'contractNotice' => [ContractNotice::class, [Permission::ContractView, Permission::DelinquencyView]],
         'contract_notice' => [ContractNotice::class, [Permission::ContractView, Permission::DelinquencyView]],
+        'agentPendingAction' => [AgentPendingAction::class, [Permission::AgentActionApprove]],
+        'agent_pending_action' => [AgentPendingAction::class, [Permission::AgentActionApprove]],
     ];
 
     public static function register(): void

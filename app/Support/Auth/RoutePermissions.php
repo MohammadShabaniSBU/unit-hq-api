@@ -375,6 +375,9 @@ final class RoutePermissions
             'GET /api/activities' => Permission::ActivityView, // ActivityController@index
             'GET /api/agent-conversations' => Permission::AiAgentUse, // AgentConversationController@index
             'GET /api/agent-conversations/{agentConversation}' => Permission::AiAgentUse, // AgentConversationController@show
+            'GET /api/agent-pending-actions' => Permission::AgentActionApprove, // AgentPendingActionController@index
+            'GET /api/agent-pending-actions/badge' => Permission::AgentActionApprove, // AgentPendingActionController@badge
+            'GET /api/agent-pending-actions/{agentPendingAction}' => Permission::AgentActionApprove, // AgentPendingActionController@show
             'GET /api/ai/agents' => Permission::AiAgentUse, // AiAgentController@index
             'GET /api/ai/demo-personas' => Permission::AiAgentUse, // AiDemoPersonaController@index
             'GET /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@index
@@ -423,6 +426,8 @@ final class RoutePermissions
             'POST /api/agent-conversations' => Permission::AiAgentUse, // AgentConversationController@store
             'POST /api/agent-conversations/{agentConversation}/close' => Permission::AiAgentUse, // AgentConversationController@close
             'POST /api/agent-conversations/{agentConversation}/turns' => Permission::AiAgentUse, // AgentConversationController@storeTurn
+            'POST /api/agent-pending-actions/{agentPendingAction}/approve' => Permission::AgentActionApprove, // AgentPendingActionController@approve
+            'POST /api/agent-pending-actions/{agentPendingAction}/reject' => Permission::AgentActionApprove, // AgentPendingActionController@reject
             'POST /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@store
             'POST /api/attribute-definitions/{attributeDefinition}/archive' => Permission::SettingsManage, // AttributeDefinitionController@archive
             'POST /api/attribute-definitions/{attributeDefinition}/unarchive' => Permission::SettingsManage, // AttributeDefinitionController@unarchive

@@ -21,6 +21,7 @@ use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
+use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\DisclosureGuard;
@@ -191,6 +192,27 @@ final class AgentRuntime
                         $durationMs,
                     );
                     $invocations[] = $invocation;
+
+                    if ($result->deniedReason === ToolDeniedReason::RequiresApproval) {
+                        try {
+                            $invocation->loadMissing('conversation');
+                            app(PendingActionRecorder::class)->record($invocation, $result);
+                        } catch (Throwable $e) {
+                            report($e);
+                            $result = new ToolResult(
+                                ToolInvocationStatus::Error,
+                                [],
+                                CannedReply::Error,
+                                new FactBag,
+                                message: CannedReply::Error,
+                                handoffReason: HandoffReason::Error,
+                            );
+                            $this->persistToolMessage($conversation, $call, $result);
+                            $escalate = $result;
+                            break;
+                        }
+                    }
+
                     $this->persistToolMessage($conversation, $call, $result);
 
                     if ($result->status->value === 'ok') {

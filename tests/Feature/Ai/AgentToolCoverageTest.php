@@ -53,4 +53,20 @@ class AgentToolCoverageTest extends TestCase
             );
         }
     }
+
+    #[Test]
+    public function every_propose_mode_policy_resolves_to_a_proposable_tool(): void
+    {
+        $this->seed(AiAgentSeeder::class);
+
+        $registry = app(ToolRegistry::class);
+        foreach (AgentWritePolicy::query()->where('mode', 'propose')->pluck('tool_key') as $key) {
+            $this->assertTrue($registry->has($key), "Propose policy tool [{$key}] is not registered.");
+            $this->assertInstanceOf(
+                \App\Support\Ai\Tools\ProposableTool::class,
+                $registry->get($key),
+                "Propose policy tool [{$key}] must implement ProposableTool.",
+            );
+        }
+    }
 }

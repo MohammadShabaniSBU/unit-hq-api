@@ -104,6 +104,7 @@ class SystemActorSpineTest extends TestCase
             'delinquency:run',
             'comms:sweep-orphan-attachments',
             'comms:sweep-uncorrelated-call-intents',
+            'agents:sweep-pending-actions',
             'whatsapp:sync-templates',
             'esign:sweep-completion-pending',
             'esign:sweep-expired',

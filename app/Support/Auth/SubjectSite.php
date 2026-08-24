@@ -6,6 +6,7 @@ namespace App\Support\Auth;
 
 use App\Models\AccessEvent;
 use App\Models\AgentConversation;
+use App\Models\AgentPendingAction;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
@@ -157,8 +158,20 @@ final class SubjectSite
             AgentConversation::class => $subject instanceof AgentConversation
                 ? self::agentConversationSite($subject)
                 : null,
+            AgentPendingAction::class => $subject instanceof AgentPendingAction
+                ? self::agentPendingActionSite($subject)
+                : null,
             default => throw new UnresolvableSubjectSite($subject),
         };
+    }
+
+    private static function agentPendingActionSite(AgentPendingAction $action): ?Site
+    {
+        if ($action->relationLoaded('site')) {
+            return $action->site;
+        }
+
+        return Site::query()->find($action->site_id);
     }
 
     private static function agentConversationSite(AgentConversation $conversation): ?Site

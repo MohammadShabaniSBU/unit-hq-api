@@ -7,9 +7,12 @@ namespace Tests\Feature\Ai;
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\AgentHandoff;
+use App\Models\AgentPendingAction;
 use App\Models\AgentToolInvocation;
+use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
+use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
@@ -20,15 +23,19 @@ use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailVerdict;
+use App\Support\Ai\PendingActionRecorder;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolRegistry;
+use App\Support\Ai\Tools\ToolResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
+use Tests\Support\Ai\ProposableSpyTool;
 use Tests\Support\Ai\RecordingTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
@@ -291,6 +298,48 @@ class AgentRuntimeTest extends TestCase
         }
 
         $this->assertSame(0, $this->driver->callCount);
+    }
+
+    #[Test]
+    public function pending_insert_failure_handoffs_error_without_approval_line(): void
+    {
+        $site = Site::factory()->create();
+        $spy = new ProposableSpyTool(siteId: $site->id);
+        app(ToolRegistry::class)->register($spy);
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', ['test.spy']));
+
+        $this->app->instance(PendingActionRecorder::class, new class
+        {
+            public function record(AgentToolInvocation $invocation, ToolResult $result): AgentPendingAction
+            {
+                throw new RuntimeException('forced insert failure');
+            }
+        });
+
+        $conversation = $this->conversation('test');
+        AgentWritePolicy::factory()->propose()->create([
+            'ai_agent_id' => $conversation->ai_agent_id,
+            'tool_key' => 'test.spy',
+        ]);
+
+        $this->driver->enqueueToolCalls([[
+            'name' => 'test.spy',
+            'id' => 'c1',
+            'arguments' => ['contact_id' => $conversation->contact_id],
+        ]]);
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please hold a unit',
+        );
+
+        $this->assertSame(HandoffReason::Error, $turn->handoff?->reason);
+        $this->assertSame(ConversationState::AwaitingHuman, $turn->state);
+        $this->assertStringContainsString(CannedReply::Error, $turn->draft);
+        $this->assertStringNotContainsString(CannedReply::pendingApproval('en'), $turn->draft);
+        $this->assertSame(0, AgentPendingAction::query()->count());
+        $this->assertFalse($spy->handleCalled);
     }
 
     private function conversation(string $agentKey): AgentConversation

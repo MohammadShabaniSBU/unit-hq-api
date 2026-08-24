@@ -69,6 +69,25 @@ final readonly class ToolResult
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $preview
+     */
+    public static function requiresApproval(string $display, array $payload, array $preview): self
+    {
+        return new self(
+            ToolInvocationStatus::Denied,
+            [
+                'payload' => $payload,
+                'preview' => $preview,
+            ],
+            $display,
+            new FactBag,
+            ToolDeniedReason::RequiresApproval,
+            'requires_approval',
+        );
+    }
+
     public static function notFound(string $message): self
     {
         return new self(

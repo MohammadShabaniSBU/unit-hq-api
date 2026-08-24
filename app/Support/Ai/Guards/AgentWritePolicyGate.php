@@ -45,16 +45,9 @@ final class AgentWritePolicyGate
         );
     }
 
-    public function denyIfPropose(?AgentWritePolicy $policy): ?ToolResult
+    public function isPropose(?AgentWritePolicy $policy): bool
     {
-        if ($policy === null || $policy->mode !== WritePolicyMode::Propose) {
-            return null;
-        }
-
-        return ToolResult::denied(
-            ToolDeniedReason::RequiresApproval,
-            "Tool [{$policy->tool_key}] requires operator approval.",
-        );
+        return $policy !== null && $policy->mode === WritePolicyMode::Propose;
     }
 
     public function effectiveVerification(AgentTool $tool, ?AgentWritePolicy $policy): VerificationLevel

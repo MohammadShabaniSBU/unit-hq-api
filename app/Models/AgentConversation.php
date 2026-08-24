@@ -47,6 +47,7 @@ use LogicException;
  * @property-read Collection<int, AgentConversationMessage> $messages
  * @property-read Collection<int, AgentToolInvocation> $toolInvocations
  * @property-read Collection<int, AgentHandoff> $handoffs
+ * @property-read Collection<int, AgentPendingAction> $pendingActions
  */
 class AgentConversation extends Model
 {
@@ -159,5 +160,11 @@ class AgentConversation extends Model
     public function handoffs(): HasMany
     {
         return $this->hasMany(AgentHandoff::class);
+    }
+
+    /** @return HasMany<AgentPendingAction, $this> */
+    public function pendingActions(): HasMany
+    {
+        return $this->hasMany(AgentPendingAction::class);
     }
 }

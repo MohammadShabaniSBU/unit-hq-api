@@ -161,6 +161,7 @@ class RbacSystemRoleSeeder extends Seeder
                     Permission::AiSummaryView,
                     Permission::AiSummaryGenerate,
                     Permission::AiAgentUse,
+                    Permission::AgentActionApprove,
                     Permission::CopilotVoiceUse,
                 ],
             ],

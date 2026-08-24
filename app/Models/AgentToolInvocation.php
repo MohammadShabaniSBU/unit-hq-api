@@ -7,8 +7,10 @@ namespace App\Models;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -33,9 +35,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
  * @property-read AgentConversationMessage|null $message
+ * @property-read AgentPendingAction|null $pendingAction
  */
 class AgentToolInvocation extends Model
 {
+    use HasFactory;
+
     public const UPDATED_AT = null;
 
     protected $fillable = [
@@ -80,5 +85,11 @@ class AgentToolInvocation extends Model
     public function message(): BelongsTo
     {
         return $this->belongsTo(AgentConversationMessage::class, 'agent_conversation_message_id');
+    }
+
+    /** @return HasOne<AgentPendingAction, $this> */
+    public function pendingAction(): HasOne
+    {
+        return $this->hasOne(AgentPendingAction::class, 'agent_tool_invocation_id');
     }
 }

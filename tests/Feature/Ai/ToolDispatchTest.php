@@ -11,6 +11,7 @@ use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -194,8 +195,14 @@ class ToolDispatchTest extends TestCase
     public function mode_propose_denies_requires_approval_before_handle(): void
     {
         $contact = Contact::factory()->create();
+        $site = \App\Models\Site::factory()->create();
+        $spy = new \Tests\Support\Ai\ProposableSpyTool(siteId: $site->id);
+        app(ToolRegistry::class)->register($spy);
+        $definition = new TestAgentDefinition('test-propose', ['test.spy']);
+        app(AgentRegistry::class)->register($definition);
+
         $principal = AgentPrincipal::verified($contact->id, null, 'en');
-        $ctx = $this->writeContext($principal, 'test');
+        $ctx = $this->writeContext($principal, 'test-propose');
         AgentWritePolicy::factory()->propose()->create([
             'ai_agent_id' => $ctx->agent->id,
             'tool_key' => 'test.spy',
@@ -203,7 +210,7 @@ class ToolDispatchTest extends TestCase
         $ctx->agent->load('writePolicies');
 
         $result = $this->dispatcher->dispatch(
-            $this->definition,
+            $definition,
             $principal,
             'test.spy',
             ['contact_id' => $contact->id],
@@ -212,7 +219,9 @@ class ToolDispatchTest extends TestCase
 
         $this->assertSame(ToolInvocationStatus::Denied, $result->status);
         $this->assertSame(ToolDeniedReason::RequiresApproval, $result->deniedReason);
-        $this->assertFalse($this->spy->handleCalled);
+        $this->assertTrue($spy->proposeCalled);
+        $this->assertFalse($spy->handleCalled);
+        $this->assertSame(CannedReply::pendingApproval('en'), $result->display);
     }
 
     #[Test]

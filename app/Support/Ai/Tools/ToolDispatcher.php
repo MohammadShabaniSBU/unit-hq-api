@@ -10,6 +10,8 @@ use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\AgentWritePolicyGate;
+use App\Support\Ai\Guards\CannedReply;
+use LogicException;
 
 final class ToolDispatcher
 {
@@ -45,11 +47,6 @@ final class ToolDispatcher
         $off = $this->writePolicy->denyIfOff($policy);
         if ($off !== null) {
             return $off;
-        }
-
-        $propose = $this->writePolicy->denyIfPropose($policy);
-        if ($propose !== null) {
-            return $propose;
         }
 
         $required = $this->writePolicy->effectiveVerification($tool, $policy);
@@ -89,6 +86,10 @@ final class ToolDispatcher
             }
         }
 
+        if ($this->writePolicy->isPropose($policy)) {
+            return $this->dispatchPropose($tool, $principal, $arguments, $ctx);
+        }
+
         $result = $tool->handle($principal, $arguments, $ctx);
 
         if (
@@ -102,6 +103,43 @@ final class ToolDispatcher
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function dispatchPropose(
+        AgentTool $tool,
+        AgentPrincipal $principal,
+        array $arguments,
+        ?AgentContext $ctx,
+    ): ToolResult {
+        if (! $tool instanceof ProposableTool) {
+            throw new LogicException(
+                "Write policy mode=propose requires ProposableTool; [{$tool->key()}] does not implement it.",
+            );
+        }
+
+        $proposed = $tool->propose($principal, $arguments, $ctx);
+        if ($proposed->status !== ToolInvocationStatus::Ok) {
+            return $proposed;
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = is_array($proposed->data['payload'] ?? null) ? $proposed->data['payload'] : [];
+        /** @var array<string, mixed> $preview */
+        $preview = is_array($proposed->data['preview'] ?? null) ? $proposed->data['preview'] : [];
+
+        $siteId = isset($payload['site_id']) ? (int) $payload['site_id'] : 0;
+        if ($siteId <= 0) {
+            return ToolResult::error('Site could not be resolved for this proposal.');
+        }
+
+        return ToolResult::requiresApproval(
+            CannedReply::pendingApproval($principal->locale),
+            $payload,
+            $preview,
+        );
     }
 
     /**
