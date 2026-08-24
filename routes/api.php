@@ -37,6 +37,7 @@ Route::get('public/template-assets/{hash}/{filename}', [Controllers\TemplateAsse
 
 // Offer links — crypto-random offers.token (invariant 6).
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
+Route::get('offers/token/{token}/options/{offerOption}/map', [Controllers\OfferController::class, 'mapByToken']);
 
 // Anonymous offer accept from the public preview page (pre-existing; option PK
 // is reached only after loading the offer via the crypto token above).
@@ -380,6 +381,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('offers', Controllers\OfferController::class);
 
     Route::post('offer-options', [Controllers\OfferOptionController::class, 'store']);
+    Route::get('offer-options/{offerOption}/map', [Controllers\OfferOptionController::class, 'map']);
     Route::patch('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'update']);
     Route::delete('offer-options/{offerOption}', [Controllers\OfferOptionController::class, 'destroy']);
 

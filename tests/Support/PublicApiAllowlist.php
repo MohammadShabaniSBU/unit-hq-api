@@ -26,6 +26,7 @@ final class PublicApiAllowlist
         'api/comms/unsubscribe/{token}',
         'api/public/template-assets/{hash}/{filename}',
         'api/offers/token/{token}',
+        'api/offers/token/{token}/options/{offerOption}/map',
         'api/offer-options/{offerOption}/select',
         'api/pay/{token}',
         'api/pay/{token}/intent',

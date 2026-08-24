@@ -18,10 +18,11 @@ final class RoutePermissions
     {
         return [
 
-            // ===== Public (14) =====
+            // ===== Public (15) =====
             // PUBLIC  'GET /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC
             // PUBLIC  'GET /api/legal-entities/{legal_entity}/stripe/public-key'  // LegalEntityStripeController@publicKey — Stripe publishable key (not secret)
             // PUBLIC  'GET /api/offers/token/{token}'  // OfferController@showByToken — offers.token crypto link
+            // PUBLIC  'GET /api/offers/token/{token}/options/{offerOption}/map'  // OfferController@mapByToken — floor SVG for a token-scoped option
             // PUBLIC  'GET /api/pay/{token}'  // PublicPaymentController@show — payment-request token
             // PUBLIC  'GET /api/public/template-assets/{hash}/{filename}'  // TemplateAssetController@showPublic — content-hash public URL
             // PUBLIC  'POST /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC
@@ -93,7 +94,7 @@ final class RoutePermissions
             'PUT /api/unit-classes/{unit_class}' => Permission::CatalogueManage, // Facility\UnitClassController@update
             'PUT /api/units/{unit}' => Permission::UnitManage, // Facility\UnitController@update
 
-            // ===== Leasing (66) =====
+            // ===== Leasing (67) =====
             'DELETE /api/contacts/{contact}' => Permission::ContactManage, // ContactController@destroy
             'DELETE /api/contacts/{contact}/addresses/{address}' => Permission::ContactManage, // ContactAddressController@destroy
             'DELETE /api/contacts/{contact}/channels/{channel}' => Permission::ContactManage, // ContactChannelController@destroy
@@ -118,6 +119,7 @@ final class RoutePermissions
             'GET /api/deals/{deal}' => Permission::DealManage, // DealController@show
             'GET /api/deals/{deal}/ai-summary' => Permission::AiSummaryView, // AiSummaryController@show
             'GET /api/deals/{deal}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
+            'GET /api/offer-options/{offerOption}/map' => Permission::OfferManage, // OfferOptionController@map
             'GET /api/offers' => Permission::OfferManage, // OfferController@index
             'GET /api/offers/board' => Permission::OfferManage, // OfferBoardController@index
             'GET /api/offers/board/columns/{status}' => Permission::OfferManage, // OfferBoardController@column

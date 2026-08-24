@@ -12,6 +12,7 @@ use App\Models\Reservation;
 use App\Models\Setting;
 use App\Models\SystemEvent;
 use App\Models\Unit;
+use App\Support\Facility\SiteMapLocator;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Illuminate\Http\JsonResponse;
@@ -84,6 +85,19 @@ class OfferOptionController extends Controller
         $offerOption->delete();
 
         return $this->noContent('Offer option deleted successfully.');
+    }
+
+    public function map(OfferOption $offerOption): JsonResponse
+    {
+        Gate::authorize(Permission::OfferManage->value, $offerOption);
+
+        $payload = SiteMapLocator::payloadForOption($offerOption);
+
+        if ($payload === null) {
+            return $this->notFound('No site map contains this unit.');
+        }
+
+        return $this->success($payload, 'Offer option map retrieved successfully.');
     }
 
     public function select(OfferOption $offerOption): JsonResponse
