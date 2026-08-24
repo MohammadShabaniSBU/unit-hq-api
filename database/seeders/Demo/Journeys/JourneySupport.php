@@ -214,18 +214,86 @@ final class JourneySupport
         CarbonInterface|string|null $from = null,
         CarbonInterface|string|null $to = null,
     ): Unit {
-        $class = UnitClass::query()->where('code', $unitClassCode)->firstOrFail();
         $fromDay = $from !== null
             ? CarbonImmutable::parse($from)->startOfDay()
             : SiteClock::today($site);
         $toDay = $to !== null ? CarbonImmutable::parse($to)->startOfDay() : null;
 
-        $units = Unit::query()
-            ->where('site_id', $site->id)
-            ->where('unit_class_id', $class->id)
-            ->orderBy('unit_number')
-            ->get();
+        $preferred = self::firstVacantInClass($site, $unitClassCode, $fromDay, $toDay);
+        if ($preferred !== null) {
+            return $preferred;
+        }
 
+        $sameSite = self::firstVacantAtSite($site, $fromDay, $toDay, $unitClassCode);
+        if ($sameSite !== null) {
+            return $sameSite;
+        }
+
+        $otherSites = Site::query()->where('id', '!=', $site->id)->orderBy('id')->get();
+        foreach ($otherSites as $candidate) {
+            $unit = self::firstVacantInClass($candidate, $unitClassCode, $fromDay, $toDay)
+                ?? self::firstVacantAtSite($candidate, $fromDay, $toDay);
+            if ($unit !== null) {
+                return $unit;
+            }
+        }
+
+        throw new RuntimeException("No vacant unit (wanted {$unitClassCode} at {$site->code}).");
+    }
+
+    private static function firstVacantInClass(
+        Site $site,
+        string $unitClassCode,
+        CarbonImmutable $fromDay,
+        ?CarbonImmutable $toDay,
+    ): ?Unit {
+        $class = UnitClass::query()->where('code', $unitClassCode)->first();
+        if ($class === null) {
+            return null;
+        }
+
+        return self::firstVacantAmong(
+            Unit::query()
+                ->where('site_id', $site->id)
+                ->where('unit_class_id', $class->id)
+                ->where('enabled', true)
+                ->orderBy('unit_number')
+                ->get(),
+            $fromDay,
+            $toDay,
+        );
+    }
+
+    private static function firstVacantAtSite(
+        Site $site,
+        CarbonImmutable $fromDay,
+        ?CarbonImmutable $toDay,
+        ?string $exceptClassCode = null,
+    ): ?Unit {
+        $query = Unit::query()
+            ->where('site_id', $site->id)
+            ->where('enabled', true)
+            ->orderBy('unit_class_id')
+            ->orderBy('unit_number');
+
+        if ($exceptClassCode !== null) {
+            $exceptId = UnitClass::query()->where('code', $exceptClassCode)->value('id');
+            if ($exceptId !== null) {
+                $query->where('unit_class_id', '!=', $exceptId);
+            }
+        }
+
+        return self::firstVacantAmong($query->get(), $fromDay, $toDay);
+    }
+
+    /**
+     * @param  iterable<int, Unit>  $units
+     */
+    private static function firstVacantAmong(
+        iterable $units,
+        CarbonImmutable $fromDay,
+        ?CarbonImmutable $toDay,
+    ): ?Unit {
         foreach ($units as $unit) {
             try {
                 OccupancyGuard::assertVacant($unit->id, $fromDay, $toDay);
@@ -237,7 +305,7 @@ final class JourneySupport
             }
         }
 
-        throw new RuntimeException("No vacant {$unitClassCode} unit at site {$site->code}.");
+        return null;
     }
 
     public static function catalogueAmount(Unit $unit): string
