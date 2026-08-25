@@ -19,6 +19,7 @@ final class SupportAgentDefinition implements AgentDefinition
     public function toolKeys(): array
     {
         return [
+            'facility.find_sites',
             'facility.site_info',
             'crm.create_task',
             'crm.create_note',

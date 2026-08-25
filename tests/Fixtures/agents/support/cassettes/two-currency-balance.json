@@ -3,7 +3,7 @@
     "fixture": "support/two-currency-balance",
     "turn_index": 0,
     "prompt_hash": "31ef1477ee4f7cdb4e466734a85a5085c9615b25cff61f3f5d787f678f5600e7",
-    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "schema_hash": "8c577109d568b162c5aa8c976ff83fdd20a83096e3b183a7d19fda311d3b5b73",
     "responses": [
         {
             "content": "",

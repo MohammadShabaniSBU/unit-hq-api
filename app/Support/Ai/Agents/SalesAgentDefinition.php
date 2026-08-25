@@ -20,6 +20,7 @@ final class SalesAgentDefinition implements AgentDefinition
     {
         return [
             'facility.availability',
+            'facility.find_sites',
             'facility.site_info',
             'pricing.quote',
             'pricing.discounts',

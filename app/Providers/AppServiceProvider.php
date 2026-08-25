@@ -63,6 +63,7 @@ use App\Support\Ai\Tools\CrmCreateNoteTool;
 use App\Support\Ai\Tools\CrmCreateTaskTool;
 use App\Support\Ai\Tools\EscalateTool;
 use App\Support\Ai\Tools\FacilityAvailabilityTool;
+use App\Support\Ai\Tools\FacilityFindSitesTool;
 use App\Support\Ai\Tools\FacilitySiteInfoTool;
 use App\Support\Ai\Tools\KbFaqLookupTool;
 use App\Support\Ai\Tools\PricingDiscountsTool;
@@ -117,6 +118,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ToolRegistry::class, function (): ToolRegistry {
             $registry = new ToolRegistry;
             $registry->register(new FacilityAvailabilityTool);
+            $registry->register(new FacilityFindSitesTool);
             $registry->register(new FacilitySiteInfoTool);
             $registry->register(new PricingQuoteTool);
             $registry->register(new PricingDiscountsTool);
