@@ -16,6 +16,7 @@ use App\Models\Message;
 use App\Models\Offer;
 use App\Models\OfferDelivery;
 use App\Models\OfferOption;
+use App\Models\Price;
 use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
@@ -24,8 +25,10 @@ use App\Models\UnitClassRate;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\CanonicalJson;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\CannedReply;
+use App\Support\Ai\Tools\FactRegistry;
 use App\Support\Ai\Tools\ProposableTool;
 use App\Support\Ai\Tools\SalesCreateOfferTool;
 use App\Support\Ai\Tools\ToolRegistry;
@@ -255,7 +258,7 @@ class SalesCreateOfferToolTest extends TestCase
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
         $this->licenseModels($ctx, $world['deal'], $world['class']);
-        $ctx = $ctx->withFactRegistry(\App\Support\Ai\Tools\FactRegistry::rebuild($principal, $ctx));
+        $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
         $tool = app(ToolRegistry::class)->get('sales.create_offer');
         $this->assertInstanceOf(ProposableTool::class, $tool);
         $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);
@@ -286,8 +289,283 @@ class SalesCreateOfferToolTest extends TestCase
         );
     }
 
+    #[Test]
+    public function quoted_price_id_creates_offer_matching_quote_to_the_cent(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->assertSame(ToolInvocationStatus::Ok, $quote->status);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quote, $principal);
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => $quote->data['price_id'],
+                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame(1, Offer::query()->count());
+
+        $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
+        $tool = app(ToolRegistry::class)->get('sales.create_offer');
+        $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);
+        $preview = $tool->propose($principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => $quote->data['price_id'],
+                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
+            ]],
+        ], $ctx);
+        $this->assertSame($quote->data['net'], $preview->data['preview']['lines'][0]['net']);
+        $this->assertSame($quote->data['gross'], $preview->data['preview']['lines'][0]['gross']);
+    }
+
+    #[Test]
+    public function superseded_quoted_price_id_refuses_and_writes_nothing(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quote, $principal);
+
+        $old = $world['rate']->price;
+        $this->assertNotNull($old);
+        $old->update(['effective_to' => now()->toDateString()]);
+        Price::query()->create([
+            'priceable_type' => 'unit_class_rate',
+            'priceable_id' => $world['rate']->id,
+            'scope' => Price::SCOPE_CATALOGUE,
+            'amount' => '120.00',
+            'currency' => 'EUR',
+            'effective_from' => now()->toDateString(),
+            'effective_to' => null,
+            'created_by' => $world['employee']->id,
+        ]);
+        $world['rate']->unsetRelation('price');
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => $quote->data['price_id'],
+                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::PriceSuperseded, $result->error?->errorCode);
+        $this->assertSame('price', $result->error?->detail['superseded'] ?? null);
+        $this->assertSame($quote->data['price_id'], $result->error?->detail['quoted'] ?? null);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function tax_rate_version_change_is_price_superseded_with_tax_detail(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quote, $principal);
+
+        $oldTax = $world['tax'];
+        $oldTax->update(['effective_to' => now()->subDay()->toDateString()]);
+        TaxRate::query()->create([
+            'name' => 'VAT ES reduced',
+            'code' => 'vat',
+            'rate' => '10.00',
+            'jurisdiction' => 'ES',
+            'is_default' => false,
+            'effective_from' => now()->toDateString(),
+            'effective_to' => null,
+            'created_by' => $world['employee']->id,
+        ]);
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => $quote->data['price_id'],
+                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::PriceSuperseded, $result->error?->errorCode);
+        $this->assertSame('tax_rate', $result->error?->detail['superseded'] ?? null);
+        $this->assertSame($quote->data['tax_rate_id'], $result->error?->detail['quoted'] ?? null);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function two_quoted_classes_detect_a_single_superseded_price(): void
+    {
+        $world = $this->agentPricedDeal();
+        $classB = UnitClass::factory()->create([
+            'tax_rate_code' => 'vat',
+            'label' => 'Medium',
+        ]);
+        [$rateB] = $this->createUnitClassCataloguePrice(
+            $classB->id,
+            $world['site']->id,
+            $world['employee']->id,
+            ['amount' => '90.00', 'currency' => 'EUR'],
+        );
+        Unit::factory()->create([
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $classB->id,
+            'enabled' => true,
+        ]);
+
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $classB);
+
+        $quoteA = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quoteA, $principal);
+        $quoteB = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $classB->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $classB->id,
+        ], $quoteB, $principal);
+
+        $old = $world['rate']->price;
+        $this->assertNotNull($old);
+        $old->update(['effective_to' => now()->toDateString()]);
+        Price::query()->create([
+            'priceable_type' => 'unit_class_rate',
+            'priceable_id' => $world['rate']->id,
+            'scope' => Price::SCOPE_CATALOGUE,
+            'amount' => '120.00',
+            'currency' => 'EUR',
+            'effective_from' => now()->toDateString(),
+            'effective_to' => null,
+            'created_by' => $world['employee']->id,
+        ]);
+        $world['rate']->unsetRelation('price');
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [
+                [
+                    'unit_class_rate_id' => $world['rate']->id,
+                    'label' => 'Small unit',
+                    'quoted_price_id' => $quoteA->data['price_id'],
+                    'quoted_tax_rate_id' => $quoteA->data['tax_rate_id'],
+                ],
+                [
+                    'unit_class_rate_id' => $rateB->id,
+                    'label' => 'Medium unit',
+                    'quoted_price_id' => $quoteB->data['price_id'],
+                    'quoted_tax_rate_id' => $quoteB->data['tax_rate_id'],
+                ],
+            ],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::PriceSuperseded, $result->error?->errorCode);
+        $this->assertSame('price', $result->error?->detail['superseded'] ?? null);
+        $this->assertSame($quoteA->data['price_id'], $result->error?->detail['quoted'] ?? null);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function absent_quoted_price_id_refuses_when_a_prior_quote_exists(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quote, $principal);
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertStringContainsString('quoted_price_id', (string) $result->display);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function absent_quoted_price_id_without_prior_quote_uses_live_catalogue(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'unit_class_rate_id' => $world['rate']->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame(1, Offer::query()->count());
+    }
+
     /**
-     * @return array{site: Site, class: UnitClass, rate: UnitClassRate, deal: Deal, contact: Contact}
+     * @return array{site: Site, class: UnitClass, rate: UnitClassRate, deal: Deal, contact: Contact, employee: Employee, tax: TaxRate}
      */
     private function agentPricedDeal(): array
     {
@@ -299,7 +577,7 @@ class SalesCreateOfferToolTest extends TestCase
             'amount' => '70.00',
             'currency' => 'EUR',
         ]);
-        TaxRate::query()->create([
+        $tax = TaxRate::query()->create([
             'name' => 'VAT ES',
             'code' => 'vat',
             'rate' => '21.00',
@@ -328,6 +606,8 @@ class SalesCreateOfferToolTest extends TestCase
             'rate' => $rate,
             'deal' => $deal,
             'contact' => $contact,
+            'employee' => $employee,
+            'tax' => $tax,
         ];
     }
 }

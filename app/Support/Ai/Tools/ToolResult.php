@@ -260,7 +260,7 @@ final readonly class ToolResult
             return null;
         }
 
-        /** @var array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>} $error */
+        /** @var array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null} $error */
         $error = $blob['error'];
 
         return ToolError::fromArray($error);

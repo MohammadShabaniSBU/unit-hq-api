@@ -9,7 +9,8 @@ namespace App\Support\Ai\Tools;
  *
  * `unit_class_rate_id` is still gated: ArgumentProvenance resolves the junction
  * to a licensed unit_class, and CatalogueLinePricer asserts the same.
- * `price_id` and `offer_option_id` wait for S25-03.
+ * `price_id` / `quoted_price_id` / `quoted_tax_rate_id` are catalogue continuity
+ * tokens, not EntityRef types. `offer_option_id` is not an entity argument.
  */
 final class EntityArgumentExemptions
 {
@@ -17,6 +18,8 @@ final class EntityArgumentExemptions
     public const KEYS = [
         'unit_class_rate_id',
         'price_id',
+        'quoted_price_id',
+        'quoted_tax_rate_id',
         'offer_option_id',
     ];
 

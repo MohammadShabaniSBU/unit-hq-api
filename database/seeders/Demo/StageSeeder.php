@@ -11,8 +11,10 @@ use App\Enums\DelinquencyPolicyAction;
 use App\Enums\EsignProvider;
 use App\Enums\EsignWebhookState;
 use App\Enums\FiscalRegime;
+use App\Enums\PlaybookKind;
 use App\Enums\TaxIdType;
 use App\Models\AccessProviderAccount;
+use App\Models\AircallUserLink;
 use App\Models\CommunicationAccount;
 use App\Models\Country;
 use App\Models\DelinquencyPolicy;
@@ -23,6 +25,7 @@ use App\Models\InsuranceRate;
 use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\PaymentProviderAccount;
+use App\Models\Playbook;
 use App\Models\Price;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
@@ -31,24 +34,24 @@ use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\User;
+use App\Support\Billing\BillingMath;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Provider;
-use App\Enums\PlaybookKind;
-use App\Models\AircallUserLink;
-use App\Models\Playbook;
-use Database\Seeders\DiscountCatalogueSeeder;
+use App\Support\Facility\AssertsCatalogueMonotonicity;
 use App\Support\Playbooks\PlaybookCompiler;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
 use Database\Seeders\DefaultAttributeLayoutSeeder;
+use Database\Seeders\DiscountCatalogueSeeder;
 use Database\Seeders\InsightReportSeeder;
 use Database\Seeders\LeadChasePlaybookSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -58,6 +61,22 @@ use Illuminate\Support\Str;
 class StageSeeder extends Seeder
 {
     use WithoutModelEvents;
+
+    /** @var array<string, string> */
+    private const CATALOGUE_NET = [
+        'SS1' => '72.00',
+        'SS2' => '82.00',
+        'SS3' => '92.00',
+        'SS4' => '104.00',
+        'SS5' => '116.00',
+        'SS6' => '128.00',
+        'SS7' => '140.00',
+        'SS8' => '152.00',
+        'AL1' => '138.00',
+        'AL2' => '168.00',
+        'AL3' => '192.00',
+        'AL4' => '218.00',
+    ];
 
     public function run(): void
     {
@@ -214,6 +233,10 @@ class StageSeeder extends Seeder
         $seededHistorical = false;
         foreach ($unitClasses as $unitClass) {
             $cataloguePrice = null;
+            $amount = self::CATALOGUE_NET[$unitClass->code] ?? null;
+            if ($amount === null) {
+                throw new \RuntimeException("No demo catalogue amount for class {$unitClass->code}.");
+            }
 
             foreach ($sites as $site) {
                 $rate = UnitClassRate::query()->create([
@@ -222,14 +245,13 @@ class StageSeeder extends Seeder
                 ]);
 
                 $from = now()->subMonths(6)->toDateString();
-                $amount = fake()->randomFloat(2, 50, 300);
 
                 if (! $seededHistorical) {
                     Price::query()->create([
                         'priceable_type' => 'unit_class_rate',
                         'priceable_id' => $rate->id,
                         'scope' => Price::SCOPE_CATALOGUE,
-                        'amount' => round($amount * 0.9, 2),
+                        'amount' => BillingMath::round2(bcmul($amount, '0.9', 8)),
                         'currency' => $site->currency,
                         'effective_from' => now()->subYear()->toDateString(),
                         'effective_to' => $from,
@@ -256,6 +278,8 @@ class StageSeeder extends Seeder
 
             $unitClass->update(['current_price_id' => $cataloguePrice->id]);
         }
+
+        AssertsCatalogueMonotonicity::assert();
 
         foreach (
             [
@@ -375,7 +399,7 @@ class StageSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Site>  $sites
+     * @param  Collection<int, Site>  $sites
      */
     private function seedFakeProviders($sites): void
     {

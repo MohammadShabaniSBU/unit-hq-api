@@ -6,6 +6,7 @@ namespace App\Support\Ai\Tools;
 
 use App\Models\Deal;
 use App\Models\Offer;
+use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
@@ -49,6 +50,16 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                         'type' => 'integer',
                         'required' => true,
                         'description' => 'Unit class rate id at the deal site',
+                    ],
+                    'quoted_price_id' => [
+                        'type' => 'integer',
+                        'required' => false,
+                        'description' => 'Immutable prices.id from a prior pricing.quote or sales.propose_offer. Required when that class was quoted; refused if no longer current.',
+                    ],
+                    'quoted_tax_rate_id' => [
+                        'type' => 'integer',
+                        'required' => false,
+                        'description' => 'tax_rate_id from the same quote. Refused if tax resolution has moved on.',
                     ],
                     'discount_id' => [
                         'type' => 'integer',
@@ -150,6 +161,40 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                 return ToolResult::error('Unit class rate does not belong to the deal site.');
             }
 
+            $quotedPriceId = isset($raw['quoted_price_id']) ? (int) $raw['quoted_price_id'] : null;
+            if ($quotedPriceId === null) {
+                if (PriorCatalogueQuote::namesClass($ctx, $class->id)) {
+                    return ToolResult::fail(ToolError::invalidArguments(
+                        'quoted_price_id is required after a catalogue quote for this unit class.',
+                        [
+                            'tool' => 'pricing.quote',
+                            'hint' => 'pass quoted_price_id from the quote',
+                        ],
+                    ));
+                }
+            } else {
+                $quoted = Price::query()->find($quotedPriceId);
+                if ($quoted === null) {
+                    return ToolResult::notFound('Quoted price not found.');
+                }
+                if ($quoted->priceable_type !== 'unit_class_rate' || (int) $quoted->priceable_id !== (int) $rate->id) {
+                    return ToolResult::fail(ToolError::invalidArguments(
+                        'quoted_price_id does not belong to this unit class rate.',
+                    ));
+                }
+                $current = $rate->price;
+                if ($current === null || $current->id !== $quotedPriceId) {
+                    return ToolResult::fail(ToolError::priceSuperseded(
+                        'Catalogue price for this class has been superseded.',
+                        [
+                            'superseded' => 'price',
+                            'quoted' => $quotedPriceId,
+                            'current' => $current?->id,
+                        ],
+                    ));
+                }
+            }
+
             $discountId = isset($raw['discount_id']) ? (int) $raw['discount_id'] : null;
             $registry = $ctx?->factRegistry;
             if ($registry === null) {
@@ -165,6 +210,20 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $registry, $discountId);
             if ($line instanceof ToolResult) {
                 return $line;
+            }
+
+            if (array_key_exists('quoted_tax_rate_id', $raw) && $raw['quoted_tax_rate_id'] !== null) {
+                $quotedTaxRateId = (int) $raw['quoted_tax_rate_id'];
+                if ($line->taxRateId !== $quotedTaxRateId) {
+                    return ToolResult::fail(ToolError::priceSuperseded(
+                        'Tax rate for this class has been superseded.',
+                        [
+                            'superseded' => 'tax_rate',
+                            'quoted' => $quotedTaxRateId,
+                            'current' => $line->taxRateId,
+                        ],
+                    ));
+                }
             }
 
             // Boolean availability gate only — the id is discarded. OfferCreation
@@ -196,6 +255,8 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                 'gross' => $line->gross,
                 'currency' => $line->currency,
                 'rate' => $line->ratePct,
+                'price_id' => $line->priceId,
+                'tax_rate_id' => $line->taxRateId,
             ];
         }
 

@@ -11,12 +11,14 @@ final readonly class ToolError
     /**
      * @param  array{tool: string, hint: string}|null  $recovery
      * @param  list<EntityRef>  $candidates
+     * @param  array<string, mixed>|null  $detail
      */
     public function __construct(
         public ToolErrorCode $errorCode,
         public string $message,
         public ?array $recovery = null,
         public array $candidates = [],
+        public ?array $detail = null,
     ) {}
 
     public static function siteUnresolved(string $message, array $candidates = []): self
@@ -32,9 +34,12 @@ final readonly class ToolError
         );
     }
 
-    public static function invalidArguments(string $message): self
+    /**
+     * @param  array{tool: string, hint: string}|null  $recovery
+     */
+    public static function invalidArguments(string $message, ?array $recovery = null): self
     {
-        return new self(ToolErrorCode::InvalidArguments, $message);
+        return new self(ToolErrorCode::InvalidArguments, $message, $recovery);
     }
 
     public static function notFound(string $message): self
@@ -50,6 +55,23 @@ final readonly class ToolError
     public static function unlicensedArgument(string $message, ?array $recovery = null): self
     {
         return new self(ToolErrorCode::UnlicensedArgument, $message, $recovery);
+    }
+
+    /**
+     * @param  array{superseded: 'price'|'tax_rate', quoted: int, current: int|null}  $detail
+     */
+    public static function priceSuperseded(string $message, array $detail): self
+    {
+        return new self(
+            ToolErrorCode::PriceSuperseded,
+            $message,
+            [
+                'tool' => 'pricing.quote',
+                'hint' => 'requote with pricing.quote; the catalogue has changed',
+            ],
+            [],
+            $detail,
+        );
     }
 
     /**
@@ -69,7 +91,7 @@ final readonly class ToolError
     }
 
     /**
-     * @param  array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>}  $row
+     * @param  array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null}  $row
      */
     public static function fromArray(array $row): self
     {
@@ -89,16 +111,22 @@ final readonly class ToolError
             }
         }
 
+        $detail = null;
+        if (isset($row['detail']) && is_array($row['detail'])) {
+            $detail = $row['detail'];
+        }
+
         return new self(
             ToolErrorCode::from((string) $row['code']),
             (string) $row['message'],
             $recovery,
             $candidates,
+            $detail,
         );
     }
 
     /**
-     * @return array{code: string, message: string, recovery: array{tool: string, hint: string}|null, candidates: list<array{type: string, id: int, label: string, context: string|null}>}
+     * @return array{code: string, message: string, recovery: array{tool: string, hint: string}|null, candidates: list<array{type: string, id: int, label: string, context: string|null}>, detail: array<string, mixed>|null}
      */
     public function toArray(): array
     {
@@ -110,6 +138,7 @@ final readonly class ToolError
                 static fn (EntityRef $ref): array => $ref->toArray(),
                 $this->candidates,
             ),
+            'detail' => $this->detail,
         ];
     }
 }

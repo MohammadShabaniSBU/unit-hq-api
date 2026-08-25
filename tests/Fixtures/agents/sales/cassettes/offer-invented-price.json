@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/offer-invented-price",
     "turn_index": 0,
-    "prompt_hash": "ef53b29fc730f2b2a946157ba3fa5c334d5952ee8a9ff4cb086cb2721f5d4f92",
-    "schema_hash": "5f76d6568aff68d7272695b2f1bf01cf0befe9c3af648577191ebf4449375cdf",
+    "prompt_hash": "0af1275939f7edb938edbb4b57c1a2977eb04bf7f22330898d13369bb09d190a",
+    "schema_hash": "25157f1b14274c91f62b4bfb85704b3414c4cda60507941f82df5bc27eecef30",
     "responses": [
         {
             "content": "The small unit is only €12.00 a month. I am an automated assistant.",

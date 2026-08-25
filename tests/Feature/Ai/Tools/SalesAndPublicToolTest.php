@@ -14,6 +14,7 @@ use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\Reservation;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
@@ -99,13 +100,45 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame($expected->gross, $result->data['gross']);
         $this->assertSame('EUR', $result->data['currency']);
         $this->assertSame('Small', $result->data['label']);
+        $this->assertSame('Small', $result->data['unit_class_label']);
         $this->assertSame($site->name, $result->data['site_name']);
-        $this->assertStringContainsString('€70.00', $result->display);
+        $this->assertNotNull($result->data['price_id']);
+        $this->assertNotNull($result->data['tax_rate_id']);
+        $this->assertSame('month', $result->data['billing_interval']);
+        $this->assertSame(1, $result->data['billing_interval_count']);
+        $this->assertSame(SiteClock::today($site)->toDateString(), $result->data['as_of']);
+        $this->assertStringContainsString('€70.00 net', $result->display);
+        $this->assertStringContainsString('per month', $result->display);
+        $this->assertStringContainsString('Small', $result->display);
+        $this->assertStringContainsString($site->name, $result->display);
         $this->assertTrue($result->facts->contains('70.00'));
         $this->assertNotEmpty($result->entities);
         $quoteTypes = array_map(fn ($ref) => $ref->type->value, $result->entities);
         $this->assertContains('unit_class', $quoteTypes);
         $this->assertContains('site', $quoteTypes);
+    }
+
+    #[Test]
+    public function quote_currency_comes_from_the_price_row(): void
+    {
+        [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $site->update(['currency' => 'USD']);
+        Setting::setBilling(Setting::billing()->with(defaultCurrency: 'GBP'));
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'pricing.quote',
+            $principal,
+            ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame('EUR', $result->data['currency']);
+        $this->assertStringContainsString('€', $result->display);
     }
 
     #[Test]
@@ -193,6 +226,8 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame($before['reservations'], Reservation::query()->count());
         $this->assertSame($before['contracts'], Contract::query()->count());
         $this->assertStringContainsString('Nothing has been sent or saved', $result->display);
+        $this->assertArrayHasKey('price_id', $result->data['line_items'][0]);
+        $this->assertArrayHasKey('tax_rate_id', $result->data['line_items'][0]);
     }
 
     #[Test]

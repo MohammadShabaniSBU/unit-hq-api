@@ -177,6 +177,8 @@ final class SalesProposeOfferTool implements AgentTool
                         'gross' => $line->gross,
                         'rate' => $line->ratePct,
                         'currency' => $line->currency,
+                        'price_id' => $line->priceId,
+                        'tax_rate_id' => $line->taxRateId,
                     ],
                 ],
                 'net' => $line->net,

@@ -37,6 +37,28 @@ final class MoneyDisplay
         return "{$gross} (incl. {$rate}% {$label}; net {$net})";
     }
 
+    public static function billingPeriod(string $interval, int $count): string
+    {
+        return $count === 1 ? "per {$interval}" : "per {$count} {$interval}s";
+    }
+
+    public static function quote(
+        TaxBreakdown $breakdown,
+        string $currency,
+        string $locale,
+        string $ratePct,
+        string $period,
+        string $classLabel,
+        string $siteName,
+    ): string {
+        $net = self::format($breakdown->net, $currency, $locale);
+        $gross = self::format($breakdown->gross, $currency, $locale);
+        $rate = self::trimRate(BillingMath::round2($ratePct));
+        $label = str_starts_with(strtolower($locale), 'es') ? 'IVA' : 'tax';
+
+        return "{$net} net / {$gross} incl. {$rate}% {$label}, {$period} — {$classLabel} at {$siteName}";
+    }
+
     public static function decimalSeparator(string $locale): string
     {
         $base = strtolower(str_replace('_', '-', $locale));

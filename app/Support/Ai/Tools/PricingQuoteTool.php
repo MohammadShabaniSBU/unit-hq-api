@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
@@ -14,6 +15,7 @@ use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Billing\BillingMath;
 use App\Support\Fiscal\TaxResolver;
+use App\Support\Time\SiteClock;
 use Illuminate\Validation\ValidationException;
 
 final class PricingQuoteTool implements AgentTool
@@ -25,7 +27,7 @@ final class PricingQuoteTool implements AgentTool
 
     public function description(): string
     {
-        return 'Catalogue price for a unit class at a site, with exclusive tax. Never guess a tax rate.';
+        return 'Catalogue price for a unit class at a site, with exclusive tax, named price_id, and billing period. Never guess a tax rate.';
     }
 
     public function schema(): array
@@ -94,8 +96,10 @@ final class PricingQuoteTool implements AgentTool
             return ToolResult::notFound('No current catalogue price for that class at this site.');
         }
 
+        $asOf = SiteClock::today($site);
+
         try {
-            $taxRate = TaxResolver::resolve(null, $class->tax_rate_code, $site);
+            $taxRate = TaxResolver::resolve(null, $class->tax_rate_code, $site, $asOf);
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'Tax rate could not be resolved for this jurisdiction.';
 
@@ -105,26 +109,49 @@ final class PricingQuoteTool implements AgentTool
         $ratePct = $taxRate !== null ? (string) $taxRate->rate : '0.00';
         $breakdown = BillingMath::applyTax((string) $price->amount, $ratePct);
         $currency = (string) $price->currency;
-        $display = MoneyDisplay::withTax($breakdown, $currency, $principal->locale, $ratePct);
+        $billing = Setting::billing();
+        $period = MoneyDisplay::billingPeriod(
+            $billing->defaultBillingInterval,
+            $billing->defaultBillingIntervalCount,
+        );
+        $asOfDate = $asOf->toDateString();
+        $label = (string) $class->label;
+        $display = MoneyDisplay::quote(
+            $breakdown,
+            $currency,
+            $principal->locale,
+            $ratePct,
+            $period,
+            $label,
+            $site->name,
+        );
 
         $facts = (new FactBag)
             ->money($breakdown->net, $currency)
             ->money($breakdown->tax, $currency)
             ->money($breakdown->gross, $currency)
             ->number($ratePct)
-            ->percent($ratePct);
+            ->percent($ratePct)
+            ->date($asOfDate);
 
         return ToolResult::ok(
             [
+                'price_id' => $price->id,
                 'unit_class_id' => $classId,
+                'unit_class_label' => $label,
+                'label' => $label,
+                'size' => $class->size !== null ? (string) $class->size : null,
                 'site_id' => $siteId,
-                'label' => $class->label,
                 'site_name' => $site->name,
                 'net' => $breakdown->net,
                 'tax' => $breakdown->tax,
                 'gross' => $breakdown->gross,
                 'rate' => $ratePct,
                 'currency' => $currency,
+                'tax_rate_id' => $taxRate?->id,
+                'billing_interval' => $billing->defaultBillingInterval,
+                'billing_interval_count' => $billing->defaultBillingIntervalCount,
+                'as_of' => $asOfDate,
             ],
             $display,
             $facts,

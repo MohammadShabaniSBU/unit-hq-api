@@ -16,6 +16,7 @@ use App\Support\Billing\BillingMath;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\Discounts\DiscountSurface;
 use App\Support\Fiscal\TaxResolver;
+use App\Support\Time\SiteClock;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -34,6 +35,8 @@ final readonly class CatalogueLinePricer
         public ?int $discountId,
         public ?string $discountLabel,
         public TaxBreakdown $breakdown,
+        public int $priceId,
+        public ?int $taxRateId,
     ) {}
 
     public static function price(
@@ -67,7 +70,7 @@ final readonly class CatalogueLinePricer
         }
 
         try {
-            $taxRate = TaxResolver::resolve(null, $class->tax_rate_code, $site);
+            $taxRate = TaxResolver::resolve(null, $class->tax_rate_code, $site, SiteClock::today($site));
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'Tax rate could not be resolved for this jurisdiction.';
 
@@ -98,6 +101,8 @@ final readonly class CatalogueLinePricer
             $discountId,
             $discountLabel,
             $breakdown,
+            $price->id,
+            $taxRate?->id,
         );
     }
 }

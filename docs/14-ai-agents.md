@@ -230,12 +230,12 @@ cases (`contact`, `deal`, `offer`, `reservation`, `contract`, `unit`, `invoice`,
 
 The invocation `result` JSON **merges at top level**: payload keys sit beside
 reserved siblings `entities` and optional `error`
-(`{ code, message, recovery, candidates }`). `data` itself must not declare
+(`{ code, message, recovery, candidates, detail }`). `data` itself must not declare
 those keys. Historical rows without them remain valid (missing `entities` = none).
 Replay strips the reserved keys before reconstructing in-memory `data`.
 
 Tool failures return `ToolError` (`error_code` + developer `message` + optional
-`recovery: { tool, hint }` + `candidates`). `facility.site_info` with no
+`recovery: { tool, hint }` + `candidates` + optional `detail`). `facility.site_info` with no
 `site_id` argument and no site on the principal asks `SiteResolver` with no
 query: exactly one active site succeeds (`match_reason: only_site` in
 `display`); otherwise `site_unresolved` with `candidates` and
@@ -313,12 +313,29 @@ is the argument for the architecture.
 ### Why a quoted price is trustworthy
 
 `pricing.quote` reads the current `prices` row (currency from
-`prices.currency`, never the site), resolves tax via `TaxResolver`, computes
-with `BillingMath` (exclusive: `tax = round(net × rate/100, 2)`), and puts
-the rendered string in `display` and the cents in `FactBag`. The model quotes
-that string. If it invents a figure, a tax percent, or a unit id,
-`GroundingGuard` suppresses the draft and hands off (`grounding_failure`). A
-suppressed draft is never delivered (invariant 55).
+`prices.currency`, never the site), names that row as `price_id`, resolves tax
+via `TaxResolver` at `SiteClock::today($site)` (never `Carbon::today()`), and
+returns `billing_interval` / `billing_interval_count` from org `BillingSettings`
+so the summary is a period-qualified quote (`€70.00 net / €84.70 incl. 21% tax,
+per month — Small at Madrid Centro`). It computes with `BillingMath` (exclusive:
+`tax = round(net × rate/100, 2)`), and puts the rendered string in `display`
+and the cents (and `as_of`) in `FactBag`. The model quotes that string. If it
+invents a figure, a tax percent, or a unit id, `GroundingGuard` suppresses the
+draft and hands off (`grounding_failure`). A suppressed draft is never delivered
+(invariant 55).
+
+`sales.create_offer` accepts optional `quoted_price_id` / `quoted_tax_rate_id`
+per option (continuity tokens, not FactRegistry entities). When a prior `ok`
+`pricing.quote` or `sales.propose_offer` named that class and the token is
+absent, the tool refuses with `invalid_arguments` and a hint to pass
+`quoted_price_id` — retryable, no handoff. When the token is present, the
+creation path asserts that row is still the current catalogue price for the
+junction; a closed window returns `price_superseded` with
+`detail: { superseded: 'price' | 'tax_rate', quoted, current }` and recovery
+`pricing.quote`. A tax-rate version change uses the same error code; `detail`
+tells them apart. The agent never silently offers a number different from the
+one it stated. `sales.propose_offer` line items echo `price_id` and
+`tax_rate_id` so propose→create needs no second quote.
 
 Other tool notes:
 
