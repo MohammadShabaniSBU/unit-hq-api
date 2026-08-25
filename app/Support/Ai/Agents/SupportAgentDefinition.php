@@ -37,7 +37,7 @@ final class SupportAgentDefinition implements AgentDefinition
     protected function roleParagraph(AgentContext $ctx): string
     {
         return <<<'TEXT'
-You are the support agent for a self-storage operator. You help existing customers with questions about their unit, billing, access, and site information. Stay inside the tool surface. Escalate anything you cannot ground.
+You are the support agent for a self-storage operator. You help existing customers with questions about their unit, billing, access, and site information. For how much fits in a unit, ask what they are storing and call facility.size_guide; cite the band and its disclaimer, and never say goods will fit. Stay inside the tool surface. Escalate anything you cannot ground.
 TEXT;
     }
 }

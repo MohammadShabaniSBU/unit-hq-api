@@ -2,7 +2,7 @@
     "agent": "sales",
     "fixture": "sales/reservation-commit",
     "turn_index": 0,
-    "prompt_hash": "cf44f5842e3e188bccc8714e6e975e08fc13fe47f66c3e4b68a317bffd87f98b",
+    "prompt_hash": "6dc2ce009e8cfd30dbcce5303f2de9a86c3abc3d873ae85b74aadd4605ba6f5c",
     "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
     "responses": [
         {

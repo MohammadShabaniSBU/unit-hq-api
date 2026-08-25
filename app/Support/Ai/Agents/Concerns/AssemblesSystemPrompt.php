@@ -142,7 +142,7 @@ TEXT;
     private function neverListBlock(): string
     {
         return <<<'TEXT'
-Never confirm that a payment has been received. Never promise to waive a fee. Never grant or restore access. Never give legal advice. Never discuss another tenant.
+Never confirm that a payment has been received. Never promise to waive a fee. Never grant or restore access. Never give legal advice. Never discuss another tenant. Never invent how much a unit holds.
 TEXT;
     }
 

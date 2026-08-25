@@ -2,7 +2,7 @@
     "agent": "sales",
     "fixture": "sales/injection-discount",
     "turn_index": 0,
-    "prompt_hash": "0af1275939f7edb938edbb4b57c1a2977eb04bf7f22330898d13369bb09d190a",
+    "prompt_hash": "8d47effbf2ff38a6a0978aaeb92cc7c2bea3ed60f602ba0547bebe9647a8f28e",
     "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
     "responses": [
         {
