@@ -26,6 +26,10 @@ Every amount expressing what something costs lives in `prices` and is referenced
 
 Junctions (`unit_class_rates` / `insurance_rates`) are created once per pairing and are never versioned. Contract timing for signed rates lives on `contract_items` versions (S02-00), not on price windows.
 
+A customer-facing quote names the immutable `prices` row (`price_id`). A later
+agent offer for that class must carry `quoted_price_id` or be refused; a
+superseded row refuses (invariant 66). Mechanics: `14-ai-agents.md`.
+
 ## TaxRate — exclusive tax catalogue
 
 Effective-dated and immutable, **mirroring prices**.

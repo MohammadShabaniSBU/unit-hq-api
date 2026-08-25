@@ -72,6 +72,27 @@ The operator hitting `/demo/chat` is authorized by `Permission::AiAgentUse`
 (`ai_agent.use`) — that is the *operator* of the harness, not the principal
 the agent is talking to.
 
+## Agent registry
+
+`ai_agents` rows are **instances**, not definitions (D-AI-6, invariant 58). An
+`ai_agents.key` with no matching `AgentDefinition` is a defect — enforced by
+`AgentDefinitionCoverageTest`. The row binds a model (`ai_agents.model`),
+display name, archive/active flags, and tuning knobs in `settings`. It never
+holds the prompt or the tool list.
+
+Two personas ship as definitions (`SupportAgentDefinition`,
+`SalesAgentDefinition`); seeded rows use keys `support` and `sales`. Adding a
+persona is a code change plus a coverage-test update, not a Settings form.
+
+Site scope is conversation provenance, not a grant. `agent_conversations.site_id`
+is seeded at create (inbound destination, demo pane, or null). It is not RBAC.
+Written pipeline rows stamp `source = ai_agent` and `ai_agent_id`
+(`PipelineSource::AiAgent`) — the CRM home is `04-crm-pipeline.md`.
+
+`AiAgent` is a real Eloquent model so agent writes can stamp
+`activity_log.causer_type` (D-AI-4). **No morph-map alias**, for the same
+reason `employee` has none (invariant 15). Archive-only (`archived_at`).
+
 Conversation `site_id` is seeded at create, not inside tools.
 `InboundSiteContext` matches the **inbound destination** (the operator-owned
 identity on `site_sender_identities.from_number` / `from_email` — the number
@@ -135,39 +156,42 @@ send.
 ### Dispatch gates (`ToolDispatcher`)
 
 Authorization happens **before** `AgentTool::handle()` is reached.
-`ToolDispatcher::GATE_SEQUENCE` is the order `dispatch()` walks:
+`ToolDispatcher::GATE_SEQUENCE` is the order `dispatch()` walks — this is the
+code order, not the shortened sprint-file list:
 
-1. Tool is in the current `AgentDefinition::toolKeys()` (and registered) → else
-   `denied: not_allowed_for_agent`
-2. Policy `mode = off` → `denied: not_allowed_for_agent`
-3. `principal.verification.satisfies(effectiveVerification())` → else
-   `denied: verification`
-4. Arguments validate against `schema()` → else `error` /
-   `error_code: invalid_arguments`. A malformed call is not a retryable write
-   and consumes no idempotency slot and no quota.
-5. Argument provenance (`denyIfUnlicensed`) — an entity id in a tool argument
-   must already be licensed. `ArgumentProvenance` rebuilds a conversation-scoped
-   `FactRegistry` from channel/contact context, explicit user-stated identifiers
-   (`site 1`, `site with id 1`, `unit A-114`), and `entities` on prior
-   `status = ok` invocations. `AgentRuntime::turn()` calls `beginTurn()` after
-   persisting the user message so the memo resets each turn; each subsequent
-   ok result is `absorb`ed so later calls in the same turn see it. A miss is
-   `denied: unlicensed_argument` with `ToolError` recovery naming the licensing
-   tool (`facility.availability` for `unit_class`, `facility.find_sites` for
-   `site`). There is no discovery exception: `facility.availability` with an
-   unlicensed `unit_class_id` is denied too. Nested `unit_class_rate_id` is
-   resolved to its class and denied unless that class is licensed (missing
-   rate rows use the same reason — not an existence oracle). Unknown
-   `related_to_type` morph aliases are `invalid_arguments`, never skipped.
-   Provenance runs before ownership, so fabricated and real-but-unowned ids
-   fail identically. Write tools receive the same registry on
-   `AgentContext::$factRegistry`; `CatalogueLinePricer` asserts the class is
-   licensed and fail-closes if the registry is missing.
-6. Contact-scoped arguments match `principal->ownsContact()` → else
-   `denied: ownership`
-7. Idempotency replay (write tools)
-8. Quota (write tools)
-9. `propose` or `handle($principal, $arguments, $ctx)`
+1. `allowlist` — tool is in the current `AgentDefinition::toolKeys()` (and
+   registered) → else `denied: not_allowed_for_agent`
+2. `policy_off` — policy `mode = off` → `denied: not_allowed_for_agent`
+3. `verification` — `principal.verification.satisfies(effectiveVerification())`
+   → else `denied: verification`
+4. `schema` — arguments validate against `schema()` → else `error` /
+   `error_code: invalid_arguments`. **Before idempotency:** a malformed call is
+   not a retryable write and consumes no idempotency slot and no quota
+   (invariant 65).
+5. `provenance` — `ArgumentProvenance::denyIfUnlicensed` (invariant 64). Rebuilds
+   a conversation-scoped `FactRegistry` from channel/contact context, explicit
+   user-stated identifiers (`site 1`, `site with id 1`, `unit A-114`), and
+   `entities` on prior `status = ok` invocations. `AgentRuntime::turn()` calls
+   `beginTurn()` after persisting the user message so the memo resets each turn;
+   each subsequent ok result is `absorb`ed so later calls in the same turn see
+   it. A miss is `denied: unlicensed_argument` with `ToolError` recovery naming
+   the licensing tool (`facility.availability` for `unit_class`,
+   `facility.find_sites` for `site`). There is no discovery exception:
+   `facility.availability` with an unlicensed `unit_class_id` is denied too.
+   Nested `unit_class_rate_id` is licensed transitively: the rate id itself is
+   never an `EntityRef`; it may only resolve to a licensed `unit_class`
+   (`checkRateIds`, re-asserted in `CatalogueLinePricer`, fail-closed if the
+   registry is missing). Missing rate rows use the same reason — not an
+   existence oracle. Unknown or missing `related_to_type` morph aliases are
+   `invalid_arguments`, never `unlicensed_argument` — there is no licensing
+   tool for an untyped id. **Provenance before ownership:** fabricated and
+   real-but-unowned ids fail identically. Write tools receive the same registry
+   on `AgentContext::$factRegistry`.
+6. `ownership` — contact-scoped arguments match `principal->ownsContact()` →
+   else `denied: ownership`
+7. `idempotency` — replay (write tools)
+8. `quota` — write tools
+9. `propose_or_handle` — `propose` or `handle($principal, $arguments, $ctx)`
 
 An empty argument bag is an object (`{}`), never a JSON list. `ArgumentBag`
 normalises at the model-response boundary; `agent_tool_invocations.arguments`
@@ -219,7 +243,7 @@ pre-rendered prose the model may quote (`BillingMath` / `MoneyDisplay` for
 money; exclusive tax, currency from the price row — D1, invariant 30). It is
 the single line fed to the model (and stored as `result_summary`). Structured
 `data` and `entities` persist on the invocation row and stay out of model
-context.
+context (invariant 65).
 
 `entities` is `Array<EntityRef>` — `{ type, id, label, context }` — every
 entity the result names. A payload that contains `site_id` / `unit_class_id`
@@ -235,30 +259,31 @@ those keys. Historical rows without them remain valid (missing `entities` = none
 Replay strips the reserved keys before reconstructing in-memory `data`.
 
 Tool failures return `ToolError` (`error_code` + developer `message` + optional
-`recovery: { tool, hint }` + `candidates` + optional `detail`). `facility.site_info` with no
-`site_id` argument and no site on the principal asks `SiteResolver` with no
-query: exactly one active site succeeds (`match_reason: only_site` in
-`display`); otherwise `site_unresolved` with `candidates` and
-`recovery.tool = facility.find_sites`. Candidates do **not** mint licences —
-the model must call `find_sites`. That error does **not** set `handoffReason`;
-the tool loop continues until `max_tool_calls_per_turn`.
+`recovery: { tool, hint }` + `candidates` + optional `detail`) — invariant 65.
+`facility.site_info` with no `site_id` argument and no site on the principal
+asks `SiteResolver` with no query: exactly one active site succeeds
+(`match_reason: only_site` in `display`); otherwise `site_unresolved` with
+`candidates` and `recovery.tool = facility.find_sites`. Candidates do **not**
+mint licences — the model must call `find_sites`. That error does **not** set
+`handoffReason`; the tool loop continues until `max_tool_calls_per_turn`.
 
 `facts` licenses every amount, date, unit identifier, and percent the draft
 may emit. `GroundingGuard` diffs the draft against the turn `FactBag`
 (plus facts already licensed by earlier unblocked assistant turns).
 
-`FactRegistry` is the input-side mirror: conversation-scoped licensed
-`EntityRef`s, rebuilt from the append-only trace (not a table). Claim licences
-stay turn-scoped and are never persisted. Denials do not mint entity licences.
-`entityArguments()` on each tool (or `EntityArgumentExemptions`) is how the
-coverage test finds every `*_id` schema key. Cassette hashes still use
-`key` + `description` + `schema` only — `entityArguments()` is not in the hash.
+`FactRegistry` and `ForbiddenClaimKey` have different scopes on purpose —
+see Licensing below. `entityArguments()` on each tool (or
+`EntityArgumentExemptions`) is how the coverage test finds every `*_id`
+schema key. Cassette hashes still use `key` + `description` + `schema` only
+— `entityArguments()` is not in the hash.
 
-Eval cassettes (`CassetteKey`) hash the system prompt and tool schema assembly
-(`key`, `description`, `schema`). `display` does **not** participate — it is
-instance-specific. A task that changes a prompt-visible `display` string must
-re-record affected cassettes (`agent:replay --live --record`). S25-03 rewrites
-`pricing.quote`'s summary and must re-record those cassettes.
+Eval cassettes (`CassetteKey`) hash the **fully interpolated** system prompt
+and tool schema assembly (`key`, `description`, `schema`). Trace
+`prompt_version` hashes the template without `identityBlock` (D-AI-14). They
+share `CassetteKey::promptHash`, not the input. `display` does **not**
+participate — it is instance-specific. A task that changes a prompt-visible
+`display` string must re-record affected cassettes
+(`agent:replay --live --record`).
 
 ## Tool catalogue
 
@@ -334,9 +359,11 @@ creation path asserts that row is still the current catalogue price for the
 junction; a closed window returns `price_superseded` with
 `detail: { superseded: 'price' | 'tax_rate', quoted, current }` and recovery
 `pricing.quote`. A tax-rate version change uses the same error code; `detail`
-tells them apart. The agent never silently offers a number different from the
-one it stated. `sales.propose_offer` line items echo `price_id` and
-`tax_rate_id` so propose→create needs no second quote.
+tells them apart. "Was this class quoted?" is answered from the **trace**
+(`PriorCatalogueQuote`), not `FactRegistry` (invariant 66). The agent never
+silently offers a number different from the one it stated.
+`sales.propose_offer` line items echo `price_id` and `tax_rate_id` so
+propose→create needs no second quote.
 
 Other tool notes:
 
@@ -397,9 +424,11 @@ it at Settings `/settings/ai-agents`.
 | `propose` | Tool dry-runs, persists `agent_pending_actions`; operator clicks to commit. |
 | `commit` | Tool writes in the turn. |
 
-**Absent row = `commit`, unlimited.** That default must not change
-`crm.create_contact` / `create_deal` / `create_task`. `sales.create_offer` and
-`sales.create_reservation` seed their own rows explicitly.
+**Hazard: absent row = `commit`, unlimited.** A missing policy is not "off"
+and is not "propose". That default must not change `crm.create_contact` /
+`create_deal` / `create_task`. `sales.create_offer` and
+`sales.create_reservation` seed their own rows explicitly so they cannot
+inherit it by accident. Deleting a policy row restores unlimited commit.
 
 Quotas (`max_per_conversation`, `max_per_day`) count `agent_tool_invocations`
 where `status = ok` — committed writes, not attempts. A denied call does not
@@ -409,16 +438,26 @@ burn quota. `max_per_day` rolls at app-timezone midnight. Null = unlimited.
 (`AgentWritePolicy::effectiveVerification()`). String comparison against
 verification levels is a defect.
 
+### Promotion
+
 Reservation stays in `propose` until a measured bar is met — never a calendar
 date (D-AI-11): 200+ replayed conversations through `agent:replay` with zero
 grounding suppressions on reservation turns, zero cross-site holds, zero
 duplicate holds, and a measured approval rate above 90% (operators were
-rubber-stamping, so the click was buying nothing).
+rubber-stamping, so the click was buying nothing). The bars are measured.
+They are never dated.
 
 ## Pending actions
 
-`mode = propose` persists an intent, never a result (invariant 62). Between
-propose and approve the world moves — the catalogue price changes, the
+`mode = propose` persists an intent, never a result (invariant 62). Write
+tools that can dry-run implement `ProposableTool`: `propose()` validates
+against live state and returns `payload` + `preview` with no writes;
+`commit()` persists. **Payload vs preview:** payload is stable write inputs
+(ids, catalogue refs) — never `now()`, `defaultExpiry()`, availability
+counts, or rendered display. Preview holds those derived values and is never
+compared on approve.
+
+Between propose and approve the world moves — the catalogue price changes, the
 auto-picked unit gets rented. Approval re-runs the same `App\Support\Leasing\`
 entry point against current state and may fail. No code path replays a stored
 payload into the database.
@@ -442,6 +481,23 @@ the runtime.
 
 A block at outbound suppresses the draft, writes `blocked_by` on the message
 row, and writes `agent_handoffs` (`trigger_source = guardrail`).
+
+### Verdict vocabulary
+
+Guard events record `pass` / `warn` / `deny`. Channel length over the SMS
+ceiling is `deny` plus a model redraft (`GuardrailVerdict::retry`), bounded
+by `max_redraft_attempts`, then a handoff.
+
+| Guard | Enforcing? | Notes |
+|---|---|---|
+| `LoopGuard` | yes | Inbound short-circuit |
+| `BudgetGuard` | yes | Inbound short-circuit |
+| `HandoffRules` | yes | Inbound short-circuit |
+| `DuplicateDraftGuard` | yes | Block + handoff |
+| `GroundingGuard` | yes | Block + handoff (invariant 55) |
+| `ForbiddenClaimGuard` | yes | Block + handoff; two keys are licensable (invariant 63) |
+| `DisclosureGuard` | leak: yes; AI Act line: fill-in | Missing disclosure is **appended**, not blocked |
+| `ChannelGuard` | SMS ceiling: yes; warn band: no; WhatsApp window: advisory | Email missing `Subject:` is filled in, not blocked |
 
 ### Deterministic handoff rules (pre-model)
 
@@ -472,6 +528,29 @@ earlier unblocked assistant facts, plus numbers the customer themselves
 supplied). Relative-day words (`today` / `tomorrow`, and es/fr equivalents)
 are not dates. Invented `21%` VAT is the exact failure this exists for.
 
+### Licensing
+
+Two registries, two scopes, on purpose. Do not collapse them for consistency
+(D-AI-13, invariants 63 and 64).
+
+| | `ForbiddenClaimKey` | `FactRegistry` |
+|---|---|---|
+| Licenses | Claims in the draft ("I've held it", "should work well") | Entity ids in **tool arguments** |
+| Scope | **Turn.** Never persisted. | **Conversation.** Rebuilt from the append-only trace, not a table |
+| Why | "I've reserved it" three turns later, after the hold was released, is false again | Availability came back two turns before the quote; a turn-scoped registry would deny the *correct* call |
+| Denials | Suppress the draft | Do not mint entity licences |
+
+`ForbiddenClaimKey` has two cases: `AvailabilityGuarantee` (licensed by a
+committed `sales.create_reservation` — never from `propose()`, never on
+`notFound`) and `CapacityGuidance` (licensed by an `ok` `facility.size_guide`
+result — never on `not_found`). Payment confirmation, fee waiver, access
+grant, legal advice and contract mutation are never licensable.
+
+Direct argument ids are licensed by a prior `ToolResult::entities` entry, an
+explicit user statement, or conversation context. Transitive: `unit_class_rate_id`
+is licensed iff it resolves to a licensed `unit_class`. Untyped morph aliases
+are schema (`invalid_arguments`), not provenance.
+
 ### Forbidden claims
 
 Pattern set over the draft (shared `config/ai-handoff.php` plus per-agent
@@ -480,16 +559,11 @@ availability guarantee ("I've held it"), capacity guidance ("should work
 well" / "will fit"), legal advice, contract mutation.
 Match → block + `unsupported_intent`.
 
-`availability_guarantee` and `capacity_guidance` are **conditional**. A tool
-may license a `ForbiddenClaimKey` for the current turn only, by returning it
-on an `ok` `ToolResult` (invariant 63). `SalesCreateReservationTool` licenses
-`AvailabilityGuarantee` on a committed write — never from `propose()`, never
-on `notFound`. `facility.size_guide` licenses `CapacityGuidance` on an `ok`
-result — never on `not_found`. A licence does not persist into later turns
-the way `FactBag` facts do: "I've reserved it" three turns later, after the
-hold was released, is false again. Payment confirmation, fee waiver, access
-grant, legal advice and contract mutation are never licensable, by any tool,
-in any sprint — `ForbiddenClaimKey` has two cases.
+`availability_guarantee` and `capacity_guidance` are **conditional** — licensed
+only by the tool that earned them this turn (invariant 63). Mechanism and
+scope: Licensing above. Unlicensed capacity claims are suppressed, not
+rewritten. When licensed, the response cites the band and carries the
+guide's disclaimer. "Should work well" is fine; "will fit" is not.
 
 ### Disclosure
 
@@ -501,12 +575,29 @@ not blocked.
 
 ### Channel
 
-SMS over `maxCharacters` → one shorter retry, then handoff. Segment maths
-are GSM-7 vs UCS-2. Email without a `Subject:` line is **filled in** from
-the first body line (or `Your enquiry`), not blocked. Lines before `Subject:`
-are discarded so the body is the sendable email, not model narration. HTML in
-a plain-text channel is stripped. The demo email skin renders Markdown. WhatsApp
-session-vs-template is advisory until S23.
+SMS only: `Gsm7Transliterator` rewrites the body **before** segment counting
+(`²`/`³` → `2`/`3`, `€` → `EUR`, dashes/quotes/ellipsis/NBSP). Characters
+already in GSM-7 (Spanish accented vowels, `ñ`, `¿`, `¡`, `º`/`ª`) pass
+through. Never applied to email or WhatsApp — rendering `€` as `EUR` in an
+email is a downgrade with no compensating benefit. Operator-authored SMS
+templates are unchanged (`06-communications.md`).
+
+Config `agents.channel.sms`: `warn_segments` (default 3), `max_segments`
+(default 5), `max_redraft_attempts` (default 2). At or above warn: verdict
+`warn`, send proceeds. Above max: verdict `deny`, reason `sms_too_long`; the
+draft returns to the model to shorten, then escalates. Segment counting is
+the same counter `SmsSender` uses for the inbox composer — do not fork it.
+
+`detail.gsm7_transliterated` is set only when the body actually changed. The
+pre-transliteration body is `originalBody` on the **client session only**
+(D-AI-15). It is not a column, not on `agent_handoffs.detail`, and disappears
+on reload. Transliteration does not reverse.
+
+Email without a `Subject:` line is **filled in** from the first body line (or
+`Your enquiry`), not blocked. Lines before `Subject:` are discarded so the
+body is the sendable email, not model narration. HTML in a plain-text channel
+is stripped. The demo email skin renders Markdown. WhatsApp session-vs-template
+is advisory until a real thread supplies `last_inbound_at`.
 
 ### Prompt injection
 
@@ -523,11 +614,7 @@ invariant 57). Invariant 38 is unchanged: a `messages` row means exactly one
 real send or receipt. Agent drafts are never `messages` rows.
 `message_thread_id` and `emitted_message_id` are always null this sprint; when
 channels land they link the trace to the canonical thread. The Inbox stays
-the single operator surface.
-
-`AiAgent` is a real Eloquent model so agent writes can stamp
-`activity_log.causer_type` (D-AI-4). **No morph-map alias**, for the same
-reason `employee` has none. Archive-only (`archived_at`). No
+the single operator surface. Registry: Agent registry above. No
 `HasAutomationTriggers` on any agent table.
 
 | Model | Table | Role |
@@ -539,6 +626,7 @@ reason `employee` has none. Archive-only (`archived_at`). No
 | `AgentPendingAction` | `agent_pending_actions` | Propose-mode intent: server-normalised `payload`, operator `preview`, `status`, `expires_at`. Approval re-validates; never a result snapshot |
 | `AgentHandoff` | `agent_handoffs` | Escalation: `reason`, `trigger_source` (`rule` \| `model` \| `customer` \| `guardrail`), `detail` |
 | `AgentWritePolicy` | `agent_write_policies` | Per-agent, per-tool autonomy: `mode`, quotas, raise-only `min_verification`. Absent row = `commit` unlimited |
+| `AgentGuardrailEvent` | `agent_guardrail_events` | One verdict per guard per message. Consumers key by `message_id`, never array order |
 
 CHECK constraints bind the shape in the database: internal audience requires
 `employee_id` and forbids `contact_id`; customer audience forbids
@@ -550,6 +638,24 @@ CHECK constraints bind the shape in the database: internal audience requires
 Demo conversations must not reach Insights, eval corpora, or any
 operator-facing metric.
 
+### Envelope
+
+`TraceAssembler` exports every row with:
+
+| Field | Notes |
+|---|---|
+| `conversation_id` | |
+| `turn` | Monotonic within the conversation |
+| `seq` | Canonical sort key. Consumers sort by `seq`, never by `turn` or array order |
+| `message_id` | Nullable — null for rows that precede a message. Guardrail rows always resolve to the message they judged |
+| `model` | The model that produced the turn |
+| `prompt_version` | Hash of the **template**, not the interpolated prompt (D-AI-14). `identityBlock` (company, site, timezone, today's date) is omitted so the field is not a per-site, per-day fingerprint. Channel and verification stay in the hash. Eval cassettes hash the fully interpolated prompt — they share `CassetteKey::promptHash`, not the input |
+| `occurred_at` | |
+
+The model receives `display` / `summary` only; `data` and `entities` persist
+on the invocation. `originalBody` is client-session only (D-AI-15) and is not
+an envelope field.
+
 ## Telemetry
 
 `ai_usage_events` is operational telemetry, not the ledger (invariant 48).
@@ -557,9 +663,16 @@ Customer-facing turns stamp `ai_agent_id` + `agent_conversation_id` and leave
 `employee_id` null (`CHECK (employee_id IS NOT NULL OR ai_agent_id IS NOT NULL)`).
 Reserve before the provider call, settle after with real token counts.
 Estimated cost is derived at **read time** from `ai_model_prices` — never
-stored, never an in-place rate update, never reconciled to the provider
-invoice, never summed across currencies. The figure attributes spend between
-employees **or agents**; it is not an accounting record.
+stored, never an in-place rate update, never a `NUMERIC(10,2)` money column,
+never reconciled to the provider invoice, never summed across currencies
+(invariants 48 / 30). The figure attributes spend between employees **or
+agents**; it is not an accounting record.
+
+`agents:check-model-prices` fails when any recently used or configured model
+key has no `ai_model_prices` row effective for that period. Wire it into
+scheduled checks so a model swap cannot silently null out cost.
+
+Usage rows record `cached_input_tokens` where the provider reports them.
 
 Tier-1 `SystemEvent` `ai.turn.failed` on driver errors and timeouts.
 
@@ -646,6 +759,25 @@ Auth is `tokenProvider` (verified `@vocalbridgeai/sdk@0.1.1` `.d.ts`), so a
 later duration bump can re-mint. The API key stays server-side
 (`POST /api/copilot/voice/token`, permission `copilot_voice.use`).
 
+## Known gaps
+
+These are defects with a home, not open questions.
+
+1. **Conversation redaction (AR-03).** `agent_conversation_messages`,
+   `agent_tool_invocations`, and `agent_handoffs.detail` hold names, emails,
+   and balances. `config/redaction.php` covers `activity_log` and
+   `system_events` only. `contacts:redact` does not touch the agent tables.
+   `ai_summaries` **is** already covered (invariant 53). Transcripts are
+   evidence in a lien or auction dispute — they retain on contract terms, not
+   on the telemetry pruning schedule that covers tier-1 system events.
+   Blocking before any live channel connects. Detail: `10-open-decisions.md`.
+2. **Two authorization systems.** `agent_write_policies` governs what agents
+   may write; `roles` / `role_permissions` / `employee_roles` governs what
+   people may write. They will drift. Whether an agent should hold a real
+   grant with a real site scope (write policy reduced to mode and quota) is
+   Undecided in `10` — recorded so it is settled deliberately rather than by
+   accretion.
+
 ## What is deliberately not built
 
 A customer-facing agent tool **never**:
@@ -683,19 +815,20 @@ Also not built:
 - Insights reports on agent performance (tables are shaped for them; harvest
   principle applies).
 - Delinquency autonomy — never, in any sprint.
-- Extending `contacts:redact` to agent tables — **blocking for S23** (AR-03
-  in `10-open-decisions.md`). S22 traffic is `origin = demo` against
-  `demo:seed` fiction.
 
 ## Related docs
 
-- `06-communications.md` — inbound sender matching (today's routing decision);
-  the S23 seam where a match becomes `VerificationLevel`; `messages` stays
-  canonical (invariant 38)
+- `02-facility.md` — `site_service_areas`, site coordinates, `size_guides`
+- `03-pricing.md` — quote-to-offer `price_id` continuity (invariant 66)
+- `04-crm-pipeline.md` — `source` / `ai_agent_id` on Offer and Reservation
+- `06-communications.md` — inbound sender matching; GSM-7 / SMS segment
+  ceiling apply to agent drafts only
 - `07-people-and-auth.md` — employee RBAC is a different axis from agent
   authorization (D-AI-2)
-- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–63, amended 48
+- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–66, amended 48
 - `12-automation-engine.md` — `CreateObjectAllowlist` (unchanged; agent surface is deliberately wider)
-- `10-open-decisions.md` — D-AI-1…11, D-V1…4, AR-03 blocking for S23
+- `10-open-decisions.md` — D-AI-1…15, D-V1…4; AR-03 is a known compliance
+  defect (Blocking for S23), not an open question
 - `08-activity-logging.md` — tier-2 `ai` channel; tier-3 copilot voice sessions; activity log is not a transcript
 - `01-stack.md` — stack line and `/demo/chat` page map
+

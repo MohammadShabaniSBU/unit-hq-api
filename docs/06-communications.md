@@ -101,7 +101,7 @@ Local `whatsapp_templates` rows are the operator-facing registry; Meta's approva
 - **Auth API:** `GET/POST /api/whatsapp-templates`, `GET/PUT …/{id}`, `POST …/{id}/submit|clone|archive`, `POST /api/whatsapp-templates/sync`. Panel: Marketing → Templates → WhatsApp.
 - **Inbox composer (S13-04):** open window → free-form session reply + countdown from `closes_at`; closed → approved template picker, variable fill (token defaults pre-resolved), phone preview, then `sendResolvedTemplate`. Compose-context returns `whatsapp_window`, `whatsapp_consent`, and approved templates with `resolved_variables`.
 - **Playbook `send_whatsapp_template`:** params `{whatsapp_template_name, variable_tokens}`. Resolve-by-name at send time. Skip-with-reason (run succeeds): `no_channel`, `template_not_approved`, `suppressed`. Category gates at save and send — debt=`utility` only; lead=`marketing|utility`. Template outbound does **not** open the 24h window (only inbound does); free-form follow-up after a tenant reply happens in the inbox, not inside the enrolment.
-- **SMS templates:** `template_family_id` XOR inline body on inbox reply, `POST /inbox/compose`, and playbook `send_sms`; segment count runs on the resolved body.
+- **SMS templates:** `template_family_id` XOR inline body on inbox reply, `POST /inbox/compose`, and playbook `send_sms`; segment count runs on the resolved body. GSM-7 transliteration (`Gsm7Transliterator`) and the SMS segment ceiling (`warn_segments` / `max_segments`) apply to **agent drafts only** (`ChannelGuard` — `14-ai-agents.md`). Operator-authored SMS templates are unchanged.
 
 ### Normalised delivery vocabulary
 

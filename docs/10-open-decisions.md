@@ -76,10 +76,26 @@
 - **D-V2 — Filler-then-push on slow turns.** App→Agent client action `copilot_answer_ready`. The `onAIAgentQuery` promise always settles (hang-guard at 25s if Reverb drops).
 - **D-V3 — Voice continues the active `CopilotConversation`.** No new conversation per call. Accepts the existing staleness of `site_scope_snapshot`.
 - **D-V4 — Tool approvals are click-only, never voice.** Invariant 60. Voice produces prompts, never decisions.
+- **D-AI-12 — Argument provenance is a separate deny-gate from grounding.** Grounding (invariant 55) licenses *outputs* against tool *results*. It cannot license *inputs*. A fabricated `unit_class_id` produces a real `ToolResult`, which then grounds perfectly — the failure mode from the S25 demo trace. That is why invariant 64 exists as a separate deny-gate. Detail: `14-ai-agents.md`, invariant 64.
+- **D-AI-13 — `FactRegistry` is conversation-scoped.** Rebuilt from the append-only trace, not a table, and deliberately *not* turn-scoped like `ForbiddenClaimKey` (invariant 63). Availability comes back two turns before the quote; a turn-scoped registry would deny the correct call. Do not "fix" the scopes to match. Detail: `14-ai-agents.md`.
+- **D-AI-14 — `prompt_version` hashes the template, not the interpolated prompt.** `identityBlock` interpolates company, site, timezone and today's date, which would make the field a per-site, per-day fingerprint. Channel and verification stay in the hash — SMS vs email is a different prompt in force. Eval cassettes continue to hash the fully interpolated prompt because they answer a different question ("did the model see these bytes"). They share `CassetteKey::promptHash`, not the input; do not collapse them. Named test: `PromptVersionTest`.
+- **D-AI-15 — `originalBody` is client-session only.** Not persisted: a second copy of customer-directed content would land in `agent_handoffs.detail`, which AR-03 already names, and GSM-7 transliteration does not reverse. It disappears on reload by design. The panel comment in `useAgentChat.ts` is not the home; this row is.
 
 ## Blocking for S23
 
-- **AR-03 — blocking before any channel connects** (agent conversation redaction; **not** sprint-19 usage metering, which shipped). `contacts:redact` must cover `agent_conversation_messages`, `agent_tool_invocations`, and `agent_handoffs.detail`. S22 traffic is `origin = demo` against `demo:seed` fiction, so the gap is tolerable for one sprint. The moment a real inbound message reaches an agent, these tables hold verbatim tenant text, balances, and addresses. Extend `config/redaction.php` before, not after. **Retention:** agent transcripts are evidence in a lien or auction dispute. They retain on contract terms, **not** on the telemetry pruning schedule that covers tier-1 system events. `ai_summaries` **is** already covered by `contacts:redact` (invariant 53).
+- **AR-03 — known compliance defect, blocking before any channel connects**
+  (agent conversation redaction; **not** sprint-19 usage metering, which
+  shipped). This is not an open question. `contacts:redact` must cover
+  `agent_conversation_messages`, `agent_tool_invocations`, and
+  `agent_handoffs.detail`. `config/redaction.php` covers `activity_log` and
+  `system_events` only. S22/S25 traffic is `origin = demo` against `demo:seed`
+  fiction, so the gap is tolerable until a real inbound message reaches an
+  agent — at that moment these tables hold verbatim tenant text, balances, and
+  addresses. Extend `config/redaction.php` before, not after. **Retention:**
+  agent transcripts are evidence in a lien or auction dispute. They retain on
+  contract terms, **not** on the telemetry pruning schedule that covers tier-1
+  system events. `ai_summaries` **is** already covered by `contacts:redact`
+  (invariant 53). Domain home: `14-ai-agents.md` Known gaps.
 - **Insights site-scope leak — blocking prerequisite for the RBAC sprint.** A locked-but-optional `site_id` embed param resolves to null on “All sites”, which omits the param and reads **every site**. That is correct today because `visibility` is an I5 stub and `ReportView` is company-wide. It becomes a data leak the moment site RBAC lands: a site-restricted employee on “All sites” would see every site's figures. Fix is either a CSV-serialised `visible_site_ids` locked param (Metabase text variables take scalars, not arrays) or field filters on the analytics views — the same field-filter work that would unlock editable period pickers. Do not ship site RBAC for Insights until one of those lands.
 
 ## Explicitly out of scope (for now)
@@ -132,7 +148,8 @@
 | Escalation SLA ownership | An agent that hands off at 02:00 into an unwatched queue produces excellent containment metrics and a worse experience than the autoresponder it replaced. Product decision, not engineering. |
 | Agent performance Insights | Containment rate, handoff mix by reason, operator edit distance in `suggest` mode, first-response time, agent-sourced reservations, cost per conversation per currency. Tables are shaped for it; harvest principle applies (live bounded queries, no rollups). |
 | Copilot onto the shared runtime | Deliberately not done in S22. Separate, testable migration once the customer-facing path proves itself. |
-| Copilot `CreateOffer` / `CreateReservation` vs `App\Support\Leasing\` | S24-00 extracted HTTP offer/reservation/accept entry points. The two Copilot tools remain duplicate implementations, held by the allowlist in `LeasingEntryPointParityTest`, to be collapsed onto `App\Support\Leasing\` in a later sprint (S25). Known divergences that survive: `CreateOffer` applies no custom attributes; `CreateReservation` accepts a model-supplied `expires_at` and `unit_id`. Invariant 54b and `docs/AGENTS.md` point here; this is the one home for the exception. |
+| Copilot `CreateOffer` / `CreateReservation` vs `App\Support\Leasing\` | S24-00 extracted HTTP offer/reservation/accept entry points. The two Copilot tools remain duplicate implementations, held by the allowlist in `LeasingEntryPointParityTest`. S25 did not collapse them. Known divergences that survive: `CreateOffer` applies no custom attributes; `CreateReservation` accepts a model-supplied `expires_at` and `unit_id`. Invariant 54b and `docs/AGENTS.md` point here; this is the one home for the exception. |
+| Agent authorization model | `agent_write_policies` governs what agents may write; `roles` / `role_permissions` / `employee_roles` governs what people may write. Two authorization systems will drift silently. Settle whether an agent holds a real grant with a real site scope — with write policy reduced to mode and quota — or whether the parallel table is the deliberate answer. Not settled in S25; recorded so it is settled deliberately rather than by accretion. Detail: `14-ai-agents.md` Known gaps. |
 | Agent-initiated sending | An agent may create an offer (D-AI-10) and may not send it. Consent, suppression, and threading consequences of agent sending are a separate decision. Turns invariant 57 (trace, not message store) into a live question. |
 | Support-agent write tools | S24 is sales only. Support keeps `crm.create_task` / `crm.create_note`; it does not create Offer or Reservation. |
 | `unit_holds.created_by` as a morph | Today an agent-created hold stamps `created_by` null and carries the agent in properties / reservation `ai_agent_id`. Widening to a morph so an agent can be stamped directly is a schema change, not a given. |

@@ -49,6 +49,7 @@ use Database\Seeders\DefaultAttributeLayoutSeeder;
 use Database\Seeders\DiscountCatalogueSeeder;
 use Database\Seeders\InsightReportSeeder;
 use Database\Seeders\LeadChasePlaybookSeeder;
+use Database\Seeders\SizeGuideSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -204,6 +205,7 @@ class StageSeeder extends Seeder
         ]);
 
         (new DiscountCatalogueSeeder)->run($manager);
+        $this->call(SizeGuideSeeder::class);
 
         $unitClasses = collect();
         foreach (

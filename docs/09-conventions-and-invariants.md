@@ -232,7 +232,7 @@
 
     This rule binds customer-facing agents. The operator Copilot is an operator
     surface; its duplicated `CreateOffer` / `CreateReservation` are a known
-    allowlisted exception pending S25, tracked under Undecided in
+    allowlisted exception, tracked under Undecided in
     `10-open-decisions.md` (Copilot vs `App\Support\Leasing\`). Do not collapse
     those copies as a drive-by.
 55. **No money, date, or unit identifier in agent output originates from the
@@ -288,6 +288,55 @@
     fee waiver, access grant, legal advice and contract mutation are never
     licensable, by any tool, in any sprint. A licence does not persist across
     turns. Enforced by `ForbiddenClaimLicensingTest` and `ForbiddenClaimKeyTest`.
+64. **Entity identifiers in tool arguments must be licensed.** Direct ids must
+    trace to a prior `ToolResult::entities` entry, an explicit user statement,
+    or conversation context. Never inferred, never sequential, never carried
+    only in the model's bookkeeping. Two shipped shapes sit beside those three
+    sources:
+    - **Transitive licensing.** `unit_class_rate_id` is not itself an
+      `EntityRef`. It is licensed iff it resolves to a licensed `unit_class`.
+      Asserted at the provenance gate (`ArgumentProvenance::checkRateIds`) and
+      again inside `CatalogueLinePricer` (fail-closed if the registry is
+      missing). Listed in `EntityArgumentExemptions` so the coverage test does
+      not demand a `unit_class_rate` entity type that does not exist.
+    - **Untyped morph ids are schema, not provenance.** Unknown or missing
+      `related_to_type` aliases fail as `invalid_arguments`, never
+      `unlicensed_argument`. There is no licensing tool for an untyped id; a
+      recovery hint would be a lie. Provenance only runs once the type is a
+      known `EntityType`.
+    Enforced by `ArgumentProvenance` as a **deny** (not warn) pre-dispatch, and
+    by `AgentToolCoverageTest` when a tool adds an undeclared `*_id` argument
+    (`entityArguments()` or `EntityArgumentExemptions`). Named tests:
+    `ArgumentProvenanceTest`, `AgentToolCoverageTest`. This is the input-side
+    mirror of 63; it shares that plumbing and must not fork it.
+65. **Tool failures return a machine error code and a recovery affordance.** A
+    prose-only failure is a defect, because it forces escalation where retry
+    was available. `ToolError` carries `error_code` (`ToolErrorCode`), optional
+    `recovery {tool, hint}`, and `candidates` when the failure is ambiguity
+    rather than absence. Argument schema validation runs before idempotency: a
+    malformed call is not a retryable write and consumes no idempotency slot
+    and no quota. Enforced by `ToolDispatchTest` and `ToolResultContractTest`.
+66. **A price shown to a customer names the immutable `prices` row it came
+    from.** The agent never silently offers a number different from the one it
+    stated. Same reasoning as 62 — live state wins and divergence surfaces.
+    Three clauses:
+    1. When `quoted_price_id` is absent and the conversation trace contains a
+       prior `ok` `pricing.quote` or `sales.propose_offer` naming that option's
+       class (`PriorCatalogueQuote`), refuse with `invalid_arguments` and a
+       hint to pass the token. Live pricing proceeds only when no prior quote
+       for that class exists.
+    2. When the token is present, the creation path asserts that `prices` row
+       is still the current catalogue price for the junction; a closed window
+       returns `price_superseded`. Same for `quoted_tax_rate_id` against the
+       tax version `TaxResolver` selects now.
+    3. `detail.superseded` is `'price' | 'tax_rate'` (plus `quoted` / `current`
+       ids). One enum case, two operational causes (operator rate change vs
+       tax-rate version rollover); the trace detail is where an operator tells
+       them apart.
+    The source of "was this class quoted?" is the **trace**, not
+    `FactRegistry`. The registry holds only `EntityRef`s, so an availability
+    call that licensed the class is indistinguishable from a quote. Enforced
+    by `SalesCreateOfferToolTest`.
 
 ## Code conventions
 
