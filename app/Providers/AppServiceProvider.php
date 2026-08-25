@@ -75,6 +75,9 @@ use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
 use App\Support\ESign\ESignProviderRegistry;
+use App\Support\Facility\Geocoder;
+use App\Support\Facility\NominatimGeocoder;
+use App\Support\Facility\NullGeocoder;
 use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -138,6 +141,18 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new EscalateTool);
 
             return $registry;
+        });
+
+        $this->app->singleton(Geocoder::class, function (): Geocoder {
+            $driver = (string) config('facility.geocoder', '');
+            if ($driver === 'nominatim') {
+                return new NominatimGeocoder(
+                    (string) config('facility.nominatim_url'),
+                    (string) config('facility.nominatim_user_agent'),
+                );
+            }
+
+            return new NullGeocoder;
         });
 
         $this->app->singleton(HandoffEvaluator::class, HandoffRules::class);

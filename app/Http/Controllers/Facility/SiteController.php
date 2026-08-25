@@ -59,7 +59,7 @@ class SiteController extends Controller
     {
         Gate::authorize(Permission::SiteManage->value);
 
-        $validated = $this->validatedPayload($request, creating: true);
+        $validated = $this->syncCoordinates($this->validatedPayload($request, creating: true));
 
         $site = Site::query()->create($validated);
 
@@ -83,7 +83,7 @@ class SiteController extends Controller
     {
         Gate::authorize(Permission::SiteManage->value, $site);
 
-        $validated = $this->validatedPayload($request, creating: false);
+        $validated = $this->syncCoordinates($this->validatedPayload($request, creating: false));
 
         $site->update($validated);
 
@@ -191,6 +191,32 @@ class SiteController extends Controller
                 Rule::exists('delinquency_policies', 'id')->whereNull('archived_at'),
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function syncCoordinates(array $validated): array
+    {
+        if (! array_key_exists('location', $validated)) {
+            return $validated;
+        }
+
+        $location = $validated['location'];
+        if (! is_array($location)) {
+            $validated['latitude'] = null;
+            $validated['longitude'] = null;
+
+            return $validated;
+        }
+
+        $lat = $location['lat'] ?? $location['latitude'] ?? null;
+        $lng = $location['lng'] ?? $location['longitude'] ?? null;
+        $validated['latitude'] = $lat !== null && $lat !== '' ? $lat : null;
+        $validated['longitude'] = $lng !== null && $lng !== '' ? $lng : null;
+
+        return $validated;
     }
 
     private function assertCanArchive(Site $site): void

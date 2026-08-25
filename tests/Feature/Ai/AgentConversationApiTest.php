@@ -11,6 +11,7 @@ use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
 use App\Models\Contact;
 use App\Models\Employee;
+use App\Models\SiteSenderIdentity;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
@@ -21,6 +22,7 @@ use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Auth\Permission;
+use App\Support\Communications\Channel;
 use Database\Seeders\RbacSystemRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -169,6 +171,50 @@ class AgentConversationApiTest extends TestCase
             'audience' => AgentAudience::Customer->value,
             'employee_id' => null,
         ]);
+    }
+
+    #[Test]
+    public function inbox_destination_seeds_conversation_site_from_sender_identity(): void
+    {
+        $agent = AiAgent::factory()->create(['key' => 'sales', 'is_active' => true]);
+        $site = $this->siteA;
+        SiteSenderIdentity::query()->create([
+            'site_id' => $site->id,
+            'channel' => Channel::Sms,
+            'from_number' => '+34911000001',
+        ]);
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/agent-conversations', [
+            'agent_key' => $agent->key,
+            'channel' => AgentChannel::Sms->value,
+            'origin' => AgentOrigin::Inbox->value,
+            'inbound_destination' => '+34911000001',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.site_id', $site->id);
+    }
+
+    #[Test]
+    public function explicit_site_id_wins_over_inbound_destination(): void
+    {
+        $agent = AiAgent::factory()->create(['key' => 'sales', 'is_active' => true]);
+        SiteSenderIdentity::query()->create([
+            'site_id' => $this->siteA->id,
+            'channel' => Channel::Sms,
+            'from_number' => '+34911000001',
+        ]);
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/agent-conversations', [
+            'agent_key' => $agent->key,
+            'channel' => AgentChannel::Sms->value,
+            'origin' => AgentOrigin::Inbox->value,
+            'inbound_destination' => '+34911000001',
+            'site_id' => $this->siteB->id,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.site_id', $this->siteB->id);
     }
 
     #[Test]

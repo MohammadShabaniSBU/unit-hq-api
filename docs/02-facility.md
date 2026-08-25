@@ -18,6 +18,10 @@ The physical storage facility (also called "Center").
 - **`sites.delinquency_policy_id`** (nullable FK → `delinquency_policies`, `delinquencyPolicy()` relation) assigns which delinquency escalation policy applies to contracts at that site.
 - Sites are **archive-only** (`archived_at`) — never hard-deleted. List/options use an explicit `active()` scope; archived sites stay resolvable by id for historical contracts. Archive is refused while the site has active contracts or non-expired reservations.
 - Sites belong to a **legal entity**, which holds payment credentials and fiscal regime (see `roadmap/architecture-payments-and-fiscal.md`). Integration surfaces that remain per-site: floor maps and sender identities — see later phases / `05` / `06`.
+- **`sites.latitude` / `sites.longitude`** (`numeric(9,6)`, nullable) are the queryable coordinates used by `SiteResolver` distance fallback. The panel still PATCHes `location.lat` / `location.lng` JSON; `SiteController` dual-writes those into the columns. `php artisan sites:geocode` backfills nulls from a config-selected driver (`FACILITY_GEOCODER`); unconfigured, it skips and reports remaining nulls. The resolver never requires coordinates.
+- **`site_service_areas`** is the operator-declared catchment (archive-only, invariant 28). `kind` is `postcode` | `postcode_prefix` | `admin_region`. Live uniqueness is `(site_id, kind, value) WHERE archived_at IS NULL` (PostgreSQL partial unique; SQLite relies on the API unique rule). Prefix matching is **longest-first** and **country-specific**: `find_sites` returns `postal_code` but not country, and a prefix such as `280` is Madrid in Spain and nothing in the UK. Mono-tenant single-country deployment makes this harmless today; do not later extend the matcher cross-border as if prefixes were globally unique.
+
+`App\Support\Facility\SiteResolver::resolve(?query, ?lat, ?lng, $limit = 5)` walks active sites only. First hit wins among steps that run. `only_site` fires only when **both** query and coordinates are absent and exactly one active site exists — a Barcelona query against a Madrid-only catalogue is `no_match`, not a confident match. Step 7 always returns every remaining active site (capped by `$limit`) as `no_match`; an empty result is the old dead end. Each hit carries `match_reason` (`only_site` | `service_area` | `service_area_prefix` | `site_postcode` | `locality` | `distance` | `no_match`).
 
 ## Site maps (`site_maps`)
 
@@ -72,7 +76,8 @@ facility hierarchy (S15).
 
 | Table | Purpose |
 |---|---|
-| `sites` | Facilities |
+| `sites` | Facilities (address, timezone, currency prefill, `latitude`/`longitude`) |
+| `site_service_areas` | Operator-declared catchment (`postcode` / `postcode_prefix` / `admin_region`; archive-only) |
 | `unit_classes` | Sellable products |
 | `units` | Physical boxes |
 | `site_maps` | Visual facility maps (SVG; `data-unit-number` ↔ `unit_number`) |

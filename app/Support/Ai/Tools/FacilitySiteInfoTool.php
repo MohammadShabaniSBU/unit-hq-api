@@ -10,6 +10,8 @@ use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Knowledge\KnowledgeBase;
+use App\Support\Facility\SiteMatch;
+use App\Support\Facility\SiteResolver;
 
 final class FacilitySiteInfoTool implements AgentTool
 {
@@ -59,8 +61,24 @@ final class FacilitySiteInfoTool implements AgentTool
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $siteId = isset($arguments['site_id']) ? (int) $arguments['site_id'] : $principal->siteId;
+        $matchReason = null;
+
         if ($siteId === null) {
-            return ToolResult::fail(ToolError::siteUnresolved('site_id is required when no site is in context.'));
+            $matches = SiteResolver::resolve(null, null, null);
+            if (count($matches) === 1) {
+                $siteId = $matches[0]->site->id;
+                $matchReason = $matches[0]->reason->value;
+            } else {
+                $candidates = array_map(
+                    fn (SiteMatch $match): EntityRef => EntityRef::site($match->site),
+                    $matches,
+                );
+
+                return ToolResult::fail(ToolError::siteUnresolved(
+                    'site_id is required when no site is in context and more than one active site exists.',
+                    $candidates,
+                ));
+            }
         }
 
         $site = Site::query()->with('country')->find($siteId);
@@ -69,14 +87,7 @@ final class FacilitySiteInfoTool implements AgentTool
         }
 
         $hours = KnowledgeBase::snippet('access_hours', $principal->locale, $site);
-        $addressParts = array_values(array_filter([
-            $site->address,
-            $site->address_line_2,
-            $site->city,
-            $site->postal_code,
-            $site->state_region,
-        ], fn (?string $part): bool => $part !== null && $part !== ''));
-        $address = implode(', ', $addressParts);
+        $address = SiteMatch::formatAddress($site);
 
         $data = [
             'site_id' => $site->id,
@@ -89,6 +100,9 @@ final class FacilitySiteInfoTool implements AgentTool
             'currency' => $site->currency,
             'timezone' => $site->timezone,
         ];
+        if ($matchReason !== null) {
+            $data['match_reason'] = $matchReason;
+        }
 
         $bits = ["{$site->name}."];
         if ($address !== '') {
@@ -101,6 +115,9 @@ final class FacilitySiteInfoTool implements AgentTool
             $bits[] = "Phone: {$site->contact_phone}.";
         }
         $bits[] = "Timezone: {$site->timezone}.";
+        if ($matchReason !== null) {
+            $bits[] = "match_reason: {$matchReason}.";
+        }
 
         $display = implode(' ', $bits);
         $facts = (new FactBag)->absorb($display, $site);

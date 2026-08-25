@@ -52,6 +52,7 @@ use App\Models\Role;
 use App\Models\Site;
 use App\Models\SiteMap;
 use App\Models\SiteSenderIdentity;
+use App\Models\SiteServiceArea;
 use App\Models\Task;
 use App\Models\TaxRate;
 use App\Models\TemplateAsset;
@@ -132,6 +133,9 @@ final class SubjectSite
             SiteMap::class => $subject instanceof SiteMap ? self::siteMapSite($subject) : null,
             SiteSenderIdentity::class => $subject instanceof SiteSenderIdentity
                 ? self::siteSenderIdentitySite($subject)
+                : null,
+            SiteServiceArea::class => $subject instanceof SiteServiceArea
+                ? self::siteServiceAreaSite($subject)
                 : null,
             UnitClass::class => null,
             PaymentMethod::class => null,
@@ -214,6 +218,13 @@ final class SubjectSite
         return $identity->relationLoaded('site')
             ? $identity->site
             : Site::query()->find($identity->site_id);
+    }
+
+    private static function siteServiceAreaSite(SiteServiceArea $area): ?Site
+    {
+        return $area->relationLoaded('site')
+            ? $area->site
+            : Site::query()->find($area->site_id);
     }
 
     private static function dealSite(Deal $deal): ?Site

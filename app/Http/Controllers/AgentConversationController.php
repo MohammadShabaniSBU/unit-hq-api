@@ -8,6 +8,7 @@ use App\Enums\LogChannel;
 use App\Http\Resources\AgentConversationResource;
 use App\Models\AgentConversation;
 use App\Models\AiAgent;
+use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Site;
@@ -16,6 +17,7 @@ use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\InboundSiteContext;
 use App\Support\Ai\Sse\AgentTurnSse;
 use App\Support\Auth\Permission;
 use App\Support\Communications\SiteLocale;
@@ -86,6 +88,8 @@ class AgentConversationController extends Controller
                 Rule::enum(VerificationLevel::class),
             ],
             'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+            'communication_account_id' => ['nullable', 'integer', 'exists:communication_accounts,id'],
+            'inbound_destination' => ['nullable', 'string', 'max:255'],
             'locale' => ['nullable', 'string', 'max:5'],
         ]);
 
@@ -113,7 +117,7 @@ class AgentConversationController extends Controller
         }
 
         $audience = $this->deriveAudience($origin, $contactId);
-        $siteId = isset($validated['site_id']) ? (int) $validated['site_id'] : null;
+        $siteId = $this->resolveSiteId($validated);
         $locale = $this->resolveLocale($validated['locale'] ?? null, $contactId, $siteId);
 
         $conversation = AgentConversation::query()->create([
@@ -196,6 +200,26 @@ class AgentConversationController extends Controller
         return $this->success(
             AgentConversationResource::make($agentConversation),
             'Conversation closed successfully.',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveSiteId(array $validated): ?int
+    {
+        if (isset($validated['site_id'])) {
+            return (int) $validated['site_id'];
+        }
+
+        $account = isset($validated['communication_account_id'])
+            ? CommunicationAccount::query()->find((int) $validated['communication_account_id'])
+            : null;
+
+        return InboundSiteContext::resolve(
+            AgentChannel::from($validated['channel']),
+            $account,
+            isset($validated['inbound_destination']) ? (string) $validated['inbound_destination'] : null,
         );
     }
 

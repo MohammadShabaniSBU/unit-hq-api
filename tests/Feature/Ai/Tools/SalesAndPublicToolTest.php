@@ -300,7 +300,7 @@ class SalesAndPublicToolTest extends TestCase
     }
 
     #[Test]
-    public function site_info_without_site_returns_site_unresolved_with_recovery(): void
+    public function site_info_without_site_and_no_active_sites_is_unresolved(): void
     {
         $result = $this->dispatchTool(
             'sales',
@@ -314,7 +314,82 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame('facility.find_sites', $result->error?->recovery['tool'] ?? null);
         $this->assertNull($result->handoffReason);
         $this->assertStringContainsString('facility.find_sites', $result->display);
-        $this->assertSame('site_id is required when no site is in context.', $result->message);
+        $this->assertSame([], $result->error?->candidates);
+    }
+
+    #[Test]
+    public function site_info_without_args_returns_the_only_active_site(): void
+    {
+        $site = Site::factory()->create(['name' => 'Madrid Centro', 'timezone' => 'Europe/Madrid']);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.site_info',
+            AgentPrincipal::anonymous(null, 'en'),
+            [],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame($site->id, $result->data['site_id']);
+        $this->assertSame('only_site', $result->data['match_reason']);
+        $this->assertStringContainsString('match_reason: only_site', $result->display);
+        $this->assertCount(1, $result->entities);
+    }
+
+    #[Test]
+    public function site_info_without_args_and_three_sites_returns_candidates(): void
+    {
+        Site::factory()->count(3)->create();
+
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.site_info',
+            AgentPrincipal::anonymous(null, 'en'),
+            [],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::SiteUnresolved, $result->error?->errorCode);
+        $this->assertCount(3, $result->error?->candidates ?? []);
+        $this->assertSame('facility.find_sites', $result->error?->recovery['tool'] ?? null);
+    }
+
+    #[Test]
+    public function site_info_with_principal_site_and_empty_args_succeeds_when_other_sites_exist(): void
+    {
+        $site = Site::factory()->create(['name' => 'Seeded site', 'timezone' => 'Europe/Madrid']);
+        Site::factory()->count(2)->create();
+
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.site_info',
+            AgentPrincipal::anonymous($site->id, 'en'),
+            [],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame($site->id, $result->data['site_id']);
+        $this->assertArrayNotHasKey('match_reason', $result->data);
+    }
+
+    #[Test]
+    public function find_sites_emits_entities_and_puts_match_reason_in_display(): void
+    {
+        $site = Site::factory()->create(['name' => 'Madrid Centro', 'city' => 'Madrid', 'postal_code' => '28004']);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.find_sites',
+            AgentPrincipal::anonymous(null, 'en'),
+            ['query' => 'Barcelona'],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame('no_match', $result->data['sites'][0]['match_reason']);
+        $this->assertSame($site->id, $result->data['sites'][0]['site_id']);
+        $this->assertStringContainsString('match_reason: no_match', $result->display);
+        $this->assertCount(1, $result->entities);
+        $this->assertSame($site->id, $result->entities[0]->id);
     }
 
     /**

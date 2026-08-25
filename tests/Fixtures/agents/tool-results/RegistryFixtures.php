@@ -122,6 +122,7 @@ final class RegistryFixtures
                 'site_id' => $this->site->id,
                 'unit_class_id' => $this->class->id,
             ], [$this->class]),
+            'facility.find_sites' => $this->sales($anon, ['query' => 'Madrid']),
             'facility.site_info' => $this->sales($anon, ['site_id' => $this->site->id]),
             'pricing.quote' => $this->sales($anon, [
                 'site_id' => $this->site->id,

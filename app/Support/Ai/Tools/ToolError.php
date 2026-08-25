@@ -19,7 +19,7 @@ final readonly class ToolError
         public array $candidates = [],
     ) {}
 
-    public static function siteUnresolved(string $message): self
+    public static function siteUnresolved(string $message, array $candidates = []): self
     {
         return new self(
             ToolErrorCode::SiteUnresolved,
@@ -28,6 +28,7 @@ final readonly class ToolError
                 'tool' => 'facility.find_sites',
                 'hint' => 'call facility.find_sites with a city or postcode',
             ],
+            $candidates,
         );
     }
 

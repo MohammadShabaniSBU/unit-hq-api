@@ -119,18 +119,23 @@ first. i18n keys under `facility.service_areas.*`.
 
 ## Acceptance criteria
 
-- [ ] With only Madrid Centro seeded, query `28001` resolves to it — via
-      `only_site`, and via `service_area_prefix` once a `280` prefix row exists
-      with a second site present.
-- [ ] Zero-match returns every active site with `match_reason: no_match`; an
-      eval fixture shows the agent offering a choice rather than escalating.
-- [ ] Archived sites never appear in any result.
-- [ ] `facility.site_info` with no arguments and one active site returns it.
-- [ ] `facility.site_info` with no arguments and three active sites returns
+- [x] With only Madrid Centro seeded, query `28001` **without a catchment row**
+      returns that site as `no_match` (the model must ask, not assert). Task-file
+      wording that this went via `only_site` is superseded: `only_site` fires only
+      when query and coordinates are both absent. `28001` via `service_area_prefix`
+      still holds once a `280` prefix row exists with a second site present.
+- [x] Zero-match returns every active site with `match_reason: no_match`; an
+      eval fixture (`sales/zero-match-offers-choice`) shows the agent offering a
+      choice rather than escalating.
+- [x] Archived sites never appear in any result.
+- [x] `facility.site_info` with no arguments and one active site returns it.
+- [x] `facility.site_info` with no arguments and three active sites returns
       `site_unresolved` with three candidates.
-- [ ] Inbound message on a site-scoped sender identity seeds conversation site
-      context; the agent does not ask for a location it already has.
-- [ ] Resolver runs identically on SQLite and PostgreSQL (test asserts both).
+- [x] Inbound message on a site-scoped sender identity seeds conversation site
+      context (operator-owned destination, never customer From); `site_info`
+      with empty args then succeeds. Identity vs account disagreement prefers
+      the identity and logs `ai.inbound.site_disagreement`.
+- [x] Resolver runs identically on SQLite and PostgreSQL (test asserts both).
 
 ## Follow-on from S25-01
 

@@ -236,10 +236,13 @@ final class EvalHarness
         $verification = VerificationLevel::from((string) ($fixture->principal['verification'] ?? 'anonymous'));
         $contactKey = $fixture->principal['contact'] ?? null;
         $contact = is_string($contactKey) ? $world->contact($contactKey) : null;
-        $siteKey = $fixture->principal['site'] ?? 'madrid';
-        $siteId = match ((string) $siteKey) {
-            'london' => $world->london->id,
-            'empty' => $world->empty->id,
+        $siteKey = array_key_exists('site', $fixture->principal)
+            ? $fixture->principal['site']
+            : 'madrid';
+        $siteId = match (true) {
+            $siteKey === null, $siteKey === 'none', $siteKey === '' => null,
+            (string) $siteKey === 'london' => $world->london->id,
+            (string) $siteKey === 'empty' => $world->empty->id,
             default => $world->madrid->id,
         };
 

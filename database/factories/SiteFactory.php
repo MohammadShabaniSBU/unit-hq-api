@@ -17,15 +17,20 @@ class SiteFactory extends Factory
      */
     public function definition(): array
     {
+        $lat = fake()->latitude();
+        $lng = fake()->longitude();
+
         return [
             'name' => fake()->city() . ' Storage',
             'code' => fake()->unique()->bothify('SITE-###'),
             'address' => fake()->streetAddress(),
             'address_line_2' => null,
             'location' => [
-                'lat' => fake()->latitude(),
-                'lng' => fake()->longitude(),
+                'lat' => $lat,
+                'lng' => $lng,
             ],
+            'latitude' => $lat,
+            'longitude' => $lng,
             'contact_email' => fake()->companyEmail(),
             'contact_phone' => fake()->phoneNumber(),
             'city' => fake()->city(),

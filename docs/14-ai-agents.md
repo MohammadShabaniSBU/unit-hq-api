@@ -45,8 +45,8 @@ runtime and every tool call (D-AI-1, invariant 56). Factories:
 `ownsContact()` is strict identity, not "related to". A contact does not own
 another contact's row because they share a deal.
 
-`agent_conversations` stores the facts (`contact_id`, `verification_level`);
-the principal is rebuilt from them each turn and never cached as an
+`agent_conversations` stores the facts (`contact_id`, `verification_level`,
+`site_id`); the principal is rebuilt from them each turn and never cached as an
 authorization scope on a model. Never resolve a principal from `auth()`,
 `request()`, a container binding, or a static inside a tool.
 
@@ -71,6 +71,19 @@ Contact principal would silently grant cross-tenant reads.
 The operator hitting `/demo/chat` is authorized by `Permission::AiAgentUse`
 (`ai_agent.use`) — that is the *operator* of the harness, not the principal
 the agent is talking to.
+
+Conversation `site_id` is seeded at create, not inside tools.
+`InboundSiteContext` matches the **inbound destination** (the operator-owned
+identity on `site_sender_identities.from_number` / `from_email` — the number
+or address the customer contacted), never the customer's From. Order: sender
+identity for that channel + destination; else a site-scoped
+`communication_accounts.site_id`; else null (company-scoped sender, web chat).
+If identity site and account site disagree, the identity wins and a tier-1
+`SystemEvent` `ai.inbound.site_disagreement` is recorded — create still
+succeeds. An explicit `site_id` on the request (demo pane) still wins. That
+context site is a provenance licence under source (3) via `FactRegistry::seedContext()`.
+Eval fixtures may set `principal.site: none` so the harness leaves `site_id`
+null (default remains Madrid).
 
 ## Runtime
 
@@ -222,9 +235,12 @@ those keys. Historical rows without them remain valid (missing `entities` = none
 Replay strips the reserved keys before reconstructing in-memory `data`.
 
 Tool failures return `ToolError` (`error_code` + developer `message` + optional
-`recovery: { tool, hint }` + `candidates`). `facility.site_info` with no site
-in arguments and no site on the principal returns `site_unresolved` with
-`recovery.tool = facility.find_sites` and does **not** set `handoffReason` —
+`recovery: { tool, hint }` + `candidates`). `facility.site_info` with no
+`site_id` argument and no site on the principal asks `SiteResolver` with no
+query: exactly one active site succeeds (`match_reason: only_site` in
+`display`); otherwise `site_unresolved` with `candidates` and
+`recovery.tool = facility.find_sites`. Candidates do **not** mint licences —
+the model must call `find_sites`. That error does **not** set `handoffReason`;
 the tool loop continues until `max_tool_calls_per_turn`.
 
 `facts` licenses every amount, date, unit identifier, and percent the draft
@@ -253,6 +269,7 @@ catalogue below… Definitions in code (`SupportAgentDefinition` /
 | Tool | Level | Write | Sales | Support |
 |---|---|---|---|---|
 | `facility.availability` | anonymous | | ✓ | |
+| `facility.find_sites` | anonymous | | ✓ | ✓ |
 | `facility.site_info` | anonymous | | ✓ | ✓ |
 | `pricing.quote` | anonymous | | ✓ | |
 | `pricing.discounts` | anonymous | | ✓ | |
@@ -305,10 +322,19 @@ suppressed draft is never delivered (invariant 55).
 
 Other tool notes:
 
+- `facility.find_sites` runs `SiteResolver` (city, postcode, or coordinates).
+  Every row is an `EntityRef` of type `site`. `match_reason` is on each payload
+  row **and** in `display` — `only_site` / `service_area` /
+  `service_area_prefix` / `site_postcode` / `locality` / `distance` mean this
+  is the customer's site; `no_match` means present the list and ask. Data-only
+  is not enough: the model quotes `display`.
+- `facility.site_info` takes an optional `site_id` (argument → principal site →
+  resolver with no query). A resolver-supplied reason is echoed in `display`.
+  Display tokens (address, hours, phone) are absorbed into `FactBag` so quoted
+  strings are licensed.
 - `facility.availability` goes through `App\Support\Occupancy\Availability`
   (invariant 5 / 36). Counts and classes, **not** unit identifiers.
-- `facility.site_info` and `kb.faq_lookup` absorb display tokens into
-  `FactBag` so quoted addresses, hours, and phones are licensed.
+- `kb.faq_lookup` absorbs display tokens into `FactBag` the same way.
 - `billing.balance` returns an array keyed by currency and never a summed
   figure (invariant 30). Derived at read time (invariant 5).
 - `billing.next_charge` reads the contract's snapshotted cadence (invariant

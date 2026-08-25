@@ -292,6 +292,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('sites', Facility\SiteController::class);
     Route::post('sites/{site}/archive', [Facility\SiteController::class, 'archive']);
     Route::post('sites/{site}/unarchive', [Facility\SiteController::class, 'unarchive']);
+    Route::get('sites/{site}/service-areas', [Facility\SiteServiceAreaController::class, 'index']);
+    Route::post('sites/{site}/service-areas', [Facility\SiteServiceAreaController::class, 'store']);
+    Route::post('site-service-areas/{site_service_area}/archive', [Facility\SiteServiceAreaController::class, 'archive']);
+    Route::post('site-service-areas/{site_service_area}/unarchive', [Facility\SiteServiceAreaController::class, 'unarchive']);
     Route::get('sites/{site}/maps', [Facility\SiteMapController::class, 'index']);
     Route::post('sites/{site}/maps', [Facility\SiteMapController::class, 'store']);
     Route::post('sites/{site}/maps/validate', [Facility\SiteMapController::class, 'validateSvg']);

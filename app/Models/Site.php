@@ -27,6 +27,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $address
  * @property string|null $address_line_2
  * @property array|null  $location
+ * @property string|null $latitude
+ * @property string|null $longitude
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $city
@@ -48,6 +50,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, UnitClassRate> $unitClassRates
  * @property-read Collection<int, SiteMap>       $siteMaps
  * @property-read Collection<int, SiteSenderIdentity> $senderIdentities
+ * @property-read Collection<int, SiteServiceArea> $serviceAreas
  * @property-read Collection<int, CommunicationAccount> $communicationAccounts
  * @property-read Collection<int, Contact>       $contacts
  */
@@ -61,6 +64,8 @@ class Site extends Model
         'address',
         'address_line_2',
         'location',
+        'latitude',
+        'longitude',
         'contact_email',
         'contact_phone',
         'city',
@@ -78,6 +83,8 @@ class Site extends Model
     {
         return [
             'location' => 'array',
+            'latitude' => 'decimal:6',
+            'longitude' => 'decimal:6',
             'archived_at' => 'datetime',
         ];
     }
@@ -183,6 +190,12 @@ class Site extends Model
     public function senderIdentities(): HasMany
     {
         return $this->hasMany(SiteSenderIdentity::class);
+    }
+
+    /** @return HasMany<SiteServiceArea> */
+    public function serviceAreas(): HasMany
+    {
+        return $this->hasMany(SiteServiceArea::class);
     }
 
     /** @return HasMany<CommunicationAccount> */

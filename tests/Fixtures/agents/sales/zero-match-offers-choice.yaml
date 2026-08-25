@@ -1,0 +1,14 @@
+id: sales/zero-match-offers-choice
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+  site: none
+turns:
+  - input: "I'm in Zaragoza — which site is nearest?"
+    expect_tools: [facility.find_sites]
+    forbid_tools: [agent.escalate]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

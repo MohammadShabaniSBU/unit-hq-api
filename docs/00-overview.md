@@ -47,7 +47,7 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 ## Doc set index
 
 - `01-stack.md` — tech stack, repo conventions, quick start
-- `02-facility.md` — Site / UnitClass / Unit / rates
+- `02-facility.md` — Site / UnitClass / Unit / rates / `site_service_areas` / site coordinates
 - `03-pricing.md` — Price model, tax rates, insurance, discounts
 - `04-crm-pipeline.md` — Contact → Deal → Offer → Reservation → Contract
 - `05-billing-ledger.md` — Contract billing (cadence/anchor/tax/deposit), charges, payments, invoices, Stripe

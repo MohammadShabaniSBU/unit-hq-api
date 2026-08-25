@@ -54,6 +54,7 @@ final class RoutePermissions
             'GET /api/sites/options' => Permission::UnitView, // Facility\SiteController@options — no SiteView; estate picker/read via UnitView
             'GET /api/sites/{site}' => Permission::UnitView, // Facility\SiteController@show — no SiteView; estate picker/read via UnitView
             'GET /api/sites/{site}/maps' => Permission::SiteManage, // Facility\SiteMapController@index
+            'GET /api/sites/{site}/service-areas' => Permission::UnitView, // Facility\SiteServiceAreaController@index
             'GET /api/unit-class-occupancy-matrix' => Permission::CatalogueManage, // Facility\UnitClassOccupancyMatrixController@index
             'GET /api/unit-class-price-matrix' => Permission::CatalogueManage, // Facility\UnitClassPriceMatrixController@index
             'GET /api/unit-class-rates' => Permission::CatalogueManage, // Facility\UnitClassRateController@index
@@ -78,10 +79,13 @@ final class RoutePermissions
             'POST /api/discounts/{discount}/unarchive' => Permission::CatalogueManage, // DiscountController@unarchive
             'POST /api/insurances' => Permission::CatalogueManage, // Facility\InsurancePlanController@store
             'POST /api/insurances/{insurance}/rates' => Permission::CatalogueManage, // Facility\InsuranceRateController@store
+            'POST /api/site-service-areas/{site_service_area}/archive' => Permission::SiteManage, // Facility\SiteServiceAreaController@archive
+            'POST /api/site-service-areas/{site_service_area}/unarchive' => Permission::SiteManage, // Facility\SiteServiceAreaController@unarchive
             'POST /api/sites' => Permission::SiteManage, // Facility\SiteController@store
             'POST /api/sites/{site}/archive' => Permission::SiteManage, // Facility\SiteController@archive
             'POST /api/sites/{site}/maps' => Permission::SiteManage, // Facility\SiteMapController@store
             'POST /api/sites/{site}/maps/validate' => Permission::SiteManage, // Facility\SiteMapController@validateSvg
+            'POST /api/sites/{site}/service-areas' => Permission::SiteManage, // Facility\SiteServiceAreaController@store
             'POST /api/sites/{site}/unarchive' => Permission::SiteManage, // Facility\SiteController@unarchive
             'POST /api/unit-class-rates' => Permission::CatalogueManage, // Facility\UnitClassRateController@store
             'POST /api/unit-classes' => Permission::CatalogueManage, // Facility\UnitClassController@store
