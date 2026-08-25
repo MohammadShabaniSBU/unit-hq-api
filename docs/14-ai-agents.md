@@ -177,9 +177,9 @@ may emit. `GroundingGuard` diffs the draft against the turn `FactBag`
 
 ## Tool catalogue
 
-The tool surface is the defence; prompt text is defence-in-depth. Sixteen
-tools. Definitions in code (`SupportAgentDefinition` / `SalesAgentDefinition`);
-`ai_agents` rows are instances (D-AI-6, invariant 58).
+The tool surface is the defence; prompt text is defence-in-depth. The
+catalogue below… Definitions in code (`SupportAgentDefinition` /
+`SalesAgentDefinition`); `ai_agents` rows are instances (D-AI-6, invariant 58).
 
 | Tool | Level | Write | Sales | Support |
 |---|---|---|---|---|
@@ -188,6 +188,8 @@ tools. Definitions in code (`SupportAgentDefinition` / `SalesAgentDefinition`);
 | `pricing.quote` | anonymous | | ✓ | |
 | `pricing.discounts` | anonymous | | ✓ | |
 | `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ | |
+| `sales.create_offer` | anonymous | ✓ (`commit`) | ✓ | |
+| `sales.create_reservation` | channel_asserted | ✓ (`propose`) | ✓ | |
 | `crm.create_contact` | anonymous | ✓ | ✓ | |
 | `crm.create_deal` | anonymous | ✓ | ✓ | |
 | `crm.create_task` | anonymous | ✓ | ✓ | ✓ |
@@ -203,12 +205,16 @@ tools. Definitions in code (`SupportAgentDefinition` / `SalesAgentDefinition`);
 Sales has **no** billing, contract, or access tools. A prospect asking about
 someone's balance is a handoff.
 
-Writes that **are** permitted mirror `CreateObjectAllowlist` exactly:
-`Contact`, `Deal`, `Task`, `Note` (`12-automation-engine.md`). Contract /
-Reservation / Offer creation is a transactional path (`ContractBilling`, offer
-acceptance), not a field map — the same reasoning that excluded them from the
-automation allowlist. `sales.propose_offer` returns a fully priced proposal
-and writes **no** `Offer` row.
+Writes that **are** permitted: `Contact`, `Deal`, `Task`, `Note` (the same
+four as `CreateObjectAllowlist`), plus `Offer` and `Reservation` through named
+entry points in `App\Support\Leasing\` under an explicit `agent_write_policies`
+row (invariant 54b). The automation allowlist is unchanged
+(`12-automation-engine.md`) — a generic field map still cannot mint a token,
+pin a unit, or take a hold. The agent surface is wider because it calls those
+entry points, not because the allowlist grew. Token, expiry, status, unit
+selection and contact are server-derived; none may be a model argument.
+`sales.propose_offer` returns a fully priced proposal and writes **no**
+`Offer` row. Contract creation stays forbidden (invariant 54a).
 
 ### Why the agent cannot tell you your balance
 
@@ -249,8 +255,59 @@ Other tool notes:
   key → `not_found` → escalate, never improvise policy.
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
   `contact_channels`.
+- `sales.create_offer` calls `OfferCreation`. Seeded policy: `commit`,
+  `max_per_conversation = 2`, `max_per_day = 50`. Does not send.
+- `sales.create_reservation` calls `ReservationCreation` with auto-pick;
+  `unit_id` and `expires_at` are never model arguments. Seeded policy:
+  `propose`, `max_per_conversation = 1`, `max_per_day = 20`. Floor is
+  `channel_asserted` — a fully anonymous webchat visitor gets a quote and an
+  offer, not inventory.
 - `agent.escalate` is model-invocable (`trigger_source = model`) and does not
   replace deterministic pre-model rules.
+
+## Write policy and autonomy
+
+Write autonomy is a table, not JSON (D-AI-9, invariant 58).
+`agent_write_policies` is unique on `(ai_agent_id, tool_key)`. Operators edit
+it at Settings `/settings/ai-agents`.
+
+| `mode` | Meaning |
+|---|---|
+| `off` | Dispatcher denies before `handle()`. No row. |
+| `propose` | Tool dry-runs, persists `agent_pending_actions`; operator clicks to commit. |
+| `commit` | Tool writes in the turn. |
+
+**Absent row = `commit`, unlimited.** That default must not change
+`crm.create_contact` / `create_deal` / `create_task`. `sales.create_offer` and
+`sales.create_reservation` seed their own rows explicitly.
+
+Quotas (`max_per_conversation`, `max_per_day`) count `agent_tool_invocations`
+where `status = ok` — committed writes, not attempts. A denied call does not
+burn quota. `max_per_day` rolls at app-timezone midnight. Null = unlimited.
+
+`min_verification` may **raise** the tool's declared floor, never lower it
+(`AgentWritePolicy::effectiveVerification()`). String comparison against
+verification levels is a defect.
+
+Reservation stays in `propose` until a measured bar is met — never a calendar
+date (D-AI-11): 200+ replayed conversations through `agent:replay` with zero
+grounding suppressions on reservation turns, zero cross-site holds, zero
+duplicate holds, and a measured approval rate above 90% (operators were
+rubber-stamping, so the click was buying nothing).
+
+## Pending actions
+
+`mode = propose` persists an intent, never a result (invariant 62). Between
+propose and approve the world moves — the catalogue price changes, the
+auto-picked unit gets rented. Approval re-runs the same `App\Support\Leasing\`
+entry point against current state and may fail. No code path replays a stored
+payload into the database.
+
+Resolution is a click-only employee `POST` from `/leasing/agent-approvals` —
+not a model, tool, inbound message, voice turn, or automation node (extends
+invariant 60). Status: `pending` \| `approved` \| `rejected` \| `expired` \|
+`superseded`. A second proposal of the same `(conversation, tool_key)` flips
+the prior pending row to `superseded`.
 
 ## Guardrails and handoff
 
@@ -302,6 +359,16 @@ Pattern set over the draft (shared `config/ai-handoff.php` plus per-agent
 availability guarantee ("I've held it"), legal advice, contract mutation.
 Match → block + `unsupported_intent`.
 
+`availability_guarantee` is **conditional**. A tool may license a
+`ForbiddenClaimKey` for the current turn only, by returning it on an `ok`
+`ToolResult` (invariant 63). `SalesCreateReservationTool` licenses
+`AvailabilityGuarantee` on a committed write — never from `propose()`, never
+on `notFound`. A licence does not persist into later turns the way `FactBag`
+facts do: "I've reserved it" three turns later, after the hold was released,
+is false again. Payment confirmation, fee waiver, access grant, legal advice
+and contract mutation are never licensable, by any tool, in any sprint —
+`ForbiddenClaimKey` has exactly one case.
+
 ### Disclosure
 
 Leak check: below `verified`, a draft that contains an amount, unit
@@ -346,8 +413,10 @@ reason `employee` has none. Archive-only (`archived_at`). No
 | `AiAgent` | `ai_agents` | Instance, not definition. `key` must resolve to an `AgentDefinition`. `settings` = tuning knobs only — never the prompt or tool list |
 | `AgentConversation` | `agent_conversations` | One conversation. `audience` (`internal` \| `customer`), `origin` (`demo` \| `inbox` \| `webchat`, **never null**), `channel`, principal facts, `state` (`active` \| `awaiting_human` \| `handed_off` \| `closed`) |
 | `AgentConversationMessage` | `agent_conversation_messages` | Append-only turns (`sequence`). `blocked_by` when a draft was suppressed. `emitted_message_id` always null this sprint |
-| `AgentToolInvocation` | `agent_tool_invocations` | What it looked at: `tool_key`, arguments, result, `denied_reason`, verification snapshots |
+| `AgentToolInvocation` | `agent_tool_invocations` | What it looked at: `tool_key`, arguments, result, `denied_reason`, verification snapshots, `idempotency_key`, `result_type` / `result_id` on committed writes |
+| `AgentPendingAction` | `agent_pending_actions` | Propose-mode intent: server-normalised `payload`, operator `preview`, `status`, `expires_at`. Approval re-validates; never a result snapshot |
 | `AgentHandoff` | `agent_handoffs` | Escalation: `reason`, `trigger_source` (`rule` \| `model` \| `customer` \| `guardrail`), `detail` |
+| `AgentWritePolicy` | `agent_write_policies` | Per-agent, per-tool autonomy: `mode`, quotas, raise-only `min_verification`. Absent row = `commit` unlimited |
 
 CHECK constraints bind the shape in the database: internal audience requires
 `employee_id` and forbids `contact_id`; customer audience forbids
@@ -467,21 +536,26 @@ A customer-facing agent tool **never**:
 - issues, voids, or reissues an invoice;
 - confirms that a payment has been received (invariant 11 — confirmation is
   rail-specific and never optimistic);
-- creates a `Contract`, `Reservation`, or `Offer` row;
+- creates a `Contract` row;
 - returns data belonging to a contact other than the principal.
 
 Not with confirmation. Not with an operator in the loop. Not behind a flag.
-Those are operator actions reached through operator surfaces (invariant 54).
+Those are operator actions reached through operator surfaces (invariant 54a).
+Offer and Reservation creation are permitted under 54b, through
+`App\Support\Leasing\`, not through this never-list.
 
 Also not built:
 
+- **Sending** an offer. Creation is not delivery (D-AI-10). No `SendContext`,
+  no `OfferDelivery` row, no `messages` row from the agent.
+- Support-agent write tools for Offer / Reservation. Sales only.
 - Any transport — no `SendContext`, no sender call, no `messages` row.
 - `webchat` as a comms `Channel` enum value and its adapter (agent
   `AgentChannel::Webchat` is a profile only).
 - RAG / vector retrieval (D-AI-5). Knowledge is curated key lookup.
 - `contact_verifications` / OTP — the verification level is a demo toggle.
-- Autonomy beyond `suggest` (`review` / `auto` are S23+, gated on measured
-  containment, never on a date).
+- Autonomy beyond `suggest` for *sending* (`review` / `auto` are later, gated
+  on measured containment, never on a date).
 - Per-agent, per-channel autonomy configuration.
 - Copilot on this shared runtime.
 - Insights reports on agent performance (tables are shaped for them; harvest
@@ -498,8 +572,8 @@ Also not built:
   canonical (invariant 38)
 - `07-people-and-auth.md` — employee RBAC is a different axis from agent
   authorization (D-AI-2)
-- `09-conventions-and-invariants.md` — invariants 54–60, amended 48
-- `12-automation-engine.md` — `CreateObjectAllowlist` (the write-path parallel)
-- `10-open-decisions.md` — D-AI-1…7, D-V1…4, AR-03 blocking for S23, deferred autonomy
+- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–63, amended 48
+- `12-automation-engine.md` — `CreateObjectAllowlist` (unchanged; agent surface is deliberately wider)
+- `10-open-decisions.md` — D-AI-1…11, D-V1…4, AR-03 blocking for S23
 - `08-activity-logging.md` — tier-2 `ai` channel; tier-3 copilot voice sessions; activity log is not a transcript
 - `01-stack.md` — stack line and `/demo/chat` page map

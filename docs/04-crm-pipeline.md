@@ -51,6 +51,8 @@ Belongs to a Deal and a Contact. Sits between Deal and Reservation.
 - `expires_at` timestamp; **expiry is checked at read time**, not via a background job.
 - Status flow: `draft → sent → viewed → accepted → expired`.
 - The Offer does **not** hold a back-reference to the Reservation.
+- **Provenance:** `source` (`operator` \| `public_link` \| `ai_agent` \| `automation`) and nullable `ai_agent_id` (required when `source = ai_agent`). A customer-facing agent may create a draft Offer through `App\Support\Leasing\OfferCreation` under invariant 54b; it does not send it.
+- HTTP and customer-facing agent creation route through `App\Support\Leasing\` (`OfferCreation`). Token, expiry, status, and contact are server-derived.
 
 ## OfferOption — line item
 
@@ -63,9 +65,13 @@ Each option is presented to the contact at the **UnitClass / rate level** — no
 
 ### Offer acceptance — one DB transaction
 
+`App\Support\Leasing\OfferAcceptance`. One transaction:
+
 1. Set `offer_options.selected_at`
 2. Flip `offers.status = accepted`
 3. Insert a `Reservation` referencing that OfferOption — this is where the pre-resolved unit becomes **operative** (occupancy/hold); if it's no longer available, a fresh unit is re-resolved from the rate at this point.
+
+The public offer-accept path stamps the reservation `source = public_link`, not the parent offer's source. An agent-created offer that a prospect accepts still produces a public-link reservation.
 
 ## OfferDelivery
 
@@ -74,6 +80,9 @@ Separate **send-event log** — one row per send: channel (email / SMS / WhatsAp
 ## Reservation
 
 The **inventory hold** — always references a **specific unit**, never a unit type. Holds `offer_option_id` FK.
+
+- **Provenance:** same `source` / `ai_agent_id` columns as Offer. A customer-facing agent may create a Reservation through `App\Support\Leasing\ReservationCreation` under invariant 54b (seeded `propose`). Unit selection and expiry are server-derived; `unit_id` and `expires_at` are never model arguments.
+- HTTP and customer-facing agent creation route through `ReservationCreation`. Agent-sourced active holds are uniqueness-checked per (contact, site, unit class) inside that entry point.
 
 ## Contract (ERD may say "Lease" — code says Contract)
 

@@ -1,7 +1,7 @@
 # Keevaris — Delivery Roadmap
 
 > **Audience:** the solo maintainer + Cursor.
-> **Horizon:** 21 one-week sprints to a Spain-deployable product.
+> **Horizon:** 24 one-week sprints to a Spain-deployable product.
 > **Read first:** `09-conventions-and-invariants.md`. Every task file below assumes those
 > invariants hold. If a task appears to require breaking one, stop and flag it — do not
 > silently comply.
@@ -11,7 +11,7 @@
 ## 1. Where we are
 
 Keevaris is a full-featured self-storage operations platform, not just a leasing pipeline.
-All 21 sprints (S01–S21) have shipped and are tested, covering:
+All 24 sprints (S01–S24) have shipped and are tested, covering:
 
 - **Facility management & leasing** — unit occupancy/holds and a CRM/leasing pipeline through
   to a signed contract, plus a full contract lifecycle (vacate, transfer, scheduled re-rate)
@@ -38,6 +38,9 @@ All 21 sprints (S01–S21) have shipped and are tested, covering:
   playbooks, and real RBAC replaces the old `canEdit` stopgap
 - **Reporting & insights** — rent roll, occupancy measures, delinquency ageing, and a
   pluggable insights registry that later sprints' reports attach to
+- **Customer-facing AI** — sales agent creates Offer (`commit`) and Reservation (`propose`)
+  through `App\Support\Leasing\` under per-tool write policy; Contract stays operator-only
+  (invariant 54a / 54b)
 
 Two real gaps remain:
 
@@ -100,7 +103,7 @@ configuration, not hard-coded law.
 
 Each phase leaves the product materially more sellable than the last.
 
-> **Status.** All 21 sprints below are shipped and tested, except where the exit criterion
+> **Status.** All 24 sprints below are shipped and tested, except where the exit criterion
 > says otherwise. S04 (Verifactu) is schema-only. SEPA Direct Debit was never scheduled as a
 > sprint at all — see §1 — and is not in the table below because no directory for it exists.
 
@@ -154,6 +157,14 @@ Each phase leaves the product materially more sellable than the last.
 | **S19** | AI agent | The CRM copilot moves from a request-scoped SSE stream to a queued agent with broadcast transport and usage metering |
 | **S20** | Demo floor plans | `demo:seed --fresh` leaves every demo site with a complete, plausible set of floor plans |
 | **S21** | Insights as a pluggable surface | Insights becomes a registry other sprints' reports plug into, rather than a fixed, empty nav group |
+
+### Phase G — Customer-facing agents (S22–S24)
+
+| Sprint | Theme | Exit criterion |
+|---|---|---|
+| **S22** | Customer-facing AI agents | Runtime + `/demo/chat` demo harness; no channel connected |
+| **S23** | Voice copilot | Vocal Bridge voice on the employee copilot; click-only tool approvals (invariant 60) |
+| **S24** | Agent pipeline writes | Sales agent creates Offer (`commit`) and Reservation (`propose`) through `App\Support\Leasing\`; invariant 54 split |
 
 Note: SEPA Direct Debit — mandates, pre-notification, Cuaderno 19-14/`pain.008` batch export,
 returns import — was planned in an earlier draft of this roadmap but was dropped before any
@@ -285,4 +296,4 @@ Recorded so they are not accidentally reintroduced:
 - Revenue management / dynamic pricing
 - Native mobile apps
 
-The first three are the strongest candidates for S22+.
+The first three are the strongest candidates for S25+.

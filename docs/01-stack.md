@@ -10,8 +10,9 @@
 - **Tests:** PHPUnit with SQLite in-memory.
 - **AI:** internal Copilot plus customer-facing agents (support / sales) on a
   shared tool-and-guardrail runtime in `App\Support\Ai\`. Conversations and
-  traces stored in DB. Demo surface at panel `/demo/chat`, gated by
-  `agents.demo_enabled`.
+  traces stored in DB. Sales may persist Offer and Reservation under
+  `agent_write_policies` (invariant 54b). Demo surface at panel `/demo/chat`,
+  gated by `agents.demo_enabled`.
 - **Dev tooling:** Telescope (dev only).
 
 ## Frontend — `unit-hq-panel/`
@@ -30,11 +31,11 @@
 - **Marketing** — campaigns; templates (email, SMS, WhatsApp). The email builder (`app/components/email-builder/`) doubles as a document/contract-authoring tool: alongside the usual email blocks it has a `document` template channel and contract-specific blocks (`PartiesBlock`, `TermsTableBlock`, `SignatureAnchorBlock`, `LegalSectionBlock`)
 - **Automations** — automation engine workflows (list + `[id]` flow-canvas graph editor built on `@vue-flow/core`, filterable by trigger domain) and `[id]/runs` run history/detail — see `12-automation-engine.md`
 - **Playbooks** — linear, kind-typed enrolment sequences (debt process / lead chase) that compile onto the automation engine — builder, enrolments, kind landing pages — see `13-playbooks.md`
-- **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount; contact/deal detail overview shows an operator-triggered AI summary card
+- **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount; contact/deal detail overview shows an operator-triggered AI summary card; **agent approvals** (`/leasing/agent-approvals`) queue for propose-mode writes
 - **Facility** — units, unit classes, rates, discounts, insurance plans, access control
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
 - **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights
-- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), **Insights** (analytics connections + report builder), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
+- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), **Insights** (analytics connections + report builder), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **AI agents** (`/settings/ai-agents`, write policies), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
 - **Copilot** — AI conversations (sidebar), separate from Inbox
 - **Demo** — `/demo/chat`: agent console (agent / channel / persona /
   verification pickers, channel-skinned conversation, tool-and-guardrail trace).

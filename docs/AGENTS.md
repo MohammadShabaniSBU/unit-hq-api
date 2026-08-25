@@ -18,6 +18,7 @@ Before writing code, consult the doc that matches the task:
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
 | Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
 | AI agents / copilot / tools / guardrails | `14-ai-agents.md` |
+| Agent write policies / pending actions / leasing entry points | `14-ai-agents.md` + `roadmap/sprint-24-agent-pipeline-writes/` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
 | **Always, before committing** | `09-conventions-and-invariants.md` |
@@ -40,6 +41,9 @@ Before writing code, consult the doc that matches the task:
 - Customer-facing agents never write to the ledger, mutate contracts, grant
   access, or confirm payment. No money, date, or unit identifier in agent output
   originates from the model.
+- Offer / Reservation creation goes through `App\Support\Leasing\`, with the
+  operator Copilot tools as a known, allowlisted exception pending S25
+  (`10-open-decisions.md`, Copilot vs `App\Support\Leasing\`).
 - Copilot tool approvals are click-only; voice never authorises a write
   (invariant 60).
 

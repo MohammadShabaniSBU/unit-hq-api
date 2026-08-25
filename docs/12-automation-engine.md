@@ -92,8 +92,11 @@ needs a real transactional path (`ContractBilling` for contracts, the offer
 acceptance transaction for offers) that a generic field-mapping handler cannot
 safely replicate. Dedicated nodes calling those paths are the intended future
 extension, not a widened allowlist (`10-open-decisions.md`). Customer-facing
-agent writes reuse the same four types (`14-ai-agents.md`); they never create
-a Contract, Reservation, or Offer either.
+agents may create Offer and Reservation only through named entry points in
+`App\Support\Leasing\` under invariant 54b (`14-ai-agents.md`); they still
+never create a Contract. Dedicated automation nodes for Offer / Reservation
+are the obvious S25 candidate now that those entry points exist. Do not widen
+this allowlist to match the agent surface — the two diverged on purpose.
 
 ## Run lifecycle
 

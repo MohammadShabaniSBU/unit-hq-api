@@ -200,16 +200,41 @@
     model output about a contact and are in scope for `contacts:redact`. A summary is never
     shown to a contact and is never an input to billing, delinquency, or any automated
     decision.
-54. **A customer-facing agent never writes to the ledger, mutates a contract,
+54a. **A customer-facing agent never writes to the ledger, mutates a contract,
     grants access, issues an invoice, or confirms a payment.** Not with
     confirmation, not with an operator in the loop, not behind a flag — those are
-    operator actions reached through operator surfaces. Permitted agent writes are
-    exactly the automation allowlist: `Contact`, `Deal`, `Task`, `Note`.
-    Contract / Reservation / Offer creation is a transactional path
-    (`ContractBilling`, offer acceptance), not a field map — the same reasoning that
-    excluded them from `CreateObjectAllowlist`. Payment confirmation remains
-    rail-specific (invariant 11); an agent stating that a payment cleared is a
-    defect regardless of what the ledger says. Enforced by `AgentToolWriteGuardTest`.
+    operator actions reached through operator surfaces. Payment confirmation
+    remains rail-specific (invariant 11); an agent stating that a payment cleared
+    is a defect regardless of what the ledger says. Forbidden tables: `charges`,
+    `payments`, `allocations`, `contracts`, `contract_items`, `invoices`,
+    `access_grants`, `access_suspensions`. Enforced by `AgentToolWriteGuardTest`.
+54b. **Pipeline objects (`Offer`, `Reservation`) may be created by a
+    customer-facing agent only through a named transactional entry point in
+    `App\Support\Leasing\`, under an explicit `agent_write_policies` row.** Never
+    through a generic field map, never through a copy of the transaction. Token,
+    expiry, status, unit selection and contact are server-derived; none may be a
+    model argument. Every such row carries `source = ai_agent` and `ai_agent_id`.
+    Enforced by `AgentToolWriteGuardTest` and `LeasingEntryPointParityTest`.
+
+    Offer moved and Contract did not because they are not the same kind of write.
+    An Offer writes no ledger row, no occupancy, and no fiscal artifact; it
+    carries an expiry and is voidable. A Reservation writes `unit_holds`
+    (inventory, not ledger) and is reversible by releasing the hold — 54b with a
+    stricter default mode (`propose`), not 54a. A Contract is the billing anchor:
+    first-period charges, occupancy, and the fiscal identity of the install. That
+    stays 54a, unchanged, forever.
+
+    The automation `CreateObjectAllowlist` is unchanged (`12-automation-engine.md`):
+    still `Contact`, `Deal`, `Task`, `Note`. The agent surface is deliberately
+    wider because it calls the named leasing entry points, not a generic field
+    map. Do not widen the automation allowlist to "match" — the two surfaces
+    diverged on purpose.
+
+    This rule binds customer-facing agents. The operator Copilot is an operator
+    surface; its duplicated `CreateOffer` / `CreateReservation` are a known
+    allowlisted exception pending S25, tracked under Undecided in
+    `10-open-decisions.md` (Copilot vs `App\Support\Leasing\`). Do not collapse
+    those copies as a drive-by.
 55. **No money, date, or unit identifier in agent output originates from the
     model.** Every figure comes from a `ToolResult` and is rendered by the tool
     through `BillingMath`; the model quotes the rendered string. `GroundingGuard`
@@ -246,6 +271,22 @@
     a write.** Voice input produces prompts, never decisions. An STT false positive
     must not approve `CreateTask` / `CreateContact` / any other write tool. The
     post-approval continuation may be *spoken*, but the operator clicked.
+61. **An agent write is idempotent within its conversation.** A retried tool
+    call with identical normalised arguments produces one row, not two. The key
+    is computed after schema validation and coercion, never over raw model
+    output. Enforced by `AgentIdempotencyTest`.
+62. **A pending action is an intent, never a result.** Approval re-runs the
+    tool's validation against current state and may fail; no code path replays a
+    stored payload into the database. Resolution is by an authenticated employee
+    `POST` from the panel only — not a model, tool, inbound message, voice turn,
+    or automation node (extends invariant 60). Enforced by
+    `PendingActionApprovalTest`.
+63. **A forbidden claim may be licensed only by a tool that earned it in the
+    same turn.** `ForbiddenClaimKey` has exactly one case,
+    `AvailabilityGuarantee`. Payment confirmation, fee waiver, access grant,
+    legal advice and contract mutation are never licensable, by any tool, in any
+    sprint. A licence does not persist across turns. Enforced by
+    `ForbiddenClaimLicensingTest` and `ForbiddenClaimKeyTest`.
 
 ## Code conventions
 
