@@ -8,6 +8,7 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Tools\FactBag;
+use App\Support\Communications\Gsm7Transliterator;
 use App\Support\Communications\Messages\SmsMessage;
 
 final class ChannelGuard implements OutboundGuard
@@ -35,20 +36,37 @@ final class ChannelGuard implements OutboundGuard
             $detail['html_stripped'] = true;
         }
 
-        if ($channel->channel === AgentChannel::Sms) {
-            $sms = new SmsMessage('guard', $body);
-            $detail['segments'] = $sms->segmentCount();
-            $detail['encoding'] = $sms->encoding();
+        $verdict = 'pass';
 
-            $max = $channel->maxCharacters;
-            if ($max !== null && mb_strlen($body) > $max) {
+        if ($channel->channel === AgentChannel::Sms) {
+            $transliterated = Gsm7Transliterator::apply($body);
+            if ($transliterated['changed']) {
+                $body = $transliterated['body'];
+                $detail['gsm7_transliterated'] = true;
+            }
+
+            $sms = new SmsMessage('guard', $body);
+            $segments = $sms->segmentCount();
+            $maxSegments = (int) config('agents.channel.sms.max_segments', 5);
+            $warnSegments = (int) config('agents.channel.sms.warn_segments', 3);
+            $detail['segments'] = $segments;
+            $detail['encoding'] = $sms->encoding();
+            $detail['max_segments'] = $maxSegments;
+
+            if ($segments > $maxSegments) {
+                $detail['reason'] = 'sms_too_long';
+
                 return GuardrailVerdict::retry(
-                    "Rewrite this reply in at most {$max} characters. Keep the same facts.",
+                    "Rewrite this reply in at most {$maxSegments} GSM-7 SMS segments. Keep the same facts.",
                     'channel',
                     HandoffReason::Error,
                     $detail,
-                    [['guard' => $this->key(), 'verdict' => 'retry', 'detail' => $detail]],
+                    [['guard' => $this->key(), 'verdict' => 'deny', 'reason' => 'sms_too_long', 'detail' => $detail]],
                 );
+            }
+
+            if ($segments >= $warnSegments) {
+                $verdict = 'warn';
             }
         }
 
@@ -65,7 +83,7 @@ final class ChannelGuard implements OutboundGuard
         }
 
         $mutated = $body !== $draft ? $body : null;
-        $event = ['guard' => $this->key(), 'verdict' => 'pass'];
+        $event = ['guard' => $this->key(), 'verdict' => $verdict];
         if ($detail !== []) {
             $event['detail'] = $detail;
         }

@@ -17,6 +17,7 @@ use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Ai\Tools\CatalogueLinePricer;
 use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\FactRegistry;
+use App\Support\Communications\Gsm7Transliterator;
 use App\Support\Communications\Messages\SmsMessage;
 use Illuminate\Support\Facades\DB;
 
@@ -191,10 +192,12 @@ final class EvalAssertions
             }
         }
 
-        if ($turn->channel->channel === AgentChannel::Sms && $turn->channel->maxCharacters !== null) {
-            $len = mb_strlen($turn->draft);
-            if ($len > $turn->channel->maxCharacters) {
-                $failures[] = "SMS draft length {$len} exceeds cap {$turn->channel->maxCharacters}";
+        if ($turn->channel->channel === AgentChannel::Sms) {
+            $max = (int) config('agents.channel.sms.max_segments', 5);
+            $body = Gsm7Transliterator::apply($turn->draft)['body'];
+            $segments = (new SmsMessage('eval', $body))->segmentCount();
+            if ($segments > $max) {
+                $failures[] = "SMS draft {$segments} segments exceeds cap {$max}";
             }
         }
 
@@ -205,7 +208,9 @@ final class EvalAssertions
 
     public static function smsSegments(string $draft): int
     {
-        return (new SmsMessage('eval', $draft))->segmentCount();
+        $body = Gsm7Transliterator::apply($draft)['body'];
+
+        return (new SmsMessage('eval', $body))->segmentCount();
     }
 
     public static function disclosurePhrase(string $locale): string

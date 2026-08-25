@@ -24,4 +24,12 @@ return [
 
     'pending_action_ttl_minutes' => (int) env('AGENTS_PENDING_ACTION_TTL_MINUTES', 120),
 
+    'channel' => [
+        'sms' => [
+            'warn_segments' => 3,
+            'max_segments' => 5,
+            'max_redraft_attempts' => 2,
+        ],
+    ],
+
 ];

@@ -19,6 +19,7 @@ use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolDeniedReason;
@@ -89,7 +90,7 @@ final class AgentRuntime
 
         $site = $this->siteFor($principal);
         $facts = FactBag::fromCustomerMessage($input, $site);
-        /** @var list<\App\Support\Ai\Enums\ForbiddenClaimKey> $licensedClaims */
+        /** @var list<ForbiddenClaimKey> $licensedClaims */
         $licensedClaims = [];
         $invocations = [];
         $usageEvents = [];
@@ -431,12 +432,14 @@ final class AgentRuntime
         string $finishReason,
         array &$usageEvents,
     ): array {
-        $retriedThisTurn = false;
         $verdict = $this->guards->check($draft, $facts, $ctx);
         $this->emitGuardrailEvents($onEvent, $verdict);
+        $accumulated = $verdict->events;
+        $maxRedrafts = (int) config('agents.channel.sms.max_redraft_attempts', 2);
+        $attempts = 0;
 
-        if ($verdict->retry !== null && ! $retriedThisTurn) {
-            $retriedThisTurn = true;
+        while ($verdict->retry !== null && $attempts < $maxRedrafts) {
+            $attempts++;
             $messages[] = ['role' => 'assistant', 'content' => $draft];
             $messages[] = ['role' => 'system', 'content' => $verdict->retry];
 
@@ -460,7 +463,7 @@ final class AgentRuntime
                     $verdict->blockedBy ?? 'channel',
                     HandoffReason::Error,
                     ['detail' => 'timeout'],
-                    $verdict->events,
+                    $accumulated,
                 );
 
                 return [
@@ -474,17 +477,23 @@ final class AgentRuntime
             }
 
             if ($response->toolCalls !== []) {
-                $verdict = $this->retryAsBlock($verdict);
-            } else {
-                $draft = $response->content;
-                $verdict = $this->guards->check($draft, $facts, $ctx);
-                $this->emitGuardrailEvents($onEvent, $verdict);
-                if ($verdict->retry !== null) {
-                    $verdict = $this->retryAsBlock($verdict);
-                }
+                $verdict = $this->withEvents($this->retryAsBlock($verdict), $accumulated);
+                break;
             }
-        } elseif ($verdict->retry !== null) {
-            $verdict = $this->retryAsBlock($verdict);
+
+            $draft = $response->content;
+            $verdict = $this->guards->check($draft, $facts, $ctx);
+            $this->emitGuardrailEvents($onEvent, $verdict);
+            $accumulated = array_merge($accumulated, $verdict->events);
+            $verdict = $this->withEvents($verdict, $accumulated);
+
+            if (! $verdict->passed && $verdict->retry === null) {
+                break;
+            }
+        }
+
+        if ($verdict->retry !== null) {
+            $verdict = $this->withEvents($this->retryAsBlock($verdict), $accumulated);
         }
 
         return [
@@ -495,6 +504,23 @@ final class AgentRuntime
             'lastLatencyMs' => $lastLatencyMs,
             'finishReason' => $finishReason,
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $events
+     */
+    private function withEvents(GuardrailVerdict $verdict, array $events): GuardrailVerdict
+    {
+        return new GuardrailVerdict(
+            $verdict->passed,
+            $verdict->blockedBy,
+            $verdict->handoffReason,
+            $verdict->detail,
+            $verdict->mutatedDraft,
+            $verdict->retry,
+            $events,
+            $verdict->subject,
+        );
     }
 
     private function retryAsBlock(GuardrailVerdict $verdict): GuardrailVerdict
