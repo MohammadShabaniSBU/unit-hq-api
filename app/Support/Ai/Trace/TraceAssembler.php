@@ -76,6 +76,7 @@ final class TraceAssembler
             ),
             'kind' => 'tool',
             'id' => $invocation->id,
+            'tool_call_id' => $invocation->tool_call_id,
             'tool_key' => $invocation->tool_key,
             'arguments' => is_array($invocation->arguments) ? $invocation->arguments : [],
             'status' => $invocation->status instanceof \BackedEnum

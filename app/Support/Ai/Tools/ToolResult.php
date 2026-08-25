@@ -157,6 +157,22 @@ final readonly class ToolResult
         );
     }
 
+    /**
+     * Display plus the model-facing id line. Never persisted, never shown to an
+     * operator: every tool schema takes integer ids, so the model needs to see
+     * the ids provenance will licence.
+     */
+    public function modelText(): string
+    {
+        $line = $this->status === ToolInvocationStatus::Ok
+            ? RefsRenderer::render($this->entities)
+            : RefsRenderer::render($this->error?->candidates ?? [], 'Candidates');
+
+        return $line === ''
+            ? $this->display
+            : $this->display."\n".$line;
+    }
+
     public function withIdempotencyKey(string $key): self
     {
         return new self(

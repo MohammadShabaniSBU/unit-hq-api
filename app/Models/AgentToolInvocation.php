@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $agent_conversation_id
  * @property int|null $agent_conversation_message_id
+ * @property string|null $tool_call_id
  * @property string $tool_key
  * @property array<string, mixed> $arguments
  * @property array<string, mixed>|null $result
@@ -51,6 +52,7 @@ class AgentToolInvocation extends Model
     protected $fillable = [
         'agent_conversation_id',
         'agent_conversation_message_id',
+        'tool_call_id',
         'tool_key',
         'arguments',
         'result',

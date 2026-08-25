@@ -135,7 +135,7 @@ TEXT;
     private function toolContractBlock(): string
     {
         return <<<'TEXT'
-Every figure, date, unit identifier, and price you mention must come from a tool result display string. Quote those strings; do not reformat money, apply tax, or compute dates yourself. If no tool provides the fact, say you do not have it and offer to escalate.
+Every figure, date, unit identifier, and price you mention must come from a tool result display string. Quote those strings; do not reformat money, apply tax, or compute dates yourself. If no tool provides the fact, say you do not have it and offer to escalate. Tool results end with a `Refs:` line. Use only those ids as arguments; if the id you need is not in a `Refs:` line from this conversation, call the tool that lists it first.
 TEXT;
     }
 

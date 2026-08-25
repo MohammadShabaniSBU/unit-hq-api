@@ -34,6 +34,7 @@ use App\Support\Ai\Guards\InboundGuardPipeline;
 use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\ArgumentBag;
 use App\Support\Ai\Tools\FactBag;
+use App\Support\Ai\Tools\RefsRenderer;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
@@ -251,7 +252,7 @@ final class AgentRuntime
 
                     $messages[] = [
                         'role' => 'tool',
-                        'content' => $this->wrapUntrusted($result->display),
+                        'content' => $this->wrapUntrusted($result->modelText()),
                         'tool_call_id' => $call['id'],
                         'tool_name' => $call['name'],
                         'arguments' => ArgumentBag::jsonReady($call['arguments']),
@@ -658,6 +659,9 @@ final class AgentRuntime
             ['role' => 'system', 'content' => $ctx->definition->systemPrompt($ctx)],
         ];
 
+        $invocations = $this->invocationsByCall($ctx->conversation);
+        $assistantRow = null;
+
         foreach ($prior as $row) {
             if ($row->role === AgentMessageRole::User) {
                 $messages[] = [
@@ -665,15 +669,23 @@ final class AgentRuntime
                     'content' => $this->wrapUntrusted((string) $row->content),
                 ];
             } elseif ($row->role === AgentMessageRole::Assistant) {
+                $assistantRow = $row;
                 $messages[] = [
                     'role' => 'assistant',
                     'content' => (string) $row->content,
                     'tool_calls' => $row->tool_calls ?? [],
                 ];
             } elseif ($row->role === AgentMessageRole::Tool) {
+                $key = $assistantRow !== null && $row->tool_call_id !== null
+                    ? $assistantRow->id.':'.$row->tool_call_id
+                    : null;
+
                 $messages[] = [
                     'role' => 'tool',
-                    'content' => $this->wrapUntrusted((string) $row->content),
+                    'content' => $this->wrapUntrusted($this->rehydratedToolText(
+                        (string) $row->content,
+                        $key !== null ? ($invocations[$key] ?? null) : null,
+                    )),
                     'tool_call_id' => $row->tool_call_id,
                 ];
             }
@@ -685,6 +697,46 @@ final class AgentRuntime
         ];
 
         return $messages;
+    }
+
+    /**
+     * Keyed by "{assistant message id}:{tool call id}". Fake and cassette drivers
+     * reuse call ids across turns, so the assistant message has to scope the match.
+     *
+     * @return array<string, AgentToolInvocation>
+     */
+    private function invocationsByCall(AgentConversation $conversation): array
+    {
+        $byCall = [];
+
+        foreach ($conversation->toolInvocations()
+            ->whereNotNull('tool_call_id')
+            ->whereNotNull('agent_conversation_message_id')
+            ->get() as $invocation) {
+            $byCall[$invocation->agent_conversation_message_id.':'.$invocation->tool_call_id] = $invocation;
+        }
+
+        return $byCall;
+    }
+
+    /**
+     * Tool messages persist `display` only, so the refs line is projected back at
+     * read time from the invocation trace. Without it the model loses the ids on
+     * the very turn it has to pass them.
+     */
+    private function rehydratedToolText(string $content, ?AgentToolInvocation $invocation): string
+    {
+        if ($invocation === null) {
+            return $content;
+        }
+
+        $blob = is_array($invocation->result) ? $invocation->result : null;
+
+        $line = $invocation->status === ToolInvocationStatus::Ok
+            ? RefsRenderer::render(ToolResult::entitiesFromTrace($blob))
+            : RefsRenderer::render(ToolResult::errorFromTrace($blob)?->candidates ?? [], 'Candidates');
+
+        return $line === '' ? $content : $content."\n".$line;
     }
 
     /**
@@ -799,6 +851,7 @@ final class AgentRuntime
                 return AgentToolInvocation::query()->create([
                     'agent_conversation_id' => $conversation->id,
                     'agent_conversation_message_id' => $assistantMessage->id,
+                    'tool_call_id' => $call['id'],
                     'tool_key' => $call['name'],
                     'arguments' => ArgumentBag::normalise($call['arguments'] ?? []),
                     'result' => $result->toTraceResult(),

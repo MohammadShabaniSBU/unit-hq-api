@@ -153,6 +153,7 @@ final class EvalHarness
                 $driver,
                 $fixture->locale,
                 $live,
+                $replacements,
             );
             $failures = array_merge($failures, $turnFailures);
 

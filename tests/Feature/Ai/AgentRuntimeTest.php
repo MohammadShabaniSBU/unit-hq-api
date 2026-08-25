@@ -22,6 +22,7 @@ use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolInvocationStatus;
@@ -29,6 +30,7 @@ use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailVerdict;
 use App\Support\Ai\PendingActionRecorder;
+use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
@@ -39,6 +41,7 @@ use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\Support\Ai\ProposableSpyTool;
 use Tests\Support\Ai\RecordingTool;
+use Tests\Support\Ai\RefEmittingTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
 
@@ -143,6 +146,147 @@ class AgentRuntimeTest extends TestCase
             $this->assertStringNotContainsString('"amount"', $content);
             $this->assertStringNotContainsString('84.70', $content);
         }
+    }
+
+    #[Test]
+    public function in_turn_tool_message_carries_the_refs_line(): void
+    {
+        $conversation = $this->refsConversation();
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.refs', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueText('Here is what we have.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'what is available?',
+        );
+
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertCount(1, $toolMessages);
+        $this->assertStringContainsString(
+            'Refs: site 1 = Madrid Centro; unit_class 12 = Trastero 16 m² XL',
+            $toolMessages[0],
+        );
+    }
+
+    #[Test]
+    public function persisted_tool_message_and_result_summary_omit_the_refs_line(): void
+    {
+        $conversation = $this->refsConversation();
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.refs', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueText('Here is what we have.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'what is available?',
+        );
+
+        $toolRow = AgentConversationMessage::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('role', AgentMessageRole::Tool)
+            ->firstOrFail();
+        $this->assertStringNotContainsString('Refs:', (string) $toolRow->content);
+        $this->assertSame('c1', $toolRow->tool_call_id);
+
+        $invocation = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->firstOrFail();
+        $this->assertStringNotContainsString('Refs:', (string) $invocation->result_summary);
+        $this->assertSame('c1', $invocation->tool_call_id);
+    }
+
+    #[Test]
+    public function prior_turn_tool_messages_rehydrate_with_their_refs_line(): void
+    {
+        $conversation = $this->refsConversation();
+        $this->seedToolTurn($conversation, 'call_1', 'Three units available at Madrid Centro.', [
+            EntityRef::of(EntityType::Site, 1, 'Madrid Centro'),
+            EntityRef::of(EntityType::UnitClass, 12, 'Trastero 16 m² XL'),
+        ]);
+
+        $this->driver->enqueueText('Let me check the price.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'how much for the 16?',
+        );
+
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertCount(1, $toolMessages);
+        $this->assertStringContainsString('Three units available at Madrid Centro.', $toolMessages[0]);
+        $this->assertStringContainsString(
+            'Refs: site 1 = Madrid Centro; unit_class 12 = Trastero 16 m² XL',
+            $toolMessages[0],
+        );
+    }
+
+    #[Test]
+    public function historical_invocation_without_a_tool_call_id_rehydrates_without_refs(): void
+    {
+        $conversation = $this->refsConversation();
+        $this->seedToolTurn(
+            $conversation,
+            'call_1',
+            'Three units available at Madrid Centro.',
+            [EntityRef::of(EntityType::Site, 1, 'Madrid Centro')],
+            linkInvocation: false,
+        );
+
+        $this->driver->enqueueText('Let me check the price.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'how much for the 16?',
+        );
+
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertCount(1, $toolMessages);
+        $this->assertStringContainsString('Three units available at Madrid Centro.', $toolMessages[0]);
+        $this->assertStringNotContainsString('Refs:', $toolMessages[0]);
+    }
+
+    #[Test]
+    public function turns_reusing_one_tool_call_id_rehydrate_their_own_refs(): void
+    {
+        $conversation = $this->refsConversation();
+        $this->seedToolTurn($conversation, 'call_1', 'Three units available at Madrid Centro.', [
+            EntityRef::of(EntityType::Site, 1, 'Madrid Centro'),
+            EntityRef::of(EntityType::UnitClass, 12, 'Trastero 16 m² XL'),
+        ]);
+        $this->seedToolTurn($conversation, 'call_1', 'One unit available at Madrid Norte.', [
+            EntityRef::of(EntityType::Site, 4, 'Madrid Norte'),
+            EntityRef::of(EntityType::UnitClass, 8, 'Trastero 12 m²'),
+        ]);
+
+        $this->driver->enqueueText('Let me check the price.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'how much for either?',
+        );
+
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertCount(2, $toolMessages);
+
+        $this->assertStringContainsString('Three units available at Madrid Centro.', $toolMessages[0]);
+        $this->assertStringContainsString(
+            'Refs: site 1 = Madrid Centro; unit_class 12 = Trastero 16 m² XL',
+            $toolMessages[0],
+        );
+        $this->assertStringNotContainsString('Madrid Norte', $toolMessages[0]);
+
+        $this->assertStringContainsString('One unit available at Madrid Norte.', $toolMessages[1]);
+        $this->assertStringContainsString(
+            'Refs: site 4 = Madrid Norte; unit_class 8 = Trastero 12 m²',
+            $toolMessages[1],
+        );
+        $this->assertStringNotContainsString('Madrid Centro', $toolMessages[1]);
     }
 
     #[Test]
@@ -427,6 +571,89 @@ class AgentRuntimeTest extends TestCase
         $this->assertStringNotContainsString(CannedReply::pendingApproval('en'), $turn->draft);
         $this->assertSame(0, AgentPendingAction::query()->count());
         $this->assertFalse($spy->handleCalled);
+    }
+
+    /**
+     * A `test` conversation whose only tool is the entity-emitting one.
+     */
+    private function refsConversation(): AgentConversation
+    {
+        app(ToolRegistry::class)->register(new RefEmittingTool);
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', ['test.refs']));
+
+        return $this->conversation('test');
+    }
+
+    /**
+     * A completed prior turn: user, assistant with one tool call, the tool message
+     * storing `display` only, and the invocation carrying the entities.
+     *
+     * @param  list<EntityRef>  $entities
+     */
+    private function seedToolTurn(
+        AgentConversation $conversation,
+        string $callId,
+        string $display,
+        array $entities,
+        bool $linkInvocation = true,
+    ): void {
+        $sequence = (int) AgentConversationMessage::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->max('sequence');
+
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => ++$sequence,
+            'role' => AgentMessageRole::User,
+            'content' => 'what do you have?',
+        ]);
+
+        $assistant = AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => ++$sequence,
+            'role' => AgentMessageRole::Assistant,
+            'content' => null,
+            'tool_calls' => [['name' => 'test.refs', 'id' => $callId, 'arguments' => []]],
+        ]);
+
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => ++$sequence,
+            'role' => AgentMessageRole::Tool,
+            'content' => $display,
+            'tool_call_id' => $callId,
+        ]);
+
+        AgentToolInvocation::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'agent_conversation_message_id' => $assistant->id,
+            'tool_call_id' => $linkInvocation ? $callId : null,
+            'tool_key' => 'test.refs',
+            'arguments' => [],
+            'result' => [
+                'entities' => array_map(
+                    static fn (EntityRef $ref): array => $ref->toArray(),
+                    $entities,
+                ),
+            ],
+            'result_summary' => $display,
+            'status' => ToolInvocationStatus::Ok,
+        ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function toolMessagesSentToModel(): array
+    {
+        $contents = [];
+        foreach ($this->driver->lastMessages as $message) {
+            if (($message['role'] ?? null) === 'tool') {
+                $contents[] = (string) $message['content'];
+            }
+        }
+
+        return $contents;
     }
 
     private function conversation(string $agentKey): AgentConversation

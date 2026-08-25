@@ -58,6 +58,7 @@ final class EvalAssertions
     /**
      * @param  array<string, mixed>  $expect
      * @param  array<string, int>  $before
+     * @param  array<string, string>  $replacements
      * @return list<string>
      */
     public static function check(
@@ -67,6 +68,7 @@ final class EvalAssertions
         ModelDriver $driver,
         string $locale,
         bool $live,
+        array $replacements = [],
     ): array {
         $failures = [];
 
@@ -123,6 +125,13 @@ final class EvalAssertions
             if (! $match) {
                 $failures[] = "expected tool denied {{$tool}, {$reason}}";
             }
+        }
+
+        if (isset($expect['expect_tool_arguments']) && is_array($expect['expect_tool_arguments'])) {
+            $failures = array_merge(
+                $failures,
+                self::assertToolArguments($expect['expect_tool_arguments'], $turn, $replacements),
+            );
         }
 
         if (array_key_exists('expect_no_handoff', $expect) && $expect['expect_no_handoff'] && $turn->handoff !== null) {
@@ -332,6 +341,55 @@ final class EvalAssertions
             ) {
                 $failures[] = 'expected draft to contain offer gross '.$line->gross
                     .'; draft: '.json_encode($turn->draft);
+            }
+        }
+
+        return $failures;
+    }
+
+    /**
+     * Asserts the model passed a specific id, not merely that it called the tool.
+     * Values may use the `{{fixture.id}}` tokens from EvalWorld::replacements().
+     *
+     * @param  array<string, mixed>  $expect
+     * @param  array<string, string>  $replacements
+     * @return list<string>
+     */
+    private static function assertToolArguments(array $expect, AgentTurn $turn, array $replacements): array
+    {
+        $tool = (string) ($expect['tool'] ?? '');
+        $wanted = is_array($expect['arguments'] ?? null) ? $expect['arguments'] : [];
+
+        $matches = array_values(array_filter(
+            $turn->invocations,
+            fn (AgentToolInvocation $invocation): bool => $invocation->tool_key === $tool,
+        ));
+
+        if ($matches === []) {
+            return ["expected {$tool} to be invoked with arguments, it was not invoked"];
+        }
+
+        $failures = [];
+        foreach ($wanted as $key => $value) {
+            $name = (string) $key;
+            $expected = strtr((string) $value, $replacements);
+            $seen = [];
+            $hit = false;
+
+            foreach ($matches as $invocation) {
+                $arguments = is_array($invocation->arguments) ? $invocation->arguments : [];
+                $actual = array_key_exists($name, $arguments) && is_scalar($arguments[$name])
+                    ? (string) $arguments[$name]
+                    : null;
+                $seen[] = $actual ?? 'absent';
+                if ($actual === $expected) {
+                    $hit = true;
+                    break;
+                }
+            }
+
+            if (! $hit) {
+                $failures[] = "expected {$tool} argument {$name}={$expected}, got [".implode(', ', $seen).']';
             }
         }
 

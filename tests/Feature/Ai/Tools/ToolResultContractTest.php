@@ -7,6 +7,7 @@ namespace Tests\Feature\Ai\Tools;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Tools\EntityArgumentExemptions;
 use App\Support\Ai\Tools\EntityRef;
+use App\Support\Ai\Tools\RefsRenderer;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -78,11 +79,17 @@ class ToolResultContractTest extends TestCase
 
             $needed = $this->collectEntityIds($result->data);
             $got = $this->indexEntities($result->entities);
+            $refsLine = RefsRenderer::render($result->entities);
 
             foreach ($needed as [$type, $id]) {
                 $this->assertTrue(
                     isset($got[$type->value.':'.$id]),
                     "Tool [{$key}] payload names {$type->value}#{$id} without a matching EntityRef.",
+                );
+                $this->assertStringContainsString(
+                    "{$type->value} {$id} = ",
+                    $refsLine,
+                    "Tool [{$key}] payload names {$type->value}#{$id} without it reaching the Refs: line.",
                 );
             }
         }
