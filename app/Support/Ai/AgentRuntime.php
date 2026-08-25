@@ -195,10 +195,12 @@ final class AgentRuntime
                     );
                     $invocations[] = $invocation;
 
+                    $pendingActionId = null;
                     if ($result->deniedReason === ToolDeniedReason::RequiresApproval) {
                         try {
                             $invocation->loadMissing('conversation');
-                            app(PendingActionRecorder::class)->record($invocation, $result);
+                            $pending = app(PendingActionRecorder::class)->record($invocation, $result);
+                            $pendingActionId = $pending->id;
                         } catch (Throwable $e) {
                             report($e);
                             $result = new ToolResult(
@@ -246,6 +248,9 @@ final class AgentRuntime
                             'denied_reason' => $result->deniedReason?->value,
                             'duration_ms' => $durationMs,
                             'result_summary' => $result->display !== '' ? $result->display : $result->message,
+                            'invocation_id' => $invocation->id,
+                            'pending_action_id' => $pendingActionId,
+                            'replayed' => $result->replayed,
                         ]);
                     }
 

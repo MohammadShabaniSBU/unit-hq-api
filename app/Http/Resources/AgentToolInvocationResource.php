@@ -22,6 +22,10 @@ class AgentToolInvocationResource extends BaseResource
                 ? $this->denied_reason->value
                 : $this->denied_reason,
             'duration_ms' => $this->duration_ms,
+            'pending_action_id' => $this->when(
+                $this->relationLoaded('pendingAction'),
+                fn () => $this->pendingAction?->id,
+            ),
             'created_at' => $this->datetime($this->created_at),
         ];
     }

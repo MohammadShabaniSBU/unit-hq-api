@@ -156,7 +156,7 @@ class AgentConversationController extends Controller
         Gate::authorize(Permission::AiAgentUse->value);
         $this->authorize('view', $agentConversation);
 
-        $agentConversation->load(['aiAgent', 'messages', 'toolInvocations', 'handoffs']);
+        $agentConversation->load(['aiAgent', 'messages', 'toolInvocations.pendingAction', 'handoffs']);
 
         return $this->success(
             AgentConversationResource::make($agentConversation),

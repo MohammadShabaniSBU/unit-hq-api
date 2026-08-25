@@ -29,6 +29,11 @@ class AgentPendingActionResource extends BaseResource
             'failure_reason' => $this->failure_reason,
             'expires_at' => $this->datetime($this->expires_at),
             'created_at' => $this->datetime($this->created_at),
+            'agent' => $this->whenLoaded('agent', fn () => [
+                'id' => $this->agent->id,
+                'key' => $this->agent->key,
+                'name' => $this->agent->name,
+            ]),
             'conversation' => AgentConversationResource::make($this->whenLoaded('conversation')),
             'invocation' => AgentToolInvocationResource::make($this->whenLoaded('invocation')),
             'result' => $this->whenLoaded('result'),

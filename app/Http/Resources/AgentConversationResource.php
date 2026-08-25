@@ -19,6 +19,17 @@ class AgentConversationResource extends BaseResource
             'origin' => $this->origin instanceof \BackedEnum ? $this->origin->value : $this->origin,
             'channel' => $this->channel instanceof \BackedEnum ? $this->channel->value : $this->channel,
             'contact_id' => $this->contact_id,
+            'contact' => $this->whenLoaded('contact', function () {
+                if ($this->contact === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->contact->id,
+                    'first_name' => $this->contact->first_name,
+                    'last_name' => $this->contact->last_name,
+                ];
+            }),
             'site_id' => $this->site_id,
             'verification_level' => $this->verification_level instanceof \BackedEnum
                 ? $this->verification_level->value

@@ -342,6 +342,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('notes', [Controllers\NoteController::class, 'store']);
 
     Route::get('ai/agents', [Controllers\AiAgentController::class, 'index']);
+    Route::put('ai/agents/{aiAgent}/write-policies', [Controllers\AiAgentController::class, 'updateWritePolicy']);
     Route::get('ai/demo-personas', [Controllers\AiDemoPersonaController::class, 'index']);
     Route::get('agent-conversations', [Controllers\AgentConversationController::class, 'index']);
     Route::post('agent-conversations', [Controllers\AgentConversationController::class, 'store']);

@@ -462,6 +462,7 @@ final class RoutePermissions
             'POST /api/settings/object-customization/groups/{group}/fields/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderFields
             'POST /api/settings/object-customization/{entityType}/groups' => Permission::SettingsManage, // ObjectCustomizationController@storeGroup
             'POST /api/settings/object-customization/{entityType}/groups/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderGroups
+            'PUT /api/ai/agents/{aiAgent}/write-policies' => Permission::SettingsManage, // AiAgentController@updateWritePolicy
             'PUT /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
             'PUT /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
             'PUT /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@update — provider account

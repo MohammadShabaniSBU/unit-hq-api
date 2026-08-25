@@ -33,7 +33,7 @@ class AgentPendingActionController extends Controller
         $query = AgentPendingAction::query()
             ->visibleTo($employee, Permission::AgentActionApprove)
             ->operatorQueue()
-            ->with(['agent', 'conversation'])
+            ->with(['agent', 'conversation.contact', 'conversation.aiAgent'])
             ->latest('id');
 
         if (isset($validated['status'])) {
@@ -78,7 +78,7 @@ class AgentPendingActionController extends Controller
         Gate::authorize(Permission::AgentActionApprove->value, $agentPendingAction);
         $this->authorize('view', $agentPendingAction);
 
-        $agentPendingAction->load(['agent', 'conversation.aiAgent', 'invocation']);
+        $agentPendingAction->load(['agent', 'conversation.aiAgent', 'conversation.contact', 'invocation.pendingAction']);
         $agentPendingAction->conversation->setRelation(
             'messages',
             $agentPendingAction->conversation->messages()->orderByDesc('sequence')->limit(20)->get()->reverse()->values(),
