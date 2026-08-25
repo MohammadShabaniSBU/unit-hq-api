@@ -49,6 +49,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
@@ -84,6 +85,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
 
         $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
@@ -105,6 +107,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
@@ -137,6 +140,7 @@ class SalesCreateOfferToolTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
@@ -164,6 +168,7 @@ class SalesCreateOfferToolTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $foreignDeal);
 
         $denied = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $foreignDeal->id,
@@ -195,6 +200,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
         $messages = Message::query()->count();
         $deliveries = OfferDelivery::query()->count();
 
@@ -221,6 +227,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
         AgentWritePolicy::factory()->propose()->create([
             'ai_agent_id' => $ctx->agent->id,
             'tool_key' => 'sales.create_offer',
@@ -247,6 +254,8 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $ctx = $ctx->withFactRegistry(\App\Support\Ai\Tools\FactRegistry::rebuild($principal, $ctx));
         $tool = app(ToolRegistry::class)->get('sales.create_offer');
         $this->assertInstanceOf(ProposableTool::class, $tool);
         $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);

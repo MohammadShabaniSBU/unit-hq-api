@@ -85,7 +85,7 @@ App\Support\Ai\
 ├── AgentTurn.php
 ├── ChannelProfile.php
 ├── Agents/                       // AgentDefinition, registry, support / sales
-├── Tools/                        // AgentTool, ToolDispatcher, ToolResult, FactBag
+├── Tools/                        // AgentTool, ToolDispatcher, ToolResult, FactBag, FactRegistry
 ├── Guards/                       // inbound + outbound pipelines
 ├── Drivers/                      // ModelDriver, LaravelAiDriver, CassetteDriver
 └── Eval/                         // agent:replay harness
@@ -132,7 +132,24 @@ Authorization happens **before** `AgentTool::handle()` is reached.
 4. Arguments validate against `schema()` → else `error` /
    `error_code: invalid_arguments`. A malformed call is not a retryable write
    and consumes no idempotency slot and no quota.
-5. Argument provenance (`denyIfUnlicensed`) — no-op until S25-01
+5. Argument provenance (`denyIfUnlicensed`) — an entity id in a tool argument
+   must already be licensed. `ArgumentProvenance` rebuilds a conversation-scoped
+   `FactRegistry` from channel/contact context, explicit user-stated identifiers
+   (`site 1`, `site with id 1`, `unit A-114`), and `entities` on prior
+   `status = ok` invocations. `AgentRuntime::turn()` calls `beginTurn()` after
+   persisting the user message so the memo resets each turn; each subsequent
+   ok result is `absorb`ed so later calls in the same turn see it. A miss is
+   `denied: unlicensed_argument` with `ToolError` recovery naming the licensing
+   tool (`facility.availability` for `unit_class`, `facility.find_sites` for
+   `site`). There is no discovery exception: `facility.availability` with an
+   unlicensed `unit_class_id` is denied too. Nested `unit_class_rate_id` is
+   resolved to its class and denied unless that class is licensed (missing
+   rate rows use the same reason — not an existence oracle). Unknown
+   `related_to_type` morph aliases are `invalid_arguments`, never skipped.
+   Provenance runs before ownership, so fabricated and real-but-unowned ids
+   fail identically. Write tools receive the same registry on
+   `AgentContext::$factRegistry`; `CatalogueLinePricer` asserts the class is
+   licensed and fail-closes if the registry is missing.
 6. Contact-scoped arguments match `principal->ownsContact()` → else
    `denied: ownership`
 7. Idempotency replay (write tools)
@@ -213,6 +230,13 @@ the tool loop continues until `max_tool_calls_per_turn`.
 `facts` licenses every amount, date, unit identifier, and percent the draft
 may emit. `GroundingGuard` diffs the draft against the turn `FactBag`
 (plus facts already licensed by earlier unblocked assistant turns).
+
+`FactRegistry` is the input-side mirror: conversation-scoped licensed
+`EntityRef`s, rebuilt from the append-only trace (not a table). Claim licences
+stay turn-scoped and are never persisted. Denials do not mint entity licences.
+`entityArguments()` on each tool (or `EntityArgumentExemptions`) is how the
+coverage test finds every `*_id` schema key. Cassette hashes still use
+`key` + `description` + `schema` only — `entityArguments()` is not in the hash.
 
 Eval cassettes (`CassetteKey`) hash the system prompt and tool schema assembly
 (`key`, `description`, `schema`). `display` does **not** participate — it is

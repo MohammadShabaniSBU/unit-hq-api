@@ -9,7 +9,9 @@ use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
+use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\TaxBreakdown;
 use App\Support\Discounts\DiscountSurface;
@@ -39,8 +41,26 @@ final readonly class CatalogueLinePricer
         UnitClass $class,
         Site $site,
         AgentPrincipal $principal,
+        FactRegistry $registry,
         ?int $discountId = null,
     ): self|ToolResult {
+        if (! $registry->contains(EntityType::UnitClass, $class->id)) {
+            $message = json_encode([
+                'argument' => 'unit_class_rate_id',
+                'value' => $rate->id,
+                'type' => EntityType::UnitClass->value,
+                'licensed' => $registry->ids(EntityType::UnitClass),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: 'unlicensed_argument';
+
+            return ToolResult::denied(
+                ToolDeniedReason::UnlicensedArgument,
+                $message,
+                ToolError::unlicensedArgument($message, [
+                    'tool' => 'facility.availability',
+                    'hint' => 'call facility.availability without a unit_class_id to list licensed classes',
+                ]),
+            );
+        }
         $price = $rate->price;
         if ($price === null) {
             return ToolResult::notFound('No current catalogue price for that class at this site.');

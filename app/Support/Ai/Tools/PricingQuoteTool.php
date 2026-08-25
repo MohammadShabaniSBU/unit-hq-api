@@ -9,6 +9,7 @@ use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Billing\BillingMath;
@@ -61,6 +62,15 @@ final class PricingQuoteTool implements AgentTool
     public function contactScopedArgumentKeys(): array
     {
         return [];
+    }
+
+    public function entityArguments(): array
+    {
+        return [
+            'unit_class_id' => EntityType::UnitClass,
+            'site_id' => EntityType::Site,
+            'discount_id' => EntityType::Discount,
+        ];
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

@@ -7,6 +7,7 @@ namespace App\Support\Ai\Tools;
 use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Knowledge\KnowledgeBase;
 
@@ -51,6 +52,13 @@ final class KbFaqLookupTool implements AgentTool
     public function contactScopedArgumentKeys(): array
     {
         return [];
+    }
+
+    public function entityArguments(): array
+    {
+        return [
+            'site_id' => EntityType::Site,
+        ];
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

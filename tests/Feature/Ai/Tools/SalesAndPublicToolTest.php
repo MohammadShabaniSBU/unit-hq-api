@@ -48,11 +48,16 @@ class SalesAndPublicToolTest extends TestCase
             'enabled' => true,
         ]);
 
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
         $result = $this->dispatchTool(
             'sales',
             'facility.availability',
-            AgentPrincipal::anonymous($site->id, 'en'),
+            $principal,
             ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
         );
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
@@ -75,12 +80,16 @@ class SalesAndPublicToolTest extends TestCase
     public function quote_matches_billing_math_to_the_cent(): void
     {
         [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
 
         $result = $this->dispatchTool(
             'sales',
             'pricing.quote',
-            AgentPrincipal::anonymous($site->id, 'en'),
+            $principal,
             ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
         );
 
         $expected = BillingMath::applyTax('70.00', '21.00');
@@ -119,11 +128,16 @@ class SalesAndPublicToolTest extends TestCase
             'created_by' => $employee->id,
         ]);
 
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
         $result = $this->dispatchTool(
             'sales',
             'pricing.quote',
-            AgentPrincipal::anonymous($site->id, 'en'),
+            $principal,
             ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
         );
 
         $this->assertSame(ToolInvocationStatus::Error, $result->status);
@@ -161,12 +175,16 @@ class SalesAndPublicToolTest extends TestCase
             'reservations' => Reservation::query()->count(),
             'contracts' => Contract::query()->count(),
         ];
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
 
         $result = $this->dispatchTool(
             'sales',
             'sales.propose_offer',
-            AgentPrincipal::anonymous($site->id, 'en'),
+            $principal,
             ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
         );
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
@@ -225,6 +243,8 @@ class SalesAndPublicToolTest extends TestCase
         $tenant = Contact::factory()->create(['source' => null]);
         $principal = AgentPrincipal::anonymous(null, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+
+        $this->licenseModels($ctx, $tenant);
 
         $result = $this->dispatchTool('sales', 'crm.create_deal', $principal, [
             'contact_id' => $tenant->id,

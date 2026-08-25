@@ -146,6 +146,7 @@ class GroundingGuardTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($site->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $deal, $class);
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $deal->id,
             'options' => [[
@@ -194,6 +195,7 @@ class GroundingGuardTest extends TestCase
 
         $principal = AgentPrincipal::channelAsserted($contact->id, $site->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $deal, $class);
         $result = $this->dispatchTool('sales', 'sales.create_reservation', $principal, [
             'deal_id' => $deal->id,
             'unit_class_id' => $class->id,
@@ -255,6 +257,7 @@ class GroundingGuardTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($site->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $deal, $class);
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $deal->id,
             'options' => [[

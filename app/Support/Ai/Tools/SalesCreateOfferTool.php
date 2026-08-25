@@ -11,6 +11,8 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
+use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Leasing\LeasingActor;
@@ -83,6 +85,14 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [
+            'deal_id' => EntityType::Deal,
+            'discount_id' => EntityType::Discount,
+        ];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         if ($ctx?->agent === null) {
@@ -141,7 +151,18 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             }
 
             $discountId = isset($raw['discount_id']) ? (int) $raw['discount_id'] : null;
-            $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $discountId);
+            $registry = $ctx?->factRegistry;
+            if ($registry === null) {
+                return ToolResult::denied(
+                    ToolDeniedReason::UnlicensedArgument,
+                    'FactRegistry is required.',
+                    ToolError::unlicensedArgument('FactRegistry is required.', [
+                        'tool' => 'facility.availability',
+                        'hint' => 'call facility.availability without a unit_class_id to list licensed classes',
+                    ]),
+                );
+            }
+            $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $registry, $discountId);
             if ($line instanceof ToolResult) {
                 return $line;
             }
@@ -249,7 +270,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
 
         $offer->load('options');
 
-        return $this->committedResult($offer, $site, $principal, $payloadOptions);
+        return $this->committedResult($offer, $site, $principal, $payloadOptions, $ctx);
     }
 
     /**
@@ -260,6 +281,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         Site $site,
         AgentPrincipal $principal,
         array $payloadOptions,
+        ?AgentContext $ctx,
     ): ToolResult {
         $facts = new FactBag;
         $displays = [];
@@ -273,7 +295,11 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             $class = $rate?->unitClass;
             if ($rate !== null && $class !== null) {
                 $discountId = isset($raw['discount_id']) ? (int) $raw['discount_id'] : null;
-                $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $discountId);
+                $registry = $ctx?->factRegistry;
+                if ($registry === null) {
+                    continue;
+                }
+                $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $registry, $discountId);
                 if (! $line instanceof ToolResult) {
                     $facts
                         ->money($line->net, $line->currency)

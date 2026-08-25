@@ -72,6 +72,14 @@ final class FacilityAvailabilityTool implements AgentTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [
+            'site_id' => EntityType::Site,
+            'unit_class_id' => EntityType::UnitClass,
+        ];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $siteId = isset($arguments['site_id']) ? (int) $arguments['site_id'] : $principal->siteId;

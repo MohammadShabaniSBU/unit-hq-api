@@ -13,6 +13,7 @@ use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
@@ -73,6 +74,14 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
     public function contactScopedArgumentKeys(): array
     {
         return [];
+    }
+
+    public function entityArguments(): array
+    {
+        return [
+            'deal_id' => EntityType::Deal,
+            'unit_class_id' => EntityType::UnitClass,
+        ];
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

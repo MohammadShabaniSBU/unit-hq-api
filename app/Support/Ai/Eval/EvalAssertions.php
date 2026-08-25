@@ -15,6 +15,8 @@ use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Ai\Tools\CatalogueLinePricer;
+use App\Support\Ai\Tools\EntityRef;
+use App\Support\Ai\Tools\FactRegistry;
 use App\Support\Communications\Messages\SmsMessage;
 use Illuminate\Support\Facades\DB;
 
@@ -289,6 +291,7 @@ final class EvalAssertions
                 $class,
                 $site,
                 $principal,
+                (new FactRegistry)->absorb(EntityRef::unitClass($class, $site)),
                 $option->discount_id !== null ? (int) $option->discount_id : null,
             );
             if (! $line instanceof CatalogueLinePricer) {

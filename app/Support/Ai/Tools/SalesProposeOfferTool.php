@@ -12,6 +12,7 @@ use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\EntityType;
+use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\VerificationLevel;
 
 final class SalesProposeOfferTool implements AgentTool
@@ -72,6 +73,16 @@ final class SalesProposeOfferTool implements AgentTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [
+            'contact_id' => EntityType::Contact,
+            'site_id' => EntityType::Site,
+            'unit_class_id' => EntityType::UnitClass,
+            'discount_id' => EntityType::Discount,
+        ];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $site = Site::query()->find((int) $arguments['site_id']);
@@ -90,7 +101,18 @@ final class SalesProposeOfferTool implements AgentTool
         }
 
         $discountId = isset($arguments['discount_id']) ? (int) $arguments['discount_id'] : null;
-        $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $discountId);
+        $registry = $ctx?->factRegistry;
+        if ($registry === null) {
+            return ToolResult::denied(
+                ToolDeniedReason::UnlicensedArgument,
+                'FactRegistry is required.',
+                ToolError::unlicensedArgument('FactRegistry is required.', [
+                    'tool' => 'facility.availability',
+                    'hint' => 'call facility.availability without a unit_class_id to list licensed classes',
+                ]),
+            );
+        }
+        $line = CatalogueLinePricer::price($rate, $class, $site, $principal, $registry, $discountId);
         if ($line instanceof ToolResult) {
             return $line;
         }

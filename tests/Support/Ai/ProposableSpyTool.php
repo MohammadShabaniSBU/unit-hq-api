@@ -67,6 +67,11 @@ final class ProposableSpyTool implements ProposableTool
         return $this->contactKeys;
     }
 
+    public function entityArguments(): array
+    {
+        return [];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $this->handleCalled = true;

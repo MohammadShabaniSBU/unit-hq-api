@@ -7,8 +7,11 @@ principal:
 turns:
   - input: "Yes, please create that offer for the small unit in Madrid."
     expect_tools: [sales.create_offer]
-    expect_writes:
-      offers: 1
-    expect_no_handoff: true
-    expect_grounded: true
-    expect_disclosure: true
+    expect_tool_denied:
+      tool: sales.create_offer
+      reason: unlicensed_argument
+    expect_writes: {}
+    expect_blocked_by: grounding
+    expect_handoff:
+      reason: grounding_failure
+      trigger_source: guardrail

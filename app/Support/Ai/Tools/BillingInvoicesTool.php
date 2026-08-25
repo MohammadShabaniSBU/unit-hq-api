@@ -8,6 +8,7 @@ use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Billing\BillingMath;
@@ -53,6 +54,13 @@ final class BillingInvoicesTool implements AgentTool
     public function contactScopedArgumentKeys(): array
     {
         return [];
+    }
+
+    public function entityArguments(): array
+    {
+        return [
+            'contact_id' => EntityType::Contact,
+        ];
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

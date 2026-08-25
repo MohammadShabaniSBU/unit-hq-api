@@ -121,45 +121,40 @@ final class RegistryFixtures
             'facility.availability' => $this->sales($anon, [
                 'site_id' => $this->site->id,
                 'unit_class_id' => $this->class->id,
-            ]),
+            ], [$this->class]),
             'facility.site_info' => $this->sales($anon, ['site_id' => $this->site->id]),
             'pricing.quote' => $this->sales($anon, [
                 'site_id' => $this->site->id,
                 'unit_class_id' => $this->class->id,
-            ]),
+            ], [$this->class]),
             'pricing.discounts' => $this->sales($anon, ['site_id' => $this->site->id]),
             'sales.propose_offer' => $this->sales($anon, [
                 'site_id' => $this->site->id,
                 'unit_class_id' => $this->class->id,
-            ]),
+            ], [$this->class]),
             'sales.create_offer' => $this->sales($anon, [
                 'deal_id' => $this->deal->id,
                 'options' => [[
                     'unit_class_rate_id' => $this->rate->id,
                     'label' => $this->class->label,
                 ]],
-            ], $this->writeContext($anon, 'sales', $this->employee)),
+            ], [$this->deal, $this->class]),
             'sales.create_reservation' => $this->sales($asserted, [
                 'deal_id' => $this->deal->id,
                 'unit_class_id' => $this->class->id,
-            ], $this->writeContext($asserted, 'sales', $this->employee)),
+            ], [$this->deal, $this->class]),
             'crm.create_contact' => $this->sales($anon, ['first_name' => 'Luis']),
-            'crm.create_deal' => $this->sales($anon, ['contact_id' => $this->contact->id]),
+            'crm.create_deal' => $this->sales($anon, ['contact_id' => $this->contact->id], [$this->contact]),
             'crm.create_task' => $this->sales($anon, [
                 'title' => 'Follow up',
                 'related_to_type' => 'contact',
                 'related_to_id' => $this->contact->id,
-            ], $this->writeContext($anon, 'sales', $this->employee)),
-            'crm.create_note' => [
-                'agent' => 'support',
-                'principal' => $asserted,
-                'arguments' => [
-                    'content' => 'Called the prospect.',
-                    'related_to_type' => 'contact',
-                    'related_to_id' => $this->contact->id,
-                ],
-                'ctx' => $this->writeContext($asserted, 'support', $this->employee),
-            ],
+            ], [$this->contact]),
+            'crm.create_note' => $this->support($asserted, [
+                'content' => 'Called the prospect.',
+                'related_to_type' => 'contact',
+                'related_to_id' => $this->contact->id,
+            ], [$this->contact]),
             'contract.summary' => $this->support($verified, ['contract_id' => $this->contract->id]),
             'billing.balance' => $this->support($verified, []),
             'billing.next_charge' => $this->support($verified, ['contract_id' => $this->contract->id]),
@@ -176,10 +171,16 @@ final class RegistryFixtures
 
     /**
      * @param  array<string, mixed>  $arguments
+     * @param  list<object>  $licenceModels
      * @return Fixture
      */
-    private function sales(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): array
+    private function sales(AgentPrincipal $principal, array $arguments, array $licenceModels = []): array
     {
+        $ctx = $this->writeContext($principal, 'sales', $this->employee);
+        if ($licenceModels !== []) {
+            $this->licenseModels($ctx, ...$licenceModels);
+        }
+
         return [
             'agent' => 'sales',
             'principal' => $principal,
@@ -190,10 +191,16 @@ final class RegistryFixtures
 
     /**
      * @param  array<string, mixed>  $arguments
+     * @param  list<object>  $licenceModels
      * @return Fixture
      */
-    private function support(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): array
+    private function support(AgentPrincipal $principal, array $arguments, array $licenceModels = []): array
     {
+        $ctx = $this->writeContext($principal, 'support', $this->employee);
+        if ($licenceModels !== []) {
+            $this->licenseModels($ctx, ...$licenceModels);
+        }
+
         return [
             'agent' => 'support',
             'principal' => $principal,

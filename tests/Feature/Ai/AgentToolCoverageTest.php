@@ -6,6 +6,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AgentWritePolicy;
 use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\Tools\EntityArgumentExemptions;
 use App\Support\Ai\Tools\ToolRegistry;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,5 +69,44 @@ class AgentToolCoverageTest extends TestCase
                 "Propose policy tool [{$key}] must implement ProposableTool.",
             );
         }
+    }
+
+    #[Test]
+    public function every_schema_id_argument_is_declared_or_exempt(): void
+    {
+        foreach (app(ToolRegistry::class)->all() as $key => $tool) {
+            $declared = $tool->entityArguments();
+            foreach ($this->schemaIdKeys($tool->schema()) as $idKey) {
+                $this->assertTrue(
+                    array_key_exists($idKey, $declared) || EntityArgumentExemptions::contains($idKey),
+                    "Tool [{$key}] argument [{$idKey}] must be in entityArguments() or EntityArgumentExemptions.",
+                );
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $schema
+     * @return list<string>
+     */
+    private function schemaIdKeys(array $schema): array
+    {
+        $keys = [];
+        foreach ($schema as $name => $rules) {
+            if (str_ends_with($name, '_id')) {
+                $keys[] = $name;
+            }
+            $items = $rules['items'] ?? null;
+            if (! is_array($items) || array_is_list($items)) {
+                continue;
+            }
+            foreach ($items as $itemName => $itemRules) {
+                if (is_string($itemName) && str_ends_with($itemName, '_id')) {
+                    $keys[] = $itemName;
+                }
+            }
+        }
+
+        return $keys;
     }
 }

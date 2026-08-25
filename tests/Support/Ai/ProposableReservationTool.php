@@ -72,6 +72,11 @@ final class ProposableReservationTool implements ProposableTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $this->handleCalled = true;

@@ -23,6 +23,7 @@ final class ToolDispatchState
         public readonly ?AgentContext $ctx,
         public ?AgentTool $tool = null,
         public ?AgentWritePolicy $policy = null,
+        public ?FactRegistry $factRegistry = null,
     ) {}
 
     public function tool(): AgentTool

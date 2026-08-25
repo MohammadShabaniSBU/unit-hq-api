@@ -132,6 +132,10 @@ first. i18n keys under `facility.service_areas.*`.
       context; the agent does not ask for a location it already has.
 - [ ] Resolver runs identically on SQLite and PostgreSQL (test asserts both).
 
+## Follow-on from S25-01
+
+Live `--record` of the unlicensed-class recovery scenario (`agent:replay --live --record` against a fixture where the model passes a `unit_class_id` that was never returned, receives `unlicensed_argument`, calls `facility.availability` without that filter, then quotes a returned class). S25-01 left this as an authored cassette because descriptions did not change; a recording here replaces that fixture with observed behaviour. After retargeting, no recording in the suite exercises a successful availability→quote path.
+
 ## Out of scope
 
 - Public (unauthenticated) availability endpoints for a website funnel.

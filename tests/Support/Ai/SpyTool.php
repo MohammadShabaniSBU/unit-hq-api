@@ -6,6 +6,7 @@ namespace Tests\Support\Ai;
 
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\FactBag;
@@ -22,6 +23,7 @@ final class SpyTool implements AgentTool
     /**
      * @param  list<string>  $contactKeys
      * @param  array<string, array<string, mixed>>  $schema
+     * @param  array<string, EntityType|string>  $entityArguments
      */
     public function __construct(
         private readonly string $key = 'test.spy',
@@ -30,6 +32,7 @@ final class SpyTool implements AgentTool
         private readonly bool $throwOnHandle = true,
         private readonly bool $write = false,
         private readonly array $schema = [],
+        private readonly array $entityArguments = [],
     ) {}
 
     public function key(): string
@@ -70,6 +73,11 @@ final class SpyTool implements AgentTool
     public function contactScopedArgumentKeys(): array
     {
         return $this->contactKeys;
+    }
+
+    public function entityArguments(): array
+    {
+        return $this->entityArguments;
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

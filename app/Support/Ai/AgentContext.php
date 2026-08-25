@@ -8,6 +8,7 @@ use App\Models\AgentConversation;
 use App\Models\AiAgent;
 use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
+use App\Support\Ai\Tools\FactRegistry;
 
 final readonly class AgentContext
 {
@@ -21,6 +22,7 @@ final readonly class AgentContext
         public AgentConversation $conversation,
         public AiAgent $agent,
         public array $licensedClaims = [],
+        public ?FactRegistry $factRegistry = null,
     ) {}
 
     /**
@@ -35,6 +37,20 @@ final readonly class AgentContext
             $this->conversation,
             $this->agent,
             $licensedClaims,
+            $this->factRegistry,
+        );
+    }
+
+    public function withFactRegistry(FactRegistry $factRegistry): self
+    {
+        return new self(
+            $this->principal,
+            $this->channel,
+            $this->definition,
+            $this->conversation,
+            $this->agent,
+            $this->licensedClaims,
+            $factRegistry,
         );
     }
 }

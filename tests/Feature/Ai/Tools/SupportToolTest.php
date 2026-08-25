@@ -42,12 +42,16 @@ class SupportToolTest extends TestCase
         $owner = Contact::factory()->create();
         $stranger = Contact::factory()->create();
         $contract = Contract::factory()->create(['contact_id' => $stranger->id]);
+        $principal = AgentPrincipal::verified($owner->id, null, 'en');
+        $ctx = $this->writeContext($principal, 'support');
+        $this->licenseModels($ctx, $contract);
 
         $result = $this->dispatchTool(
             'support',
             'contract.summary',
-            AgentPrincipal::verified($owner->id, null, 'en'),
+            $principal,
             ['contract_id' => $contract->id],
+            $ctx,
         );
 
         $this->assertSame(ToolInvocationStatus::Denied, $result->status);
@@ -59,12 +63,16 @@ class SupportToolTest extends TestCase
     {
         $owner = Contact::factory()->create();
         $stranger = Contact::factory()->create();
+        $principal = AgentPrincipal::verified($owner->id, null, 'en');
+        $ctx = $this->writeContext($principal, 'support');
+        $this->licenseModels($ctx, $stranger);
 
         $result = $this->dispatchTool(
             'support',
             'billing.balance',
-            AgentPrincipal::verified($owner->id, null, 'en'),
+            $principal,
             ['contact_id' => $stranger->id],
+            $ctx,
         );
 
         $this->assertSame(ToolInvocationStatus::Denied, $result->status);
@@ -298,6 +306,7 @@ class SupportToolTest extends TestCase
         $stranger = Contact::factory()->create();
         $principal = AgentPrincipal::verified($owner->id, null, 'en');
         $ctx = $this->writeContext($principal, 'support');
+        $this->licenseModels($ctx, $stranger);
 
         $result = $this->dispatchTool('support', 'crm.create_note', $principal, [
             'content' => 'nope',

@@ -17,8 +17,11 @@ use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Guards\ArgumentProvenance;
 use App\Support\Ai\PendingActionRecorder;
 use App\Support\Ai\Tools\ArgumentBag;
+use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolResult;
 
@@ -37,6 +40,46 @@ trait DispatchesAgentTools
         $definition = app(AgentRegistry::class)->get($agentKey);
 
         return app(ToolDispatcher::class)->dispatch($definition, $principal, $toolKey, $arguments, $ctx);
+    }
+
+    /**
+     * @param  list<EntityRef>  $refs
+     */
+    protected function licenseEntities(AgentContext $ctx, array $refs): void
+    {
+        AgentToolInvocation::query()->create([
+            'agent_conversation_id' => $ctx->conversation->id,
+            'tool_key' => 'facility.availability',
+            'arguments' => [],
+            'result' => [
+                'entities' => array_map(
+                    static fn (EntityRef $ref): array => $ref->toArray(),
+                    $refs,
+                ),
+            ],
+            'result_summary' => 'licensed',
+            'status' => ToolInvocationStatus::Ok,
+            'principal_verification' => $ctx->principal->verification,
+        ]);
+        app(ArgumentProvenance::class)->absorb($refs);
+    }
+
+    protected function licenseModels(AgentContext $ctx, object ...$models): void
+    {
+        $refs = [];
+        foreach ($models as $model) {
+            $refs[] = match (true) {
+                $model instanceof \App\Models\Site => EntityRef::site($model),
+                $model instanceof \App\Models\UnitClass => EntityRef::unitClass($model),
+                $model instanceof \App\Models\Contact => EntityRef::contact($model),
+                $model instanceof \App\Models\Deal => EntityRef::deal($model),
+                $model instanceof \App\Models\Discount => EntityRef::discount($model),
+                $model instanceof \App\Models\Contract => EntityRef::contract($model),
+                $model instanceof \App\Models\Unit => EntityRef::unit($model),
+                default => throw new \InvalidArgumentException('Cannot license '. $model::class),
+            };
+        }
+        $this->licenseEntities($ctx, $refs);
     }
 
     protected function writeContext(

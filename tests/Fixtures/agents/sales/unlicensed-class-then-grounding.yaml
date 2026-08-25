@@ -1,16 +1,15 @@
-id: sales/propose-offer
+id: sales/unlicensed-class-then-grounding
 agent: sales
 channel: webchat
 locale: en
 principal:
   verification: anonymous
 turns:
-  - input: "Can you put together a proposal for a small unit in Madrid?"
-    expect_tools: [sales.propose_offer]
+  - input: "Do you have a small unit in Madrid and what does it cost?"
+    expect_tools: [facility.availability, pricing.quote]
     expect_tool_denied:
-      tool: sales.propose_offer
+      tool: facility.availability
       reason: unlicensed_argument
-    expect_writes: {}
     expect_blocked_by: grounding
     expect_handoff:
       reason: grounding_failure

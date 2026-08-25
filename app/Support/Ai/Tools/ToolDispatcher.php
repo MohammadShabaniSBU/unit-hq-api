@@ -10,13 +10,14 @@ use App\Support\Ai\Agents\AgentDefinition;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\AgentWritePolicyGate;
+use App\Support\Ai\Guards\ArgumentProvenance;
 use App\Support\Ai\Guards\CannedReply;
 use LogicException;
 
 final class ToolDispatcher
 {
     /**
-     * Pinned gate order. `dispatch()` walks this list. S25-01 fills provenance.
+     * Pinned gate order. `dispatch()` walks this list.
      *
      * @var list<string>
      */
@@ -35,7 +36,21 @@ final class ToolDispatcher
     public function __construct(
         private readonly ToolRegistry $registry,
         private readonly AgentWritePolicyGate $writePolicy,
+        private readonly ArgumentProvenance $argumentProvenance,
     ) {}
+
+    public function beginTurn(): void
+    {
+        $this->argumentProvenance->resetMemo();
+    }
+
+    /**
+     * @param  list<EntityRef>  $entities
+     */
+    public function rememberEntities(array $entities): void
+    {
+        $this->argumentProvenance->absorb($entities);
+    }
 
     /**
      * @param  array<string, mixed>  $arguments
@@ -135,11 +150,11 @@ final class ToolDispatcher
     }
 
     /**
-     * Argument provenance. S25-01 fills this; today it is a no-op so the slot exists.
+     * Deny when an entity argument is not licensed in the conversation registry.
      */
     private function denyIfUnlicensed(ToolDispatchState $state): ?ToolResult
     {
-        return null;
+        return $this->argumentProvenance->denyIfUnlicensed($state);
     }
 
     private function gateOwnership(ToolDispatchState $state): ?ToolResult
@@ -181,12 +196,16 @@ final class ToolDispatcher
     private function gateProposeOrHandle(ToolDispatchState $state): ToolResult
     {
         $tool = $state->tool();
-
-        if ($this->writePolicy->isPropose($state->policy)) {
-            return $this->dispatchPropose($tool, $state->principal, $state->arguments, $state->ctx);
+        $ctx = $state->ctx;
+        if ($ctx !== null && $state->factRegistry !== null) {
+            $ctx = $ctx->withFactRegistry($state->factRegistry);
         }
 
-        $result = $tool->handle($state->principal, $state->arguments, $state->ctx);
+        if ($this->writePolicy->isPropose($state->policy)) {
+            return $this->dispatchPropose($tool, $state->principal, $state->arguments, $ctx);
+        }
+
+        $result = $tool->handle($state->principal, $state->arguments, $ctx);
 
         if (
             $state->ctx !== null

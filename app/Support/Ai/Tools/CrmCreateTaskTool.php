@@ -66,6 +66,13 @@ final class CrmCreateTaskTool implements AgentTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [
+            'related_to_id' => 'related_to_type',
+        ];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $employeeId = AgentWriteAttribution::requireEmployeeId($ctx);

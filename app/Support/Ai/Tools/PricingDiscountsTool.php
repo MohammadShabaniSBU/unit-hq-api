@@ -50,6 +50,13 @@ final class PricingDiscountsTool implements AgentTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [
+            'site_id' => EntityType::Site,
+        ];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $discounts = Discount::query()->active()->orderBy('name')->get();

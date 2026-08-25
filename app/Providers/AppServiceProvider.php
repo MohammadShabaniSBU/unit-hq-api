@@ -47,6 +47,7 @@ use App\Support\Ai\Drivers\CassetteDriver;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\LaravelAiDriver;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Guards\ArgumentProvenance;
 use App\Support\Ai\Guards\CompositeGuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\HandoffEvaluator;
@@ -139,6 +140,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(HandoffEvaluator::class, HandoffRules::class);
         $this->app->singleton(GuardrailPipeline::class, CompositeGuardrailPipeline::class);
+        $this->app->singleton(ArgumentProvenance::class);
 
         $this->app->singleton(ModelDriver::class, function ($app): ModelDriver {
             return match ((string) config('agents.driver')) {

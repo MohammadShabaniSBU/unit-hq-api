@@ -10,6 +10,7 @@ use App\Models\UnitHold;
 use App\Support\Access\AccessState;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Time\SiteClock;
 
@@ -51,6 +52,13 @@ final class AccessStatusTool implements AgentTool
     public function contactScopedArgumentKeys(): array
     {
         return [];
+    }
+
+    public function entityArguments(): array
+    {
+        return [
+            'contract_id' => EntityType::Contract,
+        ];
     }
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult

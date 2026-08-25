@@ -6,6 +6,7 @@ namespace App\Support\Ai\Tools;
 
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 
 interface AgentTool
@@ -31,6 +32,14 @@ interface AgentTool
      * @return list<string>
      */
     public function contactScopedArgumentKeys(): array;
+
+    /**
+     * Arguments that are entity identifiers. Values are EntityType or a sibling
+     * argument name holding the morph alias (related_to_id → related_to_type).
+     *
+     * @return array<string, EntityType|string>
+     */
+    public function entityArguments(): array;
 
     /**
      * @param  array<string, mixed>  $arguments

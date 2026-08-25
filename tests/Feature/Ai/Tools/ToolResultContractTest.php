@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Ai\Tools;
 
 use App\Support\Ai\Enums\EntityType;
+use App\Support\Ai\Tools\EntityArgumentExemptions;
 use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,11 +42,7 @@ class ToolResultContractTest extends TestCase
     ];
 
     /** Catalogue / option ids that are not EntityRef types. */
-    private const SKIP_ID_KEYS = [
-        'unit_class_rate_id',
-        'price_id',
-        'offer_option_id',
-    ];
+    private const SKIP_ID_KEYS = EntityArgumentExemptions::KEYS;
 
     #[Test]
     public function every_registered_tool_has_a_fixture_whose_entities_cover_payload_ids(): void

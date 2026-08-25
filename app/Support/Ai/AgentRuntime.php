@@ -85,6 +85,7 @@ final class AgentRuntime
 
         $priorMessages = $conversation->messages()->orderBy('sequence')->get();
         $this->persistUserMessage($conversation, $input);
+        $this->dispatcher->beginTurn();
 
         $site = $this->siteFor($principal);
         $facts = FactBag::fromCustomerMessage($input, $site);
@@ -223,6 +224,7 @@ final class AgentRuntime
 
                     if ($result->status === ToolInvocationStatus::Ok) {
                         $facts->merge($result->facts);
+                        $this->dispatcher->rememberEntities($result->entities);
                         // Licences are not persisted (unlike fact_keys). A reconstructed
                         // replay result therefore has empty licensedClaims by construction;
                         // the !$replayed check is defence so a later "optimisation" that

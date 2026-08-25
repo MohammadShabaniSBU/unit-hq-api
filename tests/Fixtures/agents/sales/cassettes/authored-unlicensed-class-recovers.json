@@ -1,6 +1,7 @@
 {
     "agent": "sales",
-    "fixture": "sales/availability-and-price",
+    "fixture": "sales/authored-unlicensed-class-recovers",
+    "source": "authored",
     "turn_index": 0,
     "prompt_hash": "ef53b29fc730f2b2a946157ba3fa5c334d5952ee8a9ff4cb086cb2721f5d4f92",
     "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
@@ -9,11 +10,24 @@
             "content": "",
             "tool_calls": [
                 {
-                    "name": "facility.availability",
+                    "name": "pricing.quote",
                     "id": "call_1",
                     "arguments": {
                         "site_id": "{{madrid.id}}",
-                        "unit_class_id": "{{small_class.id}}"
+                        "unit_class_id": 99999
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.availability",
+                    "id": "call_2",
+                    "arguments": {
+                        "site_id": "{{madrid.id}}"
                     }
                 }
             ],
@@ -24,7 +38,7 @@
             "tool_calls": [
                 {
                     "name": "pricing.quote",
-                    "id": "call_2",
+                    "id": "call_3",
                     "arguments": {
                         "site_id": "{{madrid.id}}",
                         "unit_class_id": "{{small_class.id}}"

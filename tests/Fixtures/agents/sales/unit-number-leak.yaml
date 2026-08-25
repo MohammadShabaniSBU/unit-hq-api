@@ -11,9 +11,10 @@ write_policies:
 turns:
   - input: "Please hold a small unit for me in Madrid."
     expect_tools: [sales.create_reservation]
-    expect_writes:
-      reservations: 1
-      unit_holds: 1
+    expect_tool_denied:
+      tool: sales.create_reservation
+      reason: unlicensed_argument
+    expect_writes: {}
     # Unit identity is unlicensed (DisclosureGuard would also block). Outbound
     # order is GroundingGuard first, so the extractable unit id is grounding.
     expect_blocked_by: grounding

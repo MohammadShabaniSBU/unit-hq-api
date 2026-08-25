@@ -1,16 +1,15 @@
-id: sales/viewing-booking
+id: sales/authored-unlicensed-class-recovers
 agent: sales
 channel: webchat
 locale: en
 principal:
   verification: anonymous
 turns:
-  - input: "Book me a viewing please."
-    expect_tools: [crm.create_task]
+  - input: "What does a small unit in Madrid cost?"
+    expect_tools: [pricing.quote, facility.availability]
     expect_tool_denied:
-      tool: crm.create_task
+      tool: pricing.quote
       reason: unlicensed_argument
-    expect_writes: {}
     expect_no_handoff: true
     expect_grounded: true
     expect_disclosure: true

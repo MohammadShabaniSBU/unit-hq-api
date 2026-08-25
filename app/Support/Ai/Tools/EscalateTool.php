@@ -53,6 +53,11 @@ final class EscalateTool implements AgentTool
         return [];
     }
 
+    public function entityArguments(): array
+    {
+        return [];
+    }
+
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
         $reason = HandoffReason::from((string) $arguments['reason']);

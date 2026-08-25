@@ -275,6 +275,7 @@ final readonly class ToolResult
             ToolDeniedReason::SiteScope => 'site_scope: this tool is not available at this site',
             ToolDeniedReason::QuotaExceeded => 'quota_exceeded: this tool has reached its write quota',
             ToolDeniedReason::RequiresApproval => 'requires_approval: waiting for operator approval',
+            ToolDeniedReason::UnlicensedArgument => 'unlicensed_argument: this id was not returned by a tool, stated by the customer, or present in conversation context',
         };
     }
 }

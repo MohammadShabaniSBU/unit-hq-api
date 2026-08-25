@@ -12,4 +12,5 @@ enum ToolDeniedReason: string
     case SiteScope = 'site_scope';
     case QuotaExceeded = 'quota_exceeded';
     case RequiresApproval = 'requires_approval';
+    case UnlicensedArgument = 'unlicensed_argument';
 }

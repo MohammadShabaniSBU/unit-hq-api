@@ -210,6 +210,7 @@ class ForbiddenClaimLicensingTest extends TestCase
     {
         $principal = AgentPrincipal::channelAsserted($world['contact']->id, $world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class']);
 
         return [$principal, $ctx];
     }

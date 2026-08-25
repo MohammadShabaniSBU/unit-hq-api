@@ -7,6 +7,10 @@ principal:
 turns:
   - input: "What catalogue promotions apply and what is the list price?"
     expect_tools: [pricing.discounts, pricing.quote]
-    expect_no_handoff: true
-    expect_grounded: true
-    expect_disclosure: true
+    expect_tool_denied:
+      tool: pricing.quote
+      reason: unlicensed_argument
+    expect_blocked_by: grounding
+    expect_handoff:
+      reason: grounding_failure
+      trigger_source: guardrail
