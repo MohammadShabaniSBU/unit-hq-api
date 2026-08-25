@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\ChannelProfile;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\Eval\CassetteKey;
 use App\Support\Time\SiteClock;
 
 trait AssemblesSystemPrompt
@@ -29,6 +30,23 @@ trait AssemblesSystemPrompt
         ];
 
         return implode("\n\n", array_filter($parts, fn (string $part): bool => $part !== ''));
+    }
+
+    public function promptVersion(AgentContext $ctx): string
+    {
+        $parts = [
+            $this->roleParagraph($ctx),
+            $this->untrustedInputBlock(),
+            $this->channelBlock($ctx->channel),
+            $this->verificationBlock($ctx->principal->verification),
+            $this->toolContractBlock(),
+            $this->neverListBlock(),
+            $this->escalationBlock(),
+        ];
+
+        return CassetteKey::promptHash(
+            implode("\n\n", array_filter($parts, fn (string $part): bool => $part !== '')),
+        );
     }
 
     public function handoffRules(): array

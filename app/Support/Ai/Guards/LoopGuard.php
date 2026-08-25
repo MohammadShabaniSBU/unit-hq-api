@@ -27,6 +27,7 @@ final class LoopGuard
                 HandoffReason::TurnLimit,
                 CannedReply::Budget,
                 ['detail' => 'max_turns'],
+                'loop',
             );
         }
 
@@ -35,6 +36,7 @@ final class LoopGuard
                 HandoffReason::RepeatedFailure,
                 CannedReply::Handoff,
                 ['detail' => 'consecutive_assistant'],
+                'loop',
             );
         }
 
@@ -43,6 +45,7 @@ final class LoopGuard
                 HandoffReason::RepeatedFailure,
                 CannedReply::Handoff,
                 ['detail' => 'repeated_tool_failure'],
+                'loop',
             );
         }
 

@@ -6,6 +6,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\AgentGuardrailEvent;
 use App\Models\AgentHandoff;
 use App\Models\AgentPendingAction;
 use App\Models\AgentToolInvocation;
@@ -16,6 +17,7 @@ use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\AiUsageCost;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentMessageRole;
@@ -96,6 +98,51 @@ class AgentRuntimeTest extends TestCase
         }
         $this->assertSame(1, (int) $usages->sum('tool_calls'));
         $this->assertNotNull($conversation->fresh()->last_turn_at);
+        foreach ($usages as $usage) {
+            $this->assertSame('anthropic', $usage->provider);
+            $this->assertSame($conversation->aiAgent->model, $usage->model);
+            $this->assertNotNull($usage->seq);
+            $this->assertNotNull($usage->prompt_version);
+            $this->assertNotNull($usage->agent_conversation_message_id);
+            $cost = AiUsageCost::forEvent($usage);
+            $this->assertNotNull($cost);
+            $this->assertSame('USD', $cost['currency']);
+            $this->assertNotSame('', $cost['estimated_cost']);
+        }
+        $this->assertGreaterThan(0, AgentGuardrailEvent::query()->where('agent_conversation_id', $conversation->id)->count());
+        AgentGuardrailEvent::query()->where('agent_conversation_id', $conversation->id)->each(function (AgentGuardrailEvent $event): void {
+            $this->assertNotNull($event->agent_conversation_message_id);
+            $this->assertNotNull($event->seq);
+        });
+    }
+
+    #[Test]
+    public function tool_role_messages_carry_display_not_structured_data(): void
+    {
+        $conversation = $this->conversation('test');
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.record', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueText('The figure is €84,70 (incl. 21% IVA).');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'How much is it?',
+        );
+
+        $toolMessages = array_values(array_filter(
+            $this->driver->lastMessages,
+            fn (array $message): bool => ($message['role'] ?? null) === 'tool',
+        ));
+        $this->assertNotEmpty($toolMessages);
+        foreach ($toolMessages as $message) {
+            $content = (string) $message['content'];
+            $this->assertStringContainsString('€84,70 (incl. 21% IVA)', $content);
+            $this->assertStringNotContainsString('unit_class_id', $content);
+            $this->assertStringNotContainsString('"classes"', $content);
+            $this->assertStringNotContainsString('"amount"', $content);
+            $this->assertStringNotContainsString('84.70', $content);
+        }
     }
 
     #[Test]

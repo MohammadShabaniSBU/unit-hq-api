@@ -1,0 +1,38 @@
+id: sales/summaries-only-six-turn
+agent: sales
+channel: sms
+locale: en
+principal:
+  verification: anonymous
+  site: madrid
+turns:
+  - input: "I am looking for storage near Madrid"
+    expect_tools_ordered: [facility.find_sites]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "Yes, Madrid Norte please"
+    expect_tools_ordered: []
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "What sizes are free there?"
+    expect_tools_ordered: [facility.availability]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "How much is a small unit?"
+    expect_tools_ordered: [pricing.quote]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "Please quote the small unit again"
+    expect_tools_ordered: [pricing.quote]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "Thanks, that is all"
+    expect_tools_ordered: []
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true

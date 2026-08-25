@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Support\Ai\Trace\TraceAssembler;
 use Illuminate\Http\Request;
 
 class AgentConversationResource extends BaseResource
@@ -11,6 +12,8 @@ class AgentConversationResource extends BaseResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        $includeTrace = in_array($request->route()?->getActionMethod(), ['show', 'close'], true);
+
         return [
             'id' => $this->id,
             'ai_agent_id' => $this->ai_agent_id,
@@ -42,6 +45,7 @@ class AgentConversationResource extends BaseResource
             'messages' => AgentConversationMessageResource::collection($this->whenLoaded('messages')),
             'tool_invocations' => AgentToolInvocationResource::collection($this->whenLoaded('toolInvocations')),
             'handoffs' => AgentHandoffResource::collection($this->whenLoaded('handoffs')),
+            'trace' => $this->when($includeTrace, fn () => TraceAssembler::for($this->resource)),
         ];
     }
 }

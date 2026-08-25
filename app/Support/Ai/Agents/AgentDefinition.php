@@ -14,6 +14,12 @@ interface AgentDefinition
     public function systemPrompt(AgentContext $ctx): string;
 
     /**
+     * Stable identifier for the prompt template in force (channel +
+     * verification + role). Does not include site identity or civil date.
+     */
+    public function promptVersion(AgentContext $ctx): string;
+
+    /**
      * @return list<string>
      */
     public function toolKeys(): array;

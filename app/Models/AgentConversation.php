@@ -48,6 +48,8 @@ use LogicException;
  * @property-read Collection<int, AgentToolInvocation> $toolInvocations
  * @property-read Collection<int, AgentHandoff> $handoffs
  * @property-read Collection<int, AgentPendingAction> $pendingActions
+ * @property-read Collection<int, AgentGuardrailEvent> $guardrailEvents
+ * @property-read Collection<int, AiUsageEvent> $usageEvents
  */
 class AgentConversation extends Model
 {
@@ -166,5 +168,17 @@ class AgentConversation extends Model
     public function pendingActions(): HasMany
     {
         return $this->hasMany(AgentPendingAction::class);
+    }
+
+    /** @return HasMany<AgentGuardrailEvent, $this> */
+    public function guardrailEvents(): HasMany
+    {
+        return $this->hasMany(AgentGuardrailEvent::class);
+    }
+
+    /** @return HasMany<AiUsageEvent, $this> */
+    public function usageEvents(): HasMany
+    {
+        return $this->hasMany(AiUsageEvent::class);
     }
 }

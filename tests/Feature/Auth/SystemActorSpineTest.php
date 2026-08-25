@@ -105,6 +105,7 @@ class SystemActorSpineTest extends TestCase
             'comms:sweep-orphan-attachments',
             'comms:sweep-uncorrelated-call-intents',
             'agents:sweep-pending-actions',
+            'agents:check-model-prices',
             'whatsapp:sync-templates',
             'esign:sweep-completion-pending',
             'esign:sweep-expired',

@@ -33,6 +33,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $result_type
  * @property int|null $result_id
  * @property array<int, string|int>|null $fact_keys
+ * @property int|null $turn
+ * @property int|null $seq
+ * @property string|null $model
+ * @property string|null $prompt_version
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
  * @property-read AgentConversationMessage|null $message
@@ -60,6 +64,10 @@ class AgentToolInvocation extends Model
         'result_type',
         'result_id',
         'fact_keys',
+        'turn',
+        'seq',
+        'model',
+        'prompt_version',
     ];
 
     protected function casts(): array

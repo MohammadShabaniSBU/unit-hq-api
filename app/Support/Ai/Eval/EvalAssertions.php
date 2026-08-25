@@ -85,6 +85,20 @@ final class EvalAssertions
             }
         }
 
+        if (isset($expect['expect_tools_ordered']) && is_array($expect['expect_tools_ordered'])) {
+            $got = array_values(array_map(
+                fn (AgentToolInvocation $invocation): string => $invocation->tool_key,
+                $turn->invocations,
+            ));
+            $wanted = [];
+            foreach ($expect['expect_tools_ordered'] as $key) {
+                $wanted[] = (string) $key;
+            }
+            if ($got !== $wanted) {
+                $failures[] = 'expected tools ordered ['.implode(', ', $wanted).'], invoked ['.implode(', ', $got).']';
+            }
+        }
+
         if (isset($expect['forbid_tools']) && is_array($expect['forbid_tools'])) {
             $got = self::invokedKeys($turn);
             $hit = array_values(array_intersect($expect['forbid_tools'], $got));

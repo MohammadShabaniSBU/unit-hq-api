@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('analytics:refresh')->daily();
         // Re-check embedded insight definitions against live provider state.
         $schedule->command('insights:validate')->daily();
+        $schedule->command('agents:check-model-prices')->daily();
 
         // Activation must run at least as often as billing, and is registered
         // first so same-tick hourly runs activate move-ins before billing

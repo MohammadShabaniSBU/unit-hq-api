@@ -6,6 +6,7 @@ namespace App\Support\Ai;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\AgentGuardrailEvent;
 use App\Models\AgentHandoff;
 use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
@@ -36,6 +37,7 @@ use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
+use App\Support\Ai\Trace\TraceCursor;
 use App\Support\RequestId;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -55,6 +57,7 @@ final class AgentRuntime
         private readonly AgentRegistry $agents,
         private readonly InboundGuardPipeline $inbound,
         private readonly GuardrailPipeline $guards,
+        private readonly AiProviderRegistry $providers,
     ) {}
 
     public function turn(
@@ -85,7 +88,8 @@ final class AgentRuntime
         }
 
         $priorMessages = $conversation->messages()->orderBy('sequence')->get();
-        $this->persistUserMessage($conversation, $input);
+        $userMessage = $this->persistUserMessage($conversation, $input);
+        $cursor = TraceCursor::start($ctx, $userMessage->id);
         $this->dispatcher->beginTurn();
 
         $site = $this->siteFor($principal);
@@ -117,6 +121,7 @@ final class AgentRuntime
                     $model,
                     $onEvent,
                     $usageEvents,
+                    $cursor,
                 );
                 $latencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
                 $usageTotal = $usageTotal->add($response->usage);
@@ -134,16 +139,17 @@ final class AgentRuntime
                 if ($remaining <= 0) {
                     $draft = $response->content;
                     if (trim($draft) === '') {
-                        return $this->finishWithHandoff(
-                            $ctx,
-                            $facts,
-                            $invocations,
-                            HandoffReason::Error,
-                            HandoffTriggerSource::Rule,
-                            CannedReply::Error,
-                            ['detail' => 'max_tool_calls_per_turn'],
-                            $usageEvents,
-                        );
+                    return $this->finishWithHandoff(
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        HandoffReason::Error,
+                        HandoffTriggerSource::Rule,
+                        CannedReply::Error,
+                        ['detail' => 'max_tool_calls_per_turn'],
+                        $usageEvents,
+                        cursor: $cursor,
+                    );
                     }
 
                     break;
@@ -160,6 +166,7 @@ final class AgentRuntime
                     facts: $facts,
                     principal: $principal,
                 );
+                $this->bindOpenTraceRows($cursor, $assistantMessage->id, $usageEvents);
 
                 $toRun = array_slice($response->toolCalls, 0, $remaining);
                 $messages[] = [
@@ -172,8 +179,10 @@ final class AgentRuntime
                 foreach ($toRun as $call) {
                     $call['arguments'] = ArgumentBag::normalise($call['arguments'] ?? []);
                     $toolCallCount++;
+                    $toolSeq = $cursor->allocateSeq();
                     if ($onEvent !== null) {
                         $onEvent('tool.started', [
+                            ...$cursor->envelope($assistantMessage->id, $toolSeq),
                             'tool_key' => $call['name'],
                             'arguments' => ArgumentBag::jsonReady($call['arguments']),
                         ]);
@@ -196,6 +205,8 @@ final class AgentRuntime
                         $call,
                         $result,
                         $durationMs,
+                        $cursor,
+                        $toolSeq,
                     );
                     $invocations[] = $invocation;
 
@@ -247,7 +258,9 @@ final class AgentRuntime
                     ];
 
                     if ($onEvent !== null) {
+                        $error = $result->error;
                         $onEvent('tool.finished', [
+                            ...$cursor->envelope($assistantMessage->id, $toolSeq, $invocation->created_at),
                             'tool_key' => $call['name'],
                             'status' => $result->status->value,
                             'denied_reason' => $result->deniedReason?->value,
@@ -256,6 +269,12 @@ final class AgentRuntime
                             'invocation_id' => $invocation->id,
                             'pending_action_id' => $pendingActionId,
                             'replayed' => $result->replayed,
+                            'entities' => array_map(
+                                static fn ($ref): array => $ref->toArray(),
+                                $result->entities,
+                            ),
+                            'error_code' => $error?->errorCode->value,
+                            'recovery' => $error?->recovery,
                         ]);
                     }
 
@@ -281,6 +300,7 @@ final class AgentRuntime
                         $escalate->display !== '' ? $escalate->display : CannedReply::Handoff,
                         ['summary' => $escalate->data['summary'] ?? null],
                         $usageEvents,
+                        cursor: $cursor,
                     );
                 }
 
@@ -288,16 +308,17 @@ final class AgentRuntime
                     $draft = $response->content;
                     $draftAlreadyPersisted = trim($draft) !== '';
                     if (trim($draft) === '') {
-                        return $this->finishWithHandoff(
-                            $ctx,
-                            $facts,
-                            $invocations,
-                            HandoffReason::Error,
-                            HandoffTriggerSource::Rule,
-                            CannedReply::Error,
-                            ['detail' => 'max_tool_calls_per_turn'],
-                            $usageEvents,
-                        );
+                    return $this->finishWithHandoff(
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        HandoffReason::Error,
+                        HandoffTriggerSource::Rule,
+                        CannedReply::Error,
+                        ['detail' => 'max_tool_calls_per_turn'],
+                        $usageEvents,
+                        cursor: $cursor,
+                    );
                     }
 
                     break;
@@ -313,6 +334,7 @@ final class AgentRuntime
                 CannedReply::Error,
                 ['detail' => 'timeout'],
                 $usageEvents,
+                cursor: $cursor,
             );
         }
 
@@ -329,6 +351,7 @@ final class AgentRuntime
             $lastLatencyMs,
             $finishReason,
             $usageEvents,
+            $cursor,
         );
         $draft = $verdict['draft'];
         $usageTotal = $verdict['usage'];
@@ -338,7 +361,7 @@ final class AgentRuntime
         $outbound = $verdict['verdict'];
 
         if (! $outbound->passed) {
-            $this->persistAssistantMessage(
+            $blockedMessage = $this->persistAssistantMessage(
                 $conversation,
                 $draft,
                 [],
@@ -351,6 +374,7 @@ final class AgentRuntime
                 $principal,
                 $outbound->subject,
             );
+            $this->bindOpenTraceRows($cursor, $blockedMessage->id, $usageEvents);
 
             return $this->finishWithHandoff(
                 $ctx,
@@ -367,6 +391,8 @@ final class AgentRuntime
                 $outbound->blockedBy,
                 persistAssistant: false,
                 guardrailEvents: $outbound->events,
+                cursor: $cursor,
+                assistantMessageId: $blockedMessage->id,
             );
         }
 
@@ -375,7 +401,7 @@ final class AgentRuntime
         }
 
         if (! $draftAlreadyPersisted) {
-            $this->persistAssistantMessage(
+            $finalMessage = $this->persistAssistantMessage(
                 $conversation,
                 $draft,
                 [],
@@ -387,6 +413,15 @@ final class AgentRuntime
                 principal: $principal,
                 subject: $outbound->subject,
             );
+            $this->bindOpenTraceRows($cursor, $finalMessage->id, $usageEvents);
+        } else {
+            $latest = $conversation->messages()
+                ->where('role', AgentMessageRole::Assistant)
+                ->orderByDesc('sequence')
+                ->first();
+            if ($latest instanceof AgentConversationMessage) {
+                $this->bindOpenTraceRows($cursor, $latest->id, $usageEvents);
+            }
         }
 
         $this->touchConversation($conversation, ConversationState::Active);
@@ -431,9 +466,10 @@ final class AgentRuntime
         ?int $lastLatencyMs,
         string $finishReason,
         array &$usageEvents,
+        TraceCursor $cursor,
     ): array {
         $verdict = $this->guards->check($draft, $facts, $ctx);
-        $this->emitGuardrailEvents($onEvent, $verdict);
+        $this->persistAndEmitGuardrails($onEvent, $verdict, $cursor);
         $accumulated = $verdict->events;
         $maxRedrafts = (int) config('agents.channel.sms.max_redraft_attempts', 2);
         $attempts = 0;
@@ -453,6 +489,7 @@ final class AgentRuntime
                     $model,
                     $onEvent,
                     $usageEvents,
+                    $cursor,
                 );
                 $lastLatencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
                 $usageTotal = $usageTotal->add($response->usage);
@@ -483,7 +520,7 @@ final class AgentRuntime
 
             $draft = $response->content;
             $verdict = $this->guards->check($draft, $facts, $ctx);
-            $this->emitGuardrailEvents($onEvent, $verdict);
+            $this->persistAndEmitGuardrails($onEvent, $verdict, $cursor);
             $accumulated = array_merge($accumulated, $verdict->events);
             $verdict = $this->withEvents($verdict, $accumulated);
 
@@ -533,14 +570,70 @@ final class AgentRuntime
         );
     }
 
-    private function emitGuardrailEvents(?Closure $onEvent, GuardrailVerdict $verdict): void
+    private function persistAndEmitGuardrails(?Closure $onEvent, GuardrailVerdict $verdict, TraceCursor $cursor, ?int $messageId = null): void
     {
-        if ($onEvent === null) {
-            return;
-        }
-
         foreach ($verdict->events as $event) {
-            $onEvent('guardrail', $event);
+            $seq = $cursor->allocateSeq();
+            $detail = array_diff_key($event, ['guard' => true, 'verdict' => true]);
+            $detail = $detail !== [] ? $detail : null;
+
+            $row = AgentGuardrailEvent::query()->create([
+                'agent_conversation_id' => $cursor->conversationId,
+                'agent_conversation_message_id' => $messageId,
+                'turn' => $cursor->turn,
+                'seq' => $seq,
+                'guard' => (string) ($event['guard'] ?? 'unknown'),
+                'verdict' => (string) ($event['verdict'] ?? 'pass'),
+                'detail' => $detail,
+                'model' => $cursor->model,
+                'prompt_version' => $cursor->promptVersion,
+            ]);
+
+            if ($onEvent !== null) {
+                $onEvent('guardrail', [
+                    ...$cursor->envelope($messageId, $seq, $row->created_at),
+                    ...$event,
+                ]);
+            }
+        }
+    }
+
+    private function persistInboundGuardrail(TraceCursor $cursor, HandoffMatch $match): void
+    {
+        AgentGuardrailEvent::query()->create([
+            'agent_conversation_id' => $cursor->conversationId,
+            'agent_conversation_message_id' => $cursor->userMessageId,
+            'turn' => $cursor->turn,
+            'seq' => $cursor->allocateSeq(),
+            'guard' => $match->guard,
+            'verdict' => 'handoff',
+            'detail' => $match->detail,
+            'model' => $cursor->model,
+            'prompt_version' => $cursor->promptVersion,
+        ]);
+    }
+
+    /**
+     * @param  list<AiUsageEvent>  $usageEvents
+     */
+    private function bindOpenTraceRows(TraceCursor $cursor, int $messageId, array &$usageEvents = []): void
+    {
+        AgentGuardrailEvent::query()
+            ->where('agent_conversation_id', $cursor->conversationId)
+            ->where('turn', $cursor->turn)
+            ->whereNull('agent_conversation_message_id')
+            ->update(['agent_conversation_message_id' => $messageId]);
+
+        AiUsageEvent::query()
+            ->where('agent_conversation_id', $cursor->conversationId)
+            ->where('turn', $cursor->turn)
+            ->whereNull('agent_conversation_message_id')
+            ->update(['agent_conversation_message_id' => $messageId]);
+
+        foreach ($usageEvents as $event) {
+            if ($event->agent_conversation_message_id === null && (int) $event->turn === $cursor->turn) {
+                $event->agent_conversation_message_id = $messageId;
+            }
         }
     }
 
@@ -688,6 +781,8 @@ final class AgentRuntime
         array $call,
         ToolResult $result,
         int $durationMs,
+        TraceCursor $cursor,
+        int $seq,
     ): AgentToolInvocation {
         if ($result->replayed && $result->idempotencyKey !== null) {
             return $this->existingOkInvocation($conversation, $result->idempotencyKey);
@@ -700,7 +795,7 @@ final class AgentRuntime
         $factKeys = $result->facts->all();
 
         try {
-            return DB::transaction(function () use ($conversation, $assistantMessage, $principal, $call, $result, $durationMs, $required, $factKeys): AgentToolInvocation {
+            return DB::transaction(function () use ($conversation, $assistantMessage, $principal, $call, $result, $durationMs, $required, $factKeys, $cursor, $seq): AgentToolInvocation {
                 return AgentToolInvocation::query()->create([
                     'agent_conversation_id' => $conversation->id,
                     'agent_conversation_message_id' => $assistantMessage->id,
@@ -717,6 +812,10 @@ final class AgentRuntime
                     'result_type' => $result->resultType,
                     'result_id' => $result->resultId,
                     'fact_keys' => $factKeys !== [] ? $factKeys : null,
+                    'turn' => $cursor->turn,
+                    'seq' => $seq,
+                    'model' => $cursor->model,
+                    'prompt_version' => $cursor->promptVersion,
                 ]);
             });
         } catch (UniqueConstraintViolationException $e) {
@@ -755,15 +854,13 @@ final class AgentRuntime
         ?string $blockedBy = null,
         bool $persistAssistant = true,
         array $guardrailEvents = [],
+        ?TraceCursor $cursor = null,
+        ?int $assistantMessageId = null,
     ): AgentTurn {
         $draft = DisclosureGuard::appendIfNeeded($draft, $ctx);
-        $handoff = $this->writeHandoff($ctx->conversation, $reason, $source, $detail);
-        $state = $reason === HandoffReason::BudgetExceeded
-            ? ConversationState::Closed
-            : ConversationState::AwaitingHuman;
 
         if ($persistAssistant) {
-            $this->persistAssistantMessage(
+            $assistant = $this->persistAssistantMessage(
                 $ctx->conversation,
                 $draft,
                 [],
@@ -775,7 +872,16 @@ final class AgentRuntime
                 $facts,
                 $ctx->principal,
             );
+            $assistantMessageId = $assistant->id;
+            if ($cursor !== null) {
+                $this->bindOpenTraceRows($cursor, $assistant->id, $usageEvents);
+            }
         }
+
+        $handoff = $this->writeHandoff($ctx->conversation, $reason, $source, $detail, $cursor, $assistantMessageId);
+        $state = $reason === HandoffReason::BudgetExceeded
+            ? ConversationState::Closed
+            : ConversationState::AwaitingHuman;
 
         $this->touchConversation($ctx->conversation, $state);
 
@@ -799,7 +905,9 @@ final class AgentRuntime
         HandoffMatch $match,
         HandoffTriggerSource $source,
     ): AgentTurn {
-        $this->persistUserMessage($ctx->conversation, $input);
+        $userMessage = $this->persistUserMessage($ctx->conversation, $input);
+        $cursor = TraceCursor::start($ctx, $userMessage->id);
+        $this->persistInboundGuardrail($cursor, $match);
         $site = $this->siteFor($principal);
 
         return $this->finishWithHandoff(
@@ -810,6 +918,7 @@ final class AgentRuntime
             $source,
             $match->cannedDraft,
             $match->detail,
+            cursor: $cursor,
         );
     }
 
@@ -828,8 +937,10 @@ final class AgentRuntime
         string $model,
         ?Closure $onEvent,
         array &$usageEvents,
+        TraceCursor $cursor,
     ): ModelResponse {
         $callId = (string) Str::uuid7();
+        $provider = $this->providers->applyActiveCredentials() ?? (string) config('ai.default');
         AiUsageEvent::reserve(
             $callId,
             null,
@@ -848,8 +959,9 @@ final class AgentRuntime
                 $onEvent === null ? null : fn (string $delta) => $onEvent('token', ['delta' => $delta]),
             );
         } catch (ModelTimeoutException $e) {
-            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, model: $model);
+            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, provider: $provider, model: $model);
             if ($failed !== null) {
+                $this->stampUsageEnvelope($failed, $cursor);
                 $usageEvents[] = $failed;
             }
             SystemEvent::record('ai.turn.failed', $conversation, [
@@ -859,8 +971,9 @@ final class AgentRuntime
 
             throw $e;
         } catch (Throwable $e) {
-            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, model: $model);
+            $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, provider: $provider, model: $model);
             if ($failed !== null) {
+                $this->stampUsageEnvelope($failed, $cursor);
                 $usageEvents[] = $failed;
             }
             SystemEvent::record('ai.turn.failed', $conversation, [
@@ -870,12 +983,23 @@ final class AgentRuntime
             throw $e;
         }
 
-        $settled = AiUsageEvent::settle($callId, $response->usage, AiUsageEvent::STATUS_OK, null, $model);
+        $settled = AiUsageEvent::settle($callId, $response->usage, AiUsageEvent::STATUS_OK, $provider, $model);
         if ($settled !== null) {
+            $this->stampUsageEnvelope($settled, $cursor);
             $usageEvents[] = $settled;
         }
 
         return $response;
+    }
+
+    private function stampUsageEnvelope(AiUsageEvent $event, TraceCursor $cursor): void
+    {
+        $event->fill([
+            'turn' => $cursor->turn,
+            'seq' => $cursor->allocateSeq(),
+            'prompt_version' => $cursor->promptVersion,
+        ]);
+        $event->save();
     }
 
     /**
@@ -886,14 +1010,25 @@ final class AgentRuntime
         HandoffReason $reason,
         HandoffTriggerSource $source,
         ?array $detail,
+        ?TraceCursor $cursor = null,
+        ?int $messageId = null,
     ): AgentHandoff {
-        return DB::transaction(function () use ($conversation, $reason, $source, $detail): AgentHandoff {
-            return AgentHandoff::query()->create([
+        return DB::transaction(function () use ($conversation, $reason, $source, $detail, $cursor, $messageId): AgentHandoff {
+            $row = [
                 'agent_conversation_id' => $conversation->id,
+                'agent_conversation_message_id' => $messageId,
                 'reason' => $reason,
                 'trigger_source' => $source,
                 'detail' => $detail,
-            ]);
+            ];
+            if ($cursor !== null) {
+                $row['turn'] = $cursor->turn;
+                $row['seq'] = $cursor->allocateSeq();
+                $row['model'] = $cursor->model;
+                $row['prompt_version'] = $cursor->promptVersion;
+            }
+
+            return AgentHandoff::query()->create($row);
         });
     }
 

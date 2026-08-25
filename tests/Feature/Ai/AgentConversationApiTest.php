@@ -336,11 +336,20 @@ class AgentConversationApiTest extends TestCase
         $started = $this->firstSse($body, 'tool.started');
         $this->assertSame('test.record', $started['data']['tool_key'] ?? null);
         $this->assertSame(['label' => 'balance'], $started['data']['arguments'] ?? null);
+        $this->assertSame($conversation->id, $started['data']['conversation_id'] ?? null);
+        $this->assertArrayHasKey('seq', $started['data']);
+        $this->assertArrayHasKey('turn', $started['data']);
+        $this->assertArrayHasKey('prompt_version', $started['data']);
 
         $finished = $this->firstSse($body, 'tool.finished');
         $this->assertSame('ok', $finished['data']['status'] ?? null);
         $this->assertArrayHasKey('duration_ms', $finished['data']);
         $this->assertArrayHasKey('result_summary', $finished['data']);
+        $this->assertSame($started['data']['seq'] ?? null, $finished['data']['seq'] ?? null);
+
+        $guardrail = $this->firstSse($body, 'guardrail');
+        $this->assertArrayHasKey('seq', $guardrail['data']);
+        $this->assertArrayHasKey('conversation_id', $guardrail['data']);
 
         $usages = AiUsageEvent::query()->where('agent_conversation_id', $conversation->id)->get();
         $this->assertGreaterThanOrEqual(1, $usages->count());
@@ -349,6 +358,63 @@ class AgentConversationApiTest extends TestCase
             $this->assertNull($usage->employee_id);
             $this->assertSame('agent', $usage->purpose);
             $this->assertNotNull($usage->settled_at);
+            $this->assertSame('anthropic', $usage->provider);
+        }
+    }
+
+    #[Test]
+    public function show_includes_ordered_trace_with_guardrails(): void
+    {
+        $agent = AiAgent::factory()->create(['key' => 'test', 'is_active' => true]);
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $agent->id,
+            'created_by_employee_id' => $this->owner->id,
+            'origin' => AgentOrigin::Demo,
+            'state' => ConversationState::Active,
+        ]);
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.record', 'id' => 'c1', 'arguments' => ['label' => 'balance']]])
+            ->enqueueText('The figure is €84,70 (incl. 21% IVA).');
+
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson("/api/agent-conversations/{$conversation->id}/turns", [
+            'input' => 'How much is it?',
+        ])->assertOk()->streamedContent();
+
+        $response = $this->getJson("/api/agent-conversations/{$conversation->id}")
+            ->assertOk();
+
+        $trace = $response->json('data.trace');
+        $this->assertIsArray($trace);
+        $this->assertNotEmpty($trace);
+
+        $seqs = array_map(fn (array $row): int => (int) ($row['seq'] ?? 0), $trace);
+        $sorted = $seqs;
+        sort($sorted);
+        $this->assertSame($sorted, $seqs);
+
+        $kinds = array_column($trace, 'kind');
+        $this->assertContains('guardrail', $kinds);
+        $this->assertContains('usage', $kinds);
+        $this->assertContains('tool', $kinds);
+
+        foreach ($trace as $row) {
+            $this->assertSame($conversation->id, $row['conversation_id'] ?? null);
+            $this->assertArrayHasKey('turn', $row);
+            $this->assertArrayHasKey('seq', $row);
+            $this->assertArrayHasKey('model', $row);
+            $this->assertArrayHasKey('prompt_version', $row);
+            $this->assertArrayHasKey('occurred_at', $row);
+            if (($row['kind'] ?? null) === 'guardrail') {
+                $this->assertNotNull($row['message_id'] ?? null);
+            }
+            if (($row['kind'] ?? null) === 'usage') {
+                $this->assertArrayHasKey('cached_input_tokens', $row);
+                $this->assertNotNull($row['estimated_cost'] ?? null);
+                $this->assertSame('USD', $row['currency'] ?? null);
+            }
         }
     }
 

@@ -60,10 +60,14 @@ final class FakeModelDriver implements ModelDriver
         ));
     }
 
+    /** @var list<array<string, mixed>> */
+    public array $lastMessages = [];
+
     public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
     {
         $this->callCount++;
         $this->lastTransactionLevel = DB::transactionLevel();
+        $this->lastMessages = $messages;
 
         if ($this->queue === []) {
             throw new RuntimeException('FakeModelDriver queue is empty.');

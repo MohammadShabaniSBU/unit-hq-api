@@ -4,45 +4,39 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Support\Ai\Enums\HandoffReason;
-use App\Support\Ai\Enums\HandoffTriggerSource;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Escalation from an agent conversation to a human. created_at only.
+ * One outbound or inbound guard verdict in an agent reasoning trace. Append-only.
  *
  * @property int $id
  * @property int $agent_conversation_id
  * @property int|null $agent_conversation_message_id
- * @property HandoffReason $reason
- * @property HandoffTriggerSource $trigger_source
+ * @property int $turn
+ * @property int $seq
+ * @property string $guard
+ * @property string $verdict
  * @property array<string, mixed>|null $detail
- * @property int|null $employee_id
- * @property int|null $turn
- * @property int|null $seq
  * @property string|null $model
- * @property string|null $prompt_version
- * @property Carbon|null $resolved_at
+ * @property string $prompt_version
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
- * @property-read Employee|null $employee
+ * @property-read AgentConversationMessage|null $message
  */
-class AgentHandoff extends Model
+class AgentGuardrailEvent extends Model
 {
     public const UPDATED_AT = null;
 
     protected $fillable = [
         'agent_conversation_id',
         'agent_conversation_message_id',
-        'reason',
-        'trigger_source',
-        'detail',
-        'employee_id',
-        'resolved_at',
         'turn',
         'seq',
+        'guard',
+        'verdict',
+        'detail',
         'model',
         'prompt_version',
     ];
@@ -50,10 +44,7 @@ class AgentHandoff extends Model
     protected function casts(): array
     {
         return [
-            'reason' => HandoffReason::class,
-            'trigger_source' => HandoffTriggerSource::class,
             'detail' => 'array',
-            'resolved_at' => 'datetime',
         ];
     }
 
@@ -67,11 +58,5 @@ class AgentHandoff extends Model
     public function message(): BelongsTo
     {
         return $this->belongsTo(AgentConversationMessage::class, 'agent_conversation_message_id');
-    }
-
-    /** @return BelongsTo<Employee, $this> */
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
     }
 }

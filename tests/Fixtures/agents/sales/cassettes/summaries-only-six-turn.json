@@ -1,0 +1,93 @@
+{
+    "agent": "sales",
+    "fixture": "sales/summaries-only-six-turn",
+    "turn_index": 5,
+    "prompt_hash": "9e5815b6708c479e2e21926e72f09b16c462e4e2f56d4e39bf09268705bfbae5",
+    "schema_hash": "25157f1b14274c91f62b4bfb85704b3414c4cda60507941f82df5bc27eecef30",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.find_sites",
+                    "id": "call_1",
+                    "arguments": {
+                        "query": "Madrid"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "Madrid Norte is on the list. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "Happy to help at Madrid Norte. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.availability",
+                    "id": "call_2",
+                    "arguments": {
+                        "site_id": "{{madrid.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "Small units are available at Madrid Norte as of now. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "pricing.quote",
+                    "id": "call_3",
+                    "arguments": {
+                        "unit_class_id": "{{small_class.id}}",
+                        "site_id": "{{madrid.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "pricing.quote",
+                    "id": "call_4",
+                    "arguments": {
+                        "unit_class_id": "{{small_class.id}}",
+                        "site_id": "{{madrid.id}}"
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "You are welcome. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

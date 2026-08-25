@@ -27,6 +27,11 @@ final class TestAgentDefinition implements AgentDefinition
         return 'Test agent.';
     }
 
+    public function promptVersion(AgentContext $ctx): string
+    {
+        return \App\Support\Ai\Eval\CassetteKey::promptHash($this->systemPrompt($ctx));
+    }
+
     public function toolKeys(): array
     {
         return $this->toolKeys;

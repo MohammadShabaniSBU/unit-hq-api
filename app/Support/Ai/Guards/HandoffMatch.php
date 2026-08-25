@@ -15,5 +15,6 @@ final readonly class HandoffMatch
         public HandoffReason $reason,
         public string $cannedDraft,
         public ?array $detail = null,
+        public string $guard = 'handoff_rules',
     ) {}
 }

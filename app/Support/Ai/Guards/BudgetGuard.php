@@ -23,6 +23,7 @@ final class BudgetGuard
                 HandoffReason::BudgetExceeded,
                 CannedReply::Budget,
                 ['detail' => 'conversation_token_budget'],
+                'budget',
             );
         }
 
@@ -36,6 +37,7 @@ final class BudgetGuard
                 HandoffReason::BudgetExceeded,
                 CannedReply::Budget,
                 ['detail' => 'conversation_call_budget'],
+                'budget',
             );
         }
 

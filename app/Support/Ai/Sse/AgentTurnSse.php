@@ -13,6 +13,7 @@ use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\AgentTurn;
 use App\Support\Ai\AiUsageCost;
 use App\Support\Ai\Enums\AgentMessageRole;
+use App\Support\Ai\Trace\TraceSeq;
 use App\Support\RecordsActivity;
 use Closure;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,7 +34,13 @@ final class AgentTurnSse
             ignore_user_abort(true);
 
             $sequence = (int) $conversation->messages()->max('sequence') + 1;
-            $this->emit('turn.started', ['sequence' => $sequence]);
+            $turn = (int) $conversation->messages()->where('role', AgentMessageRole::User)->count() + 1;
+            $this->emit('turn.started', [
+                'sequence' => $sequence,
+                'conversation_id' => $conversation->id,
+                'turn' => $turn,
+                'seq' => TraceSeq::max($conversation->id) + 1,
+            ]);
 
             try {
                 $turn = $this->runtime->turn(
@@ -133,10 +140,18 @@ final class AgentTurnSse
             return;
         }
 
+        $handoff = $turn->handoff;
         $this->emit('handoff', [
-            'reason' => $turn->handoff->reason->value,
-            'trigger_source' => $turn->handoff->trigger_source->value,
-            'detail' => $turn->handoff->detail,
+            'conversation_id' => $handoff->agent_conversation_id,
+            'turn' => $handoff->turn,
+            'seq' => $handoff->seq,
+            'message_id' => $handoff->agent_conversation_message_id,
+            'model' => $handoff->model,
+            'prompt_version' => $handoff->prompt_version,
+            'occurred_at' => $handoff->created_at?->format('Y-m-d H:i:s'),
+            'reason' => $handoff->reason->value,
+            'trigger_source' => $handoff->trigger_source->value,
+            'detail' => $handoff->detail,
         ]);
     }
 
@@ -149,16 +164,30 @@ final class AgentTurnSse
             return;
         }
 
-        /** @var array<string, array{input_tokens: int, output_tokens: int, estimated_cost: string, currency: string}> $byCurrency */
+        /** @var array<string, array{input_tokens: int, cached_input_tokens: int, output_tokens: int, estimated_cost: string, currency: string, envelope: array<string, mixed>}> $byCurrency */
         $byCurrency = [];
         $uncostedInput = 0;
+        $uncostedCached = 0;
         $uncostedOutput = 0;
+        $uncostedEnvelope = null;
 
         foreach ($events as $event) {
+            $envelope = [
+                'conversation_id' => $event->agent_conversation_id,
+                'turn' => $event->turn,
+                'seq' => $event->seq,
+                'message_id' => $event->agent_conversation_message_id,
+                'model' => $event->model,
+                'prompt_version' => $event->prompt_version,
+                'occurred_at' => ($event->started_at ?? $event->created_at)?->format('Y-m-d H:i:s'),
+            ];
+
             $cost = AiUsageCost::forEvent($event);
             if ($cost === null) {
                 $uncostedInput += $event->input_tokens;
+                $uncostedCached += $event->cached_input_tokens;
                 $uncostedOutput += $event->output_tokens;
+                $uncostedEnvelope ??= $envelope;
 
                 continue;
             }
@@ -167,13 +196,16 @@ final class AgentTurnSse
             if (! isset($byCurrency[$currency])) {
                 $byCurrency[$currency] = [
                     'input_tokens' => 0,
+                    'cached_input_tokens' => 0,
                     'output_tokens' => 0,
                     'estimated_cost' => '0',
                     'currency' => $currency,
+                    'envelope' => $envelope,
                 ];
             }
 
             $byCurrency[$currency]['input_tokens'] += $event->input_tokens;
+            $byCurrency[$currency]['cached_input_tokens'] += $event->cached_input_tokens;
             $byCurrency[$currency]['output_tokens'] += $event->output_tokens;
             $byCurrency[$currency]['estimated_cost'] = bcadd(
                 $byCurrency[$currency]['estimated_cost'],
@@ -182,13 +214,19 @@ final class AgentTurnSse
             );
         }
 
+        // Currency buckets + uncosted sibling (never a mixed-currency sum; never
+        // drop unpriced tokens just because a sibling has a catalogue row).
         foreach ($byCurrency as $payload) {
-            $this->emit('usage', $payload);
+            $envelope = $payload['envelope'];
+            unset($payload['envelope']);
+            $this->emit('usage', [...$envelope, ...$payload]);
         }
 
-        if ($byCurrency === []) {
+        if ($uncostedEnvelope !== null) {
             $this->emit('usage', [
+                ...$uncostedEnvelope,
                 'input_tokens' => $uncostedInput,
+                'cached_input_tokens' => $uncostedCached,
                 'output_tokens' => $uncostedOutput,
                 'estimated_cost' => null,
                 'currency' => null,

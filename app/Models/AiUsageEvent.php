@@ -19,6 +19,7 @@ use Laravel\Ai\Responses\Data\Usage;
  * @property int|null $employee_id
  * @property int|null $ai_agent_id
  * @property int|null $agent_conversation_id
+ * @property int|null $agent_conversation_message_id
  * @property string|null $conversation_id
  * @property string $purpose
  * @property string|null $provider
@@ -33,6 +34,9 @@ use Laravel\Ai\Responses\Data\Usage;
  * @property int|null $duration_ms
  * @property string|null $request_id
  * @property array|null $raw_usage
+ * @property int|null $turn
+ * @property int|null $seq
+ * @property string|null $prompt_version
  * @property Carbon $started_at
  * @property Carbon|null $settled_at
  */
@@ -53,6 +57,7 @@ class AiUsageEvent extends Model
         'employee_id',
         'ai_agent_id',
         'agent_conversation_id',
+        'agent_conversation_message_id',
         'conversation_id',
         'purpose',
         'provider',
@@ -69,6 +74,9 @@ class AiUsageEvent extends Model
         'raw_usage',
         'started_at',
         'settled_at',
+        'turn',
+        'seq',
+        'prompt_version',
     ];
 
     protected function casts(): array
@@ -97,6 +105,12 @@ class AiUsageEvent extends Model
     public function agentConversation(): BelongsTo
     {
         return $this->belongsTo(AgentConversation::class);
+    }
+
+    /** @return BelongsTo<AgentConversationMessage, $this> */
+    public function message(): BelongsTo
+    {
+        return $this->belongsTo(AgentConversationMessage::class, 'agent_conversation_message_id');
     }
 
     public static function reserve(
