@@ -167,6 +167,7 @@ class DatabaseSeeder extends Seeder
         }
 
         (new DiscountCatalogueSeeder)->run($manager);
+        $this->call(SizeGuideSeeder::class);
 
         $unitClasses = collect();
         foreach (range(1, 10) as $n) {

@@ -14,10 +14,13 @@ class ForbiddenClaimKeyTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function the_enum_has_exactly_one_case(): void
+    public function the_enum_has_exactly_two_cases(): void
     {
         $this->assertSame(
-            [ForbiddenClaimKey::AvailabilityGuarantee],
+            [
+                ForbiddenClaimKey::AvailabilityGuarantee,
+                ForbiddenClaimKey::CapacityGuidance,
+            ],
             ForbiddenClaimKey::cases(),
         );
     }
@@ -36,5 +39,14 @@ class ForbiddenClaimKeyTest extends TestCase
             ],
             config('ai-handoff.forbidden_claims.en.availability_guarantee'),
         );
+    }
+
+    #[Test]
+    public function the_en_capacity_guidance_group_includes_the_trace_30_wording(): void
+    {
+        $phrases = config('ai-handoff.forbidden_claims.en.capacity_guidance');
+        $this->assertIsArray($phrases);
+        $this->assertContains('should work well', $phrases);
+        $this->assertContains('will fit', $phrases);
     }
 }

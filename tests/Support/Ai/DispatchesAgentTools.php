@@ -74,6 +74,7 @@ trait DispatchesAgentTools
                 $model instanceof \App\Models\Contact => EntityRef::contact($model),
                 $model instanceof \App\Models\Deal => EntityRef::deal($model),
                 $model instanceof \App\Models\Discount => EntityRef::discount($model),
+                $model instanceof \App\Models\SizeGuide => EntityRef::sizeGuide($model),
                 $model instanceof \App\Models\Contract => EntityRef::contract($model),
                 $model instanceof \App\Models\Unit => EntityRef::unit($model),
                 default => throw new \InvalidArgumentException('Cannot license '. $model::class),

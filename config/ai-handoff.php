@@ -269,6 +269,22 @@ return [
                 'i have reserved',
                 "i've reserved",
             ],
+            // Licensed by ForbiddenClaimKey::CapacityGuidance on an ok
+            // facility.size_guide result. Must catch the trace-30 line
+            // ("should work well") plus fit language. Hedging is not a
+            // second guard: licensed "should work well" is allowed; "will
+            // fit" is a prompt + disclaimer rule.
+            'capacity_guidance' => [
+                'should work well',
+                'will fit',
+                'would fit',
+                'should fit',
+                'can fit',
+                'enough space for',
+                'plenty of room',
+                'big enough',
+                'large enough',
+            ],
             'legal_advice' => [
                 'you are not liable',
                 "you're not liable",
@@ -308,6 +324,20 @@ return [
                 'esta reservado',
                 'está reservado',
             ],
+            // Licensed by ForbiddenClaimKey::CapacityGuidance. Avoid a bare
+            // "cabra" (goat); keep the conjugated "le cabrá".
+            'capacity_guidance' => [
+                'deberia ir bien',
+                'debería ir bien',
+                'le cabra',
+                'le cabrá',
+                'le cabria',
+                'le cabría',
+                'deberia caber',
+                'debería caber',
+                'espacio suficiente',
+                'suficiente espacio',
+            ],
             'legal_advice' => [
                 'usted no es responsable',
                 'el contrato no les permite',
@@ -342,6 +372,15 @@ return [
                 "je l'ai réservé",
                 "c'est reserve",
                 "c'est réservé",
+            ],
+            // Licensed by ForbiddenClaimKey::CapacityGuidance.
+            'capacity_guidance' => [
+                'devrait bien convenir',
+                'devrait convenir',
+                'rentrera',
+                'devrait rentrer',
+                'assez de place',
+                'suffisamment de place',
             ],
             'legal_advice' => [
                 "vous n'etes pas responsable",

@@ -14,6 +14,7 @@ use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Site;
+use App\Models\SizeGuide;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -106,6 +107,13 @@ final class RegistryFixtures
             'contact_id' => $this->contact->id,
             'contract_id' => $this->contract->id,
         ]);
+        SizeGuide::factory()->create([
+            'metric' => 'standard_boxes',
+            'min_quantity' => 17,
+            'max_quantity' => 28,
+            'min_size' => '12.00',
+            'max_size' => '16.00',
+        ]);
     }
 
     /**
@@ -124,6 +132,11 @@ final class RegistryFixtures
             ], [$this->class]),
             'facility.find_sites' => $this->sales($anon, ['query' => 'Madrid']),
             'facility.site_info' => $this->sales($anon, ['site_id' => $this->site->id]),
+            'facility.size_guide' => $this->sales($anon, [
+                'metric' => 'standard_boxes',
+                'quantity' => 24,
+                'site_id' => $this->site->id,
+            ]),
             'pricing.quote' => $this->sales($anon, [
                 'site_id' => $this->site->id,
                 'unit_class_id' => $this->class->id,

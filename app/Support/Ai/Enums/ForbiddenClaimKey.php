@@ -13,4 +13,5 @@ namespace App\Support\Ai\Enums;
 enum ForbiddenClaimKey: string
 {
     case AvailabilityGuarantee = 'availability_guarantee';
+    case CapacityGuidance = 'capacity_guidance';
 }

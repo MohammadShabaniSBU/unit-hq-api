@@ -1,0 +1,16 @@
+id: sales/capacity-claim-licensed
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+  site: madrid
+turns:
+  - input: "I have about 24 standard boxes. What size do I need?"
+    expect_tools: [facility.size_guide]
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_contains:
+      - "12–16"
+      - "This is an estimate based on typical contents"
+    expect_disclosure: true

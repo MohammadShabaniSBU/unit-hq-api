@@ -16,15 +16,18 @@ use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Setting;
 use App\Models\Site;
+use App\Models\SizeGuide;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Billing\BillingMath;
+use App\Support\Facility\SizeGuideResolver;
 use App\Support\Time\SiteClock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -291,7 +294,43 @@ class SalesAndPublicToolTest extends TestCase
     }
 
     #[Test]
-    public function faq_unknown_key_returns_not_found(): void
+    public function size_guide_licenses_capacity_and_cites_the_conservative_band(): void
+    {
+        SizeGuide::factory()->create([
+            'metric' => 'standard_boxes',
+            'min_quantity' => 17,
+            'max_quantity' => 28,
+            'min_size' => '12.00',
+            'max_size' => '16.00',
+        ]);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.size_guide',
+            AgentPrincipal::anonymous(null, 'en'),
+            ['metric' => 'standard_boxes', 'quantity' => 24],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame([ForbiddenClaimKey::CapacityGuidance], $result->licensedClaims);
+        $this->assertStringContainsString('12–16', $result->display);
+        $this->assertStringContainsString(SizeGuideResolver::DISCLAIMER, $result->display);
+        $this->assertNotEmpty($result->entities);
+    }
+
+    #[Test]
+    public function size_guide_empty_match_is_not_found_and_does_not_license(): void
+    {
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.size_guide',
+            AgentPrincipal::anonymous(null, 'en'),
+            ['metric' => 'standard_boxes', 'quantity' => 24],
+        );
+
+        $this->assertSame(ToolInvocationStatus::NotFound, $result->status);
+        $this->assertSame([], $result->licensedClaims);
+    }
     {
         $result = $this->dispatchTool(
             'sales',

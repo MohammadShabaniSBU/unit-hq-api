@@ -94,6 +94,7 @@ class AgentToolWriteGuardTest extends TestCase
                 'related_to_id' => 1,
             ],
             'kb.faq_lookup' => ['key' => 'access_hours'],
+            'facility.size_guide' => ['metric' => 'standard_boxes'],
             'agent.escalate' => ['reason' => 'customer_requested', 'summary' => 'Wants a person'],
             // Deliberately invalid: missing options so validation fails before handle()
             // and the all-tools sweep still treats offers as forbidden.

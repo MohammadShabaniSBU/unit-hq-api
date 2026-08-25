@@ -271,6 +271,7 @@ catalogue below… Definitions in code (`SupportAgentDefinition` /
 | `facility.availability` | anonymous | | ✓ | |
 | `facility.find_sites` | anonymous | | ✓ | ✓ |
 | `facility.site_info` | anonymous | | ✓ | ✓ |
+| `facility.size_guide` | anonymous | | ✓ | ✓ |
 | `pricing.quote` | anonymous | | ✓ | |
 | `pricing.discounts` | anonymous | | ✓ | |
 | `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ | |
@@ -351,7 +352,13 @@ Other tool notes:
   strings are licensed.
 - `facility.availability` goes through `App\Support\Occupancy\Availability`
   (invariant 5 / 36). Counts and classes, **not** unit identifiers.
-- `kb.faq_lookup` absorbs display tokens into `FactBag` the same way.
+- `facility.size_guide` is a **fit recommendation**, not a FAQ. `kb.faq_lookup`
+  answers facts-about-the-site (hours, policy, prohibited items) as a static
+  snippet for a curated key. Size guide takes a quantity predicate, resolves a
+  band under site-over-org / class-over-band dominance, emits `EntityRef`s, and
+  licenses `CapacityGuidance` for this turn. "What are your access hours" →
+  `kb.faq_lookup`. "What size do I need for 24 boxes" → `facility.size_guide`.
+  Do not add the next lookup tool as another FAQ key by default.
 - `billing.balance` returns an array keyed by currency and never a summed
   figure (invariant 30). Derived at read time (invariant 5).
 - `billing.next_charge` reads the contract's snapshotted cadence (invariant
@@ -363,8 +370,9 @@ Other tool notes:
 - `kb.faq_lookup` reads curated snippets from `config/ai-knowledge/{locale}.php`
   by key (`access_hours`, `insurance_required`, `notice_period`,
   `prohibited_items`, `overlock_policy`, `deposit`, `id_required`,
-  `payment_methods`). No free-text search, no embeddings (D-AI-5). Unknown
-  key → `not_found` → escalate, never improvise policy.
+  `payment_methods`). Display tokens are absorbed into `FactBag`. No free-text
+  search, no embeddings (D-AI-5). Unknown key → `not_found` → escalate, never
+  improvise policy.
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
   `contact_channels`.
 - `sales.create_offer` calls `OfferCreation`. Seeded policy: `commit`,
@@ -468,18 +476,20 @@ are not dates. Invented `21%` VAT is the exact failure this exists for.
 
 Pattern set over the draft (shared `config/ai-handoff.php` plus per-agent
 `forbiddenClaims()`): payment confirmation, fee waiver, access grant,
-availability guarantee ("I've held it"), legal advice, contract mutation.
+availability guarantee ("I've held it"), capacity guidance ("should work
+well" / "will fit"), legal advice, contract mutation.
 Match → block + `unsupported_intent`.
 
-`availability_guarantee` is **conditional**. A tool may license a
-`ForbiddenClaimKey` for the current turn only, by returning it on an `ok`
-`ToolResult` (invariant 63). `SalesCreateReservationTool` licenses
+`availability_guarantee` and `capacity_guidance` are **conditional**. A tool
+may license a `ForbiddenClaimKey` for the current turn only, by returning it
+on an `ok` `ToolResult` (invariant 63). `SalesCreateReservationTool` licenses
 `AvailabilityGuarantee` on a committed write — never from `propose()`, never
-on `notFound`. A licence does not persist into later turns the way `FactBag`
-facts do: "I've reserved it" three turns later, after the hold was released,
-is false again. Payment confirmation, fee waiver, access grant, legal advice
-and contract mutation are never licensable, by any tool, in any sprint —
-`ForbiddenClaimKey` has exactly one case.
+on `notFound`. `facility.size_guide` licenses `CapacityGuidance` on an `ok`
+result — never on `not_found`. A licence does not persist into later turns
+the way `FactBag` facts do: "I've reserved it" three turns later, after the
+hold was released, is false again. Payment confirmation, fee waiver, access
+grant, legal advice and contract mutation are never licensable, by any tool,
+in any sprint — `ForbiddenClaimKey` has two cases.
 
 ### Disclosure
 

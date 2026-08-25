@@ -242,6 +242,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('discounts/{discount}/archive', [Controllers\DiscountController::class, 'archive']);
     Route::post('discounts/{discount}/unarchive', [Controllers\DiscountController::class, 'unarchive']);
 
+    Route::get('size-guides', [Controllers\SizeGuideController::class, 'index']);
+    Route::post('size-guides', [Controllers\SizeGuideController::class, 'store']);
+    Route::get('size-guides/{sizeGuide}', [Controllers\SizeGuideController::class, 'show']);
+    Route::patch('size-guides/{sizeGuide}', [Controllers\SizeGuideController::class, 'update']);
+    Route::post('size-guides/{sizeGuide}/archive', [Controllers\SizeGuideController::class, 'archive']);
+    Route::post('size-guides/{sizeGuide}/unarchive', [Controllers\SizeGuideController::class, 'unarchive']);
+
     Route::get('tax-rates/options', [Controllers\TaxRateController::class, 'options']);
     Route::get('tax-rates', [Controllers\TaxRateController::class, 'index']);
     Route::post('tax-rates', [Controllers\TaxRateController::class, 'store']);

@@ -15,6 +15,7 @@ use App\Models\Country;
 use App\Models\Deal;
 use App\Models\Employee;
 use App\Models\Site;
+use App\Models\SizeGuide;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitOccupancy;
@@ -32,6 +33,7 @@ use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ProposableTool;
 use App\Support\Ai\Tools\SalesCreateReservationTool;
 use App\Support\Ai\Tools\ToolRegistry;
+use App\Support\Facility\SizeGuideResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\Ai\DispatchesAgentTools;
@@ -160,6 +162,77 @@ class ForbiddenClaimLicensingTest extends TestCase
         $second = $this->dispatchTool('sales', 'sales.create_reservation', $principal, $args, $ctx);
         $this->assertTrue($second->replayed);
         $this->assertSame([], $second->licensedClaims);
+    }
+
+    #[Test]
+    public function unlicensed_capacity_claim_is_blocked_for_sales_and_support(): void
+    {
+        foreach (['sales', 'support'] as $agent) {
+            $verdict = app(ForbiddenClaimGuard::class)->check(
+                'For 20–24 standard boxes, a unit around 5–8 m² should work well.',
+                new FactBag,
+                $this->writeContext(AgentPrincipal::anonymous(null, 'en'), $agent),
+            );
+
+            $this->assertFalse($verdict->passed, $agent);
+            $this->assertSame('forbidden_claim', $verdict->blockedBy, $agent);
+        }
+    }
+
+    #[Test]
+    public function size_guide_licenses_capacity_this_turn_only(): void
+    {
+        $site = Site::factory()->create();
+        SizeGuide::factory()->create([
+            'metric' => 'standard_boxes',
+            'min_quantity' => 17,
+            'max_quantity' => 28,
+            'min_size' => '12.00',
+            'max_size' => '16.00',
+        ]);
+
+        $agent = AiAgent::factory()->create([
+            'key' => 'sales',
+            'name' => 'sales',
+            'is_active' => true,
+        ]);
+        $conversation = AgentConversation::factory()->anonymous()->create([
+            'ai_agent_id' => $agent->id,
+            'site_id' => $site->id,
+            'locale' => 'en',
+        ]);
+
+        $this->driver
+            ->enqueueToolCalls([[
+                'name' => 'facility.size_guide',
+                'id' => 'g1',
+                'arguments' => [
+                    'metric' => 'standard_boxes',
+                    'quantity' => 24,
+                    'site_id' => $site->id,
+                ],
+            ]])
+            ->enqueueText('For 17–28 standard boxes, a unit around 12–16 m² should work well. '.SizeGuideResolver::DISCLAIMER);
+
+        $first = app(AgentRuntime::class)->turn(
+            $conversation,
+            AgentPrincipal::anonymous($site->id, 'en'),
+            'I have about 24 boxes.',
+        );
+
+        $this->assertNull($first->blockedBy);
+        $this->assertStringContainsString('12–16', $first->draft);
+        $this->assertStringContainsString(SizeGuideResolver::DISCLAIMER, $first->draft);
+
+        $this->driver->enqueueText('For 20–24 standard boxes, a unit around 5–8 m² should work well.');
+
+        $second = app(AgentRuntime::class)->turn(
+            $conversation->fresh(),
+            AgentPrincipal::anonymous($site->id, 'en'),
+            'So a small unit then?',
+        );
+
+        $this->assertSame('forbidden_claim', $second->blockedBy);
     }
 
     /**

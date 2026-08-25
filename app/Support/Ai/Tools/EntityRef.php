@@ -13,6 +13,7 @@ use App\Models\Note;
 use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Site;
+use App\Models\SizeGuide;
 use App\Models\Task;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -80,6 +81,18 @@ final readonly class EntityRef
     public static function discount(Discount $discount, ?string $context = null): self
     {
         return new self(EntityType::Discount, $discount->id, $discount->name, $context);
+    }
+
+    public static function sizeGuide(SizeGuide $guide, ?string $context = null): self
+    {
+        $label = $guide->unitClass?->label;
+        if ($label === null || $label === '') {
+            $min = $guide->min_size;
+            $max = $guide->max_size;
+            $label = ($min !== null && $max !== null) ? "{$min}–{$max} m²" : 'size guide '.$guide->id;
+        }
+
+        return new self(EntityType::SizeGuide, $guide->id, $label, $context ?? $guide->site?->name);
     }
 
     public static function task(Task $task, ?string $context = null): self

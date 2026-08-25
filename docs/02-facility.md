@@ -86,3 +86,4 @@ facility hierarchy (S15).
 | `payment_provider_accounts` | Per-entity Stripe (and future debit) credentials + webhook routing — see `05-billing-ledger.md` |
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |
+| `size_guides` | Operator size-to-contents catalogue (archive-only; null `site_id` = company default) |

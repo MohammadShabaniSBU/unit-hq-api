@@ -28,6 +28,7 @@ use App\Models\InvoiceSeries;
 use App\Models\LegalEntity;
 use App\Models\Price;
 use App\Models\Site;
+use App\Models\SizeGuide;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -170,6 +171,15 @@ final class EvalWorld
         $world->discount = Discount::factory()->percent('15.00')->create([
             'name' => 'Catalogue 15',
             'created_by' => $world->operator->id,
+        ]);
+
+        SizeGuide::factory()->create([
+            'metric' => 'standard_boxes',
+            'min_quantity' => 17,
+            'max_quantity' => 28,
+            'min_size' => '12.00',
+            'max_size' => '16.00',
+            'notes' => 'Conservative: 20–24 standard boxes need more than a 5–8 m² unit.',
         ]);
 
         Unit::factory()->count(3)->sequence(

@@ -9,7 +9,7 @@ namespace App\Support\Ai\Enums;
  *
  * Morph-overlapping cases use the Relation::morphMap alias verbatim.
  * Non-morph additions (not on the morph map) are an explicit closed list:
- * site, unit_class, discount.
+ * site, unit_class, discount, size_guide.
  */
 enum EntityType: string
 {
@@ -21,6 +21,7 @@ enum EntityType: string
     case Reservation = 'reservation';
     case Contract = 'contract';
     case Discount = 'discount';
+    case SizeGuide = 'size_guide';
     case Task = 'task';
     case Note = 'note';
     case Invoice = 'invoice';
@@ -37,6 +38,7 @@ enum EntityType: string
             self::Site,
             self::UnitClass,
             self::Discount,
+            self::SizeGuide,
         ];
     }
 }

@@ -282,11 +282,12 @@
     or automation node (extends invariant 60). Enforced by
     `PendingActionApprovalTest`.
 63. **A forbidden claim may be licensed only by a tool that earned it in the
-    same turn.** `ForbiddenClaimKey` has exactly one case,
-    `AvailabilityGuarantee`. Payment confirmation, fee waiver, access grant,
-    legal advice and contract mutation are never licensable, by any tool, in any
-    sprint. A licence does not persist across turns. Enforced by
-    `ForbiddenClaimLicensingTest` and `ForbiddenClaimKeyTest`.
+    same turn.** `ForbiddenClaimKey` has two cases: `AvailabilityGuarantee`
+    (licensed by a committed `sales.create_reservation`) and `CapacityGuidance`
+    (licensed by an `ok` `facility.size_guide` result). Payment confirmation,
+    fee waiver, access grant, legal advice and contract mutation are never
+    licensable, by any tool, in any sprint. A licence does not persist across
+    turns. Enforced by `ForbiddenClaimLicensingTest` and `ForbiddenClaimKeyTest`.
 
 ## Code conventions
 

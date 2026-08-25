@@ -160,9 +160,15 @@ final class EvalAssertions
             $failures = array_merge($failures, self::assertLatestOfferGrossInDraft($turn, $locale));
         }
 
-        if (isset($expect['expect_contains']) && is_string($expect['expect_contains'])) {
-            if (! str_contains($turn->draft, $expect['expect_contains'])) {
-                $failures[] = 'expected draft to contain '.json_encode($expect['expect_contains']);
+        if (isset($expect['expect_contains'])) {
+            $needles = is_array($expect['expect_contains'])
+                ? $expect['expect_contains']
+                : [$expect['expect_contains']];
+            foreach ($needles as $needle) {
+                $needle = (string) $needle;
+                if ($needle !== '' && ! str_contains($turn->draft, $needle)) {
+                    $failures[] = 'expected draft to contain '.json_encode($needle);
+                }
             }
         }
 

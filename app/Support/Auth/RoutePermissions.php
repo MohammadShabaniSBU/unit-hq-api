@@ -46,6 +46,8 @@ final class RoutePermissions
             'GET /api/discounts/options' => Permission::OfferManage, // DiscountController@options — leasing needs resolve; CRUD stays CatalogueManage
             'GET /api/discounts/{discount}' => Permission::CatalogueManage, // DiscountController@show
             'GET /api/discounts/{discount}/resolve' => Permission::OfferManage, // DiscountController@resolve — leasing needs resolve; CRUD stays CatalogueManage
+            'GET /api/size-guides' => Permission::CatalogueManage, // SizeGuideController@index
+            'GET /api/size-guides/{sizeGuide}' => Permission::CatalogueManage, // SizeGuideController@show
             'GET /api/insurance-rate-matrix' => Permission::CatalogueManage, // Facility\InsurancePriceMatrixController@index
             'GET /api/insurances' => Permission::CatalogueManage, // Facility\InsurancePlanController@index
             'GET /api/insurances/options' => Permission::CatalogueManage, // InsuranceController@options
@@ -69,6 +71,7 @@ final class RoutePermissions
             'GET /api/units/{unit}/holds' => Permission::UnitView, // Facility\UnitHoldController@index
             'GET /api/units/{unit}/occupancies' => Permission::UnitView, // Facility\UnitOccupancyController@index
             'PATCH /api/discounts/{discount}' => Permission::CatalogueManage, // DiscountController@update
+            'PATCH /api/size-guides/{sizeGuide}' => Permission::CatalogueManage, // SizeGuideController@update
             'PATCH /api/insurances/{insurance}' => Permission::CatalogueManage, // Facility\InsurancePlanController@update
             'PATCH /api/site-maps/{siteMap}' => Permission::SiteManage, // Facility\SiteMapController@update
             'PATCH /api/sites/{site}' => Permission::SiteManage, // Facility\SiteController@update
@@ -77,6 +80,9 @@ final class RoutePermissions
             'POST /api/discounts' => Permission::CatalogueManage, // DiscountController@store
             'POST /api/discounts/{discount}/archive' => Permission::CatalogueManage, // DiscountController@archive
             'POST /api/discounts/{discount}/unarchive' => Permission::CatalogueManage, // DiscountController@unarchive
+            'POST /api/size-guides' => Permission::CatalogueManage, // SizeGuideController@store
+            'POST /api/size-guides/{sizeGuide}/archive' => Permission::CatalogueManage, // SizeGuideController@archive
+            'POST /api/size-guides/{sizeGuide}/unarchive' => Permission::CatalogueManage, // SizeGuideController@unarchive
             'POST /api/insurances' => Permission::CatalogueManage, // Facility\InsurancePlanController@store
             'POST /api/insurances/{insurance}/rates' => Permission::CatalogueManage, // Facility\InsuranceRateController@store
             'POST /api/site-service-areas/{site_service_area}/archive' => Permission::SiteManage, // Facility\SiteServiceAreaController@archive

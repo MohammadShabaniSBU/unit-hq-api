@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Support\Auth;
 
 use App\Models\AccessEvent;
-use App\Models\AgentConversation;
-use App\Models\AgentPendingAction;
 use App\Models\AccessGrant;
 use App\Models\AccessPoint;
 use App\Models\AccessProviderAccount;
 use App\Models\AccessSuspension;
+use App\Models\AgentConversation;
+use App\Models\AgentPendingAction;
 use App\Models\Allocation;
 use App\Models\AttributeDefinition;
 use App\Models\AttributeGroup;
@@ -53,6 +53,7 @@ use App\Models\Site;
 use App\Models\SiteMap;
 use App\Models\SiteSenderIdentity;
 use App\Models\SiteServiceArea;
+use App\Models\SizeGuide;
 use App\Models\Task;
 use App\Models\TaxRate;
 use App\Models\TemplateAsset;
@@ -126,6 +127,9 @@ final class SubjectSite
             CommsTriage::class => null,
             TaxRate::class => null,
             Discount::class => null,
+            SizeGuide::class => $subject instanceof SizeGuide
+                ? self::sizeGuideSite($subject)
+                : null,
             LegalEntity::class => null,
             Role::class => null,
             Employee::class => null,
@@ -167,6 +171,19 @@ final class SubjectSite
                 : null,
             default => throw new UnresolvableSubjectSite($subject),
         };
+    }
+
+    private static function sizeGuideSite(SizeGuide $guide): ?Site
+    {
+        if ($guide->site_id === null) {
+            return null;
+        }
+
+        if ($guide->relationLoaded('site')) {
+            return $guide->site;
+        }
+
+        return Site::query()->find($guide->site_id);
     }
 
     private static function agentPendingActionSite(AgentPendingAction $action): ?Site

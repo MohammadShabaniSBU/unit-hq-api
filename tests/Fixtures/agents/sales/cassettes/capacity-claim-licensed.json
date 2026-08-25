@@ -1,0 +1,28 @@
+{
+    "agent": "sales",
+    "fixture": "sales/capacity-claim-licensed",
+    "turn_index": 0,
+    "prompt_hash": "8d47effbf2ff38a6a0978aaeb92cc7c2bea3ed60f602ba0547bebe9647a8f28e",
+    "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
+    "responses": [
+        {
+            "content": "",
+            "tool_calls": [
+                {
+                    "name": "facility.size_guide",
+                    "id": "call_1",
+                    "arguments": {
+                        "metric": "standard_boxes",
+                        "quantity": 24
+                    }
+                }
+            ],
+            "finish_reason": "tool_calls"
+        },
+        {
+            "content": "For 17–28 standard boxes, a unit around 12–16 m² should work well. This is an estimate based on typical contents; ceiling height and access type change what actually fits. Measure before you commit. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        }
+    ]
+}

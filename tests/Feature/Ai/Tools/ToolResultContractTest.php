@@ -29,6 +29,7 @@ class ToolResultContractTest extends TestCase
         'reservation_id' => EntityType::Reservation,
         'contract_id' => EntityType::Contract,
         'discount_id' => EntityType::Discount,
+        'size_guide_id' => EntityType::SizeGuide,
         'task_id' => EntityType::Task,
         'note_id' => EntityType::Note,
         'invoice_id' => EntityType::Invoice,
@@ -38,6 +39,7 @@ class ToolResultContractTest extends TestCase
     /** @var array<string, EntityType> */
     private const COLLECTION_ID = [
         'discounts' => EntityType::Discount,
+        'bands' => EntityType::SizeGuide,
         'invoices' => EntityType::Invoice,
     ];
 

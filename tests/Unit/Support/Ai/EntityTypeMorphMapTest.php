@@ -18,7 +18,7 @@ class EntityTypeMorphMapTest extends TestCase
         $nonMorph = EntityType::nonMorphAdditions();
 
         $this->assertSame(
-            [EntityType::Site, EntityType::UnitClass, EntityType::Discount],
+            [EntityType::Site, EntityType::UnitClass, EntityType::Discount, EntityType::SizeGuide],
             $nonMorph,
         );
 
