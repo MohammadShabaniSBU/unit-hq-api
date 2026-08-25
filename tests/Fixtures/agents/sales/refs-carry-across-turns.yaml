@@ -2,13 +2,16 @@ id: sales/refs-carry-across-turns
 agent: sales
 channel: webchat
 locale: en
-tags: [refs]
+tags: [refs, live_only]
+live_only: true
 principal:
   verification: anonymous
   site: madrid
 # S26-00: availability names a class on turn one, the price request lands on turn
 # two. The id is only reachable through the rehydrated `Refs:` line, so a passing
 # expect_tool_arguments proves refs survive the turn boundary.
+# S26-01: live re-record, do not --seal. Madrid availability now lists Trastero
+# 12/16 as well as Small, so turn-one tool output shifts.
 turns:
   - input: "What have you got available in Madrid right now?"
     expect_tools: [facility.availability]

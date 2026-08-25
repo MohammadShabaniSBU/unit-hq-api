@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/wrong-expect",
     "turn_index": 0,
-    "prompt_hash": "d80001f0722256b6777e4c1134f64c01dd4e1d35d96386bbba3049de6e57827a",
-    "schema_hash": "2e76c229e291a0cd4bd530e4bbe61bc1d23af20b7ec508771a93be546fb153bd",
+    "prompt_hash": "0c5d665920f8f744299c469ee0f6a66dc576b052da5078e39a6b3739e2b34431",
+    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
     "responses": [
         {
             "content": "Hello there. I am an automated assistant.",

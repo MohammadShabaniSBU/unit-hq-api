@@ -16,6 +16,7 @@ use App\Models\Site;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
+use App\Models\UnitClassRate;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Enums\AgentMessageRole;
@@ -123,12 +124,13 @@ class ArgumentProvenanceTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal']);
+        $this->licenseModels($ctx, $world['deal'], $world['site']);
 
         $missing = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => 999999,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => 999999,
                 'label' => 'Ghost',
             ]],
         ], $ctx);
@@ -139,13 +141,60 @@ class ArgumentProvenanceTest extends TestCase
         $real = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
         $this->assertSame(ToolInvocationStatus::Denied, $real->status);
         $this->assertSame(ToolDeniedReason::UnlicensedArgument, $real->deniedReason);
         $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function unlicensed_unit_class_rate_id_is_still_denied(): void
+    {
+        $world = $this->agentPricedDeal();
+        $spy = new SpyTool(
+            key: 'test.rate',
+            required: VerificationLevel::Anonymous,
+            contactKeys: [],
+            throwOnHandle: false,
+            schema: [
+                'unit_class_rate_id' => [
+                    'type' => 'integer',
+                    'required' => true,
+                    'description' => 'Rate id',
+                ],
+            ],
+        );
+        app(ToolRegistry::class)->register($spy);
+        $definition = new TestAgentDefinition('test-rate', ['test.rate']);
+        app(AgentRegistry::class)->register($definition);
+
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'test-rate');
+
+        $missing = app(ToolDispatcher::class)->dispatch(
+            $definition,
+            $principal,
+            'test.rate',
+            ['unit_class_rate_id' => 999999],
+            $ctx,
+        );
+        $this->assertSame(ToolInvocationStatus::Denied, $missing->status);
+        $this->assertSame(ToolDeniedReason::UnlicensedArgument, $missing->deniedReason);
+        $this->assertFalse($spy->handleCalled);
+
+        $this->licenseModels($ctx, $world['class']);
+        $ok = app(ToolDispatcher::class)->dispatch(
+            $definition,
+            $principal,
+            'test.rate',
+            ['unit_class_rate_id' => $world['rate']->id],
+            $ctx,
+        );
+        $this->assertNotSame(ToolDeniedReason::UnlicensedArgument, $ok->deniedReason);
     }
 
     #[Test]
@@ -274,12 +323,12 @@ class ArgumentProvenanceTest extends TestCase
     }
 
     /**
-     * @return array{site: Site, class: UnitClass, rate: \App\Models\UnitClassRate, deal: Deal, contact: Contact}
+     * @return array{site: Site, class: UnitClass, rate: UnitClassRate, deal: Deal, contact: Contact}
      */
     private function agentPricedDeal(): array
     {
         [$site, $class] = $this->pricedClass();
-        $rate = \App\Models\UnitClassRate::query()
+        $rate = UnitClassRate::query()
             ->where('site_id', $site->id)
             ->where('unit_class_id', $class->id)
             ->firstOrFail();

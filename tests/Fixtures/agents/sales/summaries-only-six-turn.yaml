@@ -2,6 +2,8 @@ id: sales/summaries-only-six-turn
 agent: sales
 channel: sms
 locale: en
+# S26-01: live re-record, do not --seal. Turn 3 facility.availability at Madrid
+# now lists Trastero 12/16 as well as Small.
 principal:
   verification: anonymous
   site: madrid

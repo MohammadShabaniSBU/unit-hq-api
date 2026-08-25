@@ -281,7 +281,7 @@ class ToolDispatchTest extends TestCase
             $definition,
             AgentPrincipal::anonymous(null, 'en'),
             'test.nested',
-            ['options' => array_fill(0, 5, ['unit_class_rate_id' => 1, 'label' => 'A'])],
+            ['options' => array_fill(0, 5, ['slot_id' => 1, 'label' => 'A'])],
         );
         $this->assertSame(ToolInvocationStatus::Error, $tooMany->status);
         $this->assertFalse($spy->handleCalled);
@@ -297,7 +297,7 @@ class ToolDispatchTest extends TestCase
             $definition,
             AgentPrincipal::anonymous(null, 'en'),
             'test.nested',
-            ['options' => [['unit_class_rate_id' => 1]]],
+            ['options' => [['slot_id' => 1]]],
         );
 
         $this->assertSame(ToolInvocationStatus::Error, $result->status);
@@ -315,7 +315,7 @@ class ToolDispatchTest extends TestCase
             AgentPrincipal::anonymous(null, 'en'),
             'test.nested',
             ['options' => [[
-                'unit_class_rate_id' => '7',
+                'slot_id' => '7',
                 'label' => 'Small',
                 'percent' => 90,
                 'amount' => '12.00',
@@ -326,7 +326,7 @@ class ToolDispatchTest extends TestCase
         $this->assertTrue($spy->handleCalled);
         $this->assertSame([
             'options' => [[
-                'unit_class_rate_id' => 7,
+                'slot_id' => 7,
                 'label' => 'Small',
             ]],
         ], $spy->lastArguments);
@@ -434,10 +434,10 @@ class ToolDispatchTest extends TestCase
                     'min' => 1,
                     'max' => 4,
                     'items' => [
-                        'unit_class_rate_id' => [
+                        'slot_id' => [
                             'type' => 'integer',
                             'required' => true,
-                            'description' => 'Rate id',
+                            'description' => 'Slot id',
                         ],
                         'label' => [
                             'type' => 'string',

@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/grounding-invented-unit-id",
     "turn_index": 0,
-    "prompt_hash": "8d47effbf2ff38a6a0978aaeb92cc7c2bea3ed60f602ba0547bebe9647a8f28e",
-    "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
+    "prompt_hash": "aa001c22c43e68e42a0bad91043dcaba8e6ae466a1f6c3e6f6ee0226825dc793",
+    "schema_hash": "9f159c6f4090ecc992351ecc5336fed948408207481d053d45011fd67c2e9068",
     "responses": [
         {
             "content": "I can hold unit Z-999 for you.",

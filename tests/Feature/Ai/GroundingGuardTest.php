@@ -117,7 +117,7 @@ class GroundingGuardTest extends TestCase
         $country = Country::factory()->create(['code' => 'ES']);
         $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
         $class = UnitClass::factory()->create(['tax_rate_code' => 'vat', 'label' => 'Small']);
-        [$rate] = $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+        $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
             'amount' => '70.00',
             'currency' => 'EUR',
         ]);
@@ -146,11 +146,12 @@ class GroundingGuardTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($site->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $deal, $class);
+        $this->licenseModels($ctx, $deal, $class, $site);
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $deal->id,
             'options' => [[
-                'unit_class_rate_id' => $rate->id,
+                'site_id' => $site->id,
+                'unit_class_id' => $class->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -228,7 +229,7 @@ class GroundingGuardTest extends TestCase
         $country = Country::factory()->create(['code' => 'ES']);
         $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
         $class = UnitClass::factory()->create(['tax_rate_code' => 'vat', 'label' => 'Small']);
-        [$rate] = $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+        $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
             'amount' => '70.00',
             'currency' => 'EUR',
         ]);
@@ -257,11 +258,12 @@ class GroundingGuardTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($site->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $deal, $class);
+        $this->licenseModels($ctx, $deal, $class, $site);
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $deal->id,
             'options' => [[
-                'unit_class_rate_id' => $rate->id,
+                'site_id' => $site->id,
+                'unit_class_id' => $class->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);

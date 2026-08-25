@@ -1,0 +1,45 @@
+id: sales/sales_madrid_boxes_to_offer
+agent: sales
+channel: webchat
+locale: en
+tags: [s26, live_only]
+live_only: true
+principal:
+  verification: anonymous
+  site: none
+turns:
+  - input: "hi, i need some storage for buisness, what storage do you provide"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "i am in madrid in 28001"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "i think the madrid norte is the closet too me"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "i only have something around 20 to 24 normal boxes"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "yes, how much is the cost for trastero 16"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "ok lets continue with the 12 m2"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "yes please"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "no, i need the reservation with full price"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "i am mohammad shabani my email is m.shabani@ffrw.es  and i wanna move on next monday"
+    expect_writes:
+      contacts: 1
+    expect_no_handoff: true
+  - input: "yes, every thing looks good"
+    expect_tools: [sales.create_offer]
+    expect_writes:
+      offers: 1
+      deals: 1
+    expect_no_handoff: true
+    expect_offer_source: ai_agent

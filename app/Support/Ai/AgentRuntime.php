@@ -24,6 +24,7 @@ use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\DisclosureGuard;
@@ -36,6 +37,7 @@ use App\Support\Ai\Tools\ArgumentBag;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\RefsRenderer;
 use App\Support\Ai\Tools\ToolDispatcher;
+use App\Support\Ai\Tools\ToolError;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\Ai\Trace\TraceCursor;
@@ -102,6 +104,9 @@ final class AgentRuntime
         $usageTotal = new Usage;
         $toolCallCount = 0;
         $maxToolCalls = (int) config('agents.max_tool_calls_per_turn');
+        $maxToolRetries = (int) config('agents.max_tool_retries');
+        /** @var array<string, int> $consecutiveFailures */
+        $consecutiveFailures = [];
         $messages = $this->buildMessages($ctx, $priorMessages, $input);
         $toolObjects = $this->toolObjects($definition);
         $draft = '';
@@ -140,17 +145,17 @@ final class AgentRuntime
                 if ($remaining <= 0) {
                     $draft = $response->content;
                     if (trim($draft) === '') {
-                    return $this->finishWithHandoff(
-                        $ctx,
-                        $facts,
-                        $invocations,
-                        HandoffReason::Error,
-                        HandoffTriggerSource::Rule,
-                        CannedReply::Error,
-                        ['detail' => 'max_tool_calls_per_turn'],
-                        $usageEvents,
-                        cursor: $cursor,
-                    );
+                        return $this->finishWithHandoff(
+                            $ctx,
+                            $facts,
+                            $invocations,
+                            HandoffReason::Error,
+                            HandoffTriggerSource::Rule,
+                            CannedReply::Error,
+                            ['detail' => 'max_tool_calls_per_turn'],
+                            $usageEvents,
+                            cursor: $cursor,
+                        );
                     }
 
                     break;
@@ -177,6 +182,7 @@ final class AgentRuntime
                 ];
 
                 $escalate = null;
+                $retryExhausted = null;
                 foreach ($toRun as $call) {
                     $call['arguments'] = ArgumentBag::normalise($call['arguments'] ?? []);
                     $toolCallCount++;
@@ -198,6 +204,10 @@ final class AgentRuntime
                         $ctx,
                     );
                     $durationMs = (int) ((hrtime(true) - $startedTool) / 1_000_000);
+
+                    if ($this->shouldRefuseErrorEscalate($call, $consecutiveFailures, $maxToolRetries)) {
+                        $result = $this->refuseErrorEscalate($consecutiveFailures);
+                    }
 
                     $invocation = $this->persistInvocation(
                         $conversation,
@@ -279,6 +289,22 @@ final class AgentRuntime
                         ]);
                     }
 
+                    if ($call['name'] !== 'agent.escalate') {
+                        if ($result->status === ToolInvocationStatus::Ok) {
+                            unset($consecutiveFailures[$call['name']]);
+                        } elseif ($this->isRetryableFailure($result)) {
+                            $consecutiveFailures[$call['name']] = ($consecutiveFailures[$call['name']] ?? 0) + 1;
+                            if ($consecutiveFailures[$call['name']] >= $maxToolRetries) {
+                                $retryExhausted = [
+                                    'detail' => 'tool_retry_exhausted',
+                                    'tool' => $call['name'],
+                                    'error_code' => $result->error?->errorCode->value,
+                                ];
+                                break;
+                            }
+                        }
+                    }
+
                     if ($result->handoffReason !== null) {
                         $escalate = $result;
                         break;
@@ -289,6 +315,20 @@ final class AgentRuntime
                     $metered = $usageEvents[array_key_last($usageEvents)];
                     $metered->tool_calls = count($toRun);
                     $metered->save();
+                }
+
+                if ($retryExhausted !== null) {
+                    return $this->finishWithHandoff(
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        HandoffReason::Error,
+                        HandoffTriggerSource::Rule,
+                        CannedReply::Error,
+                        $retryExhausted,
+                        $usageEvents,
+                        cursor: $cursor,
+                    );
                 }
 
                 if ($escalate !== null && $escalate->handoffReason !== null) {
@@ -309,17 +349,17 @@ final class AgentRuntime
                     $draft = $response->content;
                     $draftAlreadyPersisted = trim($draft) !== '';
                     if (trim($draft) === '') {
-                    return $this->finishWithHandoff(
-                        $ctx,
-                        $facts,
-                        $invocations,
-                        HandoffReason::Error,
-                        HandoffTriggerSource::Rule,
-                        CannedReply::Error,
-                        ['detail' => 'max_tool_calls_per_turn'],
-                        $usageEvents,
-                        cursor: $cursor,
-                    );
+                        return $this->finishWithHandoff(
+                            $ctx,
+                            $facts,
+                            $invocations,
+                            HandoffReason::Error,
+                            HandoffTriggerSource::Rule,
+                            CannedReply::Error,
+                            ['detail' => 'max_tool_calls_per_turn'],
+                            $usageEvents,
+                            cursor: $cursor,
+                        );
                     }
 
                     break;
@@ -731,12 +771,74 @@ final class AgentRuntime
         }
 
         $blob = is_array($invocation->result) ? $invocation->result : null;
+        $error = ToolResult::errorFromTrace($blob);
 
         $line = $invocation->status === ToolInvocationStatus::Ok
             ? RefsRenderer::render(ToolResult::entitiesFromTrace($blob))
-            : RefsRenderer::render(ToolResult::errorFromTrace($blob)?->candidates ?? [], 'Candidates');
+            : RefsRenderer::render($error?->candidates ?? [], 'Candidates');
+        $recovery = $error?->recoveryLine() ?? '';
 
-        return $line === '' ? $content : $content."\n".$line;
+        $parts = [$content];
+        if ($line !== '') {
+            $parts[] = $line;
+        }
+        if ($recovery !== '') {
+            $parts[] = $recovery;
+        }
+
+        return implode("\n", $parts);
+    }
+
+    /**
+     * @param  array<string, mixed>  $call
+     * @param  array<string, int>  $consecutiveFailures
+     */
+    private function shouldRefuseErrorEscalate(array $call, array $consecutiveFailures, int $maxToolRetries): bool
+    {
+        if (($call['name'] ?? '') !== 'agent.escalate') {
+            return false;
+        }
+        if ((string) ($call['arguments']['reason'] ?? '') !== HandoffReason::Error->value) {
+            return false;
+        }
+
+        $maxFailures = $consecutiveFailures === [] ? 0 : max($consecutiveFailures);
+
+        return $maxFailures < $maxToolRetries;
+    }
+
+    /**
+     * @param  array<string, int>  $consecutiveFailures
+     */
+    private function refuseErrorEscalate(array $consecutiveFailures): ToolResult
+    {
+        if ($consecutiveFailures === []) {
+            return ToolResult::fail(ToolError::invalidArguments(
+                'No tool has returned an error in this turn.',
+                ['hint' => 'no tool has returned an error in this turn; use a different reason'],
+            ));
+        }
+
+        $lastFailedTool = (string) array_key_last($consecutiveFailures);
+
+        return ToolResult::fail(ToolError::invalidArguments(
+            "Retry {$lastFailedTool} before escalating.",
+            [
+                'tool' => $lastFailedTool,
+                'hint' => "retry {$lastFailedTool}; a retry is still available",
+            ],
+        ));
+    }
+
+    private function isRetryableFailure(ToolResult $result): bool
+    {
+        $code = $result->error?->errorCode;
+
+        return $code === ToolErrorCode::InvalidArguments
+            || $code === ToolErrorCode::NotFound
+            || $code === ToolErrorCode::SiteUnresolved
+            || $code === ToolErrorCode::UnlicensedArgument
+            || $code === ToolErrorCode::PriceSuperseded;
     }
 
     /**

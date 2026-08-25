@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/summaries-only-six-turn",
     "turn_index": 5,
-    "prompt_hash": "34e93eb453c8f3e885525bfa5ffc3b6d5e6a0395adda32ec5da9020d3693560a",
-    "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
+    "prompt_hash": "1c433eb08afdec0b37a01e5d411a5fa76991ebd0ad3d83d063945856d0161d0e",
+    "schema_hash": "9f159c6f4090ecc992351ecc5336fed948408207481d053d45011fd67c2e9068",
     "responses": [
         {
             "content": "",

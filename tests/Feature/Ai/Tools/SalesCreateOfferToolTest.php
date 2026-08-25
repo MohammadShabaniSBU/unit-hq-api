@@ -52,12 +52,13 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -88,13 +89,14 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'expires_at' => now()->addDays(400)->toIso8601String(),
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -110,12 +112,13 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
                 'percent' => 90,
                 'amount' => '12.00',
@@ -129,12 +132,12 @@ class SalesCreateOfferToolTest extends TestCase
     }
 
     #[Test]
-    public function rejects_cross_site_rate(): void
+    public function option_at_a_site_other_than_the_deals_is_invalid_arguments_and_consumes_no_quota(): void
     {
         $world = $this->agentPricedDeal();
         $otherCountry = Country::factory()->create(['code' => 'GB']);
         $otherSite = Site::factory()->create(['country_id' => $otherCountry->id, 'currency' => 'GBP']);
-        [$foreignRate] = $this->createUnitClassCataloguePrice(
+        $this->createUnitClassCataloguePrice(
             $world['class']->id,
             $otherSite->id,
             Employee::factory()->create()->id,
@@ -143,17 +146,69 @@ class SalesCreateOfferToolTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        AgentWritePolicy::factory()->create([
+            'ai_agent_id' => $ctx->agent->id,
+            'tool_key' => 'sales.create_offer',
+            'max_per_conversation' => 1,
+        ]);
+        $ctx->agent->load('writePolicies');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site'], $otherSite);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $foreignRate->id,
+                'site_id' => $otherSite->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Foreign',
             ]],
         ], $ctx);
 
         $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertSame(0, Offer::query()->count());
+        $this->assertSame(0, OfferOption::query()->count());
+
+        $this->recordInvocation($ctx, 'sales.create_offer', [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $otherSite->id,
+                'unit_class_id' => $world['class']->id,
+            ]],
+        ], $result, $principal);
+
+        $ok = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $ok->status);
+        $this->assertSame(1, Offer::query()->count());
+    }
+
+    #[Test]
+    public function nested_options_unit_class_id_unlicensed_is_denied(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['site']);
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Denied, $result->status);
+        $this->assertSame(ToolDeniedReason::UnlicensedArgument, $result->deniedReason);
+        $this->assertSame(ToolErrorCode::UnlicensedArgument, $result->error?->errorCode);
         $this->assertSame(0, Offer::query()->count());
     }
 
@@ -171,12 +226,13 @@ class SalesCreateOfferToolTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class'], $foreignDeal);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site'], $foreignDeal);
 
         $denied = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $foreignDeal->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -188,7 +244,8 @@ class SalesCreateOfferToolTest extends TestCase
         $ok = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -203,14 +260,15 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
         $messages = Message::query()->count();
         $deliveries = OfferDelivery::query()->count();
 
         $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -230,7 +288,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
         AgentWritePolicy::factory()->propose()->create([
             'ai_agent_id' => $ctx->agent->id,
             'tool_key' => 'sales.create_offer',
@@ -240,7 +298,8 @@ class SalesCreateOfferToolTest extends TestCase
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -257,7 +316,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
         $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
         $tool = app(ToolRegistry::class)->get('sales.create_offer');
         $this->assertInstanceOf(ProposableTool::class, $tool);
@@ -266,7 +325,8 @@ class SalesCreateOfferToolTest extends TestCase
         $args = [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ];
@@ -295,7 +355,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
             'site_id' => $world['site']->id,
@@ -310,7 +370,8 @@ class SalesCreateOfferToolTest extends TestCase
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
                 'quoted_price_id' => $quote->data['price_id'],
                 'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
@@ -326,7 +387,8 @@ class SalesCreateOfferToolTest extends TestCase
         $preview = $tool->propose($principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
                 'quoted_price_id' => $quote->data['price_id'],
                 'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
@@ -342,7 +404,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
             'site_id' => $world['site']->id,
@@ -371,7 +433,8 @@ class SalesCreateOfferToolTest extends TestCase
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
                 'quoted_price_id' => $quote->data['price_id'],
                 'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
@@ -391,7 +454,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
             'site_id' => $world['site']->id,
@@ -418,7 +481,8 @@ class SalesCreateOfferToolTest extends TestCase
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
                 'quoted_price_id' => $quote->data['price_id'],
                 'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
@@ -440,7 +504,7 @@ class SalesCreateOfferToolTest extends TestCase
             'tax_rate_code' => 'vat',
             'label' => 'Medium',
         ]);
-        [$rateB] = $this->createUnitClassCataloguePrice(
+        $this->createUnitClassCataloguePrice(
             $classB->id,
             $world['site']->id,
             $world['employee']->id,
@@ -454,7 +518,7 @@ class SalesCreateOfferToolTest extends TestCase
 
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class'], $classB);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $classB, $world['site']);
 
         $quoteA = $this->dispatchTool('sales', 'pricing.quote', $principal, [
             'site_id' => $world['site']->id,
@@ -492,13 +556,15 @@ class SalesCreateOfferToolTest extends TestCase
             'deal_id' => $world['deal']->id,
             'options' => [
                 [
-                    'unit_class_rate_id' => $world['rate']->id,
+                    'site_id' => $world['site']->id,
+                    'unit_class_id' => $world['class']->id,
                     'label' => 'Small unit',
                     'quoted_price_id' => $quoteA->data['price_id'],
                     'quoted_tax_rate_id' => $quoteA->data['tax_rate_id'],
                 ],
                 [
-                    'unit_class_rate_id' => $rateB->id,
+                    'site_id' => $world['site']->id,
+                    'unit_class_id' => $classB->id,
                     'label' => 'Medium unit',
                     'quoted_price_id' => $quoteB->data['price_id'],
                     'quoted_tax_rate_id' => $quoteB->data['tax_rate_id'],
@@ -519,7 +585,7 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
             'site_id' => $world['site']->id,
@@ -533,7 +599,8 @@ class SalesCreateOfferToolTest extends TestCase
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);
@@ -550,12 +617,13 @@ class SalesCreateOfferToolTest extends TestCase
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
         $ctx = $this->writeContext($principal, 'sales');
-        $this->licenseModels($ctx, $world['deal'], $world['class']);
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
 
         $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
             'deal_id' => $world['deal']->id,
             'options' => [[
-                'unit_class_rate_id' => $world['rate']->id,
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
             ]],
         ], $ctx);

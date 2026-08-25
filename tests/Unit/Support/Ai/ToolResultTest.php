@@ -88,4 +88,37 @@ class ToolResultTest extends TestCase
         $this->assertStringNotContainsString('Refs:', $result->modelText());
         $this->assertStringNotContainsString('site 1', $result->modelText());
     }
+
+    #[Test]
+    public function error_result_with_recovery_appends_a_recovery_line(): void
+    {
+        $result = ToolResult::fail(ToolError::invalidArguments(
+            'Option site_id does not match the deal site.',
+            [
+                'tool' => 'crm.create_deal',
+                'hint' => "use the deal's site",
+            ],
+        ));
+
+        $this->assertStringContainsString(
+            "Recovery: call crm.create_deal — use the deal's site",
+            $result->modelText(),
+        );
+    }
+
+    #[Test]
+    public function error_result_with_hint_only_recovery_omits_call(): void
+    {
+        $result = ToolResult::fail(ToolError::invalidArguments(
+            'No tool has returned an error in this turn.',
+            ['hint' => 'no tool has returned an error in this turn; use a different reason'],
+        ));
+
+        $this->assertSame(
+            "invalid_arguments: no tool has returned an error in this turn; use a different reason\n"
+            .'Recovery: no tool has returned an error in this turn; use a different reason',
+            $result->modelText(),
+        );
+        $this->assertStringNotContainsString('Recovery: call', $result->modelText());
+    }
 }

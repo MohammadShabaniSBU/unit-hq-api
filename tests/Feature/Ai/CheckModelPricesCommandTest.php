@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\AiAgent;
 use App\Models\AiModelPrice;
 use App\Models\AiUsageEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,8 +27,11 @@ class CheckModelPricesCommandTest extends TestCase
     {
         AiModelPrice::query()->delete();
 
+        $agent = AiAgent::factory()->create();
+
         AiUsageEvent::query()->create([
             'call_id' => (string) Str::uuid7(),
+            'ai_agent_id' => $agent->id,
             'purpose' => 'agent',
             'provider' => null,
             'model' => 'claude-sonnet-4-6',

@@ -11,8 +11,8 @@ use App\Support\Ai\Tools\RefsRenderer;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\Fixtures\Agents\ToolResults\RegistryFixtures;
 use Tests\Support\Ai\DispatchesAgentTools;
+use Tests\Support\Ai\RegistryFixtures;
 use Tests\TestCase;
 
 class ToolResultContractTest extends TestCase

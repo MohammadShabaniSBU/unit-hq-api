@@ -9,6 +9,7 @@ use App\Models\Offer;
 use App\Models\Price;
 use App\Models\Site;
 use App\Models\Unit;
+use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
@@ -18,6 +19,7 @@ use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Leasing\LeasingActor;
 use App\Support\Leasing\OfferCreation;
+use Illuminate\Support\Facades\DB;
 
 final class SalesCreateOfferTool implements AgentTool, ProposableTool
 {
@@ -46,10 +48,15 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                 'max' => 4,
                 'description' => '1–4 catalogue options',
                 'items' => [
-                    'unit_class_rate_id' => [
+                    'site_id' => [
                         'type' => 'integer',
                         'required' => true,
-                        'description' => 'Unit class rate id at the deal site',
+                        'description' => 'Site id the option is quoted at. Must match the deal site.',
+                    ],
+                    'unit_class_id' => [
+                        'type' => 'integer',
+                        'required' => true,
+                        'description' => 'Unit class id from facility.availability or sales.propose_offer',
                     ],
                     'quoted_price_id' => [
                         'type' => 'integer',
@@ -68,13 +75,18 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                     ],
                     'label' => [
                         'type' => 'string',
-                        'required' => true,
-                        'description' => 'Label shown on the option',
+                        'required' => false,
+                        'description' => 'Label shown on the option. Defaults to the unit class label.',
                     ],
                     'description' => [
                         'type' => 'string',
                         'required' => false,
                         'description' => 'Optional longer description',
+                    ],
+                    'move_in_date' => [
+                        'type' => 'string',
+                        'required' => false,
+                        'description' => 'ISO date (YYYY-MM-DD). Written to the deal expected_move_in when the deal has none.',
                     ],
                 ],
             ],
@@ -101,6 +113,8 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         return [
             'deal_id' => EntityType::Deal,
             'discount_id' => EntityType::Discount,
+            'site_id' => EntityType::Site,
+            'unit_class_id' => EntityType::UnitClass,
         ];
     }
 
@@ -143,22 +157,40 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         $rawOptions = is_array($arguments['options'] ?? null) ? $arguments['options'] : [];
         $payloadOptions = [];
         $previewLines = [];
+        $moveInDate = null;
+        $availabilityRecovery = [
+            'tool' => 'facility.availability',
+            'hint' => 'call facility.availability without a unit_class_id to list licensed classes',
+        ];
 
         foreach ($rawOptions as $index => $raw) {
             if (! is_array($raw)) {
                 return ToolResult::error('Each option must be an object.');
             }
 
-            $rate = UnitClassRate::query()
-                ->with(['price', 'unitClass'])
-                ->find((int) $raw['unit_class_rate_id']);
-            $class = $rate?->unitClass;
-            if ($rate === null || $class === null) {
-                return ToolResult::notFound('Unit class rate not found.');
+            $optionSiteId = (int) ($raw['site_id'] ?? 0);
+            if ($optionSiteId !== (int) $deal->site_id) {
+                return ToolResult::fail(ToolError::invalidArguments(
+                    'Option site_id does not match the deal site.',
+                    ['hint' => "use the deal's site"],
+                ));
             }
 
-            if ((int) $rate->site_id !== (int) $deal->site_id) {
-                return ToolResult::error('Unit class rate does not belong to the deal site.');
+            $class = UnitClass::query()->find((int) ($raw['unit_class_id'] ?? 0));
+            if ($class === null) {
+                return ToolResult::notFound('Unit class not found.', recovery: $availabilityRecovery);
+            }
+
+            $rate = UnitClassRate::query()
+                ->where('site_id', $optionSiteId)
+                ->where('unit_class_id', $class->id)
+                ->with(['price', 'unitClass'])
+                ->first();
+            if ($rate === null || $rate->price === null) {
+                return ToolResult::notFound(
+                    'No current catalogue price for that class at this site.',
+                    recovery: $availabilityRecovery,
+                );
             }
 
             $quotedPriceId = isset($raw['quoted_price_id']) ? (int) $raw['quoted_price_id'] : null;
@@ -233,9 +265,14 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                 return ToolResult::notFound('No available unit found for the selected rate.');
             }
 
+            $label = trim((string) ($raw['label'] ?? ''));
+            if ($label === '') {
+                $label = $class->label;
+            }
+
             $option = [
                 'unit_class_rate_id' => $rate->id,
-                'label' => (string) $raw['label'],
+                'label' => $label,
                 'display_order' => $index,
             ];
             if ($discountId !== null) {
@@ -246,6 +283,13 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                 $option['description'] = $description;
             }
             $payloadOptions[] = $option;
+
+            if ($moveInDate === null) {
+                $candidate = trim((string) ($raw['move_in_date'] ?? ''));
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $candidate) === 1) {
+                    $moveInDate = $candidate;
+                }
+            }
 
             $previewLines[] = [
                 'label' => $option['label'],
@@ -276,6 +320,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
                     'site_id' => $site->id,
                     'contact_id' => $deal->contact_id,
                     'options' => $payloadOptions,
+                    'move_in_date' => $moveInDate,
                 ],
                 'preview' => [
                     'expires_at' => OfferCreation::defaultExpiry()->toIso8601String(),
@@ -318,16 +363,29 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             $createOptions[] = $row;
         }
 
-        $offer = OfferCreation::create(
-            [
-                'deal_id' => (int) $payload['deal_id'],
-                'contact_id' => (int) $payload['contact_id'],
-                'expires_at' => OfferCreation::defaultExpiry(),
-            ],
-            $createOptions,
-            [],
-            $actor,
-        );
+        $offer = DB::transaction(function () use ($actor, $payload, $createOptions): Offer {
+            $offer = OfferCreation::create(
+                [
+                    'deal_id' => (int) $payload['deal_id'],
+                    'contact_id' => (int) $payload['contact_id'],
+                    'expires_at' => OfferCreation::defaultExpiry(),
+                ],
+                $createOptions,
+                [],
+                $actor,
+            );
+
+            $moveIn = $payload['move_in_date'] ?? null;
+            if (is_string($moveIn) && $moveIn !== '') {
+                $deal = Deal::query()->find((int) $payload['deal_id']);
+                if ($deal !== null && $deal->expected_move_in === null) {
+                    $deal->expected_move_in = $moveIn;
+                    $deal->save();
+                }
+            }
+
+            return $offer;
+        });
 
         $offer->load('options');
 

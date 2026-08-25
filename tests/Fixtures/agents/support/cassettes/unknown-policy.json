@@ -2,7 +2,7 @@
     "agent": "support",
     "fixture": "support/unknown-policy",
     "turn_index": 0,
-    "prompt_hash": "4f00960c387476ca4bd44842c03eab01336c85b06b66e99858803fde2b72df93",
+    "prompt_hash": "0c5d665920f8f744299c469ee0f6a66dc576b052da5078e39a6b3739e2b34431",
     "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
     "responses": [
         {

@@ -2,7 +2,7 @@
     "agent": "support",
     "fixture": "support/sms-length",
     "turn_index": 0,
-    "prompt_hash": "008aa0f4916ce348dd50d8e82ae4a2709c697a63f33c57e6b80b70d78c016449",
+    "prompt_hash": "0762810fd212968e0b7f4e80a99943ebe2b19fcc1f9d3c7cb3f34be872d8c156",
     "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
     "responses": [
         {

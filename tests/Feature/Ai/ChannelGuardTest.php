@@ -373,7 +373,7 @@ class ChannelGuardTest extends TestCase
 
     private function compactSevenClassList(): string
     {
-        return 'Madrid Centro availability: '
+        $list = 'Madrid Centro availability: '
             .'Trastero 5 m²: 3 available, €72.00 net / €87.12 incl. 21% IVA per month. '
             .'Trastero 8 m²: 2 available, €104.00 net / €125.84 incl. 21% IVA per month. '
             .'Trastero 10 m²: 4 available, €128.00 net / €154.88 incl. 21% IVA per month. '
@@ -381,6 +381,13 @@ class ChannelGuardTest extends TestCase
             .'Trastero 12 m²: 2 available, €152.00 net / €183.92 incl. 21% IVA per month. '
             .'Trastero 12 m² XL: 3 available, €168.00 net / €203.28 incl. 21% IVA per month. '
             .'Trastero 14 m² XL: 2 available, €192.00 net / €232.32 incl. 21% IVA per month.';
+
+        $filler = ' Ask if you want hours or a viewing.';
+        while ((new SmsMessage('x', Gsm7Transliterator::apply($list)['body']))->segmentCount() < 5) {
+            $list .= $filler;
+        }
+
+        return $list;
     }
 
     private function sevenClassAvailabilityAndQuotes(): string
@@ -408,11 +415,14 @@ class ChannelGuardTest extends TestCase
 
     private function conversation(AgentChannel $channel): AgentConversation
     {
-        $agent = AiAgent::factory()->create([
-            'key' => 'support',
-            'name' => 'support',
-            'is_active' => true,
-        ]);
+        $agent = AiAgent::query()->firstOrCreate(
+            ['key' => 'support'],
+            [
+                'name' => 'support',
+                'is_active' => true,
+                'model' => config('agents.default_model', 'claude-sonnet-4-6'),
+            ],
+        );
 
         return AgentConversation::factory()->create([
             'ai_agent_id' => $agent->id,

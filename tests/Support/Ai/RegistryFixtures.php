@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Fixtures\Agents\ToolResults;
+namespace Tests\Support\Ai;
 
 use App\Enums\ContactSource;
 use App\Enums\DealStatus;
@@ -22,7 +22,6 @@ use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\HandoffReason as AgentHandoffReason;
-use Tests\Support\Ai\DispatchesAgentTools;
 use Tests\Support\CreatesCataloguePrices;
 
 /**
@@ -149,10 +148,11 @@ final class RegistryFixtures
             'sales.create_offer' => $this->sales($anon, [
                 'deal_id' => $this->deal->id,
                 'options' => [[
-                    'unit_class_rate_id' => $this->rate->id,
+                    'site_id' => $this->site->id,
+                    'unit_class_id' => $this->class->id,
                     'label' => $this->class->label,
                 ]],
-            ], [$this->deal, $this->class]),
+            ], [$this->deal, $this->class, $this->site]),
             'sales.create_reservation' => $this->sales($asserted, [
                 'deal_id' => $this->deal->id,
                 'unit_class_id' => $this->class->id,

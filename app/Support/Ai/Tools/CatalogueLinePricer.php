@@ -49,8 +49,8 @@ final readonly class CatalogueLinePricer
     ): self|ToolResult {
         if (! $registry->contains(EntityType::UnitClass, $class->id)) {
             $message = json_encode([
-                'argument' => 'unit_class_rate_id',
-                'value' => $rate->id,
+                'argument' => 'unit_class_id',
+                'value' => $class->id,
                 'type' => EntityType::UnitClass->value,
                 'licensed' => $registry->ids(EntityType::UnitClass),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: 'unlicensed_argument';

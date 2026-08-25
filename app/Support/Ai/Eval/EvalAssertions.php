@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Eval;
 
+use App\Enums\PipelineSource;
 use App\Models\AgentToolInvocation;
 use App\Models\Offer;
 use App\Models\Site;
@@ -218,6 +219,17 @@ final class EvalAssertions
             $delta = $after[$table] - $before[$table];
             if ($delta !== $expected) {
                 $failures[] = "expect_writes {$table}: expected {$expected}, got {$delta}";
+            }
+        }
+
+        if (isset($expect['expect_offer_source'])) {
+            $wanted = (string) $expect['expect_offer_source'];
+            $offer = Offer::query()->latest('id')->first();
+            $got = $offer?->source instanceof PipelineSource
+                ? $offer->source->value
+                : (string) ($offer?->source ?? '');
+            if ($offer === null || $got !== $wanted) {
+                $failures[] = "expected offer source {$wanted}, got ".($offer === null ? 'none' : $got);
             }
         }
 

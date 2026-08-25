@@ -16,6 +16,8 @@ return [
 
     'max_tool_calls_per_turn' => 6,
 
+    'max_tool_retries' => 2,
+
     'turn_timeout_ms' => 60_000,
 
     'conversation_token_budget' => 200_000,

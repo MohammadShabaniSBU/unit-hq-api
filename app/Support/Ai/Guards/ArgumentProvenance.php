@@ -117,7 +117,20 @@ final class ArgumentProvenance
         }
 
         foreach ($bag as $item) {
-            if (! is_array($item) || array_is_list($item)) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (array_is_list($item)) {
+                foreach ($item as $row) {
+                    if (! is_array($row) || array_is_list($row)) {
+                        continue;
+                    }
+                    $nested = $this->checkBag($row, $entityArgs, $registry, $prefix);
+                    if ($nested !== null) {
+                        return $nested;
+                    }
+                }
+
                 continue;
             }
 

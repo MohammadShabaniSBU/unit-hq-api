@@ -331,6 +331,9 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame(ToolInvocationStatus::NotFound, $result->status);
         $this->assertSame([], $result->licensedClaims);
     }
+
+    #[Test]
+    public function faq_unknown_key_returns_not_found(): void
     {
         $result = $this->dispatchTool(
             'sales',

@@ -32,6 +32,7 @@ use App\Support\Ai\Guards\GuardrailVerdict;
 use App\Support\Ai\PendingActionRecorder;
 use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\FactBag;
+use App\Support\Ai\Tools\ToolError;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +43,7 @@ use RuntimeException;
 use Tests\Support\Ai\ProposableSpyTool;
 use Tests\Support\Ai\RecordingTool;
 use Tests\Support\Ai\RefEmittingTool;
+use Tests\Support\Ai\ScriptedTool;
 use Tests\Support\Ai\TestAgentDefinition;
 use Tests\TestCase;
 
@@ -329,6 +331,7 @@ class AgentRuntimeTest extends TestCase
             'site_id' => null,
         ]);
 
+        $retries = (int) config('agents.max_tool_retries');
         $max = (int) config('agents.max_tool_calls_per_turn');
         for ($i = 0; $i < $max + 3; $i++) {
             $this->driver->enqueueToolCalls([[
@@ -344,11 +347,11 @@ class AgentRuntimeTest extends TestCase
             'where are you based?',
         );
 
-        $this->assertLessThanOrEqual($max, count($turn->invocations));
+        $this->assertCount($retries, $turn->invocations);
         $this->assertNotNull($turn->handoff);
         $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
         $this->assertNotSame(HandoffReason::TurnLimit, $turn->handoff->reason);
-        $this->assertSame('max_tool_calls_per_turn', $turn->handoff->detail['detail'] ?? null);
+        $this->assertSame('tool_retry_exhausted', $turn->handoff->detail['detail'] ?? null);
         $this->assertLessThan(
             (int) config('agents.max_turns'),
             $conversation->messages()->where('role', AgentMessageRole::Assistant)->count(),
@@ -571,6 +574,235 @@ class AgentRuntimeTest extends TestCase
         $this->assertStringNotContainsString(CannedReply::pendingApproval('en'), $turn->draft);
         $this->assertSame(0, AgentPendingAction::query()->count());
         $this->assertFalse($spy->handleCalled);
+    }
+
+    #[Test]
+    public function first_invalid_arguments_returns_recovery_line_and_does_not_handoff(): void
+    {
+        $script = $this->scriptedConversation();
+        $script->script = [
+            ToolResult::fail(ToolError::invalidArguments('bad args', [
+                'tool' => 'test.script',
+                'hint' => 'retry with valid arguments',
+            ])),
+        ];
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueText('Let me try another way.');
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame(0, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertNotEmpty($toolMessages);
+        $this->assertStringContainsString('Recovery: call test.script', $toolMessages[0]);
+    }
+
+    #[Test]
+    public function second_consecutive_failure_of_the_same_tool_handoffs_retry_exhausted(): void
+    {
+        $script = $this->scriptedConversation();
+        $failure = ToolResult::fail(ToolError::invalidArguments('bad args', [
+            'tool' => 'test.script',
+            'hint' => 'retry with valid arguments',
+        ]));
+        $script->script = [$failure, $failure];
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]]);
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNotNull($turn->handoff);
+        $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
+        $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff->trigger_source);
+        $this->assertSame('tool_retry_exhausted', $turn->handoff->detail['detail'] ?? null);
+        $this->assertSame('test.script', $turn->handoff->detail['tool'] ?? null);
+        $this->assertSame('invalid_arguments', $turn->handoff->detail['error_code'] ?? null);
+        $this->assertSame(1, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+    }
+
+    #[Test]
+    public function failure_then_ok_then_failure_on_the_same_tool_does_not_handoff(): void
+    {
+        $script = $this->scriptedConversation();
+        $failure = ToolResult::fail(ToolError::invalidArguments('bad args', [
+            'tool' => 'test.script',
+            'hint' => 'retry with valid arguments',
+        ]));
+        $script->script = [
+            $failure,
+            ToolResult::ok(['ok' => true], 'it worked', new FactBag),
+            $failure,
+        ];
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c3', 'arguments' => []]])
+            ->enqueueText('All done.');
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame(0, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+        $this->assertSame(3, $script->calls);
+    }
+
+    #[Test]
+    public function error_escalate_with_retry_budget_is_refused_and_does_not_feed_the_counter(): void
+    {
+        $script = $this->scriptedConversation();
+        $failure = ToolResult::fail(ToolError::invalidArguments('bad args', [
+            'tool' => 'test.script',
+            'hint' => 'retry with valid arguments',
+        ]));
+        $script->script = [
+            $failure,
+            ToolResult::ok(['ok' => true], 'retried after escalate refusal', new FactBag),
+        ];
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueToolCalls([[
+                'name' => 'agent.escalate',
+                'id' => 'esc1',
+                'arguments' => [
+                    'reason' => HandoffReason::Error->value,
+                    'summary' => 'The tool failed',
+                ],
+            ]])
+            ->enqueueToolCalls([[
+                'name' => 'agent.escalate',
+                'id' => 'esc2',
+                'arguments' => [
+                    'reason' => HandoffReason::Error->value,
+                    'summary' => 'Still failing',
+                ],
+            ]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]])
+            ->enqueueText('I will keep trying.');
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame(0, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+
+        $escalations = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'agent.escalate')
+            ->get();
+        $this->assertCount(2, $escalations);
+        foreach ($escalations as $escalation) {
+            $this->assertSame(ToolInvocationStatus::Error, $escalation->status);
+        }
+
+        $this->assertSame(2, $script->calls);
+    }
+
+    #[Test]
+    public function error_escalate_with_no_prior_failure_names_no_tool(): void
+    {
+        $this->scriptedConversation();
+
+        $this->driver->enqueueToolCalls([[
+            'name' => 'agent.escalate',
+            'id' => 'esc1',
+            'arguments' => [
+                'reason' => HandoffReason::Error->value,
+                'summary' => 'I cannot help',
+            ],
+        ]])->enqueueText('Let me stay with you.');
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'hello',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame(0, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+        $toolMessages = $this->toolMessagesSentToModel();
+        $this->assertNotEmpty($toolMessages);
+        $this->assertStringContainsString(
+            'no tool has returned an error in this turn; use a different reason',
+            $toolMessages[0],
+        );
+        $this->assertStringNotContainsString('Recovery: call', $toolMessages[0]);
+    }
+
+    #[Test]
+    public function customer_requested_escalate_still_handoffs_while_retry_budget_remains(): void
+    {
+        $script = $this->scriptedConversation();
+        $script->script = [
+            ToolResult::fail(ToolError::invalidArguments('bad args', [
+                'tool' => 'test.script',
+                'hint' => 'retry with valid arguments',
+            ])),
+        ];
+
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
+            ->enqueueToolCalls([[
+                'name' => 'agent.escalate',
+                'id' => 'esc1',
+                'arguments' => [
+                    'reason' => HandoffReason::CustomerRequested->value,
+                    'summary' => 'Asked for a person',
+                ],
+            ]]);
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNotNull($turn->handoff);
+        $this->assertSame(HandoffReason::CustomerRequested, $turn->handoff->reason);
+        $this->assertSame(HandoffTriggerSource::Model, $turn->handoff->trigger_source);
+        $this->assertSame(ToolInvocationStatus::Ok, AgentToolInvocation::query()
+            ->where('tool_key', 'agent.escalate')
+            ->firstOrFail()
+            ->status);
+    }
+
+    /**
+     * A `test` conversation whose tools are the scripted one plus escalate.
+     */
+    private function scriptedConversation(): ScriptedTool
+    {
+        $script = new ScriptedTool;
+        app(ToolRegistry::class)->register($script);
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', ['test.script', 'agent.escalate']));
+
+        return $script;
     }
 
     /**

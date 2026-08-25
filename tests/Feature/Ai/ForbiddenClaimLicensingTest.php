@@ -22,6 +22,8 @@ use App\Models\UnitOccupancy;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
+use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\ChannelProfile;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
@@ -75,6 +77,7 @@ class ForbiddenClaimLicensingTest extends TestCase
         $world = $this->agentPricedDeal();
         $conversation = $this->salesConversation($world);
         $this->forceCommit($conversation);
+        $this->licenseModels($this->contextFor($conversation), $world['deal'], $world['class']);
 
         $this->driver
             ->enqueueToolCalls([[
@@ -224,7 +227,7 @@ class ForbiddenClaimLicensingTest extends TestCase
         $this->assertStringContainsString('12–16', $first->draft);
         $this->assertStringContainsString(SizeGuideResolver::DISCLAIMER, $first->draft);
 
-        $this->driver->enqueueText('For 20–24 standard boxes, a unit around 5–8 m² should work well.');
+        $this->driver->enqueueText('For 17–28 standard boxes, a unit around 12–16 m² should work well.');
 
         $second = app(AgentRuntime::class)->turn(
             $conversation->fresh(),
@@ -253,6 +256,19 @@ class ForbiddenClaimLicensingTest extends TestCase
             'verification_level' => VerificationLevel::ChannelAsserted,
             'locale' => 'en',
         ]);
+    }
+
+    private function contextFor(AgentConversation $conversation): AgentContext
+    {
+        $conversation->loadMissing('aiAgent');
+
+        return new AgentContext(
+            $conversation->principal(),
+            ChannelProfile::for($conversation->channel),
+            app(AgentRegistry::class)->get('sales'),
+            $conversation,
+            $conversation->aiAgent,
+        );
     }
 
     private function forceCommit(AgentConversation $conversation): void

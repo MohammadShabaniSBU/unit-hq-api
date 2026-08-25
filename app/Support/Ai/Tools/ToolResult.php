@@ -134,11 +134,12 @@ final readonly class ToolResult
 
     /**
      * @param  list<EntityRef>  $entities
+     * @param  array{tool?: string, hint: string}|null  $recovery
      */
-    public static function notFound(string $message, array $entities = []): self
+    public static function notFound(string $message, array $entities = [], ?array $recovery = null): self
     {
         return self::fail(
-            ToolError::notFound($message),
+            ToolError::notFound($message, $recovery),
             ToolInvocationStatus::NotFound,
             entities: $entities,
         );
@@ -164,13 +165,25 @@ final readonly class ToolResult
      */
     public function modelText(): string
     {
-        $line = $this->status === ToolInvocationStatus::Ok
-            ? RefsRenderer::render($this->entities)
-            : RefsRenderer::render($this->error?->candidates ?? [], 'Candidates');
+        $parts = [$this->display];
 
-        return $line === ''
-            ? $this->display
-            : $this->display."\n".$line;
+        if ($this->status === ToolInvocationStatus::Ok) {
+            $refs = RefsRenderer::render($this->entities);
+            if ($refs !== '') {
+                $parts[] = $refs;
+            }
+        } else {
+            $candidates = RefsRenderer::render($this->error?->candidates ?? [], 'Candidates');
+            if ($candidates !== '') {
+                $parts[] = $candidates;
+            }
+            $recovery = $this->error?->recoveryLine() ?? '';
+            if ($recovery !== '') {
+                $parts[] = $recovery;
+            }
+        }
+
+        return implode("\n", $parts);
     }
 
     public function withIdempotencyKey(string $key): self
@@ -276,7 +289,7 @@ final readonly class ToolResult
             return null;
         }
 
-        /** @var array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null} $error */
+        /** @var array{code: string, message: string, recovery?: array{tool?: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null} $error */
         $error = $blob['error'];
 
         return ToolError::fromArray($error);

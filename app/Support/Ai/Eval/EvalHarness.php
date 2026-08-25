@@ -56,8 +56,15 @@ final class EvalHarness
 
             foreach ($fixtures as $fixture) {
                 if ($seal) {
+                    if (! $store->exists($fixture->id)) {
+                        continue;
+                    }
                     $sealed += $this->sealFixture($world, $store, $fixture) ? 1 : 0;
 
+                    continue;
+                }
+
+                if (! $live && $fixture->liveOnly && ! $store->exists($fixture->id)) {
                     continue;
                 }
 

@@ -2,6 +2,8 @@ id: sales/unlicensed-class-then-grounding
 agent: sales
 channel: webchat
 locale: en
+# S26-01: live re-record, do not --seal. facility.availability at Madrid now
+# lists Trastero 12/16 as well as Small.
 principal:
   verification: anonymous
 turns:

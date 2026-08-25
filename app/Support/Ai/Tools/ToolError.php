@@ -9,7 +9,7 @@ use App\Support\Ai\Enums\ToolErrorCode;
 final readonly class ToolError
 {
     /**
-     * @param  array{tool: string, hint: string}|null  $recovery
+     * @param  array{tool?: string, hint: string}|null  $recovery
      * @param  list<EntityRef>  $candidates
      * @param  array<string, mixed>|null  $detail
      */
@@ -35,23 +35,32 @@ final readonly class ToolError
     }
 
     /**
-     * @param  array{tool: string, hint: string}|null  $recovery
+     * @param  array{tool?: string, hint: string}|null  $recovery
      */
     public static function invalidArguments(string $message, ?array $recovery = null): self
     {
         return new self(ToolErrorCode::InvalidArguments, $message, $recovery);
     }
 
-    public static function notFound(string $message): self
+    /**
+     * @param  array{tool?: string, hint: string}|null  $recovery
+     */
+    public static function notFound(string $message, ?array $recovery = null): self
     {
-        return new self(ToolErrorCode::NotFound, $message);
+        return new self(ToolErrorCode::NotFound, $message, $recovery);
     }
 
+    /**
+     * @param  array{tool?: string, hint: string}|null  $recovery
+     */
     public static function unavailable(string $message, ?array $recovery = null): self
     {
         return new self(ToolErrorCode::Unavailable, $message, $recovery);
     }
 
+    /**
+     * @param  array{tool?: string, hint: string}|null  $recovery
+     */
     public static function unlicensedArgument(string $message, ?array $recovery = null): self
     {
         return new self(ToolErrorCode::UnlicensedArgument, $message, $recovery);
@@ -83,24 +92,53 @@ final readonly class ToolError
             return $this->errorCode->value;
         }
 
-        $hint = $this->recovery['hint'];
+        $hint = $this->recovery['hint'] ?? '';
+        $tool = $this->recovery['tool'] ?? '';
 
-        return $hint !== ''
-            ? $this->errorCode->value.': '.$hint
-            : $this->errorCode->value.': call '.$this->recovery['tool'];
+        if ($hint !== '') {
+            return $this->errorCode->value.': '.$hint;
+        }
+
+        return $tool !== ''
+            ? $this->errorCode->value.': call '.$tool
+            : $this->errorCode->value;
     }
 
     /**
-     * @param  array{code: string, message: string, recovery?: array{tool: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null}  $row
+     * Stable Recovery: marker appended to the model-facing tool message.
+     */
+    public function recoveryLine(): string
+    {
+        if ($this->recovery === null) {
+            return '';
+        }
+
+        $hint = $this->recovery['hint'] ?? '';
+        $tool = $this->recovery['tool'] ?? '';
+        if ($tool !== '') {
+            return $hint !== ''
+                ? "Recovery: call {$tool} — {$hint}"
+                : "Recovery: call {$tool}";
+        }
+
+        return $hint !== '' ? "Recovery: {$hint}" : '';
+    }
+
+    /**
+     * @param  array{code: string, message: string, recovery?: array{tool?: string, hint: string}|null, candidates?: list<array{type: string, id: int, label: string, context?: string|null}>, detail?: array<string, mixed>|null}  $row
      */
     public static function fromArray(array $row): self
     {
         $recovery = null;
-        if (isset($row['recovery']) && is_array($row['recovery']) && isset($row['recovery']['tool'], $row['recovery']['hint'])) {
-            $recovery = [
-                'tool' => (string) $row['recovery']['tool'],
-                'hint' => (string) $row['recovery']['hint'],
-            ];
+        if (isset($row['recovery']) && is_array($row['recovery'])) {
+            $hint = isset($row['recovery']['hint']) ? (string) $row['recovery']['hint'] : '';
+            $tool = isset($row['recovery']['tool']) ? (string) $row['recovery']['tool'] : '';
+            if ($hint !== '' || $tool !== '') {
+                $recovery = ['hint' => $hint];
+                if ($tool !== '') {
+                    $recovery['tool'] = $tool;
+                }
+            }
         }
 
         $candidates = [];
@@ -126,7 +164,7 @@ final readonly class ToolError
     }
 
     /**
-     * @return array{code: string, message: string, recovery: array{tool: string, hint: string}|null, candidates: list<array{type: string, id: int, label: string, context: string|null}>, detail: array<string, mixed>|null}
+     * @return array{code: string, message: string, recovery: array{tool?: string, hint: string}|null, candidates: list<array{type: string, id: int, label: string, context: string|null}>, detail: array<string, mixed>|null}
      */
     public function toArray(): array
     {

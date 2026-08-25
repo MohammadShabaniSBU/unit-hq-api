@@ -53,6 +53,10 @@ final class EvalWorld
 
     public UnitClass $smallClass;
 
+    public UnitClass $trastero12;
+
+    public UnitClass $trastero16xl;
+
     public Discount $discount;
 
     public Contact $tenantWithBalance;
@@ -147,6 +151,26 @@ final class EvalWorld
             ->where('unit_class_id', $world->smallClass->id)
             ->firstOrFail();
 
+        // S26-01: extra Madrid classes so availability can list more than Small.
+        // Fixtures whose facility.availability / facility.size_guide output
+        // shifts need a live re-record, not --seal: authored-unlicensed-class-recovers,
+        // refs-carry-across-turns, summaries-only-six-turn, unlicensed-class-then-grounding,
+        // capacity-claim-licensed.
+        $world->trastero12 = UnitClass::factory()->create([
+            'code' => 'T12',
+            'label' => 'Trastero 12 m²',
+            'size' => 12,
+            'tax_rate_code' => 'vat',
+        ]);
+        $world->trastero16xl = UnitClass::factory()->create([
+            'code' => 'T16X',
+            'label' => 'Trastero 16 m² XL',
+            'size' => 16,
+            'tax_rate_code' => 'vat',
+        ]);
+        $world->cataloguePrice($world->madrid, '137.94', 'EUR', $world->trastero12);
+        $world->cataloguePrice($world->madrid, '180.00', 'EUR', $world->trastero16xl);
+
         TaxRate::query()->create([
             'name' => 'VAT ES',
             'code' => 'vat',
@@ -189,6 +213,22 @@ final class EvalWorld
         )->create([
             'site_id' => $world->madrid->id,
             'unit_class_id' => $world->smallClass->id,
+            'enabled' => true,
+        ]);
+        Unit::factory()->count(2)->sequence(
+            ['unit_number' => 'EV-T12-001'],
+            ['unit_number' => 'EV-T12-002'],
+        )->create([
+            'site_id' => $world->madrid->id,
+            'unit_class_id' => $world->trastero12->id,
+            'enabled' => true,
+        ]);
+        Unit::factory()->count(2)->sequence(
+            ['unit_number' => 'EV-T16-001'],
+            ['unit_number' => 'EV-T16-002'],
+        )->create([
+            'site_id' => $world->madrid->id,
+            'unit_class_id' => $world->trastero16xl->id,
             'enabled' => true,
         ]);
 
@@ -409,6 +449,8 @@ final class EvalWorld
             '{{london.id}}' => (string) $this->london->id,
             '{{empty.id}}' => (string) $this->empty->id,
             '{{small_class.id}}' => (string) $this->smallClass->id,
+            '{{trastero_12.id}}' => (string) $this->trastero12->id,
+            '{{trastero_16xl.id}}' => (string) $this->trastero16xl->id,
             '{{discount.id}}' => (string) $this->discount->id,
             '{{tenant_with_balance.id}}' => (string) $this->tenantWithBalance->id,
             '{{tenant_two_currency.id}}' => (string) $this->tenantTwoCurrency->id,
@@ -430,10 +472,11 @@ final class EvalWorld
         return $key === 'sales' ? $this->sales : $this->support;
     }
 
-    private function cataloguePrice(Site $site, string $amount, string $currency): Price
+    private function cataloguePrice(Site $site, string $amount, string $currency, ?UnitClass $class = null): Price
     {
+        $class ??= $this->smallClass;
         $rate = UnitClassRate::query()->firstOrCreate([
-            'unit_class_id' => $this->smallClass->id,
+            'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ]);
 

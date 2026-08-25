@@ -2,6 +2,8 @@ id: sales/capacity-claim-licensed
 agent: sales
 channel: webchat
 locale: en
+# S26-01: live re-record, do not --seal. Trastero 12/16 now sit in the 12–16 m²
+# size-guide band, so facility.size_guide output may name those classes.
 principal:
   verification: anonymous
   site: madrid
