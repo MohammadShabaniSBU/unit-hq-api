@@ -10,6 +10,7 @@ final readonly class EvalFixture
      * @param  array<string, mixed>  $principal
      * @param  list<array<string, mixed>>  $turns
      * @param  list<string>  $tags
+     * @param  array<string, string>  $writePolicies  Fixture-conversation only. Never touches AiAgentSeeder.
      */
     public function __construct(
         public string $id,
@@ -21,6 +22,7 @@ final readonly class EvalFixture
         public array $tags,
         public bool $liveOnly,
         public string $path,
+        public array $writePolicies = [],
     ) {}
 
     public function slug(): string

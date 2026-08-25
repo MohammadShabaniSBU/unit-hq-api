@@ -9,6 +9,7 @@ use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Delinquency;
+use App\Models\Offer;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
@@ -131,5 +132,55 @@ class HandoffRuleTest extends TestCase
 
         $this->assertSame(0, $driver->callCount);
         $this->assertSame(HandoffReason::LegalOrComplaint, $turn->handoff?->reason);
+    }
+
+    #[Test]
+    public function price_negotiation_still_escalates_when_the_sales_offer_tool_is_present(): void
+    {
+        $driver = new FakeModelDriver;
+        $this->app->instance(ModelDriver::class, $driver);
+
+        $agent = AiAgent::factory()->create(['key' => 'sales', 'name' => 'Sales', 'is_active' => true]);
+        $conversation = AgentConversation::factory()->anonymous()->create([
+            'ai_agent_id' => $agent->id,
+            'locale' => 'en',
+        ]);
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'Can you do cheaper than that?',
+        );
+
+        $this->assertSame(0, $driver->callCount);
+        $this->assertSame(HandoffReason::PriceNegotiation, $turn->handoff?->reason);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function delinquency_still_escalates_when_sales_write_tools_are_present(): void
+    {
+        $driver = new FakeModelDriver;
+        $this->app->instance(ModelDriver::class, $driver);
+
+        $contact = Contact::factory()->create();
+        $contract = Contract::factory()->create(['contact_id' => $contact->id]);
+        Delinquency::factory()->create(['contract_id' => $contract->id, 'cured_on' => null]);
+
+        $agent = AiAgent::factory()->create(['key' => 'sales', 'name' => 'Sales', 'is_active' => true]);
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $agent->id,
+            'contact_id' => $contact->id,
+            'locale' => 'en',
+        ]);
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'Hello, what are your hours?',
+        );
+
+        $this->assertSame(0, $driver->callCount);
+        $this->assertSame(HandoffReason::Delinquency, $turn->handoff?->reason);
     }
 }

@@ -1,27 +1,26 @@
 {
     "agent": "sales",
-    "fixture": "sales/viewing-booking",
+    "fixture": "sales/unit-number-leak",
     "turn_index": 0,
-    "prompt_hash": "ef53b29fc730f2b2a946157ba3fa5c334d5952ee8a9ff4cb086cb2721f5d4f92",
+    "prompt_hash": "d6947456f893125b9ec575b1858a4e4ff2781931bfa589687157a04a562a6d67",
     "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
     "responses": [
         {
             "content": "",
             "tool_calls": [
                 {
-                    "name": "crm.create_task",
+                    "name": "sales.create_reservation",
                     "id": "call_1",
                     "arguments": {
-                        "title": "Viewing booking",
-                        "related_to_type": "contact",
-                        "related_to_id": "{{agent_lead.id}}"
+                        "deal_id": "{{agent_deal.id}}",
+                        "unit_class_id": "{{small_class.id}}"
                     }
                 }
             ],
             "finish_reason": "tool_calls"
         },
         {
-            "content": "I have created a viewing task. I am an automated assistant.",
+            "content": "We held unit EV-001 for you. I am an automated assistant.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

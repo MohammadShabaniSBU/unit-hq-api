@@ -1,0 +1,20 @@
+id: sales/quote-then-offer
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Can you put together a proposal for a small unit in Madrid?"
+    expect_tools: [sales.propose_offer]
+    expect_writes: {}
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_disclosure: true
+  - input: "Yes, please create that offer."
+    expect_tools: [sales.create_offer]
+    expect_writes:
+      offers: 1
+    expect_no_handoff: true
+    expect_grounded: true
+    expect_latest_offer_gross_in_draft: true

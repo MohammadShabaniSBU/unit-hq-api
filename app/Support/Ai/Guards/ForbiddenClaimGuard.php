@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Ai\Guards;
 
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Tools\FactBag;
 
@@ -25,6 +26,10 @@ final class ForbiddenClaimGuard implements OutboundGuard
 
         foreach ($lists as $class => $phrases) {
             if (! is_array($phrases)) {
+                continue;
+            }
+            $key = ForbiddenClaimKey::tryFrom((string) $class);
+            if ($key !== null && in_array($key, $ctx->licensedClaims, true)) {
                 continue;
             }
             /** @var list<string> $phrases */

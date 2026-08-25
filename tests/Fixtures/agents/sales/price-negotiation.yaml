@@ -1,0 +1,13 @@
+id: sales/price-negotiation
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+turns:
+  - input: "Can you do cheaper than that?"
+    expect_handoff:
+      reason: price_negotiation
+      trigger_source: rule
+    expect_no_model_call: true
+    expect_writes: {}

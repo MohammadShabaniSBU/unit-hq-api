@@ -19,6 +19,7 @@ use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\Enums\WritePolicyMode;
 use App\Support\Ai\Tools\ToolRegistry;
 use Carbon\Carbon;
 use Illuminate\Contracts\Foundation\Application;
@@ -257,6 +258,19 @@ final class EvalHarness
 
         $channel = AgentChannel::from($fixture->channel);
         $agent = $world->agent($fixture->agent);
+
+        // write_policies applies to this fixture's conversation only and never
+        // touches AiAgentSeeder. reservation-commit.yaml forces the mode S24-05
+        // withheld from production — not the seeded default.
+        foreach ($fixture->writePolicies as $toolKey => $mode) {
+            $agent->writePolicies()->updateOrCreate(
+                ['tool_key' => $toolKey],
+                ['mode' => WritePolicyMode::from($mode)],
+            );
+        }
+        $agent->unsetRelation('writePolicies');
+        $agent->load('writePolicies');
+
         $conversation = AgentConversation::factory()->create([
             'ai_agent_id' => $agent->id,
             'audience' => AgentAudience::Customer,

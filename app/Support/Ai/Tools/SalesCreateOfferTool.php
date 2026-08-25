@@ -285,7 +285,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
 
         $url = rtrim((string) config('app.panel_url'), '/').'/preview/offer/'.$offer->token;
         $expires = $offer->expires_at?->toDateString() ?? OfferCreation::defaultExpiry()->toDateString();
-        $facts->date($expires)->identifier($url);
+        $facts->date($expires)->identifier($url)->identifier($offer->token);
 
         $count = $offer->options->count();
         $optionWord = $count === 1 ? 'option' : 'options';

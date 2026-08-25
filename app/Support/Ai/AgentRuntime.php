@@ -87,6 +87,8 @@ final class AgentRuntime
 
         $site = $this->siteFor($principal);
         $facts = FactBag::fromCustomerMessage($input, $site);
+        /** @var list<\App\Support\Ai\Enums\ForbiddenClaimKey> $licensedClaims */
+        $licensedClaims = [];
         $invocations = [];
         $usageEvents = [];
         $usageTotal = new Usage;
@@ -215,8 +217,18 @@ final class AgentRuntime
 
                     $this->persistToolMessage($conversation, $call, $result);
 
-                    if ($result->status->value === 'ok') {
+                    if ($result->status === ToolInvocationStatus::Ok) {
                         $facts->merge($result->facts);
+                        // Licences are not persisted (unlike fact_keys). A reconstructed
+                        // replay result therefore has empty licensedClaims by construction;
+                        // the !$replayed check is defence so a later "optimisation" that
+                        // stores licensed_claims next to fact_keys cannot reintroduce the
+                        // cross-turn leak invariant 63 exists to prevent.
+                        if (! $result->replayed) {
+                            foreach ($result->licensedClaims as $claim) {
+                                $licensedClaims[] = $claim;
+                            }
+                        }
                     }
 
                     $messages[] = [
@@ -297,7 +309,7 @@ final class AgentRuntime
         $verdict = $this->applyOutboundGuards(
             $draft,
             $facts,
-            $ctx,
+            $ctx->withLicensedClaims($licensedClaims),
             $messages,
             $toolObjects,
             $model,

@@ -6,12 +6,14 @@ namespace Tests\Feature\Ai;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\HandoffReason;
+use App\Support\Ai\Enums\ToolInvocationStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -106,6 +108,38 @@ class GuardPipelineOrderTest extends TestCase
 
         $this->assertSame('grounding', $turn->blockedBy);
         $this->assertSame(HandoffReason::GroundingFailure, $turn->handoff?->reason);
+    }
+
+    #[Test]
+    public function two_consecutive_write_tool_failures_handoff_before_the_model(): void
+    {
+        $conversation = $this->conversation();
+
+        for ($i = 1; $i <= 2; $i++) {
+            $message = AgentConversationMessage::query()->create([
+                'agent_conversation_id' => $conversation->id,
+                'sequence' => $i,
+                'role' => AgentMessageRole::Assistant,
+                'content' => 'failed write',
+                'tool_calls' => [['name' => 'sales.create_reservation']],
+            ]);
+            AgentToolInvocation::factory()->create([
+                'agent_conversation_id' => $conversation->id,
+                'agent_conversation_message_id' => $message->id,
+                'tool_key' => 'sales.create_reservation',
+                'status' => ToolInvocationStatus::Error,
+                'denied_reason' => null,
+            ]);
+        }
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'try again',
+        );
+
+        $this->assertSame(0, $this->driver->callCount);
+        $this->assertSame(HandoffReason::RepeatedFailure, $turn->handoff?->reason);
     }
 
     private function conversation(): AgentConversation

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
@@ -12,6 +13,7 @@ final readonly class ToolResult
 {
     /**
      * @param  array<string, mixed>  $data
+     * @param  list<ForbiddenClaimKey>  $licensedClaims
      */
     public function __construct(
         public ToolInvocationStatus $status,
@@ -25,10 +27,12 @@ final readonly class ToolResult
         public ?string $idempotencyKey = null,
         public ?string $resultType = null,
         public ?int $resultId = null,
+        public array $licensedClaims = [],
     ) {}
 
     /**
      * @param  array<string, mixed>  $data
+     * @param  list<ForbiddenClaimKey>  $licensedClaims
      */
     public static function ok(
         array $data,
@@ -39,6 +43,7 @@ final readonly class ToolResult
         ?string $idempotencyKey = null,
         ?string $resultType = null,
         ?int $resultId = null,
+        array $licensedClaims = [],
     ): self {
         if ($replayed) {
             $data['replayed'] = true;
@@ -54,6 +59,7 @@ final readonly class ToolResult
             idempotencyKey: $idempotencyKey,
             resultType: $resultType,
             resultId: $resultId,
+            licensedClaims: $licensedClaims,
         );
     }
 
@@ -125,6 +131,7 @@ final readonly class ToolResult
             $key,
             $this->resultType,
             $this->resultId,
+            $this->licensedClaims,
         );
     }
 }

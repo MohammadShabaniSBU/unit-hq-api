@@ -13,6 +13,7 @@ use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Leasing\LeasingActor;
@@ -253,6 +254,7 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
             $facts,
             resultType: 'reservation',
             resultId: $reservation->id,
+            licensedClaims: [ForbiddenClaimKey::AvailabilityGuarantee],
         );
     }
 

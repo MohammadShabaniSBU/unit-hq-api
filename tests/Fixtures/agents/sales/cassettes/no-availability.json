@@ -2,7 +2,7 @@
     "agent": "sales",
     "fixture": "sales/no-availability",
     "turn_index": 0,
-    "prompt_hash": "432e69c7147fa00da48b93c68d6d02c293b402f1991bc39ee1c2ed6cb33edd44",
+    "prompt_hash": "7a08b5b6ff78df3f12b8746d989220440146f6a49459766ba6d4167fabec82b3",
     "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
     "responses": [
         {

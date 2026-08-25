@@ -1,0 +1,13 @@
+id: sales/offer-invented-price
+agent: sales
+channel: webchat
+locale: en
+tags: [grounding]
+principal:
+  verification: anonymous
+turns:
+  - input: "So the small unit in Madrid is how much, about twelve euros?"
+    expect_blocked_by: grounding
+    expect_handoff:
+      reason: grounding_failure
+      trigger_source: guardrail

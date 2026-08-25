@@ -1,7 +1,7 @@
 {
     "agent": "sales",
-    "fixture": "sales/availability-and-price",
-    "turn_index": 0,
+    "fixture": "sales/quote-then-offer",
+    "turn_index": 1,
     "prompt_hash": "ef53b29fc730f2b2a946157ba3fa5c334d5952ee8a9ff4cb086cb2721f5d4f92",
     "schema_hash": "ffa9cab1d96ee8f90ba4c897a5793f6b804515e12a0eb02931a001597555f28c",
     "responses": [
@@ -9,7 +9,7 @@
             "content": "",
             "tool_calls": [
                 {
-                    "name": "facility.availability",
+                    "name": "sales.propose_offer",
                     "id": "call_1",
                     "arguments": {
                         "site_id": "{{madrid.id}}",
@@ -20,21 +20,31 @@
             "finish_reason": "tool_calls"
         },
         {
+            "content": "Here is a catalogue proposal at €84.70 (incl. 21% tax; net €70.00). Nothing has been sent or saved. I am an automated assistant.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
             "content": "",
             "tool_calls": [
                 {
-                    "name": "pricing.quote",
+                    "name": "sales.create_offer",
                     "id": "call_2",
                     "arguments": {
-                        "site_id": "{{madrid.id}}",
-                        "unit_class_id": "{{small_class.id}}"
+                        "deal_id": "{{agent_deal.id}}",
+                        "options": [
+                            {
+                                "unit_class_rate_id": "{{madrid_small_rate.id}}",
+                                "label": "Small"
+                            }
+                        ]
                     }
                 }
             ],
             "finish_reason": "tool_calls"
         },
         {
-            "content": "There are units available in Small at Madrid Norte as of now. Catalogue price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant.",
+            "content": "Created a draft offer at €84.70 (incl. 21% tax; net €70.00). Nothing has been sent.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

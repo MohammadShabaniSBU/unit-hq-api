@@ -164,4 +164,110 @@ class GroundingGuardTest extends TestCase
         $this->assertSame('grounding', $fail->blockedBy);
         $this->assertSame('€12.00', $fail->detail['token'] ?? null);
     }
+
+    #[Test]
+    public function licensed_hold_expiry_passes_and_unlicensed_date_is_suppressed(): void
+    {
+        $employee = Employee::factory()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
+        $class = UnitClass::factory()->create([
+            'tax_rate_code' => 'vat',
+            'label' => '10 m²',
+        ]);
+        $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+            'amount' => '70.00',
+            'currency' => 'EUR',
+        ]);
+        Unit::factory()->create([
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'enabled' => true,
+        ]);
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $deal = Deal::factory()->create([
+            'contact_id' => $contact->id,
+            'site_id' => $site->id,
+            'status' => DealStatus::Qualified,
+            'desired_unit_class_id' => $class->id,
+        ]);
+
+        $principal = AgentPrincipal::channelAsserted($contact->id, $site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $result = $this->dispatchTool('sales', 'sales.create_reservation', $principal, [
+            'deal_id' => $deal->id,
+            'unit_class_id' => $class->id,
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $expiresOn = (string) ($result->data['expires_on'] ?? '');
+        $this->assertNotSame('', $expiresOn);
+
+        $pass = app(GroundingGuard::class)->check(
+            "Hold until {$expiresOn}.",
+            $result->facts,
+            $ctx,
+        );
+        $this->assertTrue($pass->passed);
+
+        $fail = app(GroundingGuard::class)->check(
+            'Hold until 2099-01-01.',
+            $result->facts,
+            $ctx,
+        );
+        $this->assertFalse($fail->passed);
+        $this->assertSame('grounding', $fail->blockedBy);
+    }
+
+    #[Test]
+    public function licensed_offer_url_passes_grounding(): void
+    {
+        $employee = Employee::factory()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $site = Site::factory()->create(['country_id' => $country->id, 'currency' => 'EUR']);
+        $class = UnitClass::factory()->create(['tax_rate_code' => 'vat', 'label' => 'Small']);
+        [$rate] = $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+            'amount' => '70.00',
+            'currency' => 'EUR',
+        ]);
+        TaxRate::query()->create([
+            'name' => 'VAT ES',
+            'code' => 'vat',
+            'rate' => '21.00',
+            'jurisdiction' => 'ES',
+            'is_default' => false,
+            'effective_from' => '2020-01-01',
+            'effective_to' => null,
+            'created_by' => $employee->id,
+        ]);
+        Unit::factory()->create([
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'enabled' => true,
+        ]);
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $deal = Deal::factory()->create([
+            'contact_id' => $contact->id,
+            'site_id' => $site->id,
+            'status' => DealStatus::Qualified,
+            'desired_unit_class_id' => $class->id,
+        ]);
+
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $deal->id,
+            'options' => [[
+                'unit_class_rate_id' => $rate->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $url = (string) ($result->data['url'] ?? '');
+        $this->assertNotSame('', $url);
+
+        $pass = app(GroundingGuard::class)->check("Here is your offer: {$url}", $result->facts, $ctx);
+        $this->assertTrue($pass->passed);
+    }
 }

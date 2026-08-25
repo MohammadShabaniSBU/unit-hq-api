@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Support\Ai\Eval;
 
 use App\Models\AgentToolInvocation;
+use App\Models\Offer;
+use App\Models\Site;
+use App\Models\UnitClassRate;
+use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentTurn;
 use App\Support\Ai\Drivers\CassetteDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Guards\DraftTokenExtractor;
+use App\Support\Ai\Tools\CatalogueLinePricer;
 use App\Support\Communications\Messages\SmsMessage;
 use Illuminate\Support\Facades\DB;
 
@@ -134,6 +139,10 @@ final class EvalAssertions
             $failures = array_merge($failures, self::assertGrounded($turn));
         }
 
+        if (! empty($expect['expect_latest_offer_gross_in_draft'])) {
+            $failures = array_merge($failures, self::assertLatestOfferGrossInDraft($turn, $locale));
+        }
+
         if (isset($expect['expect_contains']) && is_string($expect['expect_contains'])) {
             if (! str_contains($turn->draft, $expect['expect_contains'])) {
                 $failures[] = 'expected draft to contain '.json_encode($expect['expect_contains']);
@@ -241,6 +250,61 @@ final class EvalAssertions
             $failures[] = "expected grounded, got empty FactBag with extractable token \"{$raw}\"";
             $failures[] = 'facts: []';
             $failures[] = 'draft: '.json_encode($turn->draft);
+        }
+
+        return $failures;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function assertLatestOfferGrossInDraft(AgentTurn $turn, string $locale): array
+    {
+        $offer = Offer::query()->with(['options', 'deal.site'])->latest('id')->first();
+        if ($offer === null) {
+            return ['expected latest offer for expect_latest_offer_gross_in_draft, got none'];
+        }
+
+        $site = $offer->deal?->site;
+        if (! $site instanceof Site) {
+            return ['expected latest offer to have a deal site'];
+        }
+
+        $principal = AgentPrincipal::anonymous($site->id, $locale);
+        $failures = [];
+
+        foreach ($offer->options as $option) {
+            $rate = UnitClassRate::query()
+                ->with(['price', 'unitClass'])
+                ->find($option->unit_class_rate_id);
+            $class = $rate?->unitClass;
+            if ($rate === null || $class === null) {
+                $failures[] = "offer option {$option->id} is missing a unit class rate";
+
+                continue;
+            }
+
+            $line = CatalogueLinePricer::price(
+                $rate,
+                $class,
+                $site,
+                $principal,
+                $option->discount_id !== null ? (int) $option->discount_id : null,
+            );
+            if (! $line instanceof CatalogueLinePricer) {
+                $failures[] = "CatalogueLinePricer failed for offer option {$option->id}";
+
+                continue;
+            }
+
+            $comma = str_replace('.', ',', $line->gross);
+            if (
+                ! str_contains($turn->draft, $line->gross)
+                && ! str_contains($turn->draft, $comma)
+            ) {
+                $failures[] = 'expected draft to contain offer gross '.$line->gross
+                    .'; draft: '.json_encode($turn->draft);
+            }
         }
 
         return $failures;

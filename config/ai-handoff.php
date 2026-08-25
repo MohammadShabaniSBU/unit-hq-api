@@ -258,6 +258,9 @@ return [
                 'i have removed the overlock',
                 'access has been restored',
             ],
+            // Every phrase in this group must be true after a committed reservation.
+            // The group is licensable by ForbiddenClaimKey::AvailabilityGuarantee, so
+            // a phrase that a hold does not make true belongs in a different group.
             'availability_guarantee' => [
                 "i've held it for you",
                 'i have held it for you',
@@ -297,6 +300,9 @@ return [
                 'he quitado el candado',
                 'he restaurado el acceso',
             ],
+            // Every phrase in this group must be true after a committed reservation.
+            // The group is licensable by ForbiddenClaimKey::AvailabilityGuarantee, so
+            // a phrase that a hold does not make true belongs in a different group.
             'availability_guarantee' => [
                 'lo he reservado',
                 'esta reservado',
@@ -328,6 +334,9 @@ return [
                 "j'ai retire le cadenas",
                 "j'ai retiré le cadenas",
             ],
+            // Every phrase in this group must be true after a committed reservation.
+            // The group is licensable by ForbiddenClaimKey::AvailabilityGuarantee, so
+            // a phrase that a hold does not make true belongs in a different group.
             'availability_guarantee' => [
                 "je l'ai reserve",
                 "je l'ai réservé",

@@ -62,6 +62,14 @@ final class EvalFixtureLoader
 
         $liveOnly = (bool) ($data['live_only'] ?? false) || in_array('live_only', $tags, true);
 
+        $writePolicies = [];
+        $rawPolicies = $data['write_policies'] ?? [];
+        if (is_array($rawPolicies)) {
+            foreach ($rawPolicies as $toolKey => $mode) {
+                $writePolicies[(string) $toolKey] = (string) $mode;
+            }
+        }
+
         return new EvalFixture(
             $id,
             $agent,
@@ -72,6 +80,7 @@ final class EvalFixtureLoader
             $tags,
             $liveOnly,
             $path,
+            $writePolicies,
         );
     }
 

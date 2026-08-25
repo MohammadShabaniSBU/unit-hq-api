@@ -15,3 +15,10 @@ turns:
     expect_no_handoff: true
     expect_grounded: true
     expect_disclosure: true
+    expect_not_contains:
+      - "it's reserved"
+      - "it is reserved"
+      - "I've held"
+      - "I have reserved"
+      - "I've reserved"
+      - "I have held it for you"
