@@ -22,6 +22,7 @@ final class SalesAgentDefinition implements AgentDefinition
             'facility.availability',
             'facility.find_sites',
             'facility.site_info',
+            'facility.size_guide',
             'pricing.quote',
             'pricing.discounts',
             'sales.propose_offer',

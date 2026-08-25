@@ -3,7 +3,7 @@
     "fixture": "sales/propose-offer",
     "turn_index": 0,
     "prompt_hash": "0af1275939f7edb938edbb4b57c1a2977eb04bf7f22330898d13369bb09d190a",
-    "schema_hash": "25157f1b14274c91f62b4bfb85704b3414c4cda60507941f82df5bc27eecef30",
+    "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
     "responses": [
         {
             "content": "",

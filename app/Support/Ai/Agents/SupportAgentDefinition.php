@@ -21,6 +21,7 @@ final class SupportAgentDefinition implements AgentDefinition
         return [
             'facility.find_sites',
             'facility.site_info',
+            'facility.size_guide',
             'crm.create_task',
             'crm.create_note',
             'contract.summary',

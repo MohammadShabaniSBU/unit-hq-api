@@ -3,7 +3,7 @@
     "fixture": "sales/reservation-stale-claim",
     "turn_index": 4,
     "prompt_hash": "cf44f5842e3e188bccc8714e6e975e08fc13fe47f66c3e4b68a317bffd87f98b",
-    "schema_hash": "25157f1b14274c91f62b4bfb85704b3414c4cda60507941f82df5bc27eecef30",
+    "schema_hash": "bec9179914912fbddf264c74decba27599209ad288f7eb90189e47ab565fdb08",
     "responses": [
         {
             "content": "Sure, I can help with that. I am an automated assistant.",

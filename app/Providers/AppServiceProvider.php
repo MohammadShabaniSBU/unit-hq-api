@@ -64,6 +64,7 @@ use App\Support\Ai\Tools\CrmCreateTaskTool;
 use App\Support\Ai\Tools\EscalateTool;
 use App\Support\Ai\Tools\FacilityAvailabilityTool;
 use App\Support\Ai\Tools\FacilityFindSitesTool;
+use App\Support\Ai\Tools\FacilitySizeGuideTool;
 use App\Support\Ai\Tools\FacilitySiteInfoTool;
 use App\Support\Ai\Tools\KbFaqLookupTool;
 use App\Support\Ai\Tools\PricingDiscountsTool;
@@ -123,6 +124,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new FacilityAvailabilityTool);
             $registry->register(new FacilityFindSitesTool);
             $registry->register(new FacilitySiteInfoTool);
+            $registry->register(new FacilitySizeGuideTool);
             $registry->register(new PricingQuoteTool);
             $registry->register(new PricingDiscountsTool);
             $registry->register(new SalesProposeOfferTool);
