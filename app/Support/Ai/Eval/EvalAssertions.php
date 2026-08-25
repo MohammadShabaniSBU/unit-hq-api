@@ -6,6 +6,7 @@ namespace App\Support\Ai\Eval;
 
 use App\Enums\PipelineSource;
 use App\Models\AgentToolInvocation;
+use App\Models\Deal;
 use App\Models\Offer;
 use App\Models\Site;
 use App\Models\UnitClassRate;
@@ -230,6 +231,16 @@ final class EvalAssertions
                 : (string) ($offer?->source ?? '');
             if ($offer === null || $got !== $wanted) {
                 $failures[] = "expected offer source {$wanted}, got ".($offer === null ? 'none' : $got);
+            }
+        }
+
+        if (array_key_exists('expect_deal_move_in', $expect)) {
+            $deal = Deal::query()->latest('id')->first();
+            $got = $deal?->expected_move_in?->toDateString();
+            if ($got === null) {
+                $failures[] = 'expected deal expected_move_in to be set, got none';
+            } elseif (is_string($expect['expect_deal_move_in']) && $expect['expect_deal_move_in'] !== '' && $expect['expect_deal_move_in'] !== $got) {
+                $failures[] = "expected deal expected_move_in {$expect['expect_deal_move_in']}, got {$got}";
             }
         }
 

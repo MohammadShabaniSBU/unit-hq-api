@@ -119,7 +119,7 @@
 - Any agent transport — no `SendContext`, no sender call, no `messages` row. Agent output is a draft turn (`14-ai-agents.md`).
 - `webchat` as a comms `Channel` enum value and its adapter (agent `AgentChannel::Webchat` is a profile only).
 - RAG / vector retrieval for agent knowledge (D-AI-5).
-- `contact_verifications` / OTP — the verification level is a demo toggle in S22.
+- `contact_verifications` / OTP — the verification level is a demo toggle in S22. `channel_asserted` from a self-stated identity is acceptable only because that level exposes nothing private (`billing.*`, `contract.summary`, `access.status` all require `verified`) and its only writes are `crm.create_note` (support agent only) and `sales.create_reservation` in propose mode. Lowering any tool's floor to `channel_asserted` must re-examine this path. OTP verification for webchat is what closes it.
 - Per-agent, per-channel autonomy configuration.
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
@@ -178,6 +178,8 @@
 | Per-locale Vocal Bridge agents | v1 is one VB agent with `language: multi` auto-detect. Panel ships en/es/fr. |
 | VB credentials in env vs Settings | `VOCAL_BRIDGE_API_KEY` is env today. A Settings-managed encrypted account (as `communication_accounts` does) is the follow-up if operators must rotate without a deploy. |
 | Voice for customer-facing agents | Employee copilot only this sprint. `AgentChannel::Voice` exists for ChannelProfile exhaustiveness; `POST /api/agent-conversations` rejects it. |
+| `deals.purpose` | Customer-stated personal vs business is currently dropped. A `deals.purpose` enum column (`personal`\|`business`) is its own small task after this sprint; do not stash it on a note. |
+| Agent-authored notes | `notes.employee_id` is a non-nullable FK, so `crm.create_deal` / `crm.create_contact` skip the note on every real customer-channel conversation and warn in `display`. Whether `employee_id` becomes nullable with `ai_agent_id` as an alternative author (D-AI-4 already lets `AiAgent` be an activity causer) is unset. Until it is, do not tell the model a note was recorded. |
 | Agent→App UI navigation actions | Natural follow-up once the transcript loop is trusted. v1 is App→Agent `copilot_answer_ready` only. |
 | Agent reservation active-hold uniqueness | **Option 1 taken (S24-01):** in-transaction check inside `ReservationCreation::create` under the existing `lockForUpdate` on the candidate unit, scoped to `source = ai_agent`, plus supporting index `(contact_id, status)`. Operator double-holds stay legal. **Known gap:** two concurrent agent creates that pick *different* units of the same class do not share that lock, so a double-insert is still possible. **Rejected for now:** (2) denormalise `site_id` / `unit_class_id` onto `reservations` for a Postgres partial unique — derived state (invariant 5). (3) exclusion constraint — overkill. Revisit only if (1) proves insufficient in production. |
 

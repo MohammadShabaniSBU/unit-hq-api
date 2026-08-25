@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Enums\LogChannel;
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\AgentGuardrailEvent;
@@ -13,6 +14,7 @@ use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
+use App\Models\Contact;
 use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentRuntime;
@@ -20,12 +22,16 @@ use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\AiUsageCost;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
+use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\GuardrailPipeline;
 use App\Support\Ai\Guards\GuardrailVerdict;
@@ -40,6 +46,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
+use Spatie\Activitylog\Models\Activity;
 use Tests\Support\Ai\ProposableSpyTool;
 use Tests\Support\Ai\RecordingTool;
 use Tests\Support\Ai\RefEmittingTool;
@@ -793,6 +800,204 @@ class AgentRuntimeTest extends TestCase
             ->status);
     }
 
+    #[Test]
+    public function create_contact_promotes_anonymous_principal_so_reservation_reaches_propose(): void
+    {
+        $site = Site::factory()->create();
+        $spy = new ProposableSpyTool(
+            key: 'sales.create_reservation',
+            required: VerificationLevel::ChannelAsserted,
+            contactKeys: [],
+            siteId: $site->id,
+        );
+        app(ToolRegistry::class)->register($spy);
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', [
+            'crm.create_contact',
+            'sales.create_reservation',
+        ]));
+
+        $conversation = $this->anonymousConversation('test');
+        AgentWritePolicy::factory()->propose()->create([
+            'ai_agent_id' => $conversation->ai_agent_id,
+            'tool_key' => 'sales.create_reservation',
+        ]);
+
+        $this->driver
+            ->enqueueToolCalls([
+                [
+                    'name' => 'crm.create_contact',
+                    'id' => 'c1',
+                    'arguments' => [
+                        'first_name' => 'Ada',
+                        'last_name' => 'Lovelace',
+                        'email' => 'ada-promote@example.com',
+                    ],
+                ],
+                [
+                    'name' => 'sales.create_reservation',
+                    'id' => 'c2',
+                    'arguments' => ['contact_id' => 1],
+                ],
+            ])
+            ->enqueueText('I have opened a hold for review.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'Ada Lovelace, ada-promote@example.com — hold a unit please',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertTrue($spy->proposeCalled);
+        $this->assertFalse($spy->handleCalled);
+
+        $reservation = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'sales.create_reservation')
+            ->firstOrFail();
+        $this->assertSame(ToolDeniedReason::RequiresApproval, $reservation->denied_reason);
+        $this->assertSame(VerificationLevel::ChannelAsserted, $reservation->principal_verification);
+
+        $conversation->refresh();
+        $this->assertSame(VerificationLevel::ChannelAsserted, $conversation->verification_level);
+        $this->assertNotNull($conversation->contact_id);
+
+        $activity = Activity::query()
+            ->where('log_name', LogChannel::Ai->value)
+            ->where('description', 'agent.conversation.principal_promoted')
+            ->where('subject_id', $conversation->id)
+            ->first();
+        $this->assertNotNull($activity);
+        $properties = $activity->properties?->toArray() ?? [];
+        $this->assertSame('anonymous', $properties['from'] ?? null);
+        $this->assertSame('channel_asserted', $properties['to'] ?? null);
+        $this->assertSame($conversation->contact_id, $properties['contact_id'] ?? null);
+    }
+
+    #[Test]
+    public function second_create_contact_in_the_same_conversation_is_invalid_arguments(): void
+    {
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', ['crm.create_contact']));
+        $conversation = $this->anonymousConversation('test');
+
+        $this->driver
+            ->enqueueToolCalls([
+                [
+                    'name' => 'crm.create_contact',
+                    'id' => 'c1',
+                    'arguments' => ['first_name' => 'Ada', 'email' => 'ada-once@example.com'],
+                ],
+                [
+                    'name' => 'crm.create_contact',
+                    'id' => 'c2',
+                    'arguments' => ['first_name' => 'Other', 'email' => 'other@example.com'],
+                ],
+            ])
+            ->enqueueText('I already have your details.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'Ada Lovelace, ada-once@example.com',
+        );
+
+        $this->assertNull($turn->handoff);
+        $second = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_call_id', 'c2')
+            ->firstOrFail();
+        $this->assertSame(ToolInvocationStatus::Error, $second->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments->value, $second->result['error']['code'] ?? null);
+        $this->assertSame(1, Contact::query()->count());
+    }
+
+    #[Test]
+    public function already_channel_asserted_conversation_is_not_re_promoted(): void
+    {
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', ['crm.create_contact']));
+        $contact = Contact::factory()->create();
+        $agent = AiAgent::factory()->create(['key' => 'test', 'name' => 'test', 'is_active' => true]);
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $agent->id,
+            'audience' => AgentAudience::Customer,
+            'contact_id' => $contact->id,
+            'employee_id' => null,
+            'verification_level' => VerificationLevel::ChannelAsserted,
+        ]);
+
+        $this->driver
+            ->enqueueToolCalls([[
+                'name' => 'crm.create_contact',
+                'id' => 'c1',
+                'arguments' => ['first_name' => 'Ada', 'email' => 'ada-again@example.com'],
+            ]])
+            ->enqueueText('You are already on file.');
+
+        app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'Ada Lovelace, ada-again@example.com',
+        );
+
+        $conversation->refresh();
+        $this->assertSame(VerificationLevel::ChannelAsserted, $conversation->verification_level);
+        $this->assertSame($contact->id, $conversation->contact_id);
+        $this->assertSame(0, Activity::query()
+            ->where('description', 'agent.conversation.principal_promoted')
+            ->count());
+        $this->assertSame(ToolErrorCode::InvalidArguments->value, AgentToolInvocation::query()
+            ->where('tool_key', 'crm.create_contact')
+            ->value('result')['error']['code'] ?? null);
+    }
+
+    #[Test]
+    public function create_contact_dedupe_promotes_onto_matched_contact_but_billing_stays_denied(): void
+    {
+        $existing = Contact::factory()->create(['email' => 'tenant@example.com']);
+        app(AgentRegistry::class)->register(new TestAgentDefinition('test', [
+            'crm.create_contact',
+            'billing.balance',
+        ]));
+        $conversation = $this->anonymousConversation('test');
+
+        $this->driver
+            ->enqueueToolCalls([
+                [
+                    'name' => 'crm.create_contact',
+                    'id' => 'c1',
+                    'arguments' => [
+                        'first_name' => 'Tenant',
+                        'email' => 'tenant@example.com',
+                    ],
+                ],
+                [
+                    'name' => 'billing.balance',
+                    'id' => 'c2',
+                    'arguments' => [],
+                ],
+            ])
+            ->enqueueText('I cannot see a balance until you verify.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'I am Tenant, tenant@example.com — what do I owe?',
+        );
+
+        $this->assertNull($turn->handoff);
+        $conversation->refresh();
+        $this->assertSame(VerificationLevel::ChannelAsserted, $conversation->verification_level);
+        $this->assertSame($existing->id, $conversation->contact_id);
+        $this->assertSame(1, Contact::query()->count());
+
+        $balance = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'billing.balance')
+            ->firstOrFail();
+        $this->assertSame(ToolDeniedReason::Verification, $balance->denied_reason);
+        $this->assertSame(VerificationLevel::ChannelAsserted, $balance->principal_verification);
+    }
+
     /**
      * A `test` conversation whose tools are the scripted one plus escalate.
      */
@@ -897,6 +1102,19 @@ class AgentRuntimeTest extends TestCase
         ]);
 
         return AgentConversation::factory()->create([
+            'ai_agent_id' => $agent->id,
+        ]);
+    }
+
+    private function anonymousConversation(string $agentKey): AgentConversation
+    {
+        $agent = AiAgent::factory()->create([
+            'key' => $agentKey,
+            'name' => $agentKey,
+            'is_active' => true,
+        ]);
+
+        return AgentConversation::factory()->anonymous()->create([
             'ai_agent_id' => $agent->id,
         ]);
     }

@@ -43,3 +43,4 @@ turns:
       deals: 1
     expect_no_handoff: true
     expect_offer_source: ai_agent
+    expect_deal_move_in: true

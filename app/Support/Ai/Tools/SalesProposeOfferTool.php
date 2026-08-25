@@ -50,10 +50,10 @@ final class SalesProposeOfferTool implements AgentTool
                 'required' => false,
                 'description' => 'Catalogue discount id to label',
             ],
-            'move_in_date' => [
+            'expected_move_in' => [
                 'type' => 'string',
                 'required' => false,
-                'description' => 'Proposed move-in date YYYY-MM-DD',
+                'description' => 'Proposed move-in date YYYY-MM-DD. Convert relative dates using the date in the prompt first.',
             ],
         ];
     }
@@ -122,7 +122,13 @@ final class SalesProposeOfferTool implements AgentTool
         $interval = $billing->defaultBillingInterval;
         $term = $count === 1 ? "every {$interval}" : "every {$count} {$interval}s";
 
-        $moveIn = isset($arguments['move_in_date']) ? (string) $arguments['move_in_date'] : null;
+        $moveIn = isset($arguments['expected_move_in']) ? trim((string) $arguments['expected_move_in']) : '';
+        if ($moveIn !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $moveIn) !== 1) {
+            return ToolResult::fail(ToolError::invalidArguments(
+                'expected_move_in must be an ISO date (YYYY-MM-DD).',
+                ['hint' => 'convert relative dates using the date in the prompt before calling'],
+            ));
+        }
 
         $facts = (new FactBag)
             ->money($line->net, $line->currency)
@@ -130,7 +136,7 @@ final class SalesProposeOfferTool implements AgentTool
             ->money($line->gross, $line->currency)
             ->number($line->ratePct)
             ->percent($line->ratePct);
-        if ($moveIn !== null && $moveIn !== '') {
+        if ($moveIn !== '') {
             $facts->date($moveIn);
         }
 
@@ -140,7 +146,7 @@ final class SalesProposeOfferTool implements AgentTool
         if ($line->discountLabel !== null) {
             $bits[] = "Catalogue discount: {$line->discountLabel}.";
         }
-        if ($moveIn !== null && $moveIn !== '') {
+        if ($moveIn !== '') {
             $bits[] = "Proposed move-in {$moveIn}.";
         }
         $bits[] = 'Nothing has been sent or saved.';
@@ -188,7 +194,7 @@ final class SalesProposeOfferTool implements AgentTool
                 'discount_id' => $line->discountId,
                 'discount_label' => $line->discountLabel,
                 'term' => $term,
-                'move_in_date' => $moveIn,
+                'expected_move_in' => $moveIn !== '' ? $moveIn : null,
                 'persisted' => false,
             ],
             implode(' ', $bits),

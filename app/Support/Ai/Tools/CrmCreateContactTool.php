@@ -81,11 +81,25 @@ final class CrmCreateContactTool implements AgentTool
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
+        if ($ctx?->conversation?->contact_id !== null) {
+            return ToolResult::fail(ToolError::invalidArguments(
+                'This conversation already belongs to a contact.',
+                ['hint' => 'use the existing contact_id for this conversation'],
+            ));
+        }
+
         $email = isset($arguments['email']) ? trim((string) $arguments['email']) : '';
         $phone = isset($arguments['phone']) ? trim((string) $arguments['phone']) : '';
+        $notes = isset($arguments['notes']) ? trim((string) $arguments['notes']) : '';
+        $employeeId = AgentWriteAttribution::employeeId($ctx);
 
         $matched = $this->matchExisting($email, $phone);
         if ($matched !== null) {
+            $display = "An existing contact matched ({$matched->first_name} {$matched->last_name}). No new contact was created.";
+            if ($notes !== '') {
+                $display .= ' '.AgentWriteAttribution::NOTES_NOT_WRITTEN;
+            }
+
             return ToolResult::ok(
                 [
                     'contact_id' => $matched->id,
@@ -93,7 +107,7 @@ final class CrmCreateContactTool implements AgentTool
                     'first_name' => $matched->first_name,
                     'last_name' => $matched->last_name,
                 ],
-                "An existing contact matched ({$matched->first_name} {$matched->last_name}). No new contact was created.",
+                $display,
                 (new FactBag)->identifier((string) $matched->id)->number($matched->id),
                 resultType: 'contact',
                 resultId: $matched->id,
@@ -101,13 +115,13 @@ final class CrmCreateContactTool implements AgentTool
             );
         }
 
-        $contact = DB::transaction(function () use ($arguments, $email, $phone, $principal, $ctx): Contact {
+        $contact = DB::transaction(function () use ($arguments, $email, $phone, $principal, $ctx, $notes, $employeeId): Contact {
             $contact = Contact::query()->create([
                 'first_name' => (string) $arguments['first_name'],
                 'last_name' => isset($arguments['last_name']) ? (string) $arguments['last_name'] : '',
                 'email' => $email !== '' ? $email : null,
                 'source' => ContactSource::AiAgent,
-                'created_by' => AgentWriteAttribution::employeeId($ctx),
+                'created_by' => $employeeId,
             ]);
 
             if ($principal->siteId !== null) {
@@ -130,8 +144,6 @@ final class CrmCreateContactTool implements AgentTool
                 ]);
             }
 
-            $notes = isset($arguments['notes']) ? trim((string) $arguments['notes']) : '';
-            $employeeId = AgentWriteAttribution::employeeId($ctx);
             if ($notes !== '' && $employeeId !== null) {
                 $contact->notes()->create([
                     'employee_id' => $employeeId,
@@ -146,13 +158,18 @@ final class CrmCreateContactTool implements AgentTool
             return $contact;
         });
 
+        $display = "Created contact {$contact->first_name} {$contact->last_name} (id {$contact->id}).";
+        if ($notes !== '' && $employeeId === null) {
+            $display .= ' '.AgentWriteAttribution::NOTES_NOT_WRITTEN;
+        }
+
         return ToolResult::ok(
             [
                 'contact_id' => $contact->id,
                 'matched' => false,
                 'source' => ContactSource::AiAgent->value,
             ],
-            "Created contact {$contact->first_name} {$contact->last_name} (id {$contact->id}).",
+            $display,
             (new FactBag)->identifier((string) $contact->id)->number($contact->id),
             resultType: 'contact',
             resultId: $contact->id,

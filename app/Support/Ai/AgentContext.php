@@ -53,4 +53,17 @@ final readonly class AgentContext
             $factRegistry,
         );
     }
+
+    public function withPrincipal(AgentPrincipal $principal): self
+    {
+        return new self(
+            $principal,
+            $this->channel,
+            $this->definition,
+            $this->conversation,
+            $this->agent,
+            $this->licensedClaims,
+            $this->factRegistry,
+        );
+    }
 }

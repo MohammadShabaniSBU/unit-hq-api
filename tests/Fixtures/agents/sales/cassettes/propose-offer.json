@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/propose-offer",
     "turn_index": 0,
-    "prompt_hash": "aa001c22c43e68e42a0bad91043dcaba8e6ae466a1f6c3e6f6ee0226825dc793",
-    "schema_hash": "9f159c6f4090ecc992351ecc5336fed948408207481d053d45011fd67c2e9068",
+    "prompt_hash": "6d45c29e4c631140c1fcf774bb1cdd48671c48b22b904ff24facb80e2fb9322b",
+    "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
         {
             "content": "",

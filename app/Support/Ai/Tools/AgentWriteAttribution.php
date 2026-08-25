@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 
 final class AgentWriteAttribution
 {
+    public const NOTES_NOT_WRITTEN = 'Note was not written: this conversation has no operator attribution.';
+
     public static function employeeId(?AgentContext $ctx): ?int
     {
         $id = $ctx?->conversation->created_by_employee_id;

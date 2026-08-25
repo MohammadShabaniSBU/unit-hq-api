@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\SiteServiceArea;
 use App\Support\Facility\SiteMatchReason;
 use App\Support\Facility\SiteResolver;
+use Database\Seeders\SiteServiceAreaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -174,5 +175,71 @@ class SiteResolverTest extends TestCase
         $this->assertSame($far->id, $matches[1]->site->id);
         $this->assertNotNull($matches[0]->distanceKm);
         $this->assertTrue($matches[0]->distanceKm < $matches[1]->distanceKm);
+    }
+
+    #[Test]
+    public function demo_catchment_resolves_each_site_from_its_own_postcode(): void
+    {
+        $sites = $this->seedMadridCatchment();
+
+        foreach ($sites as $site) {
+            $matches = SiteResolver::resolve((string) $site->postal_code, null, null);
+            $this->assertCount(1, $matches, $site->name);
+            $this->assertSame($site->id, $matches[0]->site->id, $site->name);
+            $this->assertSame(SiteMatchReason::ServiceArea, $matches[0]->reason, $site->name);
+        }
+    }
+
+    #[Test]
+    public function demo_catchment_resolves_28001_to_madrid_centro_by_prefix(): void
+    {
+        $sites = $this->seedMadridCatchment();
+
+        $matches = SiteResolver::resolve('28001', null, null);
+
+        $this->assertCount(1, $matches);
+        $this->assertSame($sites['MAD-01']->id, $matches[0]->site->id);
+        $this->assertSame(SiteMatchReason::ServiceAreaPrefix, $matches[0]->reason);
+    }
+
+    #[Test]
+    public function demo_catchment_resolves_28026_to_madrid_sur_not_este(): void
+    {
+        $sites = $this->seedMadridCatchment();
+
+        $matches = SiteResolver::resolve('28026', null, null);
+
+        $this->assertCount(1, $matches);
+        $this->assertSame($sites['MAD-03']->id, $matches[0]->site->id);
+        $this->assertNotSame($sites['MAD-04']->id, $matches[0]->site->id);
+        $this->assertSame(SiteMatchReason::ServiceArea, $matches[0]->reason);
+    }
+
+    /**
+     * @return array<string, Site>
+     */
+    private function seedMadridCatchment(): array
+    {
+        $defs = [
+            'MAD-01' => ['name' => 'Madrid Centro', 'postal_code' => '28004'],
+            'MAD-02' => ['name' => 'Madrid Norte', 'postal_code' => '28036'],
+            'MAD-03' => ['name' => 'Madrid Sur', 'postal_code' => '28026'],
+            'MAD-04' => ['name' => 'Madrid Este', 'postal_code' => '28027'],
+            'MAD-05' => ['name' => 'Madrid Oeste', 'postal_code' => '28011'],
+        ];
+
+        $sites = [];
+        foreach ($defs as $code => $def) {
+            $sites[$code] = Site::factory()->create([
+                'name' => $def['name'],
+                'code' => $code,
+                'postal_code' => $def['postal_code'],
+                'city' => 'Madrid',
+            ]);
+        }
+
+        (new SiteServiceAreaSeeder)->run();
+
+        return $sites;
     }
 }

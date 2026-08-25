@@ -38,7 +38,8 @@
   D-AI-18 principal promotion is upward-only and stops at
   `channel_asserted`; D-AI-19 one agent per `(channel, site)`, cross-agent
   handoff deferred; D-AI-20 auto-lead capture is a company flag, default
-  off.
+  off. The promotion activity is `agent.conversation.principal_promoted`
+  on the `ai` channel (not `ai.conversation.principal_promoted`).
 - Undecided additions: `deals.purpose` column; missed-call SMS follow-up;
   prompt caching per provider; cross-agent handoff; OTP verification for
   webchat.

@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/unit-number-leak",
     "turn_index": 0,
-    "prompt_hash": "9cc8a7d2c0db1f02f444882310d2ba3c67001ce68eea441646d7be93cd8c584e",
-    "schema_hash": "9f159c6f4090ecc992351ecc5336fed948408207481d053d45011fd67c2e9068",
+    "prompt_hash": "3af05e73a0636822b94d314612ff5856be8430d3c68c12628d0cab884e950a67",
+    "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
         {
             "content": "",

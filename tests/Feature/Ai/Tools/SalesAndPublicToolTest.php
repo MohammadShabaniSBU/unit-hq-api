@@ -12,6 +12,7 @@ use App\Models\Country;
 use App\Models\Deal;
 use App\Models\Discount;
 use App\Models\Employee;
+use App\Models\Note;
 use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Setting;
@@ -21,11 +22,14 @@ use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Guards\GroundingGuard;
+use App\Support\Ai\Tools\AgentWriteAttribution;
 use App\Support\Billing\BillingMath;
 use App\Support\Facility\SizeGuideResolver;
 use App\Support\Time\SiteClock;
@@ -231,6 +235,123 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertStringContainsString('Nothing has been sent or saved', $result->display);
         $this->assertArrayHasKey('price_id', $result->data['line_items'][0]);
         $this->assertArrayHasKey('tax_rate_id', $result->data['line_items'][0]);
+    }
+
+    #[Test]
+    public function propose_offer_echoes_expected_move_in(): void
+    {
+        [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'sales.propose_offer',
+            $principal,
+            [
+                'site_id' => $site->id,
+                'unit_class_id' => $class->id,
+                'expected_move_in' => '2026-08-31',
+            ],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame('2026-08-31', $result->data['expected_move_in']);
+        $this->assertStringContainsString('Proposed move-in 2026-08-31.', $result->display);
+        $this->assertTrue($result->facts->contains('2026-08-31'));
+        $this->assertTrue($result->facts->contains('31/08/2026'));
+    }
+
+    #[Test]
+    public function create_deal_writes_need_fields_and_licenses_the_move_in_date(): void
+    {
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $contact);
+
+        $result = $this->dispatchTool('sales', 'crm.create_deal', $principal, [
+            'contact_id' => $contact->id,
+            'expected_move_in' => '2026-08-31',
+            'expected_stay_length' => 6,
+            'expected_stay_period' => 'month',
+            'desired_size_m2' => '12.5',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $deal = Deal::query()->findOrFail($result->data['deal_id']);
+        $this->assertSame('2026-08-31', $deal->expected_move_in?->toDateString());
+        $this->assertEquals(6, $deal->expected_stay_length);
+        $this->assertSame('month', $deal->expected_stay_period?->value);
+        $this->assertSame('12.50', $deal->desired_size);
+        $this->assertStringContainsString('Expected move-in 2026-08-31.', $result->display);
+        $this->assertStringContainsString('Expected stay 6 month.', $result->display);
+        $this->assertStringContainsString('Desired size 12.50 m².', $result->display);
+
+        $pass = app(GroundingGuard::class)->check(
+            'You can move in on 31/08/2026.',
+            $result->facts,
+            $ctx,
+        );
+        $this->assertTrue($pass->passed);
+    }
+
+    #[Test]
+    public function create_deal_rejects_stay_length_without_period(): void
+    {
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $contact);
+
+        $result = $this->dispatchTool('sales', 'crm.create_deal', $principal, [
+            'contact_id' => $contact->id,
+            'expected_stay_length' => 6,
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertSame(0, Deal::query()->count());
+    }
+
+    #[Test]
+    public function create_deal_warns_when_notes_are_dropped_without_operator_attribution(): void
+    {
+        $contact = Contact::factory()->create(['source' => ContactSource::AiAgent]);
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'sales', origin: AgentOrigin::Webchat);
+        $ctx->conversation->forceFill(['created_by_employee_id' => null])->save();
+        $this->licenseModels($ctx, $contact);
+
+        $result = $this->dispatchTool('sales', 'crm.create_deal', $principal, [
+            'contact_id' => $contact->id,
+            'notes' => 'Business storage, 20 boxes.',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertStringContainsString(AgentWriteAttribution::NOTES_NOT_WRITTEN, $result->display);
+        $this->assertSame(0, Note::query()->count());
+    }
+
+    #[Test]
+    public function create_contact_warns_when_notes_are_dropped_without_operator_attribution(): void
+    {
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'sales', origin: AgentOrigin::Webchat);
+        $ctx->conversation->forceFill(['created_by_employee_id' => null])->save();
+
+        $result = $this->dispatchTool('sales', 'crm.create_contact', $principal, [
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'email' => 'ada-notes@example.com',
+            'notes' => 'Called from webchat.',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertStringContainsString(AgentWriteAttribution::NOTES_NOT_WRITTEN, $result->display);
+        $this->assertSame(0, Note::query()->count());
     }
 
     #[Test]

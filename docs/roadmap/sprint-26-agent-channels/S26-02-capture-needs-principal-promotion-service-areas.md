@@ -81,7 +81,7 @@ No prefix may appear under two sites (the lookup index is `(kind, value)`):
 | Madrid Norte | `2803`, `2804` |
 | Madrid Sur | `2805`, `2819` |
 | Madrid Este | `2802`, `2807` |
-| Madrid Oeste | `2808`, `2811` |
+| Madrid Oeste | `2811` |
 
 Wire it into `StageSeeder` right after `SizeGuideSeeder` (~line 208) and
 into `DatabaseSeeder` at the same point. `SiteResolver` must return
@@ -99,9 +99,10 @@ into `DatabaseSeeder` at the same point. `SiteResolver` must return
       step (not `denied: verification`); `agent_conversations` row shows
       `channel_asserted` + `contact_id`; activity row written.
 - [ ] Second `crm.create_contact` in the same conversation → `invalid_arguments`.
-- [ ] `php artisan demo:seed --fresh` seeds ten `site_service_areas` rows;
-      `facility.find_sites(query: "Madrid 28001")` returns
-      `match_reason: service_area_prefix` for Madrid Centro only.
+- [ ] `php artisan demo:seed --fresh` seeds fourteen `site_service_areas` rows
+      (nine prefixes + five exact postcodes); `facility.find_sites(query:
+      "Madrid 28001")` returns `match_reason: service_area_prefix` for Madrid
+      Centro only.
 - [ ] `php artisan db:seed` produces the same rows (idempotent on re-run).
 
 ## Out of scope

@@ -245,6 +245,18 @@ final class AgentRuntime
 
                     $this->persistToolMessage($conversation, $call, $result);
 
+                    $promoted = PrincipalPromotion::afterToolResult(
+                        $conversation,
+                        $principal,
+                        $call['name'],
+                        $result,
+                        $ctx,
+                    );
+                    if ($promoted !== null) {
+                        $principal = $promoted;
+                        $ctx = $ctx->withPrincipal($promoted);
+                    }
+
                     if ($result->status === ToolInvocationStatus::Ok) {
                         $facts->merge($result->facts);
                         $this->dispatcher->rememberEntities($result->entities);
