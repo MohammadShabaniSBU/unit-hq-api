@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Support\Ai\Tools;
 
 use App\Enums\LogChannel;
+use App\Models\Contact;
 use App\Models\Task;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 
 final class CrmCreateTaskTool implements AgentTool
@@ -104,6 +106,16 @@ final class CrmCreateTaskTool implements AgentTool
             (new FactBag)->identifier((string) $task->id)->number($task->id),
             resultType: 'task',
             resultId: $task->id,
+            entities: [
+                EntityRef::task($task),
+                EntityRef::of(
+                    EntityType::from($parent->getMorphClass()),
+                    (int) $parent->getKey(),
+                    $parent instanceof Contact
+                        ? trim($parent->first_name.' '.$parent->last_name)
+                        : 'deal '.$parent->getKey(),
+                ),
+            ],
         );
     }
 }

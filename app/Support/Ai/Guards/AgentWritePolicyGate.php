@@ -88,15 +88,17 @@ final class AgentWritePolicyGate
         }
 
         $factKeys = $prior->fact_keys ?? [];
+        $blob = $prior->result;
 
         return ToolResult::ok(
-            $prior->result ?? [],
+            ToolResult::dataFromTrace($blob),
             (string) ($prior->result_summary ?? ''),
             FactBag::fromKeys($factKeys),
             replayed: true,
             idempotencyKey: $key,
             resultType: $prior->result_type,
             resultId: $prior->result_id !== null ? (int) $prior->result_id : null,
+            entities: ToolResult::entitiesFromTrace($blob),
         );
     }
 

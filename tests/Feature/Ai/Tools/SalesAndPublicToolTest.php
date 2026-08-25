@@ -21,6 +21,7 @@ use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Billing\BillingMath;
 use App\Support\Time\SiteClock;
@@ -56,10 +57,18 @@ class SalesAndPublicToolTest extends TestCase
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
         $this->assertSame(3, $result->data['classes'][0]['count']);
+        $this->assertSame('Small', $result->data['classes'][0]['label']);
+        $this->assertSame('Madrid Norte', $result->data['classes'][0]['site_name']);
         $this->assertStringContainsString('3 units available in Small', $result->display);
         $this->assertStringContainsString('as of now', $result->display);
         $this->assertStringNotContainsString(Unit::query()->first()->unit_number, $result->display);
         $this->assertSame(SiteClock::today($site)->toDateString(), $result->data['as_of']);
+        $this->assertNotEmpty($result->entities);
+        $types = array_map(fn ($ref) => $ref->type->value, $result->entities);
+        $this->assertContains('site', $types);
+        $this->assertContains('unit_class', $types);
+        $this->assertNotContains('unit', $types);
+        $this->assertArrayNotHasKey('entities', $result->data);
     }
 
     #[Test]
@@ -80,8 +89,14 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame($expected->tax, $result->data['tax']);
         $this->assertSame($expected->gross, $result->data['gross']);
         $this->assertSame('EUR', $result->data['currency']);
+        $this->assertSame('Small', $result->data['label']);
+        $this->assertSame($site->name, $result->data['site_name']);
         $this->assertStringContainsString('€70.00', $result->display);
         $this->assertTrue($result->facts->contains('70.00'));
+        $this->assertNotEmpty($result->entities);
+        $quoteTypes = array_map(fn ($ref) => $ref->type->value, $result->entities);
+        $this->assertContains('unit_class', $quoteTypes);
+        $this->assertContains('site', $quoteTypes);
     }
 
     #[Test]
@@ -262,6 +277,24 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
         $this->assertSame('Europe/Madrid', $result->data['timezone']);
         $this->assertNotNull($result->data['access_hours']);
+    }
+
+    #[Test]
+    public function site_info_without_site_returns_site_unresolved_with_recovery(): void
+    {
+        $result = $this->dispatchTool(
+            'sales',
+            'facility.site_info',
+            AgentPrincipal::anonymous(null, 'en'),
+            [],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::SiteUnresolved, $result->error?->errorCode);
+        $this->assertSame('facility.find_sites', $result->error?->recovery['tool'] ?? null);
+        $this->assertNull($result->handoffReason);
+        $this->assertStringContainsString('facility.find_sites', $result->display);
+        $this->assertSame('site_id is required when no site is in context.', $result->message);
     }
 
     /**

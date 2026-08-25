@@ -52,7 +52,7 @@ final class FacilitySiteInfoTool implements AgentTool
     {
         $siteId = isset($arguments['site_id']) ? (int) $arguments['site_id'] : $principal->siteId;
         if ($siteId === null) {
-            return ToolResult::error('site_id is required when no site is in context.');
+            return ToolResult::fail(ToolError::siteUnresolved('site_id is required when no site is in context.'));
         }
 
         $site = Site::query()->with('country')->find($siteId);
@@ -101,6 +101,6 @@ final class FacilitySiteInfoTool implements AgentTool
             $facts->identifier($site->code);
         }
 
-        return ToolResult::ok($data, $display, $facts);
+        return ToolResult::ok($data, $display, $facts, entities: [EntityRef::site($site)]);
     }
 }

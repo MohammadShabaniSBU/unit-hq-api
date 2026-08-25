@@ -91,6 +91,11 @@ final class BillingInvoicesTool implements AgentTool
         $facts = new FactBag;
         $rows = [];
         $lines = [];
+        $entities = [];
+        $contact = \App\Models\Contact::query()->find($contactId);
+        if ($contact !== null) {
+            $entities[] = EntityRef::contact($contact);
+        }
         foreach ($invoices as $invoice) {
             $gross = BillingMath::round2((string) $invoice->gross_total);
             $currency = (string) $invoice->currency;
@@ -103,6 +108,7 @@ final class BillingInvoicesTool implements AgentTool
             $formatted = MoneyDisplay::format($gross, $currency, $principal->locale);
             $facts->money($gross, $currency)->date($date)->identifier((string) $invoice->full_number);
             $rows[] = [
+                'id' => $invoice->id,
                 'number' => $invoice->full_number,
                 'date' => $date,
                 'gross' => $gross,
@@ -110,12 +116,18 @@ final class BillingInvoicesTool implements AgentTool
                 'status' => $status,
             ];
             $lines[] = "{$invoice->full_number} on {$date}: {$formatted} ({$status})";
+            $entities[] = EntityRef::invoice($invoice);
         }
 
         $display = $lines === []
             ? 'No issued invoices found.'
             : 'Issued invoices: '.implode('; ', $lines).'.';
 
-        return ToolResult::ok(['invoices' => $rows], $display, $facts);
+        return ToolResult::ok(
+            ['invoices' => $rows, 'contact_id' => $contactId],
+            $display,
+            $facts,
+            entities: $entities,
+        );
     }
 }

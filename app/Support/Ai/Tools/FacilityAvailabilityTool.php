@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\Unit;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Occupancy\Availability;
 use App\Support\Time\SiteClock;
@@ -128,6 +129,8 @@ final class FacilityAvailabilityTool implements AgentTool
 
         $facts = new FactBag;
         $lines = [];
+        $entities = [];
+        $seen = [];
         foreach ($groups as $group) {
             $facts->number($group['count']);
             if ($group['size'] !== null) {
@@ -139,6 +142,26 @@ final class FacilityAvailabilityTool implements AgentTool
             $n = $group['count'];
             $unitWord = $n === 1 ? 'unit' : 'units';
             $lines[] = "{$n} {$unitWord} available in {$group['label']}{$sizeBit} at {$group['site_name']} as of now.";
+
+            $siteKey = 'site:'.$group['site_id'];
+            if (! isset($seen[$siteKey])) {
+                $seen[$siteKey] = true;
+                $entities[] = EntityRef::of(
+                    EntityType::Site,
+                    $group['site_id'],
+                    $group['site_name'],
+                );
+            }
+            $classKey = 'unit_class:'.$group['unit_class_id'].':'.$group['site_id'];
+            if (! isset($seen[$classKey])) {
+                $seen[$classKey] = true;
+                $entities[] = EntityRef::of(
+                    EntityType::UnitClass,
+                    $group['unit_class_id'],
+                    $group['label'],
+                    $group['site_name'],
+                );
+            }
         }
 
         $asOf = 'now';
@@ -165,6 +188,7 @@ final class FacilityAvailabilityTool implements AgentTool
             ],
             $display,
             $facts,
+            entities: $entities,
         );
     }
 }

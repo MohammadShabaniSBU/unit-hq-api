@@ -75,9 +75,11 @@ final class AccessStatusTool implements AgentTool
                 [
                     'status' => 'suspended',
                     'reason' => $reason,
+                    'contract_id' => $contract->id,
                 ],
                 $display,
                 new FactBag,
+                entities: [EntityRef::contract($contract)],
             );
         }
 
@@ -102,9 +104,11 @@ final class AccessStatusTool implements AgentTool
                 [
                     'status' => 'overlocked',
                     'reason' => 'overlock',
+                    'contract_id' => $contract->id,
                 ],
                 'Access is currently overlocked. A teammate will take this from here.',
                 new FactBag,
+                entities: [EntityRef::contract($contract)],
             );
         }
 
@@ -112,9 +116,11 @@ final class AccessStatusTool implements AgentTool
             [
                 'status' => 'active',
                 'reason' => null,
+                'contract_id' => $contract->id,
             ],
             'Access is currently active.',
             new FactBag,
+            entities: [EntityRef::contract($contract)],
         );
     }
 }

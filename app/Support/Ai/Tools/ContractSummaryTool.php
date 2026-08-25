@@ -93,6 +93,14 @@ final class ContractSummaryTool implements AgentTool
         $unitBit = $unitNumber !== null ? "unit {$unitNumber}" : 'a unit';
         $display = "Contract {$contract->id} at {$siteName}, {$unitBit}, started {$start}, billed {$cadence} at {$rateDisplay}, status {$status}.";
 
+        $entities = [EntityRef::contract($contract, $site?->name)];
+        if ($site !== null) {
+            $entities[] = EntityRef::site($site);
+        }
+        if ($unit instanceof Unit) {
+            $entities[] = EntityRef::unit($unit, $site?->name);
+        }
+
         return ToolResult::ok(
             [
                 'contract_id' => $contract->id,
@@ -107,6 +115,7 @@ final class ContractSummaryTool implements AgentTool
             ],
             $display,
             $facts,
+            entities: $entities,
         );
     }
 }

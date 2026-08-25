@@ -119,6 +119,10 @@ final class CrmCreateDealTool implements AgentTool
             (new FactBag)->identifier((string) $deal->id)->number($deal->id)->number($contact->id),
             resultType: 'deal',
             resultId: $deal->id,
+            entities: [
+                EntityRef::deal($deal),
+                EntityRef::contact($contact),
+            ],
         );
     }
 }

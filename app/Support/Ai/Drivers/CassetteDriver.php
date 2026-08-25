@@ -7,6 +7,7 @@ namespace App\Support\Ai\Drivers;
 use App\Models\Contact;
 use App\Support\Ai\Eval\CassetteStore;
 use App\Support\Ai\Eval\EvalUnexpectedModelCallException;
+use App\Support\Ai\Tools\ArgumentBag;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Responses\Data\Usage;
@@ -82,7 +83,7 @@ final class CassetteDriver implements ModelDriver
             $toolCalls[] = [
                 'name' => (string) ($call['name'] ?? ''),
                 'id' => (string) ($call['id'] ?? 'call_'.($i + 1)),
-                'arguments' => is_array($call['arguments'] ?? null) ? $call['arguments'] : [],
+                'arguments' => ArgumentBag::normalise($call['arguments'] ?? []),
             ];
         }
 

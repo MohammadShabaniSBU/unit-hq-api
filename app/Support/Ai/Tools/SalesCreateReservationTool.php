@@ -170,6 +170,16 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
             $payload['offer_option_id'] = $offerOptionId;
         }
 
+        $deal->loadMissing('contact');
+        $entities = [
+            EntityRef::deal($deal),
+            EntityRef::site($site),
+            EntityRef::unitClass($class, $site),
+        ];
+        if ($deal->contact !== null) {
+            $entities[] = EntityRef::contact($deal->contact);
+        }
+
         return ToolResult::ok(
             [
                 'payload' => $payload,
@@ -183,6 +193,7 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
             ],
             '',
             new FactBag,
+            entities: $entities,
         );
     }
 
@@ -243,6 +254,17 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
         // model output to silence a grounding failure.
         $facts->absorb($display);
 
+        $entities = [
+            EntityRef::reservation($reservation),
+            EntityRef::site($site),
+        ];
+        if ($reservation->unit !== null) {
+            $entities[] = EntityRef::unit($reservation->unit, $site->name);
+            if ($class !== null) {
+                $entities[] = EntityRef::unitClass($class, $site);
+            }
+        }
+
         return ToolResult::ok(
             [
                 'reservation_id' => $reservation->id,
@@ -255,6 +277,7 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
             resultType: 'reservation',
             resultId: $reservation->id,
             licensedClaims: [ForbiddenClaimKey::AvailabilityGuarantee],
+            entities: $entities,
         );
     }
 

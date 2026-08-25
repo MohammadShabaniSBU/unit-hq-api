@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Tools;
 
+use App\Models\Contact;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 
 final class SalesProposeOfferTool implements AgentTool
@@ -121,11 +123,30 @@ final class SalesProposeOfferTool implements AgentTool
         }
         $bits[] = 'Nothing has been sent or saved.';
 
+        $entities = [
+            EntityRef::site($site),
+            EntityRef::unitClass($class, $site),
+        ];
+        if ($line->discountId !== null && $line->discountLabel !== null) {
+            $entities[] = EntityRef::of(
+                EntityType::Discount,
+                $line->discountId,
+                $line->discountLabel,
+            );
+        }
+        $contactId = isset($arguments['contact_id']) ? (int) $arguments['contact_id'] : null;
+        if ($contactId !== null) {
+            $contact = Contact::query()->find($contactId);
+            if ($contact !== null) {
+                $entities[] = EntityRef::contact($contact);
+            }
+        }
+
         return ToolResult::ok(
             [
                 'site_id' => $site->id,
                 'unit_class_id' => $class->id,
-                'contact_id' => isset($arguments['contact_id']) ? (int) $arguments['contact_id'] : null,
+                'contact_id' => $contactId,
                 'line_items' => [
                     [
                         'label' => $class->label,
@@ -148,6 +169,7 @@ final class SalesProposeOfferTool implements AgentTool
             ],
             implode(' ', $bits),
             $facts,
+            entities: $entities,
         );
     }
 }

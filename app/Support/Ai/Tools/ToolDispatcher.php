@@ -15,6 +15,23 @@ use LogicException;
 
 final class ToolDispatcher
 {
+    /**
+     * Pinned gate order. `dispatch()` walks this list. S25-01 fills provenance.
+     *
+     * @var list<string>
+     */
+    public const GATE_SEQUENCE = [
+        'allowlist',
+        'policy_off',
+        'verification',
+        'schema',
+        'provenance',
+        'ownership',
+        'idempotency',
+        'quota',
+        'propose_or_handle',
+    ];
+
     public function __construct(
         private readonly ToolRegistry $registry,
         private readonly AgentWritePolicyGate $writePolicy,
@@ -30,43 +47,107 @@ final class ToolDispatcher
         array $arguments,
         ?AgentContext $ctx = null,
     ): ToolResult {
-        if (! in_array($toolKey, $definition->toolKeys(), true)) {
+        $state = new ToolDispatchState(
+            $definition,
+            $principal,
+            $toolKey,
+            ArgumentBag::normalise($arguments),
+            $ctx,
+        );
+
+        foreach (self::GATE_SEQUENCE as $gate) {
+            $result = $this->runGate($gate, $state);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        throw new LogicException('GATE_SEQUENCE did not produce a result.');
+    }
+
+    private function runGate(string $gate, ToolDispatchState $state): ?ToolResult
+    {
+        return match ($gate) {
+            'allowlist' => $this->gateAllowlist($state),
+            'policy_off' => $this->gatePolicyOff($state),
+            'verification' => $this->gateVerification($state),
+            'schema' => $this->gateSchema($state),
+            'provenance' => $this->denyIfUnlicensed($state),
+            'ownership' => $this->gateOwnership($state),
+            'idempotency' => $this->gateIdempotency($state),
+            'quota' => $this->gateQuota($state),
+            'propose_or_handle' => $this->gateProposeOrHandle($state),
+            default => throw new LogicException("Unknown dispatch gate [{$gate}]."),
+        };
+    }
+
+    private function gateAllowlist(ToolDispatchState $state): ?ToolResult
+    {
+        if (! in_array($state->toolKey, $state->definition->toolKeys(), true)) {
             return ToolResult::denied(
                 ToolDeniedReason::NotAllowedForAgent,
-                "Tool [{$toolKey}] is not allowed for agent [{$definition->key()}].",
+                "Tool [{$state->toolKey}] is not allowed for agent [{$state->definition->key()}].",
             );
         }
 
-        if (! $this->registry->has($toolKey)) {
-            return ToolResult::error("Tool [{$toolKey}] is not registered.");
+        if (! $this->registry->has($state->toolKey)) {
+            return ToolResult::error("Tool [{$state->toolKey}] is not registered.");
         }
 
-        $tool = $this->registry->get($toolKey);
-        $policy = $ctx !== null ? $this->writePolicy->resolvePolicy($ctx, $toolKey) : null;
+        $state->tool = $this->registry->get($state->toolKey);
+        $state->policy = $state->ctx !== null
+            ? $this->writePolicy->resolvePolicy($state->ctx, $state->toolKey)
+            : null;
 
-        $off = $this->writePolicy->denyIfOff($policy);
-        if ($off !== null) {
-            return $off;
+        return null;
+    }
+
+    private function gatePolicyOff(ToolDispatchState $state): ?ToolResult
+    {
+        return $this->writePolicy->denyIfOff($state->policy);
+    }
+
+    private function gateVerification(ToolDispatchState $state): ?ToolResult
+    {
+        $tool = $state->tool();
+        $required = $this->writePolicy->effectiveVerification($tool, $state->policy);
+        if ($state->principal->verification->satisfies($required)) {
+            return null;
         }
 
-        $required = $this->writePolicy->effectiveVerification($tool, $policy);
-        if (! $principal->verification->satisfies($required)) {
-            return ToolResult::denied(
-                ToolDeniedReason::Verification,
-                "Verification level [{$principal->verification->value}] does not satisfy [{$required->value}].",
-            );
-        }
+        return ToolResult::denied(
+            ToolDeniedReason::Verification,
+            "Verification level [{$state->principal->verification->value}] does not satisfy [{$required->value}].",
+        );
+    }
 
-        $schemaError = $this->validateArguments($tool, $arguments);
+    private function gateSchema(ToolDispatchState $state): ?ToolResult
+    {
+        $tool = $state->tool();
+        $schemaError = $this->validateArguments($tool, $state->arguments);
         if ($schemaError !== null) {
-            return ToolResult::error($schemaError);
+            return ToolResult::fail(ToolError::invalidArguments($schemaError));
         }
 
-        $arguments = $this->coerceArguments($tool, $arguments);
+        $state->arguments = $this->coerceArguments($tool, $state->arguments);
 
+        return null;
+    }
+
+    /**
+     * Argument provenance. S25-01 fills this; today it is a no-op so the slot exists.
+     */
+    private function denyIfUnlicensed(ToolDispatchState $state): ?ToolResult
+    {
+        return null;
+    }
+
+    private function gateOwnership(ToolDispatchState $state): ?ToolResult
+    {
+        $tool = $state->tool();
         foreach ($tool->contactScopedArgumentKeys() as $key) {
-            $value = $arguments[$key] ?? null;
-            if ($value === null || $value === '' || ! $principal->ownsContact((int) $value)) {
+            $value = $state->arguments[$key] ?? null;
+            if ($value === null || $value === '' || ! $state->principal->ownsContact((int) $value)) {
                 return ToolResult::denied(
                     ToolDeniedReason::Ownership,
                     "Argument [{$key}] does not belong to this principal.",
@@ -74,31 +155,46 @@ final class ToolDispatcher
             }
         }
 
-        if ($ctx !== null && $tool->isWrite()) {
-            $replay = $this->writePolicy->replay($ctx, $tool, $arguments);
-            if ($replay !== null) {
-                return $replay;
-            }
+        return null;
+    }
 
-            $quota = $this->writePolicy->denyIfQuotaExceeded($ctx, $tool, $policy);
-            if ($quota !== null) {
-                return $quota;
-            }
+    private function gateIdempotency(ToolDispatchState $state): ?ToolResult
+    {
+        $tool = $state->tool();
+        if ($state->ctx === null || ! $tool->isWrite()) {
+            return null;
         }
 
-        if ($this->writePolicy->isPropose($policy)) {
-            return $this->dispatchPropose($tool, $principal, $arguments, $ctx);
+        return $this->writePolicy->replay($state->ctx, $tool, $state->arguments);
+    }
+
+    private function gateQuota(ToolDispatchState $state): ?ToolResult
+    {
+        $tool = $state->tool();
+        if ($state->ctx === null || ! $tool->isWrite()) {
+            return null;
         }
 
-        $result = $tool->handle($principal, $arguments, $ctx);
+        return $this->writePolicy->denyIfQuotaExceeded($state->ctx, $tool, $state->policy);
+    }
+
+    private function gateProposeOrHandle(ToolDispatchState $state): ToolResult
+    {
+        $tool = $state->tool();
+
+        if ($this->writePolicy->isPropose($state->policy)) {
+            return $this->dispatchPropose($tool, $state->principal, $state->arguments, $state->ctx);
+        }
+
+        $result = $tool->handle($state->principal, $state->arguments, $state->ctx);
 
         if (
-            $ctx !== null
+            $state->ctx !== null
             && $tool->isWrite()
             && $result->status === ToolInvocationStatus::Ok
         ) {
             $result = $result->withIdempotencyKey(
-                $this->writePolicy->idempotencyKey($ctx->conversation->id, $tool->key(), $arguments),
+                $this->writePolicy->idempotencyKey($state->ctx->conversation->id, $tool->key(), $state->arguments),
             );
         }
 
@@ -139,6 +235,7 @@ final class ToolDispatcher
             CannedReply::pendingApproval($principal->locale),
             $payload,
             $preview,
+            $proposed->entities,
         );
     }
 

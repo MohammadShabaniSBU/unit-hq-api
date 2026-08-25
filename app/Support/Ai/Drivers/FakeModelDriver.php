@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Drivers;
 
+use App\Support\Ai\Tools\ArgumentBag;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Responses\Data\Usage;
@@ -47,7 +48,7 @@ final class FakeModelDriver implements ModelDriver
             $normalized[] = [
                 'name' => $call['name'],
                 'id' => $call['id'] ?? 'call_'.($i + 1),
-                'arguments' => $call['arguments'] ?? [],
+                'arguments' => ArgumentBag::normalise($call['arguments'] ?? []),
             ];
         }
 

@@ -178,6 +178,15 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             ];
         }
 
+        $deal->loadMissing('contact');
+        $entities = [
+            EntityRef::deal($deal),
+            EntityRef::site($site),
+        ];
+        if ($deal->contact !== null) {
+            $entities[] = EntityRef::contact($deal->contact);
+        }
+
         return ToolResult::ok(
             [
                 'payload' => [
@@ -193,6 +202,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             ],
             '',
             new FactBag,
+            entities: $entities,
         );
     }
 
@@ -300,6 +310,19 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         // — never call absorb() on model output to silence a grounding failure.
         $facts->absorb($display);
 
+        $entities = [
+            EntityRef::offer($offer),
+            EntityRef::site($site),
+        ];
+        foreach ($offer->options as $created) {
+            if ($created->unit_id !== null) {
+                $unit = Unit::query()->find($created->unit_id);
+                if ($unit !== null) {
+                    $entities[] = EntityRef::unit($unit, $site->name);
+                }
+            }
+        }
+
         return ToolResult::ok(
             [
                 'offer_id' => $offer->id,
@@ -311,6 +334,7 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
             $facts,
             resultType: 'offer',
             resultId: $offer->id,
+            entities: $entities,
         );
     }
 }

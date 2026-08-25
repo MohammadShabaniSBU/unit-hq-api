@@ -7,6 +7,7 @@ namespace App\Support\Ai\Tools;
 use App\Models\Discount;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Discounts\DiscountSurface;
@@ -65,11 +66,17 @@ final class PricingDiscountsTool implements AgentTool
 
         $facts = new FactBag;
         $extractor = new DraftTokenExtractor;
+        $entities = [];
         foreach ($rows as $row) {
             $facts->identifier((string) $row['id']);
             foreach ($extractor->extractPercents((string) $row['display']) as $percent) {
                 $facts->percent($percent);
             }
+            $entities[] = EntityRef::of(
+                EntityType::Discount,
+                $row['id'],
+                $row['label'],
+            );
         }
 
         $display = $rows === []
@@ -79,6 +86,6 @@ final class PricingDiscountsTool implements AgentTool
                 $rows,
             ));
 
-        return ToolResult::ok(['discounts' => $rows], $display, $facts);
+        return ToolResult::ok(['discounts' => $rows], $display, $facts, entities: $entities);
     }
 }

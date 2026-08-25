@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Support\Ai\Tools;
 
 use App\Enums\LogChannel;
+use App\Models\Contact;
 use App\Models\Note;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
 
 final class CrmCreateNoteTool implements AgentTool
@@ -96,6 +98,16 @@ final class CrmCreateNoteTool implements AgentTool
             (new FactBag)->identifier((string) $note->id)->number($note->id),
             resultType: 'note',
             resultId: $note->id,
+            entities: [
+                EntityRef::note($note),
+                EntityRef::of(
+                    EntityType::from($parent->getMorphClass()),
+                    (int) $parent->getKey(),
+                    $parent instanceof Contact
+                        ? trim($parent->first_name.' '.$parent->last_name)
+                        : 'deal '.$parent->getKey(),
+                ),
+            ],
         );
     }
 }

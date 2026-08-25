@@ -126,6 +126,46 @@ class AgentRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function repeated_unresolved_site_info_stops_at_the_tool_call_bound(): void
+    {
+        $agent = AiAgent::factory()->create([
+            'key' => 'sales',
+            'name' => 'sales',
+            'is_active' => true,
+        ]);
+        $conversation = AgentConversation::factory()->anonymous()->create([
+            'ai_agent_id' => $agent->id,
+            'site_id' => null,
+        ]);
+
+        $max = (int) config('agents.max_tool_calls_per_turn');
+        for ($i = 0; $i < $max + 3; $i++) {
+            $this->driver->enqueueToolCalls([[
+                'name' => 'facility.site_info',
+                'id' => 'c'.$i,
+                'arguments' => [],
+            ]]);
+        }
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'where are you based?',
+        );
+
+        $this->assertLessThanOrEqual($max, count($turn->invocations));
+        $this->assertNotNull($turn->handoff);
+        $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
+        $this->assertNotSame(HandoffReason::TurnLimit, $turn->handoff->reason);
+        $this->assertSame('max_tool_calls_per_turn', $turn->handoff->detail['detail'] ?? null);
+        $this->assertLessThan(
+            (int) config('agents.max_turns'),
+            $conversation->messages()->where('role', AgentMessageRole::Assistant)->count(),
+        );
+        $this->assertDriverNotWrappedInRuntimeTransaction();
+    }
+
+    #[Test]
     public function turn_cap_handoffs_turn_limit_without_model_call(): void
     {
         $conversation = $this->conversation('support');

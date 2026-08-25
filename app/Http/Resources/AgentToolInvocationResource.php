@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Support\Ai\Tools\ArgumentBag;
 use Illuminate\Http\Request;
 
 class AgentToolInvocationResource extends BaseResource
@@ -14,7 +15,9 @@ class AgentToolInvocationResource extends BaseResource
         return [
             'id' => $this->id,
             'tool_key' => $this->tool_key,
-            'arguments' => $this->arguments,
+            'arguments' => ArgumentBag::jsonReady(
+                is_array($this->arguments) ? $this->arguments : [],
+            ),
             'result' => $this->result,
             'result_summary' => $this->result_summary,
             'status' => $this->status instanceof \BackedEnum ? $this->status->value : $this->status,

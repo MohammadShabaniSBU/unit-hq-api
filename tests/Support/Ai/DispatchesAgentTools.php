@@ -18,6 +18,7 @@ use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\PendingActionRecorder;
+use App\Support\Ai\Tools\ArgumentBag;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolResult;
 
@@ -90,9 +91,9 @@ trait DispatchesAgentTools
         $invocation = AgentToolInvocation::query()->create([
             'agent_conversation_id' => $ctx->conversation->id,
             'tool_key' => $toolKey,
-            'arguments' => $arguments,
-            'result' => $result->data !== [] ? $result->data : null,
-            'result_summary' => $result->display !== '' ? $result->display : $result->message,
+            'arguments' => ArgumentBag::normalise($arguments),
+            'result' => $result->toTraceResult(),
+            'result_summary' => $result->display,
             'status' => $result->status,
             'denied_reason' => $result->deniedReason,
             'required_verification' => null,

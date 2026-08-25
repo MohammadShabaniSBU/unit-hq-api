@@ -62,9 +62,10 @@ final class BillingNextChargeTool implements AgentTool
         $estimate = RecurringBilling::nextBillEstimate($contract);
         if ($estimate === null) {
             return ToolResult::ok(
-                ['next' => null],
+                ['next' => null, 'contract_id' => $contract->id],
                 'There is no upcoming charge on this contract.',
                 new FactBag,
+                entities: [EntityRef::contract($contract)],
             );
         }
 
@@ -82,8 +83,14 @@ final class BillingNextChargeTool implements AgentTool
 
         $facts = (new FactBag)->money($amount, $currency)->date($due);
 
+        $entities = [EntityRef::contract($contract)];
+        if ($site !== null) {
+            $entities[] = EntityRef::site($site);
+        }
+
         return ToolResult::ok(
             [
+                'contract_id' => $contract->id,
                 'due_date' => $due,
                 'period_end' => $estimate['window']['end'],
                 'amount' => $amount,
@@ -91,6 +98,7 @@ final class BillingNextChargeTool implements AgentTool
             ],
             "Next charge {$formatted} due {$due}.",
             $facts,
+            entities: $entities,
         );
     }
 }

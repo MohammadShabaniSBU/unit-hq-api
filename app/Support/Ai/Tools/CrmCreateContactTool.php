@@ -92,6 +92,7 @@ final class CrmCreateContactTool implements AgentTool
                 (new FactBag)->identifier((string) $matched->id)->number($matched->id),
                 resultType: 'contact',
                 resultId: $matched->id,
+                entities: [EntityRef::contact($matched)],
             );
         }
 
@@ -150,6 +151,7 @@ final class CrmCreateContactTool implements AgentTool
             (new FactBag)->identifier((string) $contact->id)->number($contact->id),
             resultType: 'contact',
             resultId: $contact->id,
+            entities: [EntityRef::contact($contact)],
         );
     }
 

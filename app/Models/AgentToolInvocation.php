@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\Tools\ArgumentBagCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,7 +65,7 @@ class AgentToolInvocation extends Model
     protected function casts(): array
     {
         return [
-            'arguments' => 'array',
+            'arguments' => ArgumentBagCast::class,
             'result' => 'array',
             'status' => ToolInvocationStatus::class,
             'denied_reason' => ToolDeniedReason::class,

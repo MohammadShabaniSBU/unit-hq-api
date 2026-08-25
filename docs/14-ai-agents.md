@@ -119,21 +119,37 @@ that covers one caller is not a switch.
 Timeouts (`agents.turn_timeout_ms`) become a handoff `error`, never a partial
 send.
 
-### Four dispatch gates (`ToolDispatcher`)
+### Dispatch gates (`ToolDispatcher`)
 
-Authorization happens **before** `AgentTool::handle()` is reached:
+Authorization happens **before** `AgentTool::handle()` is reached.
+`ToolDispatcher::GATE_SEQUENCE` is the order `dispatch()` walks:
 
-1. Tool is in the current `AgentDefinition::toolKeys()` → else
+1. Tool is in the current `AgentDefinition::toolKeys()` (and registered) → else
    `denied: not_allowed_for_agent`
-2. `principal.verification.satisfies(tool.requiredVerification())` → else
+2. Policy `mode = off` → `denied: not_allowed_for_agent`
+3. `principal.verification.satisfies(effectiveVerification())` → else
    `denied: verification`
-3. Arguments validate against `schema()` → else `error`
-4. Contact-scoped arguments match `principal->ownsContact()` → else
+4. Arguments validate against `schema()` → else `error` /
+   `error_code: invalid_arguments`. A malformed call is not a retryable write
+   and consumes no idempotency slot and no quota.
+5. Argument provenance (`denyIfUnlicensed`) — no-op until S25-01
+6. Contact-scoped arguments match `principal->ownsContact()` → else
    `denied: ownership`
-5. `handle($principal, $arguments, $ctx)`
+7. Idempotency replay (write tools)
+8. Quota (write tools)
+9. `propose` or `handle($principal, $arguments, $ctx)`
+
+An empty argument bag is an object (`{}`), never a JSON list. `ArgumentBag`
+normalises at the model-response boundary; `agent_tool_invocations.arguments`
+uses `ArgumentBagCast`.
 
 A tool that re-checks internally is fine; a tool that *only* checks internally
 is a defect (invariant 56).
+
+`denied_reason` is the gate vocabulary (`verification`, `ownership`, `quota_exceeded`,
+…). `error_code` (`ToolErrorCode`) is the machine code. A provenance denial has
+both. Denial and failure `display` is a recovery-oriented one-liner; the
+developer `message` is trace-only and is never fed to the model.
 
 ### `ModelDriver`
 
@@ -166,14 +182,43 @@ feeds the system prompt (length / register) and `ChannelGuard`:
 WhatsApp `requiresTemplateOutsideWindow` is a trace advisory until a real
 thread supplies `last_inbound_at` (`06-communications.md` / `WhatsAppWindow`).
 
-### `ToolResult` and `FactBag`
+### `ToolResult`, identity echo, and `FactBag`
 
 Tools never return a raw number for the model to format. `display` is
 pre-rendered prose the model may quote (`BillingMath` / `MoneyDisplay` for
-money; exclusive tax, currency from the price row — D1, invariant 30).
+money; exclusive tax, currency from the price row — D1, invariant 30). It is
+the single line fed to the model (and stored as `result_summary`). Structured
+`data` and `entities` persist on the invocation row and stay out of model
+context.
+
+`entities` is `Array<EntityRef>` — `{ type, id, label, context }` — every
+entity the result names. A payload that contains `site_id` / `unit_class_id`
+(or any other entity id) must list a matching ref. `EntityType` morph-overlapping
+cases (`contact`, `deal`, `offer`, `reservation`, `contract`, `unit`, `invoice`,
+`task`, `note`) use the morph-map alias verbatim; non-morph additions are
+`site`, `unit_class`, `discount`.
+
+The invocation `result` JSON **merges at top level**: payload keys sit beside
+reserved siblings `entities` and optional `error`
+(`{ code, message, recovery, candidates }`). `data` itself must not declare
+those keys. Historical rows without them remain valid (missing `entities` = none).
+Replay strips the reserved keys before reconstructing in-memory `data`.
+
+Tool failures return `ToolError` (`error_code` + developer `message` + optional
+`recovery: { tool, hint }` + `candidates`). `facility.site_info` with no site
+in arguments and no site on the principal returns `site_unresolved` with
+`recovery.tool = facility.find_sites` and does **not** set `handoffReason` —
+the tool loop continues until `max_tool_calls_per_turn`.
+
 `facts` licenses every amount, date, unit identifier, and percent the draft
 may emit. `GroundingGuard` diffs the draft against the turn `FactBag`
 (plus facts already licensed by earlier unblocked assistant turns).
+
+Eval cassettes (`CassetteKey`) hash the system prompt and tool schema assembly
+(`key`, `description`, `schema`). `display` does **not** participate — it is
+instance-specific. A task that changes a prompt-visible `display` string must
+re-record affected cassettes (`agent:replay --live --record`). S25-03 rewrites
+`pricing.quote`'s summary and must re-record those cassettes.
 
 ## Tool catalogue
 

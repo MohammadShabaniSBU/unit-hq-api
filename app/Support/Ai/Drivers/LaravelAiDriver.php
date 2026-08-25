@@ -6,6 +6,7 @@ namespace App\Support\Ai\Drivers;
 
 use App\Support\Ai\AiProviderRegistry;
 use App\Support\Ai\Tools\AgentTool;
+use App\Support\Ai\Tools\ArgumentBag;
 use Closure;
 use Generator;
 use Illuminate\Http\Client\ConnectionException;
@@ -196,7 +197,7 @@ final class LaravelAiDriver implements ModelDriver
             $toolCalls[] = [
                 'name' => $names->fromWire($call->name),
                 'id' => $call->id,
-                'arguments' => $call->arguments,
+                'arguments' => ArgumentBag::normalise($call->arguments),
             ];
         }
 

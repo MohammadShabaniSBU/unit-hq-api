@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Models\Contact;
 use App\Models\Site;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Enums\ToolDeniedReason;
+use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\CannedReply;
@@ -90,6 +92,7 @@ class ToolDispatchTest extends TestCase
         );
 
         $this->assertSame(ToolInvocationStatus::Error, $wrongType->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $wrongType->error?->errorCode);
         $this->assertFalse($this->spy->handleCalled);
     }
 
@@ -327,6 +330,94 @@ class ToolDispatchTest extends TestCase
                 'label' => 'Small',
             ]],
         ], $spy->lastArguments);
+    }
+
+    #[Test]
+    public function gate_sequence_is_pinned(): void
+    {
+        $this->assertSame([
+            'allowlist',
+            'policy_off',
+            'verification',
+            'schema',
+            'provenance',
+            'ownership',
+            'idempotency',
+            'quota',
+            'propose_or_handle',
+        ], ToolDispatcher::GATE_SEQUENCE);
+    }
+
+    #[Test]
+    public function missing_required_argument_is_invalid_arguments_and_consumes_no_idempotency_or_quota(): void
+    {
+        $write = new SpyTool(
+            key: 'test.write',
+            required: VerificationLevel::Anonymous,
+            contactKeys: [],
+            throwOnHandle: true,
+            write: true,
+            schema: [
+                'title' => [
+                    'type' => 'string',
+                    'required' => true,
+                    'description' => 'Title',
+                ],
+            ],
+        );
+        app(ToolRegistry::class)->register($write);
+        $definition = new TestAgentDefinition('test-write-schema', ['test.write']);
+        app(AgentRegistry::class)->register($definition);
+
+        $principal = AgentPrincipal::anonymous(null, 'en');
+        $ctx = $this->writeContext($principal, 'test-write-schema');
+        AgentWritePolicy::factory()->create([
+            'ai_agent_id' => $ctx->agent->id,
+            'tool_key' => 'test.write',
+            'max_per_conversation' => 1,
+        ]);
+        $ctx->agent->load('writePolicies');
+
+        $result = $this->dispatcher->dispatch(
+            $definition,
+            $principal,
+            'test.write',
+            [],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertFalse($write->handleCalled);
+        $this->assertNull($result->idempotencyKey);
+        $this->assertSame(0, AgentToolInvocation::query()->where('idempotency_key', '!=', null)->count());
+
+        $ok = new SpyTool(
+            key: 'test.write',
+            required: VerificationLevel::Anonymous,
+            contactKeys: [],
+            throwOnHandle: false,
+            write: true,
+            schema: [
+                'title' => [
+                    'type' => 'string',
+                    'required' => true,
+                    'description' => 'Title',
+                ],
+            ],
+        );
+        app(ToolRegistry::class)->register($ok);
+
+        $committed = $this->dispatcher->dispatch(
+            $definition,
+            $principal,
+            'test.write',
+            ['title' => 'ok'],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $committed->status);
+        $this->assertNotNull($committed->idempotencyKey);
     }
 
     private function registerNestedSpy(bool $throwOnHandle = true): SpyTool

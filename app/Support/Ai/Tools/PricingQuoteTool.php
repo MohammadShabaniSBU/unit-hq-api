@@ -108,6 +108,8 @@ final class PricingQuoteTool implements AgentTool
             [
                 'unit_class_id' => $classId,
                 'site_id' => $siteId,
+                'label' => $class->label,
+                'site_name' => $site->name,
                 'net' => $breakdown->net,
                 'tax' => $breakdown->tax,
                 'gross' => $breakdown->gross,
@@ -116,6 +118,10 @@ final class PricingQuoteTool implements AgentTool
             ],
             $display,
             $facts,
+            entities: [
+                EntityRef::unitClass($class, $site),
+                EntityRef::site($site),
+            ],
         );
     }
 }

@@ -94,10 +94,14 @@ final class BillingBalanceTool implements AgentTool
             ? 'There is no open balance.'
             : 'Open balance: '.implode('; ', $lines).'. These amounts are not added together.';
 
+        $contact = \App\Models\Contact::query()->find($contactId);
+        $entities = $contact !== null ? [EntityRef::contact($contact)] : [];
+
         return ToolResult::ok(
-            ['balances' => $entries],
+            ['balances' => $entries, 'contact_id' => $contactId],
             $display,
             $facts,
+            entities: $entities,
         );
     }
 }

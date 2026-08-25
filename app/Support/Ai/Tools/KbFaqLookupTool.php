@@ -67,13 +67,24 @@ final class KbFaqLookupTool implements AgentTool
             return ToolResult::notFound("No FAQ snippet for key [{$key}].");
         }
 
+        $entities = [];
+        if ($site !== null) {
+            $entities[] = EntityRef::site($site);
+        }
+
+        $data = [
+            'key' => $key,
+            'snippet' => $snippet,
+        ];
+        if ($site !== null) {
+            $data['site_id'] = $site->id;
+        }
+
         return ToolResult::ok(
-            [
-                'key' => $key,
-                'snippet' => $snippet,
-            ],
+            $data,
             $snippet,
             (new FactBag)->absorb($snippet, $site),
+            entities: $entities,
         );
     }
 }

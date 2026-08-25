@@ -30,6 +30,7 @@ use App\Support\Ai\Guards\GuardrailVerdict;
 use App\Support\Ai\Guards\HandoffMatch;
 use App\Support\Ai\Guards\InboundGuardPipeline;
 use App\Support\Ai\Tools\AgentTool;
+use App\Support\Ai\Tools\ArgumentBag;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
@@ -167,11 +168,12 @@ final class AgentRuntime
 
                 $escalate = null;
                 foreach ($toRun as $call) {
+                    $call['arguments'] = ArgumentBag::normalise($call['arguments'] ?? []);
                     $toolCallCount++;
                     if ($onEvent !== null) {
                         $onEvent('tool.started', [
                             'tool_key' => $call['name'],
-                            'arguments' => $call['arguments'],
+                            'arguments' => ArgumentBag::jsonReady($call['arguments']),
                         ]);
                     }
 
@@ -235,10 +237,10 @@ final class AgentRuntime
 
                     $messages[] = [
                         'role' => 'tool',
-                        'content' => $this->wrapUntrusted($result->display !== '' ? $result->display : ($result->message ?? '')),
+                        'content' => $this->wrapUntrusted($result->display),
                         'tool_call_id' => $call['id'],
                         'tool_name' => $call['name'],
-                        'arguments' => $call['arguments'],
+                        'arguments' => ArgumentBag::jsonReady($call['arguments']),
                     ];
 
                     if ($onEvent !== null) {
@@ -642,7 +644,7 @@ final class AgentRuntime
                 'agent_conversation_id' => $conversation->id,
                 'sequence' => $this->nextSequence($conversation),
                 'role' => AgentMessageRole::Tool,
-                'content' => $result->display !== '' ? $result->display : $result->message,
+                'content' => $result->display,
                 'tool_call_id' => $call['id'],
             ]);
         });
@@ -675,9 +677,9 @@ final class AgentRuntime
                     'agent_conversation_id' => $conversation->id,
                     'agent_conversation_message_id' => $assistantMessage->id,
                     'tool_key' => $call['name'],
-                    'arguments' => $call['arguments'],
-                    'result' => $result->data !== [] ? $result->data : null,
-                    'result_summary' => $result->display !== '' ? $result->display : $result->message,
+                    'arguments' => ArgumentBag::normalise($call['arguments'] ?? []),
+                    'result' => $result->toTraceResult(),
+                    'result_summary' => $result->display,
                     'status' => $result->status,
                     'denied_reason' => $result->deniedReason,
                     'required_verification' => $required,
