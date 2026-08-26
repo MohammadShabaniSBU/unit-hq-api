@@ -336,6 +336,7 @@ final class RoutePermissions
             'POST /api/comms-triage/{commsTriage}/discard' => Permission::InboxAssign, // CommsTriageController@discard
             'POST /api/inbox/attachments' => Permission::InboxSend, // MessageAttachmentController@store
             'POST /api/inbox/compose' => Permission::InboxSend, // InboxController@compose
+            'POST /api/inbox/threads/{messageThread}/agent/resume' => Permission::InboxSend, // InboxController@resume
             'POST /api/inbox/threads/{messageThread}/assign' => Permission::InboxAssign, // InboxController@assign
             'POST /api/inbox/threads/{messageThread}/read' => Permission::InboxView, // InboxController@read
             'POST /api/inbox/threads/{messageThread}/reply' => Permission::InboxSend, // InboxController@reply

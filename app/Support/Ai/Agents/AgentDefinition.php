@@ -6,6 +6,7 @@ namespace App\Support\Ai\Agents;
 
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\Enums\HandoffRuleKey;
+use App\Models\Contact;
 
 interface AgentDefinition
 {
@@ -39,4 +40,10 @@ interface AgentDefinition
      * @return list<string>
      */
     public function forbiddenClaims(): array;
+
+    /**
+     * Whether this agent should answer this contact at this site.
+     * Decline leaves the inbound unread in the Inbox.
+     */
+    public function eligible(?Contact $contact, ?int $siteId): bool;
 }

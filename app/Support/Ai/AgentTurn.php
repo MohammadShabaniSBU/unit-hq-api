@@ -28,5 +28,7 @@ final readonly class AgentTurn
         public ?string $blockedBy,
         public ?string $subject = null,
         public array $guardrailEvents = [],
+        public ?int $pendingActionId = null,
+        public ?int $emittedMessageId = null,
     ) {}
 }

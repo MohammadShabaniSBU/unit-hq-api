@@ -21,6 +21,8 @@ final class EntityArgumentExemptions
         'quoted_price_id',
         'quoted_tax_rate_id',
         'offer_option_id',
+        'message_thread_id',
+        'agent_conversation_message_id',
     ];
 
     public static function contains(string $key): bool

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support\Ai;
 
+use App\Models\Contact;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\Agents\AgentDefinition;
 
@@ -50,5 +51,10 @@ final class TestAgentDefinition implements AgentDefinition
     public function forbiddenClaims(): array
     {
         return [];
+    }
+
+    public function eligible(?Contact $contact, ?int $siteId): bool
+    {
+        return true;
     }
 }

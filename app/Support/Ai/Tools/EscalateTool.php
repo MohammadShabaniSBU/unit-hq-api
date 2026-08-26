@@ -27,7 +27,13 @@ final class EscalateTool implements AgentTool
             'reason' => [
                 'type' => 'string',
                 'required' => true,
-                'enum' => array_map(fn (HandoffReason $reason): string => $reason->value, HandoffReason::cases()),
+                'enum' => array_values(array_map(
+                    fn (HandoffReason $reason): string => $reason->value,
+                    array_filter(
+                        HandoffReason::cases(),
+                        fn (HandoffReason $reason): bool => $reason !== HandoffReason::ChannelConstraint,
+                    ),
+                )),
                 'description' => 'Handoff reason',
             ],
             'summary' => [

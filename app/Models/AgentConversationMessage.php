@@ -29,9 +29,11 @@ use Illuminate\Support\Carbon;
  * @property array<int, string>|null $fact_keys
  * @property string|null $principal_verification
  * @property int|null $emitted_message_id
+ * @property int|null $subject_message_id
  * @property Carbon $created_at
  * @property-read AgentConversation $conversation
  * @property-read Message|null $emittedMessage
+ * @property-read Message|null $subjectMessage
  */
 class AgentConversationMessage extends Model
 {
@@ -54,6 +56,7 @@ class AgentConversationMessage extends Model
         'fact_keys',
         'principal_verification',
         'emitted_message_id',
+        'subject_message_id',
     ];
 
     protected function casts(): array
@@ -75,5 +78,11 @@ class AgentConversationMessage extends Model
     public function emittedMessage(): BelongsTo
     {
         return $this->belongsTo(Message::class, 'emitted_message_id');
+    }
+
+    /** @return BelongsTo<Message, $this> */
+    public function subjectMessage(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'subject_message_id');
     }
 }

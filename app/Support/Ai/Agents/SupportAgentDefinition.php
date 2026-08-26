@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Agents;
 
+use App\Models\Contact;
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\AgentEligibility;
 use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
 
 final class SupportAgentDefinition implements AgentDefinition
@@ -32,6 +34,11 @@ final class SupportAgentDefinition implements AgentDefinition
             'kb.faq_lookup',
             'agent.escalate',
         ];
+    }
+
+    public function eligible(?Contact $contact, ?int $siteId): bool
+    {
+        return AgentEligibility::hasInForceContractAtSite($contact, $siteId);
     }
 
     protected function roleParagraph(AgentContext $ctx): string

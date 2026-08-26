@@ -34,6 +34,8 @@ class SettingController extends Controller
             'company_name'          => ['sometimes', 'required', 'string', 'max:255'],
             'company_contact_email' => ['sometimes', 'required', 'email', 'max:255'],
             'phone'                 => ['sometimes', 'required', 'string', 'max:50'],
+            'send_window_start'     => ['sometimes', 'required', 'date_format:H:i'],
+            'send_window_end'       => ['sometimes', 'nullable', 'date_format:H:i'],
             'email_accent_color'    => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'date_format'           => ['sometimes', 'required', 'string', Rule::in(DateFormat::values())],
         ]);
@@ -43,6 +45,8 @@ class SettingController extends Controller
                 companyName: $validated['company_name'] ?? null,
                 companyContactEmail: $validated['company_contact_email'] ?? null,
                 phone: $validated['phone'] ?? null,
+                sendWindowStart: $validated['send_window_start'] ?? null,
+                sendWindowEnd: array_key_exists('send_window_end', $validated) ? $validated['send_window_end'] : false,
                 emailAccentColor: $validated['email_accent_color'] ?? null,
                 dateFormat: $validated['date_format'] ?? null,
             )

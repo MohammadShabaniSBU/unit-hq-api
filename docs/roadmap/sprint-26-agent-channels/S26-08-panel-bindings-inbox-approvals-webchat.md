@@ -1,6 +1,7 @@
 # S26-08 — Panel: bindings settings, Inbox agent drafts and hand-back, public chat page
 
-**Depends on:** S26-06, S26-07
+**Depends on:** S26-06, S26-07 (bindings settings, Inbox card, hand-back);
+S26-07c for `/chat/:token` only
 **Blocks:** nothing
 **Touches:** `unit-hq-panel`
 
@@ -33,9 +34,12 @@ they are already looking at, and hand a thread back to the agent.
   the draft body (editable textarea prefilled), channel meta from
   `ChannelGuard` (segments for SMS, window countdown for WhatsApp — reuse
   the existing compose-context fields, do not re-implement), buttons
-  *Send*, *Edit & send*, *Discard*. Send/edit → `POST
-  /api/agent-pending-actions/{id}/approve` with optional `body` override;
-  discard → `/reject`. A superseded or expired action renders a muted note.
+  *Send*, *Edit & send*, *Discard*. *Send* → `POST
+  /api/agent-pending-actions/{id}/approve` (no body override). *Edit &
+  send* → reject with `resolution = edited`, then a normal inbox reply
+  with `agent_pending_action_id` (S26-07). Discard → `/reject` with
+  `resolution = discarded`. A superseded or expired action renders a
+  muted note.
 - **Agent badge** on thread rows and in the conversation header: "AI
   replied" / "AI draft pending" / "Handed off — {reason}" with the handoff
   summary from `agent_handoffs.detail` in a popover. Reason labels via i18n

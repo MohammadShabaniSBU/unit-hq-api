@@ -18,4 +18,5 @@ enum HandoffReason: string
     case BudgetExceeded = 'budget_exceeded';
     case TurnLimit = 'turn_limit';
     case Error = 'error';
+    case ChannelConstraint = 'channel_constraint';
 }

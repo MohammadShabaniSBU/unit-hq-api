@@ -123,9 +123,9 @@ final class PendingActionCommit
         return $outcome['row'];
     }
 
-    public function reject(AgentPendingAction $pending, Employee $approver, ?string $reason): AgentPendingAction
+    public function reject(AgentPendingAction $pending, Employee $approver, ?string $reason, string $resolution = 'discarded'): AgentPendingAction
     {
-        return DB::transaction(function () use ($pending, $approver, $reason): AgentPendingAction {
+        return DB::transaction(function () use ($pending, $approver, $reason, $resolution): AgentPendingAction {
             /** @var AgentPendingAction $row */
             $row = AgentPendingAction::query()->whereKey($pending->id)->lockForUpdate()->firstOrFail();
 
@@ -133,10 +133,14 @@ final class PendingActionCommit
                 throw new ConflictHttpException('This proposal is no longer pending.');
             }
 
+            $detail = is_array($row->detail) ? $row->detail : [];
+            $detail['resolution'] = $resolution;
+
             $row->status = PendingActionStatus::Rejected;
             $row->resolved_by_employee_id = $approver->id;
             $row->resolved_at = now();
             $row->rejection_reason = $reason;
+            $row->detail = $detail;
             $row->save();
 
             return $row;

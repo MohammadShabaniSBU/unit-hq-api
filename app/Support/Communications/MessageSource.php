@@ -11,4 +11,5 @@ enum MessageSource: string
     case Playbook = 'playbook';
     case Automation = 'automation';
     case System = 'system';
+    case AiAgent = 'ai_agent';
 }

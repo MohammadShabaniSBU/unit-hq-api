@@ -38,7 +38,9 @@ S26-00 ──┬── S26-01
          └── S26-03
 S26-04 (independent)
 S26-05 (independent)
-S26-06 ──── S26-07 ──── S26-08
+S26-06 ──── S26-07 ──┬── S26-07b
+                     ├── S26-07c
+                     └── S26-08
 S26-09 (last — invariants + docs)
 ```
 
@@ -46,6 +48,9 @@ S26-00 changes every `display` string and therefore every eval cassette;
 it lands first and re-records once. S26-01/02/03 depend on the refs line
 existing. S26-06 (bindings) must exist before S26-07 (listener) so the
 listener has something to check; there is no "temporarily enabled" state.
+S26-07b (auto-lead capture) and S26-07c (webchat) depend on S26-07 but
+are **not** gates on the sprint DoD. S26-08 Inbox work depends on S26-07;
+`/chat/:token` alone depends on S26-07c.
 
 ## Seeding rule for this sprint
 
@@ -61,7 +66,8 @@ conversation) through `agent:replay`: it must end with an `ok`
 `sales.create_offer` invocation, a deal with `expected_move_in` set, zero
 handoffs, and zero guardrail denials. Then send one real SMS to a demo site
 number with the sales binding in `draft` mode and approve the reply from the
-Inbox.
+Inbox. That SMS + approve loop needs S26-07 (and S26-08 for the Inbox
+card); S26-07b and S26-07c are not gates on this DoD.
 
 ## Convention notes for implementers
 

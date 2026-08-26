@@ -11,6 +11,7 @@ readonly class GeneralSettings implements SettingsPayload
         public string $companyContactEmail,
         public string $phone,
         public string $sendWindowStart = '09:00',
+        public ?string $sendWindowEnd = null,
         public string $emailAccentColor = '#1d4ed8',
         public string $dateFormat = DateFormat::DEFAULT,
     ) {}
@@ -22,6 +23,7 @@ readonly class GeneralSettings implements SettingsPayload
             companyContactEmail: '',
             phone: '',
             sendWindowStart: '09:00',
+            sendWindowEnd: null,
             emailAccentColor: '#1d4ed8',
             dateFormat: DateFormat::DEFAULT,
         );
@@ -40,6 +42,9 @@ readonly class GeneralSettings implements SettingsPayload
             sendWindowStart: is_string($data['send_window_start'] ?? null) && $data['send_window_start'] !== ''
                 ? $data['send_window_start']
                 : '09:00',
+            sendWindowEnd: is_string($data['send_window_end'] ?? null) && $data['send_window_end'] !== ''
+                ? $data['send_window_end']
+                : null,
             emailAccentColor: $accent,
             dateFormat: DateFormat::normalize(
                 is_string($data['date_format'] ?? null) ? $data['date_format'] : null
@@ -54,6 +59,7 @@ readonly class GeneralSettings implements SettingsPayload
             'company_contact_email' => $this->companyContactEmail,
             'phone'                 => $this->phone,
             'send_window_start'     => $this->sendWindowStart,
+            'send_window_end'       => $this->sendWindowEnd,
             'email_accent_color'    => $this->emailAccentColor,
             'date_format'           => $this->dateFormat,
         ];
@@ -64,6 +70,7 @@ readonly class GeneralSettings implements SettingsPayload
         ?string $companyContactEmail = null,
         ?string $phone = null,
         ?string $sendWindowStart = null,
+        mixed $sendWindowEnd = false,
         ?string $emailAccentColor = null,
         ?string $dateFormat = null,
     ): static {
@@ -72,6 +79,7 @@ readonly class GeneralSettings implements SettingsPayload
             companyContactEmail: $companyContactEmail ?? $this->companyContactEmail,
             phone: $phone ?? $this->phone,
             sendWindowStart: $sendWindowStart ?? $this->sendWindowStart,
+            sendWindowEnd: $sendWindowEnd === false ? $this->sendWindowEnd : (is_string($sendWindowEnd) && $sendWindowEnd !== '' ? $sendWindowEnd : null),
             emailAccentColor: $emailAccentColor ?? $this->emailAccentColor,
             dateFormat: $dateFormat !== null ? DateFormat::normalize($dateFormat) : $this->dateFormat,
         );

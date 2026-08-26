@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use Carbon\CarbonImmutable;
+use Database\Seeders\AgentInboxDraftSeeder;
 use Database\Seeders\AiAgentSeeder;
 use Database\Seeders\Demo\Crowd\CrowdGenerator;
 use Database\Seeders\Demo\Crowd\DemoRng;
@@ -83,6 +84,7 @@ final class DemoPipeline
 
         InboxContentBootstrap::apply($world);
         InboxStaging::apply($world);
+        (new AgentInboxDraftSeeder)->run();
 
         return [
             'world' => $world,
@@ -112,6 +114,7 @@ final class DemoPipeline
 
         InboxContentBootstrap::apply($world);
         InboxStaging::apply($world);
+        (new AgentInboxDraftSeeder)->run();
 
         return ['world' => $world];
     }

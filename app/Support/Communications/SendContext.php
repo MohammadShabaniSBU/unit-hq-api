@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Communications;
 
 use App\Enums\PlaybookKind;
+use App\Models\AgentConversation;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
 use App\Models\OfferDelivery;
@@ -37,6 +38,23 @@ final readonly class SendContext
     public static function system(?array $sourceRef = null, SendClass $class = SendClass::Transactional): self
     {
         return new self(MessageSource::System, $class, $sourceRef);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $sourceRef
+     */
+    public static function aiAgent(AgentConversation $conversation, ?int $agentConversationMessageId = null, ?array $sourceRef = null): self
+    {
+        return new self(
+            MessageSource::AiAgent,
+            SendClass::Transactional,
+            [
+                'ai_agent_id' => $conversation->ai_agent_id,
+                'agent_conversation_id' => $conversation->id,
+                'agent_conversation_message_id' => $agentConversationMessageId,
+                ...($sourceRef ?? []),
+            ],
+        );
     }
 
     public static function offer(OfferDelivery $delivery): self

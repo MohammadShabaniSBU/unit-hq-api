@@ -114,6 +114,7 @@ class AgentPendingActionController extends Controller
 
         $validated = $request->validate([
             'reason' => ['nullable', 'string', 'max:2000'],
+            'resolution' => ['sometimes', Rule::in(['discarded', 'edited'])],
         ]);
 
         /** @var Employee $employee */
@@ -123,6 +124,7 @@ class AgentPendingActionController extends Controller
             $agentPendingAction,
             $employee,
             isset($validated['reason']) ? (string) $validated['reason'] : null,
+            isset($validated['resolution']) ? (string) $validated['resolution'] : 'discarded',
         );
 
         return $this->success(

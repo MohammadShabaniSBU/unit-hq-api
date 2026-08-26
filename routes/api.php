@@ -98,6 +98,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('inbox/threads', [Controllers\InboxController::class, 'index']);
     Route::get('inbox/threads/{messageThread}', [Controllers\InboxController::class, 'show']);
     Route::get('inbox/badge', [Controllers\InboxController::class, 'badge']);
+    Route::post('inbox/threads/{messageThread}/agent/resume', [Controllers\InboxController::class, 'resume']);
     Route::post('inbox/threads/{messageThread}/read', [Controllers\InboxController::class, 'read']);
     Route::post('inbox/threads/{messageThread}/unread', [Controllers\InboxController::class, 'unread']);
     Route::post('inbox/threads/{messageThread}/assign', [Controllers\InboxController::class, 'assign']);

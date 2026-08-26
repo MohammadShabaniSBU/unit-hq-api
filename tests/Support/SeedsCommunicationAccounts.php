@@ -58,25 +58,33 @@ trait SeedsCommunicationAccounts
     {
         $site ??= Site::factory()->create();
 
-        $account = CommunicationAccount::query()->create([
-            'scope' => AccountScope::Company,
-            'site_id' => null,
-            'channel' => Channel::Sms,
-            'provider' => Provider::Twilio,
-            'is_active' => true,
-            'credentials' => [
-                'account_sid' => 'ACxxx',
-                'auth_token' => 'tok',
-                'messaging_service_sid' => '',
+        $account = CommunicationAccount::query()->firstOrCreate(
+            [
+                'scope' => AccountScope::Company,
+                'site_id' => null,
+                'channel' => Channel::Sms,
+                'is_active' => true,
             ],
-            'status' => CredentialStatus::Connected,
-        ]);
+            [
+                'provider' => Provider::Twilio,
+                'credentials' => [
+                    'account_sid' => 'ACxxx',
+                    'auth_token' => 'tok',
+                    'messaging_service_sid' => '',
+                ],
+                'status' => CredentialStatus::Connected,
+            ],
+        );
 
-        SiteSenderIdentity::query()->create([
-            'site_id' => $site->id,
-            'channel' => Channel::Sms,
-            'from_number' => '+15550001111',
-        ]);
+        SiteSenderIdentity::query()->firstOrCreate(
+            [
+                'site_id' => $site->id,
+                'channel' => Channel::Sms,
+            ],
+            [
+                'from_number' => '+15550001111',
+            ],
+        );
 
         return $account;
     }
@@ -99,6 +107,47 @@ trait SeedsCommunicationAccounts
             'contact_id' => $contact->id,
             'type' => ContactChannelType::Phone,
             'value' => $phone,
+            'label' => 'primary',
+            'is_primary' => true,
+            'opted_in' => true,
+        ]);
+    }
+
+    protected function seedWhatsappAccount(?Site $site = null): CommunicationAccount
+    {
+        $site ??= Site::factory()->create();
+
+        $account = CommunicationAccount::query()->create([
+            'scope' => AccountScope::Company,
+            'site_id' => null,
+            'channel' => Channel::Whatsapp,
+            'provider' => Provider::Sinch,
+            'is_active' => true,
+            'credentials' => [
+                'project_id' => 'proj-test',
+                'key_id' => 'key-id',
+                'key_secret' => 'key-secret',
+                'app_id' => 'app-test',
+                'region' => 'us',
+            ],
+            'status' => CredentialStatus::Connected,
+        ]);
+
+        SiteSenderIdentity::query()->create([
+            'site_id' => $site->id,
+            'channel' => Channel::Whatsapp,
+            'from_number' => '+15550009999',
+        ]);
+
+        return $account;
+    }
+
+    protected function givePrimaryWhatsapp(Contact $contact, string $number): ContactChannel
+    {
+        return ContactChannel::query()->create([
+            'contact_id' => $contact->id,
+            'type' => ContactChannelType::Whatsapp,
+            'value' => $number,
             'label' => 'primary',
             'is_primary' => true,
             'opted_in' => true,

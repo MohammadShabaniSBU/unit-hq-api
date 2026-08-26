@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string $tool_key
  * @property array<string, mixed> $payload
  * @property array<string, mixed>|null $preview
+ * @property array<string, mixed>|null $detail
  * @property PendingActionStatus $status
  * @property int|null $resolved_by_employee_id
  * @property Carbon|null $resolved_at
@@ -56,6 +57,7 @@ class AgentPendingAction extends Model
         'tool_key',
         'payload',
         'preview',
+        'detail',
         'status',
         'resolved_by_employee_id',
         'resolved_at',
@@ -71,6 +73,7 @@ class AgentPendingAction extends Model
         return [
             'payload' => 'array',
             'preview' => 'array',
+            'detail' => 'array',
             'status' => PendingActionStatus::class,
             'resolved_at' => 'datetime',
             'expires_at' => 'datetime',

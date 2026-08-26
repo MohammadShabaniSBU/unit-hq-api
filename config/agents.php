@@ -26,6 +26,8 @@ return [
 
     'pending_action_ttl_minutes' => (int) env('AGENTS_PENDING_ACTION_TTL_MINUTES', 120),
 
+    'inbound_debounce_seconds' => (int) env('AGENTS_INBOUND_DEBOUNCE_SECONDS', 20),
+
     'channel' => [
         'sms' => [
             'warn_segments' => 3,

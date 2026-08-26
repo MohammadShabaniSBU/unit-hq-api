@@ -10,6 +10,7 @@ use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Communications\Gsm7Transliterator;
 use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\WhatsAppWindow;
 
 final class ChannelGuard implements OutboundGuard
 {
@@ -76,7 +77,25 @@ final class ChannelGuard implements OutboundGuard
         }
 
         if ($channel->channel === AgentChannel::Whatsapp) {
-            $detail['advisory'] = true;
+            $conversation = $ctx->conversation;
+            $conversation->loadMissing('messageThread');
+            $thread = $conversation->messageThread;
+
+            if ($thread !== null && $channel->requiresTemplateOutsideWindow && ! WhatsAppWindow::isOpen($thread)) {
+                $detail['reason'] = 'whatsapp_window_closed';
+                $detail['outside_window_mode'] = 'template';
+
+                return GuardrailVerdict::block(
+                    $this->key(),
+                    HandoffReason::ChannelConstraint,
+                    $detail,
+                    [['guard' => $this->key(), 'verdict' => 'deny', 'reason' => 'whatsapp_window_closed', 'detail' => $detail]],
+                );
+            }
+
+            if ($thread === null) {
+                $detail['advisory'] = true;
+            }
             $detail['outside_window_mode'] = 'template';
             $detail['inside_window_mode'] = 'session';
             $detail['requires_template_outside_window'] = $channel->requiresTemplateOutsideWindow;

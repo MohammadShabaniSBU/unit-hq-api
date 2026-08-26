@@ -57,4 +57,24 @@ class SiteClockTest extends TestCase
         $this->assertSame($withUtc, $withHonolulu);
         $this->assertSame('2026-07-31', $withUtc);
     }
+
+    public function test_within_window_uses_site_timezone_and_wraps_midnight(): void
+    {
+        $madrid = new Site(['timezone' => 'Europe/Madrid']);
+
+        // 2026-08-26 10:00 UTC = 12:00 in Madrid (CEST).
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-26 10:00:00', 'UTC'));
+        $this->assertTrue(SiteClock::withinWindow($madrid, '09:00', '17:00'));
+        $this->assertFalse(SiteClock::withinWindow($madrid, '09:00', '11:00'));
+        $this->assertTrue(SiteClock::withinWindow($madrid, '09:00', null));
+
+        // Overnight window 22:00–06:00: 12:00 local is outside.
+        $this->assertFalse(SiteClock::withinWindow($madrid, '22:00', '06:00'));
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-26 21:30:00', 'UTC'));
+        // 23:30 Madrid — inside the overnight window.
+        $this->assertTrue(SiteClock::withinWindow($madrid, '22:00', '06:00'));
+
+        CarbonImmutable::setTestNow();
+    }
 }

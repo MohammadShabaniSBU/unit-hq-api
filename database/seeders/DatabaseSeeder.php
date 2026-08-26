@@ -292,6 +292,7 @@ class DatabaseSeeder extends Seeder
         $this->call(DebtPlaybookSeeder::class);
         $this->call(ContractDocumentTemplateSeeder::class);
         $this->call(MessageStoreSeeder::class);
+        $this->call(AgentInboxDraftSeeder::class);
 
         $this->command?->info("RNG seed: {$rngSeed}");
     }

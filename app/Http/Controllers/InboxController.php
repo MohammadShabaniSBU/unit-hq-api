@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\ContactChannelType;
 use App\Enums\LogChannel;
+use App\Models\AgentConversation;
+use App\Models\AgentPendingAction;
 use App\Models\CommsTriage;
 use App\Models\Contact;
 use App\Enums\TemplateChannel;
@@ -15,6 +17,9 @@ use App\Models\MessageAttachment;
 use App\Models\MessageThread;
 use App\Models\TemplateFamily;
 use App\Models\WhatsappTemplate;
+use App\Support\Ai\Enums\AgentOrigin;
+use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\PendingActionStatus;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\SubjectTokenBag;
@@ -188,6 +193,14 @@ class InboxController extends Controller
             'triage_count' => CommsTriage::query()->where('status', 'pending')->count(),
             'active_calls' => ActiveCalls::forBadge(),
             'pending_wrapups' => PendingWrapups::forEmployee($employee),
+            'agent_drafts' => AgentPendingAction::query()
+                ->where('tool_key', 'channel.send')
+                ->where('status', PendingActionStatus::Pending)
+                ->count(),
+            'agent_handoffs' => AgentConversation::query()
+                ->where('origin', AgentOrigin::Inbox)
+                ->where('state', ConversationState::AwaitingHuman)
+                ->count(),
         ], 'Inbox badge retrieved successfully.');
     }
 
@@ -223,6 +236,29 @@ class InboxController extends Controller
             'id' => $messageThread->id,
             'unread_count' => (int) $messageThread->unread_count,
         ], 'Thread marked unread.');
+    }
+
+    public function resume(MessageThread $messageThread): JsonResponse
+    {
+        Gate::authorize(Permission::InboxSend->value, $messageThread);
+
+        $conversation = AgentConversation::query()
+            ->where('message_thread_id', $messageThread->id)
+            ->where('origin', AgentOrigin::Inbox)
+            ->first();
+        if ($conversation === null) {
+            return $this->error('Thread has no agent conversation.', [], 404);
+        }
+
+        $conversation->state = ConversationState::Active;
+        $conversation->agent_handback_at = now();
+        $conversation->save();
+
+        return $this->success([
+            'id' => $conversation->id,
+            'state' => $conversation->state->value,
+            'agent_handback_at' => $conversation->agent_handback_at?->toIso8601String(),
+        ], 'Thread handed back to the agent.');
     }
 
     public function moveTargets(MessageThread $messageThread): JsonResponse
@@ -430,6 +466,7 @@ class InboxController extends Controller
                 'attachment_ids' => ['sometimes', 'array'],
                 'attachment_ids.*' => ['integer', 'exists:message_attachments,id'],
                 'template_family_id' => ['sometimes', 'nullable', 'integer', 'exists:template_families,id'],
+                'agent_pending_action_id' => ['sometimes', 'nullable', 'integer', 'exists:agent_pending_actions,id'],
             ]);
         } elseif ($channel === Channel::Sms) {
             $validated = $request->validate([
@@ -437,6 +474,7 @@ class InboxController extends Controller
                 'attachment_ids' => ['prohibited'],
                 'template_family_id' => ['required_without:body_text', 'nullable', 'integer', 'exists:template_families,id'],
                 'body_html' => ['prohibited'],
+                'agent_pending_action_id' => ['sometimes', 'nullable', 'integer', 'exists:agent_pending_actions,id'],
             ]);
             if (! empty($validated['template_family_id']) && isset($validated['body_text']) && $validated['body_text'] !== '') {
                 throw ValidationException::withMessages([
@@ -452,6 +490,7 @@ class InboxController extends Controller
                 'attachment_ids' => ['prohibited'],
                 'body_html' => ['prohibited'],
                 'template_family_id' => ['prohibited'],
+                'agent_pending_action_id' => ['sometimes', 'nullable', 'integer', 'exists:agent_pending_actions,id'],
             ]);
             if (! empty($validated['whatsapp_template_name']) && isset($validated['body_text']) && $validated['body_text'] !== '') {
                 throw ValidationException::withMessages([
@@ -685,10 +724,11 @@ class InboxController extends Controller
 
         $message = Message::query()->with('attachments')->findOrFail($result->messageId);
         $this->linkAttachments($attachments, $message->id);
+        $mapped = $message->fresh('attachments') ?? $message;
 
-        return $this->created([
+        return $this->afterReplySent($thread, $mapped, [
             'thread_id' => $thread->id,
-            'message' => $this->mapMessage($message->fresh('attachments') ?? $message),
+            'message' => $this->mapMessage($mapped),
         ], 'Reply sent.');
     }
 
@@ -727,7 +767,7 @@ class InboxController extends Controller
 
         $message = Message::query()->with('attachments')->findOrFail($result->messageId);
 
-        return $this->created([
+        return $this->afterReplySent($thread, $message, [
             'thread_id' => $thread->id,
             'message' => $this->mapMessage($message),
             'segments' => $sms->segmentCount(),
@@ -799,7 +839,7 @@ class InboxController extends Controller
 
         $message = Message::query()->with('attachments')->findOrFail($result->messageId);
 
-        return $this->created([
+        return $this->afterReplySent($thread, $message, [
             'thread_id' => $thread->id,
             'message' => $this->mapMessage($message),
             'preview_body' => $previewBody ?? $message->body_text,
@@ -1027,6 +1067,58 @@ class InboxController extends Controller
             'status' => $intent->status,
             'message_id' => $intent->message_id,
         ], 'Call requested. Pick up your Aircall device to continue.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function afterReplySent(
+        MessageThread $thread,
+        Message $message,
+        array $payload,
+        string $okMessage,
+    ): JsonResponse {
+        $error = $this->annotateEditedPendingAction($thread, $message);
+        if ($error !== null) {
+            return $error;
+        }
+
+        return $this->created($payload, $okMessage);
+    }
+
+    private function annotateEditedPendingAction(MessageThread $thread, Message $message): ?JsonResponse
+    {
+        $id = request()->integer('agent_pending_action_id');
+        if ($id <= 0) {
+            return null;
+        }
+
+        $action = AgentPendingAction::query()->find($id);
+        $payload = is_array($action?->payload) ? $action->payload : [];
+        $detail = is_array($action?->detail) ? $action->detail : [];
+        $threadId = isset($payload['message_thread_id']) ? (int) $payload['message_thread_id'] : 0;
+
+        $matches = $action !== null
+            && $action->tool_key === 'channel.send'
+            && $action->status === PendingActionStatus::Rejected
+            && ($detail['resolution'] ?? null) === 'edited'
+            && $threadId === (int) $thread->id;
+
+        if (! $matches) {
+            return $this->error(
+                'Pending action cannot be linked to this reply.',
+                ['agent_pending_action_id' => ['The pending action does not match this thread as a rejected-as-edited channel.send draft.']],
+                422,
+            );
+        }
+
+        $action->detail = array_merge($detail, [
+            'edited_body_hash' => hash('sha256', (string) $message->body_text),
+            'sent_message_id' => $message->id,
+        ]);
+        $action->save();
+
+        return null;
     }
 
     /**

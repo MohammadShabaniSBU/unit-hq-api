@@ -7,6 +7,7 @@ namespace Tests\Feature\Ai;
 use App\Models\AgentWritePolicy;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Tools\EntityArgumentExemptions;
+use App\Support\Ai\Tools\RuntimeOnlyTools;
 use App\Support\Ai\Tools\ToolRegistry;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +23,7 @@ class AgentToolCoverageTest extends TestCase
     {
         $tools = app(ToolRegistry::class)->all();
         $this->assertNotEmpty($tools);
+        $this->assertArrayHasKey('channel.send', $tools);
 
         $claimed = [];
         foreach (app(AgentRegistry::class)->all() as $definition) {
@@ -33,11 +35,23 @@ class AgentToolCoverageTest extends TestCase
         foreach ($tools as $key => $tool) {
             $this->assertNotSame('', $tool->description(), "Tool [{$key}] has an empty description.");
             $this->assertNotEmpty($tool->schema(), "Tool [{$key}] has an empty schema.");
+            if (RuntimeOnlyTools::contains($key)) {
+                continue;
+            }
             $this->assertArrayHasKey(
                 $key,
                 $claimed,
                 "Tool [{$key}] is registered but claimed by no AgentDefinition.",
             );
+        }
+
+        foreach (app(AgentRegistry::class)->all() as $definition) {
+            foreach ($definition->toolKeys() as $key) {
+                $this->assertFalse(
+                    RuntimeOnlyTools::contains($key),
+                    "AgentDefinition [{$definition->key()}] must not claim runtime-only tool [{$key}].",
+                );
+            }
         }
     }
 

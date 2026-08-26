@@ -8,6 +8,7 @@ use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Tools\EntityArgumentExemptions;
 use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\RefsRenderer;
+use App\Support\Ai\Tools\RuntimeOnlyTools;
 use App\Support\Ai\Tools\ToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -57,6 +58,9 @@ class ToolResultContractTest extends TestCase
         $this->assertNotEmpty($tools);
 
         foreach ($tools as $key => $tool) {
+            if (RuntimeOnlyTools::contains($key)) {
+                continue;
+            }
             $fixture = $fixtures->for($key);
             $result = $this->dispatchTool(
                 $fixture['agent'],

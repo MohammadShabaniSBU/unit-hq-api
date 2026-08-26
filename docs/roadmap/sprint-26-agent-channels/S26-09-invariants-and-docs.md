@@ -8,12 +8,13 @@
 
 ### `09-conventions-and-invariants.md`
 
-- **Amend 40** → *"Inbound receipt never creates contacts **untraceably**.
-  Unknown senders park on `comms_triage` unless
-  `communications.auto_lead_capture` is on, in which case a non-spam-shaped
-  sender becomes a Contact (`origin = inbound_auto`) + lead Deal with a
-  resolved triage row (`how = auto`) and a Tier-2 `contact.auto_created`.
-  Spam-shaped inbound always parks."*
+- **Amend 40** (wording introduced by S26-07b) → *"Inbound receipt never
+  creates contacts **untraceably**. Unknown senders park on
+  `comms_triage` unless `communications.auto_lead_capture` is on, in
+  which case a non-spam-shaped sender becomes a Contact
+  (`origin = inbound_auto`) + lead Deal with a resolved triage row
+  (`how = auto`) and a Tier-2 `contact.auto_created`. Spam-shaped inbound
+  always parks."*
 - **New 67 — Tool results expose the ids they license.** Every
   `EntityRef` on a `ToolResult` is rendered on the model-facing `Refs:`
   line. An id the model can pass but was never shown is a defect in the
@@ -66,9 +67,10 @@
 
 ### `06-communications.md`
 
-- `Channel` gains `webchat` (first-party, no provider); `SendContext`
-  source gains `ai_agent`; `contacts.origin`; `auto_lead_capture` and
-  spam-shape rules; badge fields `agent_drafts` / `agent_handoffs`.
+- `Channel` gains `webchat` (first-party, no provider — S26-07c);
+  `SendContext` source gains `ai_agent` (S26-07); `contacts.origin` and
+  `auto_lead_capture` / spam-shape rules (S26-07b); badge fields
+  `agent_drafts` / `agent_handoffs` (S26-07).
 
 ### `04-crm-pipeline.md`
 

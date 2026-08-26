@@ -42,6 +42,7 @@ use App\Support\Communications\Provider;
 use App\Support\Facility\AssertsCatalogueMonotonicity;
 use App\Support\Playbooks\PlaybookCompiler;
 use Carbon\CarbonImmutable;
+use Database\Seeders\AgentInboxDraftSeeder;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
@@ -351,6 +352,8 @@ class StageSeeder extends Seeder
 
         // Floor plans: deterministic only — must not consume the RNG stream.
         FloorPlanStage::seed($sites);
+
+        (new AgentInboxDraftSeeder)->run();
 
         $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
     }

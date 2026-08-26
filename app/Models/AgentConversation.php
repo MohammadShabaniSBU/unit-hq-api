@@ -35,6 +35,7 @@ use LogicException;
  * @property string|null $locale
  * @property int|null $message_thread_id
  * @property Carbon|null $last_turn_at
+ * @property Carbon|null $agent_handback_at
  * @property Carbon|null $closed_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -69,6 +70,7 @@ class AgentConversation extends Model
         'locale',
         'message_thread_id',
         'last_turn_at',
+        'agent_handback_at',
         'closed_at',
     ];
 
@@ -81,6 +83,7 @@ class AgentConversation extends Model
             'verification_level' => VerificationLevel::class,
             'state' => ConversationState::class,
             'last_turn_at' => 'datetime',
+            'agent_handback_at' => 'datetime',
             'closed_at' => 'datetime',
         ];
     }

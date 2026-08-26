@@ -20,6 +20,7 @@ class AgentPendingActionResource extends BaseResource
             'tool_key' => $this->tool_key,
             'payload' => $this->payload,
             'preview' => $this->preview,
+            'detail' => $this->detail,
             'status' => $this->status instanceof \BackedEnum ? $this->status->value : $this->status,
             'resolved_by_employee_id' => $this->resolved_by_employee_id,
             'resolved_at' => $this->datetime($this->resolved_at),

@@ -53,8 +53,7 @@ final class LoopGuard
     }
 
     /**
-     * S23 seam: never reply to auto-generated inbound, or to a message whose
-     * source is agent. MessageSource::Agent is not a case this sprint.
+     * Never reply to auto-generated inbound, or to a message the agent itself sent.
      */
     public static function shouldIgnoreInbound(Message $message): bool
     {
@@ -62,7 +61,7 @@ final class LoopGuard
             return true;
         }
 
-        return $message->source->value === 'agent';
+        return $message->source === MessageSource::AiAgent;
     }
 
     private function consecutiveAssistantWithoutUser(AgentConversation $conversation): int

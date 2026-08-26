@@ -19,6 +19,7 @@ use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
+use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\BindingMode;
@@ -30,6 +31,7 @@ use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\CannedReply;
 use App\Support\Ai\Guards\DisclosureGuard;
 use App\Support\Ai\Guards\GuardrailPipeline;
@@ -38,6 +40,7 @@ use App\Support\Ai\Guards\HandoffMatch;
 use App\Support\Ai\Guards\InboundGuardPipeline;
 use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\ArgumentBag;
+use App\Support\Ai\Tools\ChannelSendTool;
 use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\FactRegistry;
 use App\Support\Ai\Tools\RefsRenderer;
@@ -47,6 +50,7 @@ use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\Ai\Trace\TraceCursor;
 use App\Support\RequestId;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +62,10 @@ use Throwable;
 
 final class AgentRuntime
 {
+    private ?int $subjectMessageId = null;
+
+    private ?ResolvedBinding $resolvedBinding = null;
+
     public function __construct(
         private readonly ModelDriver $driver,
         private readonly ToolRegistry $tools,
@@ -74,14 +82,18 @@ final class AgentRuntime
         AgentPrincipal $principal,
         string $input,
         ?Closure $onEvent = null,
+        ?int $subjectMessageId = null,
     ): AgentTurn {
+        $this->subjectMessageId = $subjectMessageId;
+        $this->resolvedBinding = null;
+
         if (! filter_var(config('agents.enabled', true), FILTER_VALIDATE_BOOLEAN)) {
             throw new RuntimeException('Customer-facing agents are disabled.');
         }
 
         $this->assertPrincipalMatches($conversation, $principal);
 
-        $conversation->loadMissing(['aiAgent.writePolicies']);
+        $conversation->loadMissing(['aiAgent.writePolicies', 'messageThread']);
         $agent = $conversation->aiAgent;
         if (! $agent->is_active || $agent->archived_at !== null) {
             throw new RuntimeException('Agent is not active.');
@@ -96,6 +108,7 @@ final class AgentRuntime
             ) {
                 throw new RuntimeException('Agent is not bound to this channel.');
             }
+            $this->resolvedBinding = $resolved;
         }
 
         $definition = $this->agents->get($agent->key);
@@ -471,8 +484,9 @@ final class AgentRuntime
             $draft = $outbound->mutatedDraft;
         }
 
+        $assistantForSend = null;
         if (! $draftAlreadyPersisted) {
-            $finalMessage = $this->persistAssistantMessage(
+            $assistantForSend = $this->persistAssistantMessage(
                 $conversation,
                 $draft,
                 [],
@@ -484,18 +498,37 @@ final class AgentRuntime
                 principal: $principal,
                 subject: $outbound->subject,
             );
-            $this->bindOpenTraceRows($cursor, $finalMessage->id, $usageEvents);
+            $this->bindOpenTraceRows($cursor, $assistantForSend->id, $usageEvents);
         } else {
-            $latest = $conversation->messages()
+            $assistantForSend = $conversation->messages()
                 ->where('role', AgentMessageRole::Assistant)
                 ->orderByDesc('sequence')
                 ->first();
-            if ($latest instanceof AgentConversationMessage) {
-                $this->bindOpenTraceRows($cursor, $latest->id, $usageEvents);
+            if ($assistantForSend instanceof AgentConversationMessage) {
+                $this->bindOpenTraceRows($cursor, $assistantForSend->id, $usageEvents);
             }
         }
 
         $this->touchConversation($conversation, ConversationState::Active);
+
+        $pendingActionId = null;
+        $emittedMessageId = null;
+
+        if ($assistantForSend instanceof AgentConversationMessage) {
+            [$pendingActionId, $emittedMessageId, $sendHandoff] = $this->maybeSendOnChannel(
+                $ctx,
+                $principal,
+                $draft,
+                $outbound->subject,
+                $assistantForSend,
+                $cursor,
+                $invocations,
+                $facts,
+            );
+            if ($sendHandoff !== null) {
+                return $sendHandoff;
+            }
+        }
 
         return new AgentTurn(
             $draft,
@@ -508,6 +541,8 @@ final class AgentRuntime
             null,
             $outbound->subject,
             $outbound->events,
+            $pendingActionId,
+            $emittedMessageId,
         );
     }
 
@@ -913,6 +948,7 @@ final class AgentRuntime
                 'sequence' => $this->nextSequence($conversation),
                 'role' => AgentMessageRole::User,
                 'content' => $input,
+                'subject_message_id' => $this->subjectMessageId,
             ]);
         });
     }
@@ -1250,6 +1286,172 @@ final class AgentRuntime
     private function nextSequence(AgentConversation $conversation): int
     {
         return (int) $conversation->messages()->max('sequence') + 1;
+    }
+
+    /**
+     * @param  list<AgentToolInvocation>  $invocations
+     * @return array{0: int|null, 1: int|null, 2: AgentTurn|null}
+     */
+    private function maybeSendOnChannel(
+        AgentContext $ctx,
+        AgentPrincipal $principal,
+        string $draft,
+        ?string $subject,
+        AgentConversationMessage $assistantMessage,
+        TraceCursor $cursor,
+        array &$invocations,
+        FactBag $facts,
+    ): array {
+        $conversation = $ctx->conversation;
+        $binding = $this->resolvedBinding;
+        if (
+            $binding === null
+            || $conversation->origin !== AgentOrigin::Inbox
+            || $conversation->audience !== AgentAudience::Customer
+            || $conversation->message_thread_id === null
+            || ! in_array($binding->mode, [BindingMode::Draft, BindingMode::Auto], true)
+        ) {
+            return [null, null, null];
+        }
+
+        $tool = $this->tools->get('channel.send');
+        if (! $tool instanceof ChannelSendTool) {
+            throw new LogicException('channel.send is not registered as ChannelSendTool.');
+        }
+
+        $arguments = [
+            'message_thread_id' => $conversation->message_thread_id,
+            'body' => $draft,
+            'agent_conversation_message_id' => $assistantMessage->id,
+        ];
+        if ($subject !== null && $subject !== '') {
+            $arguments['subject'] = $subject;
+        }
+
+        $started = hrtime(true);
+        if ($binding->mode === BindingMode::Draft) {
+            $proposed = $tool->propose($principal, $arguments, $ctx);
+            $durationMs = (int) ((hrtime(true) - $started) / 1_000_000);
+            if ($proposed->status !== ToolInvocationStatus::Ok || $proposed->handoffReason !== null) {
+                $invocation = $this->persistRuntimeInvocation(
+                    $conversation,
+                    $assistantMessage,
+                    $principal,
+                    $arguments,
+                    $proposed,
+                    $durationMs,
+                    $cursor,
+                );
+                $invocations[] = $invocation;
+
+                return [null, null, $this->finishWithHandoff(
+                    $ctx,
+                    $facts,
+                    $invocations,
+                    $proposed->handoffReason ?? HandoffReason::ChannelConstraint,
+                    HandoffTriggerSource::Guardrail,
+                    CannedReply::Blocked,
+                    ['reason' => 'channel_send_refused'],
+                    persistAssistant: false,
+                    cursor: $cursor,
+                    assistantMessageId: $assistantMessage->id,
+                )];
+            }
+
+            $approval = ToolResult::requiresApproval(
+                CannedReply::pendingApproval($principal->locale),
+                is_array($proposed->data['payload'] ?? null) ? $proposed->data['payload'] : [],
+                is_array($proposed->data['preview'] ?? null) ? $proposed->data['preview'] : [],
+            );
+            $invocation = $this->persistRuntimeInvocation(
+                $conversation,
+                $assistantMessage,
+                $principal,
+                $arguments,
+                $approval,
+                $durationMs,
+                $cursor,
+            );
+            $invocations[] = $invocation;
+
+            $expiresAt = null;
+            $closes = is_array($proposed->data['preview'] ?? null)
+                ? ($proposed->data['preview']['window_closes_at'] ?? null)
+                : null;
+            if (is_string($closes) && $closes !== '') {
+                $expiresAt = CarbonImmutable::parse($closes);
+            }
+
+            $pending = app(PendingActionRecorder::class)->record($invocation, $approval, $expiresAt);
+
+            return [$pending->id, null, null];
+        }
+
+        $result = $tool->handle($principal, $arguments, $ctx);
+        $durationMs = (int) ((hrtime(true) - $started) / 1_000_000);
+        $invocation = $this->persistRuntimeInvocation(
+            $conversation,
+            $assistantMessage,
+            $principal,
+            $arguments,
+            $result,
+            $durationMs,
+            $cursor,
+        );
+        $invocations[] = $invocation;
+
+        if ($result->handoffReason !== null || $result->status !== ToolInvocationStatus::Ok) {
+            return [null, null, $this->finishWithHandoff(
+                $ctx,
+                $facts,
+                $invocations,
+                $result->handoffReason ?? HandoffReason::ChannelConstraint,
+                HandoffTriggerSource::Guardrail,
+                CannedReply::Blocked,
+                ['reason' => 'channel_send_refused'],
+                persistAssistant: false,
+                cursor: $cursor,
+                assistantMessageId: $assistantMessage->id,
+            )];
+        }
+
+        $assistantMessage->refresh();
+
+        return [null, $assistantMessage->emitted_message_id, null];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function persistRuntimeInvocation(
+        AgentConversation $conversation,
+        AgentConversationMessage $assistantMessage,
+        AgentPrincipal $principal,
+        array $arguments,
+        ToolResult $result,
+        int $durationMs,
+        TraceCursor $cursor,
+    ): AgentToolInvocation {
+        $seq = (int) $conversation->toolInvocations()->max('seq') + 1;
+
+        return AgentToolInvocation::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'agent_conversation_message_id' => $assistantMessage->id,
+            'tool_call_id' => (string) Str::uuid(),
+            'tool_key' => 'channel.send',
+            'arguments' => ArgumentBag::normalise($arguments),
+            'result' => $result->toTraceResult(),
+            'result_summary' => $result->display,
+            'status' => $result->status,
+            'denied_reason' => $result->deniedReason,
+            'required_verification' => VerificationLevel::ChannelAsserted,
+            'principal_verification' => $principal->verification,
+            'duration_ms' => $durationMs,
+            'turn' => $cursor->turn,
+            'seq' => $seq,
+            'model' => $cursor->model,
+            'prompt_version' => $cursor->promptVersion,
+        ]);
     }
 
     private function siteFor(AgentPrincipal $principal): ?Site

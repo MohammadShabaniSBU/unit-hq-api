@@ -9,6 +9,7 @@ use App\Models\AgentToolInvocation;
 use App\Support\Ai\Enums\PendingActionStatus;
 use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Tools\ToolResult;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -17,8 +18,11 @@ use InvalidArgumentException;
  */
 final class PendingActionRecorder
 {
-    public function record(AgentToolInvocation $invocation, ToolResult $result): AgentPendingAction
-    {
+    public function record(
+        AgentToolInvocation $invocation,
+        ToolResult $result,
+        ?CarbonInterface $expiresAt = null,
+    ): AgentPendingAction {
         if ($result->deniedReason !== ToolDeniedReason::RequiresApproval) {
             throw new InvalidArgumentException('PendingActionRecorder requires a RequiresApproval result.');
         }
@@ -34,8 +38,10 @@ final class PendingActionRecorder
         }
 
         $ttl = (int) config('agents.pending_action_ttl_minutes', 120);
+        $defaultExpiry = now()->addMinutes($ttl);
+        $expiry = $expiresAt !== null && $expiresAt->lt($defaultExpiry) ? $expiresAt : $defaultExpiry;
 
-        return DB::transaction(function () use ($invocation, $payload, $preview, $siteId, $ttl): AgentPendingAction {
+        return DB::transaction(function () use ($invocation, $payload, $preview, $siteId, $expiry): AgentPendingAction {
             $pending = AgentPendingAction::query()->create([
                 'agent_conversation_id' => $invocation->agent_conversation_id,
                 'agent_tool_invocation_id' => $invocation->id,
@@ -45,7 +51,7 @@ final class PendingActionRecorder
                 'payload' => $payload,
                 'preview' => $preview,
                 'status' => PendingActionStatus::Pending,
-                'expires_at' => now()->addMinutes($ttl),
+                'expires_at' => $expiry,
             ]);
 
             AgentPendingAction::query()

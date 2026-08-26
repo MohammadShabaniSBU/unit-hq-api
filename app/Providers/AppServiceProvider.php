@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Events\ChannelDeliveryFailed;
+use App\Events\InboundMessageReceived;
 use App\Events\ModelCreated;
 use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
@@ -12,6 +13,7 @@ use App\Listeners\IncrementAiUsageToolCalls;
 use App\Listeners\QueueAutomationMatching;
 use App\Listeners\RecordAgentFailoverUsage;
 use App\Listeners\RecordAgentUsage;
+use App\Listeners\RespondWithAgent;
 use App\Listeners\SettleFailedAiUsage;
 use App\Listeners\WriteChannelSuppression;
 use App\Models\AccessEvent;
@@ -57,6 +59,7 @@ use App\Support\Ai\Tools\AccessStatusTool;
 use App\Support\Ai\Tools\BillingBalanceTool;
 use App\Support\Ai\Tools\BillingInvoicesTool;
 use App\Support\Ai\Tools\BillingNextChargeTool;
+use App\Support\Ai\Tools\ChannelSendTool;
 use App\Support\Ai\Tools\ContractSummaryTool;
 use App\Support\Ai\Tools\CrmCreateContactTool;
 use App\Support\Ai\Tools\CrmCreateDealTool;
@@ -143,6 +146,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new AccessStatusTool);
             $registry->register(new KbFaqLookupTool);
             $registry->register(new EscalateTool);
+            $registry->register(new ChannelSendTool);
 
             return $registry;
         });
@@ -265,6 +269,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ModelUpdated::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ModelDeleted::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ChannelDeliveryFailed::class, [WriteChannelSuppression::class, 'handle']);
+        Event::listen(InboundMessageReceived::class, RespondWithAgent::class);
         Event::listen(InvokingTool::class, [BroadcastCopilotToolInvoking::class, 'handle']);
         Event::listen(JobFailed::class, [BroadcastCopilotFailed::class, 'handle']);
         Event::listen(JobFailed::class, [SettleFailedAiUsage::class, 'handle']);
