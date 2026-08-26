@@ -11,8 +11,10 @@
 - **AI:** internal Copilot plus customer-facing agents (support / sales) on a
   shared tool-and-guardrail runtime in `App\Support\Ai\`. Conversations and
   traces stored in DB. Sales may persist Offer and Reservation under
-  `agent_write_policies` (invariant 54b). Demo surface at panel `/demo/chat`,
-  gated by `agents.demo_enabled`.
+  `agent_write_policies` (invariant 54b). Agents answer real inbound email /
+  SMS / WhatsApp under a live `agent_channel_bindings` row (default off,
+  invariant 68); replies go out through the channel senders (invariant 69).
+  Demo surface at panel `/demo/chat`, gated by `agents.demo_enabled`.
 - **Dev tooling:** Telescope (dev only).
 
 ## Frontend — `unit-hq-panel/`

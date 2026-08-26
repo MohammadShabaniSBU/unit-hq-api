@@ -1,7 +1,7 @@
 # S26-07b — Auto-lead capture
 
 **Depends on:** S26-07
-**Blocks:** S26-09 (invariant 40 wording)
+**Blocks:** nothing (doc edits in the same PR via S26-09b)
 **Touches:** `unit-hq-api`
 
 ## Problem
@@ -19,16 +19,23 @@ default `false`). Replaces the triage park for **non-spam-shaped** unknown
 senders when the resolved binding has `audience = all`:
 
 - Create `Contact` with the inbound channel as primary
-  (`contacts.origin = inbound_auto`). Migration adds `origin` enum column
-  `manual|inbound_auto|walk_in|import|ai_agent`.
+  (`contacts.source = inbound_auto`). Add `InboundAuto = 'inbound_auto'`
+  to `App\Enums\ContactSource`. **No new column** — D-AI-21: auto-captured
+  leads extend `contacts.source`; there is no `contacts.origin`.
 - Create a lead `Deal` (`source = inbound_{channel}`).
 - Write the `comms_triage` row **resolved** with `how = auto`.
 - Tier-2 `contact.auto_created`.
 
+The `AllowlistedParent::resolve()` / `CrmCreateDealTool` predicate stays
+`source === ContactSource::AiAgent`. That branch is a same-conversation
+ownership check for an anonymous principal, not a provenance lookup
+(D-AI-21). Do not widen it. Auto-capture never reaches it: the listener
+creates the contact and then builds `AgentPrincipal::channelAsserted`.
+
 Spam-shaped stays in triage: auto-generated headers, bounces, STOP
 keyword, `noreply@` / `mailer-daemon` / role addresses, active
 suppression, and `communications.spam_patterns`. This amends invariant 40
-(S26-09 wording: *never untraceably*).
+(S26-09b wording: *never untraceably*).
 
 S26-07's unmatched-sender skip (`audience`) becomes: unmatched +
 `audience != all` → skip `audience`; unmatched + `audience = all` +
@@ -39,15 +46,19 @@ non-spam → capture then continue the listener.
 ## Acceptance criteria
 
 - [ ] `auto_lead_capture` on + unknown SMS sender + `audience = all`
-      binding → contact with `origin = inbound_auto`, lead deal, resolved
+      binding → contact with `source = inbound_auto`, lead deal, resolved
       triage row, activity; listener continues into a turn.
 - [ ] `noreply@` sender still parks in triage.
 - [ ] Flag off → unmatched sender skipped `audience` (S26-07 behaviour).
 - [ ] STOP / bounce / role-address / active suppression / matching
       `communications.spam_patterns` stay in triage.
+- [ ] Anonymous principal + `inbound_auto` contact → still
+      `denied: ownership` from `AllowlistedParent` / `CrmCreateDealTool`.
+      No predicate change.
+- [ ] Apply this task's S26-09b doc edits in the same PR.
 
 ## Out of scope
 
 - Listener / send path (S26-07).
 - Webchat (S26-07c).
-- Invariant 40 wording in `09` (S26-09).
+- Invariant 40 wording in `09` — lands in this PR via S26-09b, not S26-09.

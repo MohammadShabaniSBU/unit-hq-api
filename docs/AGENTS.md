@@ -17,7 +17,7 @@ Before writing code, consult the doc that matches the task:
 | Insights, embedded analytics, reporting schema | `11-insights.md` |
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
 | Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
-| AI agents, Copilot, agent tools, guards, write policies | `14-ai-agents.md` |
+| AI agents, Copilot, agent tools, guards, write policies, **channel bindings / live channels** | `14-ai-agents.md` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |
 | **Always, before committing** | `09-conventions-and-invariants.md` |
@@ -48,5 +48,9 @@ Before writing code, consult the doc that matches the task:
   (`10-open-decisions.md`, Copilot vs `App\Support\Leasing\`).
 - Copilot tool approvals are click-only; voice never authorises a write
   (invariant 60).
+- Agent channel bindings default to off; an absent `agent_channel_bindings`
+  row means the agent does not answer that channel (invariant 68).
+- A human-owned thread is silent for agents until an explicit click
+  hand-back; never a model or inbound event (invariant 70).
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

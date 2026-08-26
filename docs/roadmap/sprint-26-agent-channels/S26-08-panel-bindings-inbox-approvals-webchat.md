@@ -49,7 +49,10 @@ they are already looking at, and hand a thread back to the agent.
   reply: `POST /api/inbox/threads/{id}/agent/resume` (S26-07 adds it;
   sets `state = active`, clears human ownership, does **not** trigger a
   turn — the next inbound does). Only visible when a live binding exists
-  for the thread's channel/site.
+  for the thread's channel/site. The panel needs the same human-ownership
+  predicate as the listener, so move `RespondWithAgent::isHumanOwned()` into
+  a shared `App\Support\Ai\ThreadAgentState` and re-anchor invariant 70
+  (S26-09b). The rule is unchanged; only its home moves.
 - Badge polling (`GET /api/inbox/badge`) gains `agent_drafts` and
   `agent_handoffs`; nav badge sums them with unread as today; document
   title/favicon logic unchanged.
@@ -78,6 +81,7 @@ than as text the agent sent.
       sales webchat binding.
 - [ ] `bun run lint` + `bun run typecheck` clean; all new strings in
       `en.json`, `es.json`, `fr.json`; `Array<T>` throughout.
+- [ ] Apply this task's S26-09b doc edits in the same PR.
 
 ## Out of scope
 

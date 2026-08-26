@@ -106,6 +106,8 @@ appear as approvals.
 - [ ] Docs: `14-ai-agents.md` "Not built → per-agent, per-channel autonomy"
       line removed in S26-09.
 
+Introduces **invariant 68** (S26-09).
+
 ## Out of scope
 
 - Panel UI — S26-08.

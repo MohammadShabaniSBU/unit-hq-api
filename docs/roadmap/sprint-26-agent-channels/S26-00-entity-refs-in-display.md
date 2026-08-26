@@ -84,6 +84,8 @@ re-record only the fixtures they add.
 - [ ] `agent:replay` green with re-recorded cassettes; no
       `EvalCassetteStaleException`.
 
+Introduces **invariant 67** (S26-09).
+
 ## Out of scope
 
 - Feeding `data` to the model. Still never.

@@ -1,15 +1,18 @@
 # Customer-facing AI agents
 
 The **agent runtime** — principal, tool contract, guardrails, telemetry — plus
-a single demo surface at panel `/demo/chat`. Copilot (internal, employee
-principal, screen output) stays on its existing Laravel AI SDK path and is
-**not** migrated onto this runtime. Support and sales agents are
-customer-facing: contact principal, **draft-turn** output. Nothing here sends
-an email, SMS, or WhatsApp message, or creates a `messages` row.
+a demo surface at panel `/demo/chat` and live inbound on email / SMS /
+WhatsApp under an explicit `agent_channel_bindings` row (default **off**,
+invariant 68). Copilot (internal, employee principal, screen output) stays
+on its existing Laravel AI SDK path and is **not** migrated onto this
+runtime. Support and sales agents are customer-facing: contact principal.
+Output is a draft turn; a send goes through `AgentSend` onto the channel
+senders (invariant 69). Agent code never inserts a `messages` row
+(invariant 38).
 
-The same runtime, tool set, and guardrails are what a channel will call when
-transport lands. Rendering-instead-of-sending is `suggest` autonomy with a
-null transport.
+Webchat as a comms `Channel` is S26-07c and is not built. Inbox bindings
+settings, the Inbox draft card, and the public `/chat/:token` page are
+S26-08.
 
 ## What an agent is
 
@@ -115,6 +118,8 @@ Shared helpers live under `App\Support\Ai\` (same tier as
 App\Support\Ai\
 ├── AgentRuntime.php              // the turn loop
 ├── ContextWindow.php             // bound the message list sent to the driver
+├── AgentSend.php                 // sole path from draft to a real send
+├── AgentChannelBindings.php      // resolve (channel, site) → binding or null
 ├── AgentPrincipal.php
 ├── AgentContext.php              // principal + channel + definition + conversation
 ├── AgentTurn.php
@@ -133,22 +138,47 @@ are a different path. Do not treat them as part of this loop.
 
 Kill switches run at the runtime entry point, not only in the controller:
 `config('agents.enabled')` and `ai_agents.is_active` / not archived. A switch
-that covers one caller is not a switch.
+that covers one caller is not a switch. Inbox-origin turns additionally
+refuse when `AgentChannelBindings::resolve` returns null, `mode = off`, or
+a different agent (defence in depth, invariant 68).
 
 1. Rebuild / assert the principal against the conversation facts.
 2. **Inbound guards** (`InboundGuardPipeline`): `LoopGuard` → `BudgetGuard` →
    `HandoffRules`. A match short-circuits: no model call, write
    `agent_handoffs`, set state `awaiting_human`, return a canned line.
 3. Persist the `user` message row.
-4. Model call via `ModelDriver`. Persistence is **not** held open across it.
+4. **`ContextWindow::build()`** immediately before `ModelDriver::stream()`
+   (`AgentRuntime::streamMetered`). Persistence is unchanged — the table
+   holds the full history; only the bounded list is sent. `build()` is
+   idempotent so a guard-redraft can call the driver again on an
+   already-trimmed list. Persistence is **not** held open across the driver
+   call.
 5. Tool loop (capped by `config('agents.max_tool_calls_per_turn')`). Each call
    goes through `ToolDispatcher` (below), persists `agent_tool_invocations`,
-   merges into the turn `FactBag`.
+   merges into the turn `FactBag`. **Retry before escalate:** a `ToolError`
+   whose `error_code` is in `{invalid_arguments, not_found, site_unresolved,
+   unlicensed_argument, price_superseded}` is fed back as `display` plus a
+   `Recovery:` line (`recovery.hint` / `recovery.tool`). The runtime tracks
+   `consecutiveFailures[tool_key]` within the turn and only converts to a
+   handoff (`reason: error`, `trigger_source = rule`) when the same tool has
+   failed `config('agents.max_tool_retries')` (default 2) times. A model
+   `agent.escalate(reason: error)` while that budget remains is answered
+   with `ToolError(invalid_arguments)` and is **not** persisted as a handoff.
+   **Principal promotion (D-AI-18):** after an `ok` `crm.create_contact` (or
+   its dedupe path) in a customer-audience conversation whose principal is
+   `anonymous`, `PrincipalPromotion` stamps `contact_id`, sets
+   `verification_level = channel_asserted`, and rebuilds the principal for
+   the remainder of the turn. Upward only; never `verified` from a
+   self-stated identity. Activity:
+   `agent.conversation.principal_promoted` on the `ai` channel.
 6. Final assistant draft → **outbound guards**. A block writes the message
    with `blocked_by` set and converts the turn to a handoff. The customer
    never sees a blocked draft.
 7. Persist the assistant message, write agent-attributed `ai_usage_events`
-   (reserve then settle), update `last_turn_at`.
+   (reserve then settle), update `last_turn_at`. Inbox origin then dispatches
+   `channel.send` as a runtime-only terminal step (`maybeSendOnChannel`):
+   binding `draft` → `propose()` + pending action; binding `auto` →
+   `handle()` via `AgentSend`.
 8. Return `AgentTurn` (draft, channel, facts, invocations, handoff, usage).
 
 Timeouts (`agents.turn_timeout_ms`) become a handoff `error`, never a partial
@@ -220,7 +250,7 @@ Bound by `config('agents.driver')`.
 
 ### `ChannelProfile`
 
-Channel changes real behaviour with no transport. `ChannelProfile::for()`
+Channel shapes the draft even before a send. `ChannelProfile::for()`
 feeds the system prompt (length / register) and `ChannelGuard`:
 
 | Channel | Characters | HTML | Subject | Signature | Target sentences |
@@ -234,17 +264,22 @@ feeds the system prompt (length / register) and `ChannelGuard`:
 `voice` is on the enum so `ChannelProfileTest` stays exhaustive. Copilot does
 **not** read this profile — spoken form is `$voice` on `CrmCopilotAgent`.
 
-WhatsApp `requiresTemplateOutsideWindow` is a trace advisory until a real
-thread supplies `last_inbound_at` (`06-communications.md` / `WhatsAppWindow`).
+WhatsApp `requiresTemplateOutsideWindow` is advisory on demo / eval turns.
+On a live inbox turn the window is **enforced**: `last_inbound_at` is read
+from `$conversation->messageThread`; a closed window refuses the send and
+hands off `channel_constraint` so an operator can send a template.
 
 ### `ToolResult`, identity echo, and `FactBag`
 
 Tools never return a raw number for the model to format. `display` is
 pre-rendered prose the model may quote (`BillingMath` / `MoneyDisplay` for
-money; exclusive tax, currency from the price row — D1, invariant 30). It is
-the single line fed to the model (and stored as `result_summary`). Structured
-`data` and `entities` persist on the invocation row and stay out of model
-context (invariant 65).
+money; exclusive tax, currency from the price row — D1, invariant 30).
+`ToolResult::modelText()` feeds the model `display` plus a deterministic
+`Refs:` line from `entities` (invariant 67). `result_summary` and persisted
+message content stay `display`. Structured `data` and `entities` persist on
+the invocation row and stay out of model context (invariant 65). An id the
+model can pass but was never shown on a `Refs:` line is a defect in the
+tool.
 
 `entities` is `Array<EntityRef>` — `{ type, id, label, context }` — every
 entity the result names. A payload that contains `site_id` / `unit_class_id`
@@ -286,6 +321,85 @@ participate — it is instance-specific. A task that changes a prompt-visible
 `display` string must re-record affected cassettes
 (`agent:replay --live --record`).
 
+## Live channels
+
+Inbound email / SMS / WhatsApp reach `AgentRuntime::turn` through the queued
+listener `RespondWithAgent` (`ai` queue) on `InboundMessageReceived`. The
+listener is the boundary that constructs the principal (D-AI-1, invariant 56)
+as `channelAsserted(contact)` — never `verified`. Each skipped inbound is a
+Tier-1 `SystemEvent` `ai.inbound.skipped` with `reason`. Order:
+
+| `reason` | When |
+|---|---|
+| `ignored` | `auto_generated`, `source = ai_agent` (`LoopGuard::shouldIgnoreInbound`), call channel |
+| `duplicate` | an `agent_conversation_messages` row already has this `subject_message_id` (partial unique is the real gate; a losing `UniqueConstraintViolationException` is caught, never a failed job) |
+| `binding_off` | `AgentChannelBindings::resolve(channel, siteId)` is null or `mode = off`. `siteId` is from `InboundSiteContext` (destination identity, never the customer's From) |
+| `audience` | unmatched sender, or `existing_tenants` and the contact has no in-force contract at the binding site. Unmatched + `audience = all` is still `audience` until S26-07b |
+| `outside_hours` | `outside_hours = inbox` and now is outside `GeneralSettings::$sendWindowStart` → `$sendWindowEnd` via `SiteClock::withinWindow()`. Site-scoped bindings use that site's timezone; company-scoped use the inbound site's timezone, else `config('app.timezone')`. Site access hours are not office hours. Per-site window override is unset (`10`) |
+| `human_owned` | conversation `state ∈ {awaiting_human, handed_off}`, or an outbound `source = manual` message newer than `greatest(last_turn_at, agent_handback_at)` (invariant 70). Currently `RespondWithAgent::isHumanOwned()`; S26-08 relocates it to `ThreadAgentState` |
+| `agent_ineligible` | bound agent's `AgentDefinition::eligible(contact, siteId)` declines (`sales` declines an active contract at the site; `support` declines a contact with none). Thread stays unread. Cross-agent handoff is deferred |
+| `debounced` | another inbound on the same thread arrived within `config('agents.inbound_debounce_seconds')` (default 20); the job is released with delay so the last one runs |
+
+Find-or-create the `agent_conversation` for `message_thread_id`
+(`origin = inbox`, `audience = customer`). Then `AgentRuntime::turn(...)`.
+
+### Bindings
+
+`agent_channel_bindings` is unique on live `(channel, site_id)` — **one agent
+per channel per site** (D-AI-19). Columns: `ai_agent_id`, bindable `channel`
+(`email\|sms\|whatsapp\|webchat`; `voice` and `internal` share one 422),
+nullable `site_id`, `mode` (`off` \| `draft` \| `auto`), `audience`
+(`known_contacts` \| `existing_tenants` \| `all`), `outside_hours`
+(`inbox` \| `answer`). Archive-only.
+
+**Hazard: absent row = `off`.** Opposite default from `agent_write_policies`
+(absent = commit). A missing binding means an agent talks to real customers;
+that must be an explicit act (invariant 68). Resolution mirrors
+`ProviderResolver`: site-scoped live row → company-scoped live row → `null`.
+
+Kill switches, in order: `config('agents.enabled')` → `ai_agents.is_active &&
+!archived` → binding present and `mode != off`. API:
+`GET/POST /api/ai/agents/bindings`, `PUT/DELETE …/bindings/{binding}`
+(`DELETE` = archive). Permission `AiAgentBindingManage`. Panel is S26-08.
+
+### Send path
+
+`App\Support\Ai\AgentSend` is the **only** code that turns a draft into a
+send (invariant 69). It builds `SendContext(source: ai_agent, class:
+transactional)` and calls `EmailSender` / `SmsSender` / `WhatsAppSender` on
+the existing thread (`Threading::forExplicitThread`). Suppression, GSM-7
+segment count, and WhatsApp session/template rules apply unchanged. The
+sender writes the `messages` row; the agent sets
+`agent_conversation_messages.emitted_message_id`. Sender refusal
+(suppressed, window closed, `ChannelNotConfigured`) → no message, handoff
+`channel_constraint`, Tier-1 `ai.send.refused`.
+
+`channel.send` is a `ProposableTool` in the registry that **no agent claims**
+(`RuntimeOnlyTools`). Dispatched by `AgentRuntime` as a terminal step of an
+inbox turn, not via `ToolDispatcher::dispatch` (whose allowlist gate would
+deny it). Binding mode, not `agent_write_policies`, picks the branch:
+`draft` → `propose()` then `PendingActionRecorder`; `auto` → `handle()`.
+Payload holds ids and body only — never rendered segments or the window
+deadline (invariant 62). Preview holds derived values; `expires_at` is
+`min(now() + pending_action_ttl, preview.window_closes_at)` when the
+preview carries a window.
+
+Approval of a `channel.send` pending action re-runs `AgentSend` against
+current state. Reject accepts `resolution` (`discarded` \| `edited`) in
+`detail.resolution`. Edit & send is a reject, then a normal inbox reply
+(`source = manual`) with optional `agent_pending_action_id`; the reply path
+back-fills `detail` only when the action belongs to this thread, `tool_key
+= channel.send`, and status is rejected-as-edited. The approve endpoint
+gets **no** `body` parameter.
+
+Hand-back: `POST /api/inbox/threads/{id}/agent/resume` sets `state = active`,
+`agent_handback_at = now()`, does **not** trigger a turn. Permission
+`InboxSend`. Hand-back is a click (invariant 70).
+
+`GET /api/inbox/badge` includes `agent_drafts` and `agent_handoffs`. Inbox
+UI for the draft card, badges, and hand-back is S26-08. Webchat public
+routes (`POST /api/chat/sessions`, …) are S26-07c.
+
 ## Tool catalogue
 
 The tool surface is the defence; prompt text is defence-in-depth. The
@@ -314,6 +428,11 @@ catalogue below… Definitions in code (`SupportAgentDefinition` /
 | `access.status` | verified | | | ✓ |
 | `kb.faq_lookup` | anonymous | | ✓ | ✓ |
 | `agent.escalate` | anonymous | | ✓ | ✓ |
+| `channel.send` | — | ✓ (runtime-only) | | |
+
+`channel.send` is registered and **unclaimed** (`RuntimeOnlyTools`). A
+definition listing it fails `AgentToolCoverageTest`. Binding mode picks
+`propose()` vs `handle()`; the model never sees the tool.
 
 Sales has **no** billing, contract, or access tools. A prospect asking about
 someone's balance is a handoff.
@@ -351,8 +470,11 @@ invents a figure, a tax percent, or a unit id, `GroundingGuard` suppresses the
 draft and hands off (`grounding_failure`). A suppressed draft is never delivered
 (invariant 55).
 
-`sales.create_offer` accepts optional `quoted_price_id` / `quoted_tax_rate_id`
-per option (continuity tokens, not FactRegistry entities). When a prior `ok`
+`sales.create_offer` takes licensed `site_id` + `unit_class_id` per option
+and resolves the active `UnitClassRate` server-side at
+`SiteClock::today($site)` — `unit_class_rate_id` is never a model argument
+(D-AI-17). Optional `quoted_price_id` / `quoted_tax_rate_id` per option are
+continuity tokens, not FactRegistry entities. When a prior `ok`
 `pricing.quote` or `sales.propose_offer` named that class and the token is
 absent, the tool refuses with `invalid_arguments` and a hint to pass
 `quoted_price_id` — retryable, no handoff. When the token is present, the
@@ -364,7 +486,8 @@ tells them apart. "Was this class quoted?" is answered from the **trace**
 (`PriorCatalogueQuote`), not `FactRegistry` (invariant 66). The agent never
 silently offers a number different from the one it stated.
 `sales.propose_offer` line items echo `price_id` and `tax_rate_id` so
-propose→create needs no second quote.
+propose→create needs no second quote. Optional `move_in_date` writes
+`deals.expected_move_in` only when the deal's value is null.
 
 Other tool notes:
 
@@ -402,16 +525,29 @@ Other tool notes:
   search, no embeddings (D-AI-5). Unknown key → `not_found` → escalate, never
   improvise policy.
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
-  `contact_channels`.
+  `contact_channels`. An `ok` result in an anonymous customer conversation
+  promotes the principal to `channel_asserted` (D-AI-18).
+- `crm.create_deal` / `sales.propose_offer` accept optional need fields
+  (`expected_move_in`, stay length/period, `desired_size_m2`). Relative dates
+  are converted to ISO by the model using the identity-block `today`.
+  `purpose` (`personal` \| `business`) is prefixed onto `deals.notes` until
+  a column exists (`10`).
+- `pricing.discounts` returns only `agent_offerable` rows; `display` is the
+  locale-resolved `customer_terms` sentence, not the operator name. Empty
+  catalogue → no `Refs:` line. A `discount_id` that is not offerable is
+  `denied: not_allowed_for_agent` before `handle()`.
 - `sales.create_offer` calls `OfferCreation`. Seeded policy: `commit`,
-  `max_per_conversation = 2`, `max_per_day = 50`. Does not send.
+  `max_per_conversation = 2`, `max_per_day = 50`. Creates; does not send
+  (D-AI-10).
 - `sales.create_reservation` calls `ReservationCreation` with auto-pick;
   `unit_id` and `expires_at` are never model arguments. Seeded policy:
   `propose`, `max_per_conversation = 1`, `max_per_day = 20`. Floor is
   `channel_asserted` — a fully anonymous webchat visitor gets a quote and an
   offer, not inventory.
 - `agent.escalate` is model-invocable (`trigger_source = model`) and does not
-  replace deterministic pre-model rules.
+  replace deterministic pre-model rules. `reason: error` while a retry budget
+  remains is refused (see turn loop).
+- `channel.send` — runtime-only; see Live channels.
 
 ## Write policy and autonomy
 
@@ -603,7 +739,8 @@ Email without a `Subject:` line is **filled in** from the first body line (or
 `Your enquiry`), not blocked. Lines before `Subject:` are discarded so the
 body is the sendable email, not model narration. HTML in a plain-text channel
 is stripped. The demo email skin renders Markdown. WhatsApp session-vs-template
-is advisory until a real thread supplies `last_inbound_at`.
+is advisory on demo / eval; on a live inbox turn the window is enforced
+(see Live channels).
 
 ### Prompt injection
 
@@ -617,17 +754,18 @@ catalogue terms. Ownership is checked before `handle()`. No guard tries to
 
 Agent conversations are a **reasoning trace, not the message store** (D-AI-3,
 invariant 57). Invariant 38 is unchanged: a `messages` row means exactly one
-real send or receipt. Agent drafts are never `messages` rows.
-`message_thread_id` and `emitted_message_id` are always null this sprint; when
-channels land they link the trace to the canonical thread. The Inbox stays
-the single operator surface. Registry: Agent registry above. No
-`HasAutomationTriggers` on any agent table.
+real send or receipt. Agent drafts are never `messages` rows. On inbox origin,
+`message_thread_id` links the trace to the canonical thread and
+`emitted_message_id` is set by `AgentSend` after a real send. Demo origin
+leaves both null. The Inbox stays the single operator surface. Registry:
+Agent registry above. No `HasAutomationTriggers` on any agent table.
 
 | Model | Table | Role |
 |---|---|---|
 | `AiAgent` | `ai_agents` | Instance, not definition. `key` must resolve to an `AgentDefinition`. `settings` = tuning knobs only — never the prompt or tool list |
-| `AgentConversation` | `agent_conversations` | One conversation. `audience` (`internal` \| `customer`), `origin` (`demo` \| `inbox` \| `webchat`, **never null**), `channel`, principal facts, `state` (`active` \| `awaiting_human` \| `handed_off` \| `closed`) |
-| `AgentConversationMessage` | `agent_conversation_messages` | Append-only turns (`sequence`). `blocked_by` when a draft was suppressed. `emitted_message_id` always null this sprint |
+| `AgentConversation` | `agent_conversations` | One conversation. `audience` (`internal` \| `customer`), `origin` (`demo` \| `inbox` \| `webchat`, **never null**), `channel`, principal facts, `state` (`active` \| `awaiting_human` \| `handed_off` \| `closed`), `message_thread_id` (inbox), `agent_handback_at` |
+| `AgentConversationMessage` | `agent_conversation_messages` | Append-only turns (`sequence`). `blocked_by` when a draft was suppressed. `subject_message_id` on the inbound that drove the turn; `emitted_message_id` set by `AgentSend` after a real send |
+| `AgentChannelBinding` | `agent_channel_bindings` | Per `(channel, site)` which agent answers, at what `mode` / `audience` / `outside_hours`. Absent row = off (invariant 68) |
 | `AgentToolInvocation` | `agent_tool_invocations` | What it looked at: `tool_key`, arguments, result, `denied_reason`, verification snapshots, `idempotency_key`, `result_type` / `result_id` on committed writes |
 | `AgentPendingAction` | `agent_pending_actions` | Propose-mode intent: server-normalised `payload`, operator `preview`, `status`, `expires_at`. Approval re-validates; never a result snapshot |
 | `AgentHandoff` | `agent_handoffs` | Escalation: `reason`, `trigger_source` (`rule` \| `model` \| `customer` \| `guardrail`), `detail` |
@@ -658,9 +796,10 @@ operator-facing metric.
 | `prompt_version` | Hash of the **template**, not the interpolated prompt (D-AI-14). `identityBlock` (company, site, timezone, today's date) is omitted so the field is not a per-site, per-day fingerprint. Channel and verification stay in the hash. Eval cassettes hash the fully interpolated prompt — they share `CassetteKey::promptHash`, not the input |
 | `occurred_at` | |
 
-The model receives `display` / `summary` only; `data` and `entities` persist
-on the invocation. `originalBody` is client-session only (D-AI-15) and is not
-an envelope field.
+The model receives `modelText()` (`display` plus the `Refs:` line,
+invariant 67); `data` and `entities` persist on the invocation.
+`originalBody` is client-session only (D-AI-15) and is not an envelope
+field.
 
 ## Telemetry
 
@@ -690,7 +829,8 @@ an operator surface**.
 - `origin = demo` is refused with 422 unless `config('agents.demo_enabled')`
   is true (`AGENTS_DEMO_ENABLED`, default **false**).
 - `verification_level` is accepted from the client **only** for `origin = demo`.
-  For `inbox` / `webchat` it will be derived from how the message arrived.
+  For `inbox` it is derived from how the message arrived (`channel_asserted`).
+  `webchat` derivation is S26-07c.
 - `audience` is derived from whether a `contact_id` is present, never trusted
   from the client.
 - Permission: `Permission::AiAgentUse`. Nav visible when the flag is on and
@@ -770,13 +910,16 @@ later duration bump can re-mint. The API key stays server-side
 These are defects with a home, not open questions.
 
 1. **Conversation redaction (AR-03).** `agent_conversation_messages`,
-   `agent_tool_invocations`, and `agent_handoffs.detail` hold names, emails,
-   and balances. `config/redaction.php` covers `activity_log` and
-   `system_events` only. `contacts:redact` does not touch the agent tables.
-   `ai_summaries` **is** already covered (invariant 53). Transcripts are
-   evidence in a lien or auction dispute — they retain on contract terms, not
-   on the telemetry pruning schedule that covers tier-1 system events.
-   Blocking before any live channel connects. Detail: `10-open-decisions.md`.
+   `agent_tool_invocations`, `agent_handoffs.detail`, and
+   `agent_pending_actions.payload.body` hold names, emails, balances, and
+   drafted replies. `chat_sessions.visitor_meta` arrives with S26-07c.
+   `config/redaction.php` covers `activity_log` and `system_events` only.
+   `contacts:redact` does not touch the agent tables. `ai_summaries` **is**
+   already covered (invariant 53). Transcripts are evidence in a lien or
+   auction dispute — they retain on contract terms, not on the telemetry
+   pruning schedule that covers tier-1 system events. **Blocking before a
+   provider channel binding is set to `auto` in production.** S26-07 already
+   writes real inbound text onto these tables. Detail: `10-open-decisions.md`.
 2. **Two authorization systems.** `agent_write_policies` governs what agents
    may write; `roles` / `role_permissions` / `employee_roles` governs what
    people may write. They will drift. Whether an agent should hold a real
@@ -806,35 +949,39 @@ Offer and Reservation creation are permitted under 54b, through
 
 Also not built:
 
-- **Sending** an offer. Creation is not delivery (D-AI-10). No `SendContext`,
-  no `OfferDelivery` row, no `messages` row from the agent.
+- **Sending** an offer. Creation is not delivery (D-AI-10). Replies go out
+  through `AgentSend`; the offer link is still sent by an operator or a later
+  playbook action. No `OfferDelivery` row from the agent.
 - Support-agent write tools for Offer / Reservation. Sales only.
-- Any transport — no `SendContext`, no sender call, no `messages` row.
-- `webchat` as a comms `Channel` enum value and its adapter (agent
-  `AgentChannel::Webchat` is a profile only).
+- `webchat` as a comms `Channel` enum value and its adapter — S26-07c.
+  Agent `AgentChannel::Webchat` is a profile only.
 - RAG / vector retrieval (D-AI-5). Knowledge is curated key lookup.
 - `contact_verifications` / OTP — the verification level is a demo toggle.
-- Autonomy beyond `suggest` for *sending* (`review` / `auto` are later, gated
-  on measured containment, never on a date).
-- Per-agent, per-channel autonomy configuration.
+- Binding mode `review` (delayed auto-send with a cancel window). `draft` and
+  `auto` shipped in S26-06/07; do not set a provider channel to `auto` in
+  production until AR-03 lands.
 - Copilot on this shared runtime.
 - Insights reports on agent performance (tables are shaped for them; harvest
   principle applies).
 - Delinquency autonomy — never, in any sprint.
+- Auto-lead capture — S26-07b.
+- Panel bindings page, Inbox draft card, `/chat/:token` — S26-08.
 
 ## Related docs
 
 - `02-facility.md` — `site_service_areas`, site coordinates, `size_guides`
 - `03-pricing.md` — quote-to-offer `price_id` continuity (invariant 66)
 - `04-crm-pipeline.md` — `source` / `ai_agent_id` on Offer and Reservation
-- `06-communications.md` — inbound sender matching; GSM-7 / SMS segment
-  ceiling apply to agent drafts only
+- `06-communications.md` — inbound sender matching; `RespondWithAgent`;
+  `SendContext` source `ai_agent`; GSM-7 / SMS segment ceiling apply to
+  agent drafts only
 - `07-people-and-auth.md` — employee RBAC is a different axis from agent
   authorization (D-AI-2)
-- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–66, amended 48
+- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–70, amended 38 / 48 / 64; 40 pointer to S26-07b
 - `12-automation-engine.md` — `CreateObjectAllowlist` (unchanged; agent surface is deliberately wider)
-- `10-open-decisions.md` — D-AI-1…15, D-V1…4; AR-03 is a known compliance
-  defect (Blocking for S23), not an open question
+- `10-open-decisions.md` — D-AI-1…21, D-V1…4; AR-03 is a known compliance
+  defect (blocking before a provider binding is `auto` in production), not
+  an open question
 - `08-activity-logging.md` — tier-2 `ai` channel; tier-3 copilot voice sessions; activity log is not a transcript
 - `01-stack.md` — stack line and `/demo/chat` page map
 

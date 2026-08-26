@@ -47,6 +47,7 @@ page is S26-08.
       polled; no provider account involved.
 - [ ] `RouteAuthCoverageTest` allowlist entries for the three chat routes.
 - [ ] Exhaustive `Channel` matches compile / tests pass with the new case.
+- [ ] Apply this task's S26-09b doc edits in the same PR.
 
 ## Out of scope
 

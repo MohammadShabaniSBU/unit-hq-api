@@ -107,7 +107,11 @@
     creates exactly one message; `Interaction` is a linked timeline index, never the body
     store. `(provider, provider_message_id)` is unique — it is the reconciliation key for
     delivery events and the idempotency key for inbound receipt. Bodies are sanitized at
-    write; attachments live on the private disk.
+    write; attachments live on the private disk. Agent sends go through the same
+    senders (invariant 69). `LoopGuard::shouldIgnoreInbound()` compared
+    `$message->source->value === 'agent'` — a value that was never a
+    `MessageSource` case — so the never-reply-to-our-own-send guard was dead
+    until S26-07 added `MessageSource::AiAgent`.
 
 39. **Delivery webhooks are idempotent and status is forward-only.** Provider callbacks
     persist on `comms_webhook_events` under unique `(communication_account_id,
@@ -124,7 +128,10 @@
     (`create-and-attach`). Inbound HTML is sanitized at write (scripts, handlers,
     external http(s) refs); attachments are size-capped with honest `oversize`
     stubs on the private disk. Auto-Submitted / X-Autoreply messages are stored
-    with `auto_generated` and do not increment unread.
+    with `auto_generated` and do not increment unread. Auto-lead capture for
+    `audience = all` bindings is S26-07b; the "never *untraceably*" amendment
+    lands with that task (see `roadmap/sprint-26-agent-channels/S26-09-invariants-and-docs.md`
+    S26-09b).
 41. **Discounts compile at signing; billing never interprets them.** A discount
     materializes as contract-scoped price versions (+ linked provenance) inside the
     signing/convert transaction. No code in billing runs, settlements, or reports may
@@ -309,6 +316,10 @@
     (`entityArguments()` or `EntityArgumentExemptions`). Named tests:
     `ArgumentProvenanceTest`, `AgentToolCoverageTest`. This is the input-side
     mirror of 63; it shares that plumbing and must not fork it.
+    Until S26-01, `ArgumentProvenance::checkBag()` skipped list-shaped
+    arguments outright (`if (! is_array($item) || array_is_list($item)) continue;`),
+    so ids nested in `sales.create_offer.options[]` were never gated. The deny
+    now descends into list rows.
 65. **Tool failures return a machine error code and a recovery affordance.** A
     prose-only failure is a defect, because it forces escalation where retry
     was available. `ToolError` carries `error_code` (`ToolErrorCode`), optional
@@ -337,6 +348,33 @@
     `FactRegistry`. The registry holds only `EntityRef`s, so an availability
     call that licensed the class is indistinguishable from a quote. Enforced
     by `SalesCreateOfferToolTest`.
+67. **Tool results expose the ids they license.** Every `EntityRef` on a
+    `ToolResult` is rendered on the model-facing `Refs:` line. An id the
+    model can pass but was never shown is a defect in the tool, not in the
+    model. Enforced by `App\Support\Ai\Tools\RefsRenderer` (called from
+    `ToolResult::modelText()`, `AgentRuntime`, and `ContextWindow`) and the
+    per-tool assertion in `ToolResultContractTest`.
+68. **Agent channel bindings default to off.** An agent answers a real
+    channel only under a live `agent_channel_bindings` row with `mode != off`.
+    Absent row = off. This default is the opposite of `agent_write_policies`
+    (absent = commit) and must not be "harmonised". Enforced by
+    `AgentChannelBindings::resolve()` returning `null`, which
+    `RespondWithAgent` turns into `ai.inbound.skipped(binding_off)`.
+69. **Agent sends go through the channel senders.** `App\Support\Ai\AgentSend`
+    is the only path from draft to send; it builds
+    `SendContext(source: ai_agent, class: transactional)` and calls
+    `EmailSender` / `SmsSender` / `WhatsAppSender`. No agent code inserts a
+    `messages` row — restates 38 for agents. Enforced by
+    `RuntimeOnlyTools::KEYS` (`channel.send`) plus the inverse assertion in
+    `AgentToolCoverageTest` that no `AgentDefinition` claims it.
+70. **A human-owned thread is silent for agents.** Once a handoff is written
+    or an operator replies manually, no agent turn runs on that thread until
+    an explicit hand-back. Hand-back is a click, never a model or inbound
+    event (extends invariant 60). Enforced by `RespondWithAgent::isHumanOwned()`
+    (state `awaiting_human` / `handed_off`, or an outbound `source = manual`
+    message newer than `greatest(last_turn_at, agent_handback_at)`) and
+    `InboxController@resume`. S26-08 relocates that predicate to
+    `ThreadAgentState` and re-anchors this line — see S26-09b.
 
 ## Code conventions
 

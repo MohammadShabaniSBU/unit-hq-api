@@ -80,18 +80,25 @@
 - **D-AI-13 — `FactRegistry` is conversation-scoped.** Rebuilt from the append-only trace, not a table, and deliberately *not* turn-scoped like `ForbiddenClaimKey` (invariant 63). Availability comes back two turns before the quote; a turn-scoped registry would deny the correct call. Do not "fix" the scopes to match. Detail: `14-ai-agents.md`.
 - **D-AI-14 — `prompt_version` hashes the template, not the interpolated prompt.** `identityBlock` interpolates company, site, timezone and today's date, which would make the field a per-site, per-day fingerprint. Channel and verification stay in the hash — SMS vs email is a different prompt in force. Eval cassettes continue to hash the fully interpolated prompt because they answer a different question ("did the model see these bytes"). They share `CassetteKey::promptHash`, not the input; do not collapse them. Named test: `PromptVersionTest`.
 - **D-AI-15 — `originalBody` is client-session only.** Not persisted: a second copy of customer-directed content would land in `agent_handoffs.detail`, which AR-03 already names, and GSM-7 transliteration does not reverse. It disappears on reload by design. The panel comment in `useAgentChat.ts` is not the home; this row is.
+- **D-AI-16 — Tool results expose licensed ids on a `Refs:` line.** `ToolResult::modelText()` appends a deterministic `Refs:` line from `entities` (grouped by type then id). `result_summary` and persisted message content stay `display`. An id the model can pass but was never shown is a defect in the tool (invariant 67). S26-00.
+- **D-AI-17 — `sales.create_offer` resolves the rate server-side.** The model passes licensed `site_id` + `unit_class_id`; `unit_class_rate_id` is never a model argument. Resolution is the active `UnitClassRate` for that pair at `SiteClock::today($site)`. `ArgumentProvenance::checkRateIds` stays as defence. S26-01.
+- **D-AI-18 — Principal promotion is upward-only and stops at `channel_asserted`.** After an `ok` `crm.create_contact` (or its dedupe path) in a customer-audience conversation whose principal is `anonymous`, the runtime stamps `contact_id` and rebuilds `AgentPrincipal::channelAsserted` for the rest of the turn. Never demote; never `verified` from a self-stated identity. Activity is `agent.conversation.principal_promoted` on the `ai` channel (not `ai.conversation.principal_promoted`). S26-02.
+- **D-AI-19 — One agent per `(channel, site)`.** Partial unique on live `agent_channel_bindings`. Cross-agent handoff is deferred. API is `GET/POST /api/ai/agents/bindings` (not nested under `{aiAgent}` and not `/api/settings/ai-agents/bindings`). Bindable channels are `email|sms|whatsapp|webchat`; `voice` and `internal` share one 422. Seeder match key is `(channel, site_id)`. S26-06.
+- **D-AI-20 — Auto-lead capture is a company flag, default off.** `config('communications.auto_lead_capture')`. **Not built yet** (S26-07b).
+- **D-AI-21 — Auto-captured leads extend `contacts.source`; there is no `contacts.origin` column.** `App\Enums\ContactSource` today has one case, `ai_agent`. S26-07b adds `inbound_auto` to that enum so a contact has exactly one answer to "where did this person come from". The `AllowlistedParent::resolve()` / `CrmCreateDealTool` predicate stays `source === ContactSource::AiAgent`. That branch only runs when `$principal->contactId === null`, so it is a same-conversation ownership check standing in for a principal that has no contact yet — not a provenance lookup. Widening it to `inbound_auto` would let an anonymous conversation attach writes to a lead some other conversation captured (invariant 56). Auto-capture never reaches this branch: the S26-07b listener creates the contact and then builds `AgentPrincipal::channelAsserted($contact->id, …)`. Anonymous principal + `inbound_auto` contact stays `denied: ownership`.
 
 ## Blocking for S23
 
-- **AR-03 — known compliance defect, blocking before any channel connects**
-  (agent conversation redaction; **not** sprint-19 usage metering, which
-  shipped). This is not an open question. `contacts:redact` must cover
-  `agent_conversation_messages`, `agent_tool_invocations`, and
-  `agent_handoffs.detail`. `config/redaction.php` covers `activity_log` and
-  `system_events` only. S22/S25 traffic is `origin = demo` against `demo:seed`
-  fiction, so the gap is tolerable until a real inbound message reaches an
-  agent — at that moment these tables hold verbatim tenant text, balances, and
-  addresses. Extend `config/redaction.php` before, not after. **Retention:**
+- **AR-03 — known compliance defect, blocking before a provider channel
+  binding is set to `auto` in production** (agent conversation redaction;
+  **not** sprint-19 usage metering, which shipped). This is not an open
+  question. `contacts:redact` must cover `agent_conversation_messages`,
+  `agent_tool_invocations`, `agent_handoffs.detail`, and
+  `agent_pending_actions.payload.body`. `chat_sessions.visitor_meta` arrives
+  with S26-07c. `config/redaction.php` covers `activity_log` and
+  `system_events` only. S26-07 now writes real inbound text onto those
+  tables, so the gap is no longer demo-only. Extend `config/redaction.php`
+  before, not after, promoting a provider binding to `auto`. **Retention:**
   agent transcripts are evidence in a lien or auction dispute. They retain on
   contract terms, **not** on the telemetry pruning schedule that covers tier-1
   system events. `ai_summaries` **is** already covered by `contacts:redact`
@@ -116,11 +123,11 @@
 - A generic expression language for dynamic insight params.
 - Cross-report filtering, favourites, dashboards-of-dashboards.
 - Tenant-facing analytics of any kind (contacts still do not log in).
-- Any agent transport — no `SendContext`, no sender call, no `messages` row. Agent output is a draft turn (`14-ai-agents.md`).
-- `webchat` as a comms `Channel` enum value and its adapter (agent `AgentChannel::Webchat` is a profile only).
+- `webchat` as a comms `Channel` enum value and its adapter — S26-07c.
+  Agent `AgentChannel::Webchat` is a profile today; the comms `Channel` enum
+  has no `webchat` case yet.
 - RAG / vector retrieval for agent knowledge (D-AI-5).
 - `contact_verifications` / OTP — the verification level is a demo toggle in S22. `channel_asserted` from a self-stated identity is acceptable only because that level exposes nothing private (`billing.*`, `contract.summary`, `access.status` all require `verified`) and its only writes are `crm.create_note` (support agent only) and `sales.create_reservation` in propose mode. Lowering any tool's floor to `channel_asserted` must re-examine this path. OTP verification for webchat is what closes it.
-- Per-agent, per-channel autonomy configuration.
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
 
@@ -185,6 +192,8 @@
 | Agent reservation active-hold uniqueness | **Option 1 taken (S24-01):** in-transaction check inside `ReservationCreation::create` under the existing `lockForUpdate` on the candidate unit, scoped to `source = ai_agent`, plus supporting index `(contact_id, status)`. Operator double-holds stay legal. **Known gap:** two concurrent agent creates that pick *different* units of the same class do not share that lock, so a double-insert is still possible. **Rejected for now:** (2) denormalise `site_id` / `unit_class_id` onto `reservations` for a Postgres partial unique — derived state (invariant 5). (3) exclusion constraint — overkill. Revisit only if (1) proves insufficient in production. |
 | Per-provider prompt caching | S26-05 bounds what is *sent* to the model (`ContextWindow`). Provider cache flags (Anthropic `cache_control`, OpenAI cached input prefixes) are a separate follow-up: they need a per-adapter mapping, they change billing (`cached_input_tokens` is already recorded), and they must not become a second, provider-shaped copy of the eviction rules. Recorded so S26-05 does not grow a caching layer. |
 | Per-site agent send window | S26-07 evaluates `outside_hours` against the company-wide `GeneralSettings::$sendWindowStart` → `$sendWindowEnd` via `SiteClock`. Site-scoped bindings use that site's timezone. There is no company timezone (`docs/02-facility.md` forbids adding one): a company-scoped binding evaluates in the timezone of the site resolved by `InboundSiteContext` when there is one, else `config('app.timezone')`. A per-site override of that window is unset. Site access hours (`facility.site_info`) are when renters can reach a unit — they are not office hours and must not be reused for this. |
+| Missed-call SMS follow-up | An inbound call that the agent cannot answer (call channel is skipped `ignored`) does not trigger an SMS. Whether a missed call should enqueue a follow-up SMS on a live SMS binding is unset. |
+| Cross-agent handoff | D-AI-19 is one agent per `(channel, site)`. A sales conversation that becomes a tenant, or a support conversation that is a prospect, skips `agent_ineligible` and stays in the Inbox. Routing between sales and support inside one thread is deferred. |
 
 ## Active WIP
 

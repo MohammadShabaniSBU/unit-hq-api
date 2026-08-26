@@ -22,6 +22,7 @@ Durable **person record holding identity only**. Contacts do **not** log in — 
 - Multiple emails / phones live in `ContactChannel` (`type`, `value`, `label`, `is_primary`, `opted_in`) — the contact row itself stays clean.
 - **Partial unique index** enforces only one primary channel per type per contact.
 - Sites are associated via the `contact_sites` pivot (many-to-many). Create requires a `site_id`; optional `phone` creates a primary phone channel in the same transaction. Detail views still show activity **across all sites** — a Contact is not site-scoped as a subject (`SubjectSite` → null).
+- **Provenance:** nullable `contacts.source` (`App\Enums\ContactSource`). Today the only case is `ai_agent`, set by `crm.create_contact`. This is the single provenance field — there is no `contacts.origin` column (D-AI-21). `inbound_auto` and auto-captured lead deals (`deals.source = inbound_{channel}`) arrive with S26-07b.
 
 ### AI summary (Contact)
 
@@ -33,7 +34,7 @@ Operator-triggered card on the Contact detail overview. One current summary per 
 
 ## Deal
 
-The pursuit record: pipeline stage, forecast, intent. Also carries expected-need fields: `expected_move_in`, `expected_stay_length`, `expected_stay_period`, `desired_size`, `desired_unit_class_id`. Optional link target for interactions.
+The pursuit record: pipeline stage, forecast, intent. Also carries expected-need fields: `expected_move_in`, `expected_stay_length`, `expected_stay_period`, `desired_size`, `desired_unit_class_id`. Optional link target for interactions. Customer-facing agents write those need columns through `crm.create_deal` / `sales.propose_offer` / `sales.create_offer` (S26-02); `sales.create_offer` writes `expected_move_in` only when the deal's value is null — never overwriting an operator. Customer-stated `purpose` (`personal` \| `business`) is prefixed onto `deals.notes` until a column exists (`10`).
 
 ### AI summary (Deal)
 

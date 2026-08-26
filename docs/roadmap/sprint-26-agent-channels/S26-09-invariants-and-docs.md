@@ -4,6 +4,11 @@
 **Blocks:** nothing
 **Touches:** `unit-hq-api/docs`
 
+S26-07b / 07c / 08 were not built when this landed. This pass documents
+S26-00…S26-07 as shipped. Deferred doc edits are in **S26-09b** below;
+each of those tasks applies its block in the same PR as the code.
+Invariant 40 is **not** amended here.
+
 ## What to change
 
 ### `09-conventions-and-invariants.md`
@@ -84,7 +89,56 @@
 
 ## Acceptance criteria
 
-- [ ] Every new invariant number is referenced from the task that
+- [x] Every new invariant number is referenced from the task that
       introduced it and from `14`.
-- [ ] `AGENTS.md` table row for "AI agents / live channels" points at `14`.
-- [ ] No doc still says the agent has no transport.
+- [x] `AGENTS.md` table row for "AI agents / live channels" points at `14`.
+- [x] No doc still says the agent has no transport.
+
+S26-07b, S26-07c, and S26-08 were not built when this task landed. Their
+doc edits are listed in S26-09b and each task applies them in its own PR.
+
+## S26-09b — doc edits that unlock later
+
+Each of S26-07b, S26-07c, and S26-08 applies **its** block in the same PR
+as the code. D-AI-21 is already resolved in S26-09; it needs no follow-up.
+
+### S26-07b
+
+- **`09` invariant 40** — amend to: *"Inbound receipt never creates
+  contacts **untraceably**. Unknown senders park on `comms_triage` unless
+  `communications.auto_lead_capture` is on, in which case a non-spam-shaped
+  sender becomes a Contact (`source = inbound_auto`) + lead Deal with a
+  resolved triage row (`how = auto`) and a Tier-2 `contact.auto_created`.
+  Spam-shaped inbound always parks."* Drop the S26-07b pointer line that
+  S26-09 left on 40.
+- **`04-crm-pipeline.md`** — `ContactSource::InboundAuto`;
+  `deals.source = inbound_{channel}` on auto-captured leads. No
+  `contacts.origin`.
+- **`06-communications.md`** — `auto_lead_capture` / spam-shape rules;
+  unmatched + `audience = all` + flag on is capture, not `skip audience`.
+- **`10-open-decisions.md`** — flip D-AI-20 from "not built yet" to shipped.
+- **`14-ai-agents.md`** — remove "Auto-lead capture — S26-07b" from not-built;
+  document the capture branch in Live channels.
+
+### S26-07c
+
+- **`06-communications.md`** — add `webchat` to comms `Channel` (first-party,
+  no provider). Drop the "S26-07c, not yet a case" note.
+- **`14-ai-agents.md`** — webchat public routes in Live channels;
+  `chat_sessions.visitor_meta` under AR-03 (no longer "arrives with"); drop
+  the webchat-as-comms-`Channel` not-built bullet.
+- **`10-open-decisions.md`** — drop the webchat out-of-scope bullet.
+
+### S26-08
+
+- **`01-stack.md` page map** — Settings → AI agents → Channels
+  (`/settings/ai-agents/channels`); Inbox agent draft card / hand-back;
+  public `/chat/:token`.
+- **`isHumanOwned()` → `ThreadAgentState`.** S26-08 needs the same
+  human-ownership predicate to decide whether to render the hand-back
+  button, so the rule moves out of the private
+  `RespondWithAgent::isHumanOwned()` into a shared
+  `App\Support\Ai\ThreadAgentState`. Re-anchor invariant 70 in `09` and
+  the Live channels section in `14` from `RespondWithAgent::isHumanOwned()`
+  to `ThreadAgentState`. The rule is unchanged; only its home moves.
+

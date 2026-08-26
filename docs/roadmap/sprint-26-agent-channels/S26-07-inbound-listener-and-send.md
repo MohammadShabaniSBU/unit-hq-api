@@ -167,6 +167,8 @@ branch: `draft` → `propose()` then `PendingActionRecorder`; `auto` →
 - [ ] `PermissionCoverageTest` / `RouteAuthCoverageTest` green (no new
       public routes in this task).
 
+Introduces **invariants 69 and 70** (S26-09).
+
 ## Out of scope
 
 - Auto-lead capture — S26-07b.
