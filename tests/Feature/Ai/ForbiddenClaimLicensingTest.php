@@ -100,7 +100,9 @@ class ForbiddenClaimLicensingTest extends TestCase
         $this->assertNull($first->handoff);
         $this->assertStringContainsString("It's reserved", $first->draft);
 
-        $this->driver->enqueueText("Yes, it's reserved.");
+        $this->driver->enqueueText("It's reserved.");
+        $this->driver->enqueueText("It's reserved.");
+        $this->driver->enqueueText("It's reserved.");
 
         $second = app(AgentRuntime::class)->turn(
             $conversation->fresh(),
@@ -227,6 +229,8 @@ class ForbiddenClaimLicensingTest extends TestCase
         $this->assertStringContainsString('12–16', $first->draft);
         $this->assertStringContainsString(SizeGuideResolver::DISCLAIMER, $first->draft);
 
+        $this->driver->enqueueText('For 17–28 standard boxes, a unit around 12–16 m² should work well.');
+        $this->driver->enqueueText('For 17–28 standard boxes, a unit around 12–16 m² should work well.');
         $this->driver->enqueueText('For 17–28 standard boxes, a unit around 12–16 m² should work well.');
 
         $second = app(AgentRuntime::class)->turn(

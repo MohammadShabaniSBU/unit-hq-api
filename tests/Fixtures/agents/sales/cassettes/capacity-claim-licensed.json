@@ -20,7 +20,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "For 17–28 standard boxes, a unit around 12–16 m² should work well. This is an estimate based on typical contents; ceiling height and access type change what actually fits. Measure before you commit. I am an automated assistant.",
+            "content": "For 17–28 standard boxes, a unit around 12–16 m² should work well. This is an estimate based on typical contents; ceiling height and access type change what actually fits. Measure before you commit. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

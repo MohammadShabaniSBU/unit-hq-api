@@ -19,12 +19,12 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Madrid Norte is on the list. I am an automated assistant.",
+            "content": "Madrid Norte is on the list. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
         {
-            "content": "Happy to help at Madrid Norte. I am an automated assistant.",
+            "content": "Happy to help at Madrid Norte. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
@@ -42,7 +42,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Small units are available at Madrid Norte as of now. I am an automated assistant.",
+            "content": "Small units are available at Madrid Norte as of now. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
@@ -61,7 +61,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant.",
+            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
@@ -80,12 +80,12 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant.",
+            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
         {
-            "content": "You are welcome. I am an automated assistant.",
+            "content": "You are welcome. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

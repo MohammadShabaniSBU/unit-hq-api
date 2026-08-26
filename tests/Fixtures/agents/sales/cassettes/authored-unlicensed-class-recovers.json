@@ -48,7 +48,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "There are units available in Small at Madrid Norte as of now. Catalogue price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant.",
+            "content": "There are units available in Small at Madrid Norte as of now. Catalogue price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

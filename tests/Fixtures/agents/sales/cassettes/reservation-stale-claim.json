@@ -6,7 +6,7 @@
     "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
         {
-            "content": "Sure, I can help with that. I am an automated assistant.",
+            "content": "Sure, I can help with that. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
@@ -30,12 +30,32 @@
             "finish_reason": "stop"
         },
         {
+            "content": "It's reserved.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "It's reserved.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
             "content": "You're welcome.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
         {
             "content": "A colleague may still confirm the hold.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "Yes, it's reserved.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "Yes, it's reserved.",
             "tool_calls": [],
             "finish_reason": "stop"
         },

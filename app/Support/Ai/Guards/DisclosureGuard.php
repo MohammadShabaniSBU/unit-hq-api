@@ -6,6 +6,7 @@ namespace App\Support\Ai\Guards;
 
 use App\Models\Site;
 use App\Support\Ai\AgentContext;
+use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\HandoffReason;
@@ -41,49 +42,45 @@ final class DisclosureGuard implements OutboundGuard
             }
         }
 
-        $mutated = self::appendIfNeeded($draft, $ctx);
+        $prompted = DisclosureSentence::isFirstCustomerTurn($ctx);
+        $mutated = self::ensurePresent($draft, $ctx);
         $events = [['guard' => $this->key(), 'verdict' => 'pass']];
-        if ($mutated !== $draft) {
-            $events[0]['detail'] = ['appended' => true];
+        if ($prompted) {
+            $events[0]['detail'] = ['prompted' => true, 'appended' => $mutated !== $draft];
         }
 
         return GuardrailVerdict::pass($mutated !== $draft ? $mutated : null, $events);
     }
 
-    public static function appendIfNeeded(string $draft, AgentContext $ctx): string
+    public static function ensurePresent(string $draft, AgentContext $ctx): string
     {
-        if ($ctx->principal->audience !== AgentAudience::Customer) {
+        if (! DisclosureSentence::isFirstCustomerTurn($ctx)) {
             return $draft;
         }
 
-        $prior = $ctx->conversation->messages()
-            ->where('role', AgentMessageRole::Assistant->value)
-            ->whereNull('blocked_by')
-            ->whereNull('tool_calls')
-            ->count();
-        if ($prior > 0) {
-            return $draft;
-        }
-
-        $phrase = self::phraseFor($ctx->conversation->locale ?? $ctx->principal->locale);
+        $locale = $ctx->conversation->locale ?? $ctx->principal->locale;
+        $phrase = DisclosureSentence::for($locale);
         if ($phrase === '') {
             return $draft;
         }
 
-        if (mb_stripos($draft, $phrase) !== false) {
+        if (DisclosureSentence::isPresentIn($draft, $locale)) {
             return $draft;
         }
 
-        return rtrim($draft).' '.$phrase;
+        $trimmed = ltrim($draft);
+
+        return $trimmed === '' ? $phrase : $phrase.' '.$trimmed;
+    }
+
+    public static function appendIfNeeded(string $draft, AgentContext $ctx): string
+    {
+        return self::ensurePresent($draft, $ctx);
     }
 
     public static function phraseFor(string $locale): string
     {
-        $base = strtolower(str_replace('_', '-', $locale));
-        $base = explode('-', $base)[0];
-        $base = in_array($base, ['en', 'es', 'fr'], true) ? $base : 'en';
-
-        return (string) (config("ai-handoff.disclosure.{$base}") ?: config('ai-handoff.disclosure.en', ''));
+        return DisclosureSentence::for($locale);
     }
 
     private function leakToken(string $draft, FactBag $facts, AgentContext $ctx): ?string

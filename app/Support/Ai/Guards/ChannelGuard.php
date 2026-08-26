@@ -136,7 +136,7 @@ final class ChannelGuard implements OutboundGuard
             }
         }
 
-        $line = $this->stripTrailingDisclosure($line, $ctx);
+        $line = $this->stripDisclosure($line, $ctx);
 
         if ($line === '') {
             return 'Your enquiry';
@@ -149,11 +149,20 @@ final class ChannelGuard implements OutboundGuard
         return $line;
     }
 
-    private function stripTrailingDisclosure(string $line, AgentContext $ctx): string
+    private function stripDisclosure(string $line, AgentContext $ctx): string
     {
         $phrase = DisclosureGuard::phraseFor($ctx->conversation->locale ?? $ctx->principal->locale);
         if ($phrase === '' || $line === '') {
             return $line;
+        }
+
+        if (mb_strtolower($line) === mb_strtolower($phrase)) {
+            return '';
+        }
+
+        $prefix = $phrase.' ';
+        if (mb_stripos($line, $prefix) === 0) {
+            return ltrim(mb_substr($line, mb_strlen($prefix)));
         }
 
         $suffix = ' '.$phrase;

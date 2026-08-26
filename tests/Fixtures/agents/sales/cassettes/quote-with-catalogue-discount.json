@@ -34,7 +34,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "A 15% catalogue promotion is listed. List price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant.",
+            "content": "A 15% catalogue promotion is listed. List price is €84.70 (incl. 21% tax; net €70.00). I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

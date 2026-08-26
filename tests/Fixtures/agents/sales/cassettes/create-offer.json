@@ -26,7 +26,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Here is a draft offer at €84.70 (incl. 21% tax; net €70.00). The public link is ready. Nothing has been sent. I am an automated assistant.",
+            "content": "Here is a draft offer at €84.70 (incl. 21% tax; net €70.00). The public link is ready. Nothing has been sent. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

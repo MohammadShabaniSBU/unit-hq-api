@@ -17,7 +17,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Your latest issued invoice is F-000001 on 2026-03-01 for €121.00. I am an automated assistant.",
+            "content": "Your latest issued invoice is F-000001 on 2026-03-01 for €121.00. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

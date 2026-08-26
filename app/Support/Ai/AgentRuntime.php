@@ -1024,7 +1024,7 @@ final class AgentRuntime
         ?TraceCursor $cursor = null,
         ?int $assistantMessageId = null,
     ): AgentTurn {
-        $draft = DisclosureGuard::appendIfNeeded($draft, $ctx);
+        $draft = DisclosureGuard::ensurePresent($draft, $ctx);
 
         if ($persistAssistant) {
             $assistant = $this->persistAssistantMessage(

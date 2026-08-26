@@ -12,8 +12,9 @@ final class KeywordMatcher
             ? (\Normalizer::normalize($text, \Normalizer::FORM_D) ?: $text)
             : $text;
         $stripped = preg_replace('/\p{Mn}/u', '', $normalized) ?? $normalized;
+        $apostrophe = str_replace(["\u{2018}", "\u{2019}", "\u{02BC}"], "'", $stripped);
 
-        return mb_strtolower($stripped);
+        return mb_strtolower($apostrophe);
     }
 
     /**

@@ -17,7 +17,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Subject: Your balance\n\nOpen balance is €84.70. I am an automated assistant.",
+            "content": "Subject: Your balance\n\nOpen balance is €84.70. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

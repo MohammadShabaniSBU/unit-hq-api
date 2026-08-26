@@ -495,8 +495,8 @@ by `max_redraft_attempts`, then a handoff.
 | `HandoffRules` | yes | Inbound short-circuit |
 | `DuplicateDraftGuard` | yes | Block + handoff |
 | `GroundingGuard` | yes | Block + handoff (invariant 55) |
-| `ForbiddenClaimGuard` | yes | Block + handoff; two keys are licensable (invariant 63) |
-| `DisclosureGuard` | leak: yes; AI Act line: fill-in | Missing disclosure is **appended**, not blocked |
+| `ForbiddenClaimGuard` | yes | Licensable keys (`availability_guarantee`, `capacity_guidance`): retry with a licensed alternative, then block + handoff if the redraft budget is exhausted. Other keys: block + handoff. Two keys are licensable (invariant 63) |
+| `DisclosureGuard` | leak: yes; AI Act line: fill-in | First customer turn is **prompted** to open with the configured sentence; if missing, the line is **prepended**, not blocked |
 | `ChannelGuard` | SMS ceiling: yes; warn band: no; WhatsApp window: advisory | Email missing `Subject:` is filled in, not blocked |
 
 ### Deterministic handoff rules (pre-model)
@@ -557,12 +557,15 @@ Pattern set over the draft (shared `config/ai-handoff.php` plus per-agent
 `forbiddenClaims()`): payment confirmation, fee waiver, access grant,
 availability guarantee ("I've held it"), capacity guidance ("should work
 well" / "will fit"), legal advice, contract mutation.
-Match → block + `unsupported_intent`.
+Match → block + `unsupported_intent` for unlicensable keys. For the two
+licensable keys (`availability_guarantee`, `capacity_guidance`) an unlicensed
+match is a bounded **redraft** (`GuardrailVerdict::retry`) quoting a licensed
+alternative; exhausting the redraft budget falls through to block + handoff.
 
 `availability_guarantee` and `capacity_guidance` are **conditional** — licensed
 only by the tool that earned them this turn (invariant 63). Mechanism and
-scope: Licensing above. Unlicensed capacity claims are suppressed, not
-rewritten. When licensed, the response cites the band and carries the
+scope: Licensing above. Unlicensed capacity claims are redrafted, not
+rewritten in place. When licensed, the response cites the band and carries the
 guide's disclaimer. "Should work well" is fine; "will fit" is not.
 
 ### Disclosure
@@ -570,8 +573,10 @@ guide's disclaimer. "Should work well" is fine; "will fit" is not.
 Leak check: below `verified`, a draft that contains an amount, unit
 identifier, contract date, or address is blocked. AI disclosure (EU AI Act
 Art. 50): the first assistant turn of a customer-facing conversation must
-state that it is automated; if missing, the configured line is **appended**,
-not blocked.
+open by stating that it is an automated assistant for the company. The
+system prompt names the configured sentence verbatim on that turn. If the
+model omits it, `DisclosureGuard` **prepends** the line (safety net), and
+the guard event records `prompted` / `appended`.
 
 ### Channel
 

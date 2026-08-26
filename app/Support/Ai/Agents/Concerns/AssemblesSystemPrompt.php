@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Agents\Concerns;
 
-use App\Models\Setting;
 use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\ChannelProfile;
+use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Eval\CassetteKey;
 use App\Support\Time\SiteClock;
@@ -21,6 +21,7 @@ trait AssemblesSystemPrompt
         $parts = [
             $this->roleParagraph($ctx),
             $this->identityBlock($ctx),
+            $this->disclosureBlock($ctx),
             $this->untrustedInputBlock(),
             $this->channelBlock($ctx->channel),
             $this->verificationBlock($ctx->principal->verification),
@@ -34,6 +35,9 @@ trait AssemblesSystemPrompt
 
     public function promptVersion(AgentContext $ctx): string
     {
+        // First-turn disclosure is conversation-state and company-name
+        // dependent, same as identityBlock — hashing it would diverge turn 1
+        // from turn 2 and force a cassette re-seal.
         $parts = [
             $this->roleParagraph($ctx),
             $this->untrustedInputBlock(),
@@ -66,8 +70,7 @@ trait AssemblesSystemPrompt
 
     private function identityBlock(AgentContext $ctx): string
     {
-        $company = Setting::general()->companyName;
-        $company = $company !== '' ? $company : 'Keevaris';
+        $company = DisclosureSentence::company();
         $lines = ["You represent {$company}."];
 
         $siteId = $ctx->principal->siteId;
@@ -86,6 +89,15 @@ trait AssemblesSystemPrompt
         $lines[] = "Today at this site: {$today}.";
 
         return implode(' ', $lines);
+    }
+
+    private function disclosureBlock(AgentContext $ctx): string
+    {
+        if (! DisclosureSentence::isFirstCustomerTurn($ctx)) {
+            return '';
+        }
+
+        return DisclosureSentence::instruction($ctx->conversation->locale ?? $ctx->principal->locale);
     }
 
     private function untrustedInputBlock(): string

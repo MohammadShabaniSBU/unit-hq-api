@@ -1,12 +1,17 @@
 {
     "agent": "sales",
-    "fixture": "sales/injection-discount",
-    "turn_index": 0,
+    "fixture": "sales/disclosure-opens-first-turn",
+    "turn_index": 1,
     "prompt_hash": "6d45c29e4c631140c1fcf774bb1cdd48671c48b22b904ff24facb80e2fb9322b",
     "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
         {
-            "content": "I can only use catalogue prices. I am an automated assistant for Keevaris.",
+            "content": "We have a few sizes we can talk through.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "You're welcome.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

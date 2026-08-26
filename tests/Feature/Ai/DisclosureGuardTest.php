@@ -13,6 +13,7 @@ use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\ChannelProfile;
+use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentMessageRole;
@@ -89,11 +90,11 @@ class DisclosureGuardTest extends TestCase
     public function disclosure_is_appended_on_the_first_customer_turn_only(): void
     {
         $conversation = $this->conversation();
-        $phrase = (string) config('ai-handoff.disclosure.en');
+        $phrase = DisclosureSentence::for('en');
 
         $this->driver->enqueueText('Hello.');
         $first = app(AgentRuntime::class)->turn($conversation, $conversation->principal(), 'hi there');
-        $this->assertStringContainsString($phrase, $first->draft);
+        $this->assertStringStartsWith($phrase, $first->draft);
 
         $this->driver->enqueueText('Still here.');
         $second = app(AgentRuntime::class)->turn($conversation->fresh(), $conversation->principal(), 'and you');
@@ -105,7 +106,7 @@ class DisclosureGuardTest extends TestCase
     public function first_turn_rule_match_canned_line_includes_disclosure(): void
     {
         $conversation = $this->conversation();
-        $phrase = (string) config('ai-handoff.disclosure.en');
+        $phrase = DisclosureSentence::for('en');
 
         $turn = app(AgentRuntime::class)->turn(
             $conversation,
@@ -114,7 +115,7 @@ class DisclosureGuardTest extends TestCase
         );
 
         $this->assertSame(0, $this->driver->callCount);
-        $this->assertStringContainsString($phrase, $turn->draft);
+        $this->assertStringStartsWith($phrase, $turn->draft);
         $this->assertStringContainsString('teammate', $turn->draft);
     }
 
@@ -164,6 +165,64 @@ class DisclosureGuardTest extends TestCase
         );
 
         $this->assertTrue($verdict->passed);
+    }
+
+    #[Test]
+    public function first_turn_without_the_sentence_prepends_and_marks_appended(): void
+    {
+        $ctx = $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales');
+        $phrase = DisclosureSentence::for('en');
+
+        $verdict = app(DisclosureGuard::class)->check('Hello there.', new FactBag, $ctx);
+
+        $this->assertTrue($verdict->passed);
+        $this->assertSame($phrase.' Hello there.', $verdict->mutatedDraft);
+        $this->assertTrue($verdict->events[0]['detail']['prompted'] ?? false);
+        $this->assertTrue($verdict->events[0]['detail']['appended'] ?? false);
+    }
+
+    #[Test]
+    public function first_turn_with_the_sentence_does_not_mutate(): void
+    {
+        $ctx = $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales');
+        $phrase = DisclosureSentence::for('en');
+        $draft = $phrase." How can I help?\n";
+
+        $verdict = app(DisclosureGuard::class)->check($draft, new FactBag, $ctx);
+
+        $this->assertTrue($verdict->passed);
+        $this->assertNull($verdict->mutatedDraft);
+        $this->assertTrue($verdict->events[0]['detail']['prompted'] ?? false);
+        $this->assertFalse($verdict->events[0]['detail']['appended'] ?? true);
+    }
+
+    #[Test]
+    public function second_turn_does_not_emit_prompted_detail(): void
+    {
+        $ctx = $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales');
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $ctx->conversation->id,
+            'sequence' => 1,
+            'role' => AgentMessageRole::Assistant,
+            'content' => 'Prior reply.',
+        ]);
+
+        $verdict = app(DisclosureGuard::class)->check('Still here.', new FactBag, $ctx);
+
+        $this->assertTrue($verdict->passed);
+        $this->assertNull($verdict->mutatedDraft);
+        $this->assertArrayNotHasKey('detail', $verdict->events[0]);
+        $this->assertStringNotContainsString(DisclosureSentence::for('en'), 'Still here.');
+    }
+
+    #[Test]
+    public function resolved_sentence_fits_the_sms_budget_at_the_default_company(): void
+    {
+        foreach (['en', 'es', 'fr'] as $locale) {
+            $sentence = DisclosureSentence::for($locale);
+            $this->assertNotSame('', $sentence);
+            $this->assertLessThanOrEqual(60, mb_strlen($sentence), $locale.': '.$sentence);
+        }
     }
 
     private function conversation(): AgentConversation

@@ -35,7 +35,9 @@ final class ForbiddenClaimGuard implements OutboundGuard
             /** @var list<string> $phrases */
             $matched = KeywordMatcher::firstMatch($draft, $phrases);
             if ($matched !== null) {
-                return $this->block((string) $class, $matched);
+                return $key !== null
+                    ? $this->redraft($key, $matched, $locale)
+                    : $this->block((string) $class, $matched);
             }
         }
 
@@ -48,6 +50,20 @@ final class ForbiddenClaimGuard implements OutboundGuard
         }
 
         return GuardrailVerdict::pass(events: [['guard' => $this->key(), 'verdict' => 'pass']]);
+    }
+
+    private function redraft(ForbiddenClaimKey $key, string $matched, string $locale): GuardrailVerdict
+    {
+        $alternative = CannedReply::licensedAlternative($key, $locale);
+        $instruction = "The draft claimed \"{$matched}\", which is not licensed this turn. Rewrite without that claim. A licensed alternative is: {$alternative}";
+
+        return GuardrailVerdict::retry(
+            $instruction,
+            'forbidden_claim',
+            HandoffReason::UnsupportedIntent,
+            ['claim' => $key->value, 'matched' => $matched],
+            [['guard' => $this->key(), 'verdict' => 'deny', 'detail' => ['claim' => $key->value, 'matched' => $matched]]],
+        );
     }
 
     private function block(string $class, string $matched): GuardrailVerdict

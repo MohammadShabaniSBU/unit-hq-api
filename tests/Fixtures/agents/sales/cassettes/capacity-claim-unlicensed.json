@@ -6,7 +6,17 @@
     "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
         {
-            "content": "For 20–24 standard boxes, a unit around 5–8 m² should work well. I am an automated assistant.",
+            "content": "For 20–24 standard boxes, a unit around 5–8 m² should work well. I am an automated assistant for Keevaris.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "For 20–24 standard boxes, a unit around 5–8 m² should work well.",
+            "tool_calls": [],
+            "finish_reason": "stop"
+        },
+        {
+            "content": "For 20–24 standard boxes, a unit around 5–8 m² should work well.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

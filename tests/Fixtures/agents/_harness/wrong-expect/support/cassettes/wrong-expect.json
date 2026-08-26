@@ -6,7 +6,7 @@
     "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
     "responses": [
         {
-            "content": "Hello there. I am an automated assistant.",
+            "content": "Hello there. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

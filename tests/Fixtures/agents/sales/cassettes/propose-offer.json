@@ -20,7 +20,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Here is a catalogue proposal at €84.70 (incl. 21% tax; net €70.00). Nothing has been sent or saved. I am an automated assistant.",
+            "content": "Here is a catalogue proposal at €84.70 (incl. 21% tax; net €70.00). Nothing has been sent or saved. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

@@ -19,7 +19,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "Access is available seven days a week during posted hours. I am an automated assistant.",
+            "content": "Access is available seven days a week during posted hours. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

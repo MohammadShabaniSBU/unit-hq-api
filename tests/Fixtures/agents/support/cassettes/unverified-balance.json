@@ -17,7 +17,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "I cannot retrieve a balance until you are verified. I am an automated assistant.",
+            "content": "I cannot retrieve a balance until you are verified. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

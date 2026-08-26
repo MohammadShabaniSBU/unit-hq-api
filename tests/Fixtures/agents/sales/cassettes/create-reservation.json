@@ -20,7 +20,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "I've asked a colleague to confirm that — you'll hear back shortly. I am an automated assistant.",
+            "content": "I've asked a colleague to confirm that — you'll hear back shortly. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

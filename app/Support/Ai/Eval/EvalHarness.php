@@ -10,6 +10,7 @@ use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\ChannelProfile;
+use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Drivers\CassetteDriver;
 use App\Support\Ai\Drivers\LaravelAiDriver;
 use App\Support\Ai\Drivers\ModelDriver;
@@ -319,7 +320,17 @@ final class EvalHarness
             $tools[] = $registry->get($key);
         }
 
-        return CassetteKey::hashes($ctx->definition->systemPrompt($ctx), $tools);
+        $prompt = $ctx->definition->systemPrompt($ctx);
+        // First-turn disclosure is conversation-state dependent and is stripped
+        // so existing cassette hashes stay valid (same reason it is excluded
+        // from promptVersion).
+        $instruction = DisclosureSentence::instruction($ctx->conversation->locale ?? $ctx->principal->locale);
+        if ($instruction !== '' && str_contains($prompt, $instruction)) {
+            $prompt = trim(str_replace($instruction, '', $prompt));
+            $prompt = (string) preg_replace("/\n{3,}/", "\n\n", $prompt);
+        }
+
+        return CassetteKey::hashes($prompt, $tools);
     }
 
     private function expectsNoModel(EvalFixture $fixture): bool

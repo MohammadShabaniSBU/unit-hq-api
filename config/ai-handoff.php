@@ -5,15 +5,32 @@ declare(strict_types=1);
 return [
 
     'disclosure' => [
-        'en' => 'I am an automated assistant.',
-        'es' => 'Soy un asistente automatizado.',
-        'fr' => 'Je suis un assistant automatisé.',
+        'en' => 'I am an automated assistant for {company}.',
+        'es' => 'Soy un asistente automatizado de {company}.',
+        'fr' => 'Je suis un assistant automatisé de {company}.',
     ],
 
     'pending_approval' => [
         'en' => "I've asked a colleague to confirm that — you'll hear back shortly.",
         'es' => 'He pedido a un colega que lo confirme — te responderemos en breve.',
         'fr' => "J'ai demandé à un collègue de confirmer cela — vous aurez bientôt des nouvelles.",
+    ],
+
+    // Licensed alternatives a redraft may quote after a ForbiddenClaimGuard
+    // retry on a licensable key. Each line must not match its own claim group.
+    'licensed_alternatives' => [
+        'en' => [
+            'availability_guarantee' => "A hold is subject to colleague confirmation, so I'll ask a colleague to confirm and come back to you.",
+            'capacity_guidance' => 'I can look up a size guide for typical contents rather than guess how much a unit holds.',
+        ],
+        'es' => [
+            'availability_guarantee' => 'La reserva queda sujeta a la confirmación de un colega, así que pediré a un colega que lo confirme y te responderé.',
+            'capacity_guidance' => 'Puedo consultar la guía de tamaños para contenidos típicos; no voy a estimar el volumen.',
+        ],
+        'fr' => [
+            'availability_guarantee' => "Une réservation est soumise à la confirmation d'un collègue, je vais donc demander à un collègue de confirmer et je vous recontacterai.",
+            'capacity_guidance' => 'Je peux consulter le guide des tailles pour des contenus types plutôt que de deviner la capacité.',
+        ],
     ],
 
     'rules' => [
@@ -268,6 +285,24 @@ return [
                 'it is reserved',
                 'i have reserved',
                 "i've reserved",
+                "I'll create a reservation",
+                "I'll create the reservation",
+                'I will create a reservation',
+                "I've created a reservation",
+                "I'll make a reservation",
+                "I've made a reservation",
+                "I'll place a reservation",
+                "I'll set up a reservation",
+                "I'll reserve",
+                'I will reserve',
+                "I'll hold",
+                "I've held",
+                "it's held",
+                'it is held',
+                'move forward with a reservation',
+                'move forward with the reservation',
+                'reserved for you',
+                'held for you',
             ],
             // Licensed by ForbiddenClaimKey::CapacityGuidance on an ok
             // facility.size_guide result. Must catch the trace-30 line
@@ -323,6 +358,14 @@ return [
                 'lo he reservado',
                 'esta reservado',
                 'está reservado',
+                'te lo reservo',
+                'se lo reservo',
+                'queda reservado',
+                'voy a hacer la reserva',
+                'he hecho la reserva',
+                'voy a crear la reserva',
+                'avanzar con la reserva',
+                'seguir adelante con la reserva',
             ],
             // Licensed by ForbiddenClaimKey::CapacityGuidance. Avoid a bare
             // "cabra" (goat); keep the conjugated "le cabrá".
@@ -372,6 +415,20 @@ return [
                 "je l'ai réservé",
                 "c'est reserve",
                 "c'est réservé",
+                'je vous le reserve',
+                'je vous le réserve',
+                'je le reserve pour vous',
+                'je le réserve pour vous',
+                'je vais faire la reservation',
+                'je vais faire la réservation',
+                "j'ai fait la reservation",
+                "j'ai fait la réservation",
+                'je vais creer la reservation',
+                'je vais créer la réservation',
+                'proceder a la reservation',
+                'procéder à la réservation',
+                'avancer avec la reservation',
+                'avancer avec la réservation',
             ],
             // Licensed by ForbiddenClaimKey::CapacityGuidance.
             'capacity_guidance' => [

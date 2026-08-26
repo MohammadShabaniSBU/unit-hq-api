@@ -24,6 +24,7 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\AiUsageCost;
+use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentAudience;
@@ -99,7 +100,7 @@ class AgentRuntimeTest extends TestCase
 
         $this->assertTrue($turn->facts->contains('84,70'));
         $this->assertStringContainsString('€84,70', $turn->draft);
-        $this->assertStringContainsString((string) config('ai-handoff.disclosure.en'), $turn->draft);
+        $this->assertStringContainsString(DisclosureSentence::for('en'), $turn->draft);
         $this->assertCount(1, $turn->invocations);
         $this->assertSame(ToolInvocationStatus::Ok, $turn->invocations[0]->status);
         $this->assertSame(ConversationState::Active, $turn->state);
@@ -442,7 +443,7 @@ class AgentRuntimeTest extends TestCase
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertStringContainsString('teammate', $turn->draft);
-        $this->assertStringContainsString((string) config('ai-handoff.disclosure.en'), $turn->draft);
+        $this->assertStringContainsString(DisclosureSentence::for('en'), $turn->draft);
         $this->assertSame(HandoffReason::LegalOrComplaint, $turn->handoff?->reason);
         $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff?->trigger_source);
         $this->assertSame(1, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
@@ -513,7 +514,7 @@ class AgentRuntimeTest extends TestCase
         );
 
         $this->assertSame(
-            'I need to hand this to a teammate. '.(string) config('ai-handoff.disclosure.en'),
+            DisclosureSentence::for('en').' '.CannedReply::Blocked,
             $turn->draft,
         );
         $this->assertSame('grounding', $turn->blockedBy);

@@ -17,7 +17,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "You have €50.00 open in EUR and £30.00 open in GBP. These amounts are not added together. I am an automated assistant.",
+            "content": "You have €50.00 open in EUR and £30.00 open in GBP. These amounts are not added together. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

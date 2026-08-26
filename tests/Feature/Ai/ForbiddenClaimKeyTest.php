@@ -26,19 +26,24 @@ class ForbiddenClaimKeyTest extends TestCase
     }
 
     #[Test]
-    public function the_en_availability_guarantee_group_is_the_current_six_phrases(): void
+    public function the_en_availability_guarantee_group_includes_the_original_and_commitment_forms(): void
     {
-        $this->assertSame(
-            [
-                "i've held it for you",
-                'i have held it for you',
-                "it's reserved",
-                'it is reserved',
-                'i have reserved',
-                "i've reserved",
-            ],
-            config('ai-handoff.forbidden_claims.en.availability_guarantee'),
-        );
+        $phrases = config('ai-handoff.forbidden_claims.en.availability_guarantee');
+        $this->assertIsArray($phrases);
+        foreach ([
+            "i've held it for you",
+            'i have held it for you',
+            "it's reserved",
+            'it is reserved',
+            'i have reserved',
+            "i've reserved",
+            'move forward with a reservation',
+            "I'll create a reservation",
+            'reserved for you',
+            'held for you',
+        ] as $phrase) {
+            $this->assertContains($phrase, $phrases);
+        }
     }
 
     #[Test]

@@ -6,7 +6,7 @@
     "schema_hash": "deadbeef",
     "responses": [
         {
-            "content": "Hello. I am an automated assistant.",
+            "content": "Hello. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

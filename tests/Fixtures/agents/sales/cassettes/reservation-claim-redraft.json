@@ -1,7 +1,7 @@
 {
     "agent": "sales",
-    "fixture": "sales/reservation-commit",
-    "turn_index": 0,
+    "fixture": "sales/reservation-claim-redraft",
+    "turn_index": 1,
     "prompt_hash": "3af05e73a0636822b94d314612ff5856be8430d3c68c12628d0cab884e950a67",
     "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
     "responses": [
@@ -20,17 +20,17 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "It's reserved. I am an automated assistant for Keevaris.",
+            "content": "I'll move forward with a reservation for next Monday.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
         {
-            "content": "It's reserved.",
+            "content": "A hold is subject to colleague confirmation, so I'll ask a colleague to confirm and come back to you.",
             "tool_calls": [],
             "finish_reason": "stop"
         },
         {
-            "content": "It's reserved.",
+            "content": "I've waived your fee.",
             "tool_calls": [],
             "finish_reason": "stop"
         }

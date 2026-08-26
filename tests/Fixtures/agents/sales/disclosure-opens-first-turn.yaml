@@ -1,0 +1,21 @@
+id: sales/disclosure-opens-first-turn
+agent: sales
+channel: webchat
+locale: en
+principal:
+  verification: anonymous
+  site: madrid
+turns:
+  - input: "Hello, I need a small unit."
+    expect_no_handoff: true
+    expect_disclosure_first: true
+    expect_guardrail:
+      - guard: disclosure
+        verdict: pass
+        detail:
+          prompted: true
+          appended: true
+  - input: "Thanks"
+    expect_no_handoff: true
+    expect_not_contains:
+      - "automated assistant"
