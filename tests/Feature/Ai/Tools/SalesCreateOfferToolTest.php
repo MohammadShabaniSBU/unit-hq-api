@@ -362,7 +362,7 @@ class SalesCreateOfferToolTest extends TestCase
             'unit_class_id' => $world['class']->id,
         ], $ctx);
         $this->assertSame(ToolInvocationStatus::Ok, $quote->status);
-        $this->recordInvocation($ctx, 'pricing.quote', [
+        $recorded = $this->recordInvocation($ctx, 'pricing.quote', [
             'site_id' => $world['site']->id,
             'unit_class_id' => $world['class']->id,
         ], $quote, $principal);
@@ -373,13 +373,12 @@ class SalesCreateOfferToolTest extends TestCase
                 'site_id' => $world['site']->id,
                 'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
-                'quoted_price_id' => $quote->data['price_id'],
-                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
             ]],
         ], $ctx);
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
         $this->assertSame(1, Offer::query()->count());
+        $this->assertSame($recorded->id, $result->data['options'][0]['quoted_from_invocation_id'] ?? null);
 
         $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
         $tool = app(ToolRegistry::class)->get('sales.create_offer');
@@ -390,8 +389,6 @@ class SalesCreateOfferToolTest extends TestCase
                 'site_id' => $world['site']->id,
                 'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
-                'quoted_price_id' => $quote->data['price_id'],
-                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
             ]],
         ], $ctx);
         $this->assertSame($quote->data['net'], $preview->data['preview']['lines'][0]['net']);
@@ -436,8 +433,6 @@ class SalesCreateOfferToolTest extends TestCase
                 'site_id' => $world['site']->id,
                 'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
-                'quoted_price_id' => $quote->data['price_id'],
-                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
             ]],
         ], $ctx);
 
@@ -484,8 +479,6 @@ class SalesCreateOfferToolTest extends TestCase
                 'site_id' => $world['site']->id,
                 'unit_class_id' => $world['class']->id,
                 'label' => 'Small unit',
-                'quoted_price_id' => $quote->data['price_id'],
-                'quoted_tax_rate_id' => $quote->data['tax_rate_id'],
             ]],
         ], $ctx);
 
@@ -559,15 +552,11 @@ class SalesCreateOfferToolTest extends TestCase
                     'site_id' => $world['site']->id,
                     'unit_class_id' => $world['class']->id,
                     'label' => 'Small unit',
-                    'quoted_price_id' => $quoteA->data['price_id'],
-                    'quoted_tax_rate_id' => $quoteA->data['tax_rate_id'],
                 ],
                 [
                     'site_id' => $world['site']->id,
                     'unit_class_id' => $classB->id,
                     'label' => 'Medium unit',
-                    'quoted_price_id' => $quoteB->data['price_id'],
-                    'quoted_tax_rate_id' => $quoteB->data['tax_rate_id'],
                 ],
             ],
         ], $ctx);
@@ -580,7 +569,7 @@ class SalesCreateOfferToolTest extends TestCase
     }
 
     #[Test]
-    public function absent_quoted_price_id_refuses_when_a_prior_quote_exists(): void
+    public function resolves_the_quoted_price_without_a_model_argument(): void
     {
         $world = $this->agentPricedDeal();
         $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
@@ -591,7 +580,7 @@ class SalesCreateOfferToolTest extends TestCase
             'site_id' => $world['site']->id,
             'unit_class_id' => $world['class']->id,
         ], $ctx);
-        $this->recordInvocation($ctx, 'pricing.quote', [
+        $recorded = $this->recordInvocation($ctx, 'pricing.quote', [
             'site_id' => $world['site']->id,
             'unit_class_id' => $world['class']->id,
         ], $quote, $principal);
@@ -605,10 +594,22 @@ class SalesCreateOfferToolTest extends TestCase
             ]],
         ], $ctx);
 
-        $this->assertSame(ToolInvocationStatus::Error, $result->status);
-        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
-        $this->assertStringContainsString('quoted_price_id', (string) $result->display);
-        $this->assertSame(0, Offer::query()->count());
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame(1, Offer::query()->count());
+        $this->assertSame($recorded->id, $result->data['options'][0]['quoted_from_invocation_id'] ?? null);
+
+        $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
+        $tool = app(ToolRegistry::class)->get('sales.create_offer');
+        $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);
+        $preview = $tool->propose($principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'label' => 'Small unit',
+            ]],
+        ], $ctx);
+        $this->assertSame($quote->data['price_id'], $preview->data['preview']['lines'][0]['price_id']);
     }
 
     #[Test]
@@ -630,6 +631,73 @@ class SalesCreateOfferToolTest extends TestCase
 
         $this->assertSame(ToolInvocationStatus::Ok, $result->status);
         $this->assertSame(1, Offer::query()->count());
+        $this->assertArrayNotHasKey('quoted_from_invocation_id', $result->data['options'][0]);
+    }
+
+    #[Test]
+    public function supplied_quoted_price_id_that_disagrees_with_the_conversation_is_invalid(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $world['site']->id,
+            'unit_class_id' => $world['class']->id,
+        ], $quote, $principal);
+
+        $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
+        $tool = app(ToolRegistry::class)->get('sales.create_offer');
+        $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);
+        $result = $tool->propose($principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => ((int) $quote->data['price_id']) + 1,
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertStringContainsString('does not match the price quoted in this conversation', (string) $result->message);
+        $this->assertSame(0, Offer::query()->count());
+    }
+
+    #[Test]
+    public function supplied_quoted_price_id_without_a_prior_quote_is_invalid(): void
+    {
+        $world = $this->agentPricedDeal();
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site']);
+        $ctx = $ctx->withFactRegistry(FactRegistry::rebuild($principal, $ctx));
+
+        $priceId = $world['rate']->price?->id;
+        $this->assertNotNull($priceId);
+
+        $tool = app(ToolRegistry::class)->get('sales.create_offer');
+        $this->assertInstanceOf(SalesCreateOfferTool::class, $tool);
+        $result = $tool->propose($principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'label' => 'Small unit',
+                'quoted_price_id' => $priceId,
+            ]],
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertStringContainsString('no catalogue quote', (string) $result->message);
+        $this->assertSame(0, Offer::query()->count());
     }
 
     /**

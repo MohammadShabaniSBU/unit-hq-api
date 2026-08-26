@@ -53,7 +53,7 @@ final class SalesProposeOfferTool implements AgentTool
             'expected_move_in' => [
                 'type' => 'string',
                 'required' => false,
-                'description' => 'Proposed move-in date YYYY-MM-DD. Convert relative dates using the date in the prompt first.',
+                'description' => 'Proposed move-in date YYYY-MM-DD.',
             ],
         ];
     }
@@ -122,6 +122,16 @@ final class SalesProposeOfferTool implements AgentTool
             return $line;
         }
 
+        $suppliedPriceId = isset($arguments['quoted_price_id']) ? (int) $arguments['quoted_price_id'] : null;
+        $continuity = QuoteContinuity::resolve($ctx, $site->id, $class, $rate, $suppliedPriceId);
+        if ($continuity instanceof ToolResult) {
+            return $continuity;
+        }
+        $taxFail = QuoteContinuity::assertTax($continuity, $line->taxRateId);
+        if ($taxFail !== null) {
+            return $taxFail;
+        }
+
         $billing = Setting::billing();
         $count = $billing->defaultBillingIntervalCount;
         $interval = $billing->defaultBillingInterval;
@@ -131,7 +141,6 @@ final class SalesProposeOfferTool implements AgentTool
         if ($moveIn !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $moveIn) !== 1) {
             return ToolResult::fail(ToolError::invalidArguments(
                 'expected_move_in must be an ISO date (YYYY-MM-DD).',
-                ['hint' => 'convert relative dates using the date in the prompt before calling'],
             ));
         }
 
@@ -183,6 +192,8 @@ final class SalesProposeOfferTool implements AgentTool
                 'line_items' => [
                     [
                         'label' => $class->label,
+                        'site_id' => $site->id,
+                        'unit_class_id' => $class->id,
                         'net' => $line->net,
                         'tax' => $line->tax,
                         'gross' => $line->gross,

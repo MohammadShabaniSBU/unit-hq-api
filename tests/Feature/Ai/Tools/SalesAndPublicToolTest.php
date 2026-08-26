@@ -14,7 +14,9 @@ use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Note;
 use App\Models\Offer;
+use App\Models\Price;
 use App\Models\Reservation;
+use App\Models\UnitClassRate;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SizeGuide;
@@ -297,6 +299,8 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertStringContainsString('Nothing has been sent or saved', $result->display);
         $this->assertArrayHasKey('price_id', $result->data['line_items'][0]);
         $this->assertArrayHasKey('tax_rate_id', $result->data['line_items'][0]);
+        $this->assertSame($site->id, $result->data['line_items'][0]['site_id']);
+        $this->assertSame($class->id, $result->data['line_items'][0]['unit_class_id']);
     }
 
     #[Test]
@@ -324,6 +328,90 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertStringContainsString('Proposed move-in 2026-08-31.', $result->display);
         $this->assertTrue($result->facts->contains('2026-08-31'));
         $this->assertTrue($result->facts->contains('31/08/2026'));
+    }
+
+    #[Test]
+    public function propose_offer_after_a_quote_reuses_the_quoted_price(): void
+    {
+        [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+        ], $ctx);
+        $this->assertSame(ToolInvocationStatus::Ok, $quote->status);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+        ], $quote, $principal);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'sales.propose_offer',
+            $principal,
+            ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame($quote->data['price_id'], $result->data['line_items'][0]['price_id']);
+        $this->assertSame($quote->data['tax_rate_id'], $result->data['line_items'][0]['tax_rate_id']);
+        $this->assertSame($site->id, $result->data['line_items'][0]['site_id']);
+        $this->assertSame($class->id, $result->data['line_items'][0]['unit_class_id']);
+    }
+
+    #[Test]
+    public function propose_offer_after_a_quote_refuses_when_the_catalogue_moved(): void
+    {
+        [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class);
+
+        $quote = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+        ], $ctx);
+        $this->recordInvocation($ctx, 'pricing.quote', [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+        ], $quote, $principal);
+
+        $rate = UnitClassRate::query()
+            ->where('site_id', $site->id)
+            ->where('unit_class_id', $class->id)
+            ->with('price')
+            ->firstOrFail();
+        $old = $rate->price;
+        $this->assertNotNull($old);
+        $old->update(['effective_to' => now()->toDateString()]);
+        Price::query()->create([
+            'priceable_type' => 'unit_class_rate',
+            'priceable_id' => $rate->id,
+            'scope' => Price::SCOPE_CATALOGUE,
+            'amount' => '120.00',
+            'currency' => 'EUR',
+            'effective_from' => now()->toDateString(),
+            'effective_to' => null,
+            'created_by' => $old->created_by,
+        ]);
+        $rate->unsetRelation('price');
+
+        $result = $this->dispatchTool(
+            'sales',
+            'sales.propose_offer',
+            $principal,
+            ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::PriceSuperseded, $result->error?->errorCode);
+        $this->assertSame('price', $result->error?->detail['superseded'] ?? null);
+        $this->assertSame($quote->data['price_id'], $result->error?->detail['quoted'] ?? null);
     }
 
     #[Test]

@@ -164,6 +164,12 @@ a different agent (defence in depth, invariant 68).
    failed `config('agents.max_tool_retries')` (default 2) times. A model
    `agent.escalate(reason: error)` while that budget remains is answered
    with `ToolError(invalid_arguments)` and is **not** persisted as a handoff.
+   Byte-identical arguments after `invalid_arguments` do not re-dispatch: the
+   runtime feeds a stronger `Recovery:` line once ("you repeated the same
+   arguments; change them or escalate"), persists the skipped attempt
+   (`detail.skipped = true`), and allows one more model call. A further
+   identical call, or any retryable failure of that tool after the warning,
+   hands off with `detail: identical_retry`.
    **Principal promotion (D-AI-18):** after an `ok` `crm.create_contact` (or
    its dedupe path) in a customer-audience conversation whose principal is
    `anonymous`, `PrincipalPromotion` stamps `contact_id`, sets
@@ -478,20 +484,23 @@ draft and hands off (`grounding_failure`). A suppressed draft is never delivered
 `sales.create_offer` takes licensed `site_id` + `unit_class_id` per option
 and resolves the active `UnitClassRate` server-side at
 `SiteClock::today($site)` — `unit_class_rate_id` is never a model argument
-(D-AI-17). Optional `quoted_price_id` / `quoted_tax_rate_id` per option are
-continuity tokens, not FactRegistry entities. When a prior `ok`
-`pricing.quote` or `sales.propose_offer` named that class and the token is
-absent, the tool refuses with `invalid_arguments` and a hint to pass
-`quoted_price_id` — retryable, no handoff. When the token is present, the
-creation path asserts that row is still the current catalogue price for the
-junction; a closed window returns `price_superseded` with
+(D-AI-17). Quote continuity is also server-side: `PriorCatalogueQuote::latestFor`
+reads the most recent `ok` `pricing.quote` or `sales.propose_offer` for that
+`(site_id, unit_class_id)` and supplies the quoted `price_id` / `tax_rate_id`.
+The model does not pass those ids. A supplied `quoted_price_id` that disagrees
+with the conversation's quote, or one with no prior quote, is
+`invalid_arguments`. When a quote is on the trace, the creation path asserts
+that row is still the current catalogue price for the junction; a closed window
+returns `price_superseded` with
 `detail: { superseded: 'price' | 'tax_rate', quoted, current }` and recovery
 `pricing.quote`. A tax-rate version change uses the same error code; `detail`
-tells them apart. "Was this class quoted?" is answered from the **trace**
-(`PriorCatalogueQuote`), not `FactRegistry` (invariant 66). The agent never
-silently offers a number different from the one it stated.
-`sales.propose_offer` line items echo `price_id` and `tax_rate_id` so
-propose→create needs no second quote. Optional `move_in_date` writes
+tells them apart. The option payload records `quoted_from_invocation_id` so
+the trace shows the continuity chain. "Was this class quoted?" is answered from
+the **trace** (`PriorCatalogueQuote`), not `FactRegistry` (invariant 66). The
+agent never silently offers a number different from the one it stated.
+`sales.propose_offer` line items echo `site_id`, `unit_class_id`, `price_id`
+and `tax_rate_id` so a later propose of the same class reuses that price (and
+refuses if the catalogue moved). Optional `move_in_date` writes
 `deals.expected_move_in` only when the deal's value is null.
 
 Other tool notes:

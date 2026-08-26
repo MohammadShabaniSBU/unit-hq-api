@@ -1,0 +1,28 @@
+id: sales/sms-quote-to-offer
+agent: sales
+channel: sms
+locale: en
+tags: [s26, sms]
+live_only: true
+principal:
+  verification: anonymous
+  site: none
+turns:
+  - input: "hi, I need a small storage unit in Madrid 28001"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "how much for the 8 m2"
+    expect_writes: {}
+    expect_no_handoff: true
+  - input: "ok I'm Ana Lopez, ana@example.com, moving next Monday"
+    expect_tools: [calendar.resolve, crm.create_deal]
+    expect_writes:
+      contacts: 1
+      deals: 1
+    expect_no_handoff: true
+  - input: "yes, create the offer"
+    expect_tools: [sales.create_offer]
+    expect_writes:
+      offers: 1
+    expect_no_handoff: true
+    expect_offer_source: ai_agent

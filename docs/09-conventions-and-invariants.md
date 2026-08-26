@@ -331,14 +331,16 @@
     from.** The agent never silently offers a number different from the one it
     stated. Same reasoning as 62 — live state wins and divergence surfaces.
     Three clauses:
-    1. When `quoted_price_id` is absent and the conversation trace contains a
-       prior `ok` `pricing.quote` or `sales.propose_offer` naming that option's
-       class (`PriorCatalogueQuote`), refuse with `invalid_arguments` and a
-       hint to pass the token. Live pricing proceeds only when no prior quote
-       for that class exists.
-    2. When the token is present, the creation path asserts that `prices` row
+    1. Continuity is resolved from the conversation trace server-side
+       (`PriorCatalogueQuote::latestFor`). When a prior `ok` `pricing.quote` or
+       `sales.propose_offer` named that option's `(site_id, unit_class_id)`, the
+       creation path uses that quoted `price_id` / `tax_rate_id` without a model
+       argument. A supplied `quoted_price_id` that disagrees with the conversation's
+       quote, or one with no prior quote, is `invalid_arguments`. Live pricing
+       proceeds only when no prior quote for that class exists.
+    2. When a quote is on the trace, the creation path asserts that `prices` row
        is still the current catalogue price for the junction; a closed window
-       returns `price_superseded`. Same for `quoted_tax_rate_id` against the
+       returns `price_superseded`. Same for the quoted `tax_rate_id` against the
        tax version `TaxResolver` selects now.
     3. `detail.superseded` is `'price' | 'tax_rate'` (plus `quoted` / `current`
        ids). One enum case, two operational causes (operator rate change vs

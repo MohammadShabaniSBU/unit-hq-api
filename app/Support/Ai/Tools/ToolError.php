@@ -36,10 +36,11 @@ final readonly class ToolError
 
     /**
      * @param  array{tool?: string, hint: string}|null  $recovery
+     * @param  array<string, mixed>|null  $detail
      */
-    public static function invalidArguments(string $message, ?array $recovery = null): self
+    public static function invalidArguments(string $message, ?array $recovery = null, ?array $detail = null): self
     {
-        return new self(ToolErrorCode::InvalidArguments, $message, $recovery);
+        return new self(ToolErrorCode::InvalidArguments, $message, $recovery, [], $detail);
     }
 
     /**

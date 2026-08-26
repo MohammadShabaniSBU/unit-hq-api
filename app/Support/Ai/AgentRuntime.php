@@ -137,6 +137,10 @@ final class AgentRuntime
         $maxToolRetries = (int) config('agents.max_tool_retries');
         /** @var array<string, int> $consecutiveFailures */
         $consecutiveFailures = [];
+        /** @var array<string, string> $lastInvalidArgs */
+        $lastInvalidArgs = [];
+        /** @var array<string, true> $identicalWarned */
+        $identicalWarned = [];
         $messages = $this->buildMessages($ctx, $priorMessages, $input);
         $toolObjects = $this->toolObjects($definition);
         $draft = '';
@@ -216,6 +220,18 @@ final class AgentRuntime
                 $retryExhausted = null;
                 foreach ($toRun as $call) {
                     $call['arguments'] = ArgumentBag::normalise($call['arguments'] ?? []);
+                    $encodedArgs = CanonicalJson::encode($call['arguments']);
+                    $identical = ($lastInvalidArgs[$call['name']] ?? null) === $encodedArgs;
+
+                    if ($identical && ($identicalWarned[$call['name']] ?? false)) {
+                        $retryExhausted = [
+                            'detail' => 'identical_retry',
+                            'tool' => $call['name'],
+                            'error_code' => ToolErrorCode::InvalidArguments->value,
+                        ];
+                        break;
+                    }
+
                     $toolCallCount++;
                     $toolSeq = $cursor->allocateSeq();
                     if ($onEvent !== null) {
@@ -226,18 +242,28 @@ final class AgentRuntime
                         ]);
                     }
 
-                    $startedTool = hrtime(true);
-                    $result = $this->dispatcher->dispatch(
-                        $definition,
-                        $principal,
-                        $call['name'],
-                        $call['arguments'],
-                        $ctx,
-                    );
-                    $durationMs = (int) ((hrtime(true) - $startedTool) / 1_000_000);
+                    if ($identical) {
+                        $result = ToolResult::fail(ToolError::invalidArguments(
+                            'Repeated identical arguments after invalid_arguments.',
+                            ['hint' => 'you repeated the same arguments; change them or escalate'],
+                            ['skipped' => true],
+                        ));
+                        $durationMs = 0;
+                        $identicalWarned[$call['name']] = true;
+                    } else {
+                        $startedTool = hrtime(true);
+                        $result = $this->dispatcher->dispatch(
+                            $definition,
+                            $principal,
+                            $call['name'],
+                            $call['arguments'],
+                            $ctx,
+                        );
+                        $durationMs = (int) ((hrtime(true) - $startedTool) / 1_000_000);
 
-                    if ($this->shouldRefuseErrorEscalate($call, $consecutiveFailures, $maxToolRetries)) {
-                        $result = $this->refuseErrorEscalate($consecutiveFailures);
+                        if ($this->shouldRefuseErrorEscalate($call, $consecutiveFailures, $maxToolRetries)) {
+                            $result = $this->refuseErrorEscalate($consecutiveFailures);
+                        }
                     }
 
                     $invocation = $this->persistInvocation(
@@ -334,16 +360,33 @@ final class AgentRuntime
 
                     if ($call['name'] !== 'agent.escalate') {
                         if ($result->status === ToolInvocationStatus::Ok) {
-                            unset($consecutiveFailures[$call['name']]);
+                            unset(
+                                $consecutiveFailures[$call['name']],
+                                $lastInvalidArgs[$call['name']],
+                                $identicalWarned[$call['name']],
+                            );
                         } elseif ($this->isRetryableFailure($result)) {
-                            $consecutiveFailures[$call['name']] = ($consecutiveFailures[$call['name']] ?? 0) + 1;
-                            if ($consecutiveFailures[$call['name']] >= $maxToolRetries) {
+                            if (($identicalWarned[$call['name']] ?? false) && ! $identical) {
                                 $retryExhausted = [
-                                    'detail' => 'tool_retry_exhausted',
+                                    'detail' => 'identical_retry',
                                     'tool' => $call['name'],
                                     'error_code' => $result->error?->errorCode->value,
                                 ];
                                 break;
+                            }
+                            if (! $identical) {
+                                $consecutiveFailures[$call['name']] = ($consecutiveFailures[$call['name']] ?? 0) + 1;
+                                if ($result->error?->errorCode === ToolErrorCode::InvalidArguments) {
+                                    $lastInvalidArgs[$call['name']] = $encodedArgs;
+                                }
+                                if ($consecutiveFailures[$call['name']] >= $maxToolRetries) {
+                                    $retryExhausted = [
+                                        'detail' => 'tool_retry_exhausted',
+                                        'tool' => $call['name'],
+                                        'error_code' => $result->error?->errorCode->value,
+                                    ];
+                                    break;
+                                }
                             }
                         }
                     }

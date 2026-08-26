@@ -670,8 +670,8 @@ class AgentRuntimeTest extends TestCase
         $script->script = [$failure, $failure];
 
         $this->driver
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]]);
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => ['n' => 1]]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => ['n' => 2]]]);
 
         $conversation = $this->conversation('test');
         $turn = app(AgentRuntime::class)->turn(
@@ -687,6 +687,88 @@ class AgentRuntimeTest extends TestCase
         $this->assertSame('test.script', $turn->handoff->detail['tool'] ?? null);
         $this->assertSame('invalid_arguments', $turn->handoff->detail['error_code'] ?? null);
         $this->assertSame(1, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+    }
+
+    #[Test]
+    public function identical_arguments_after_invalid_arguments_skip_dispatch_and_warn_once(): void
+    {
+        $script = $this->scriptedConversation();
+        $failure = ToolResult::fail(ToolError::invalidArguments('bad args', [
+            'tool' => 'test.script',
+            'hint' => 'retry with valid arguments',
+        ]));
+        $script->script = [$failure];
+
+        $args = ['n' => 1];
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => $args]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => $args]])
+            ->enqueueText('Let me try another way.');
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame(1, $script->calls);
+
+        $toolMessages = $this->toolMessagesSentToModel();
+        $stronger = array_values(array_filter(
+            $toolMessages,
+            static fn (string $content): bool => str_contains($content, 'you repeated the same arguments; change them or escalate'),
+        ));
+        $this->assertCount(1, $stronger);
+
+        $invocations = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'test.script')
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(2, $invocations);
+        $this->assertSame(ToolInvocationStatus::Error, $invocations[1]->status);
+        $this->assertTrue($invocations[1]->result['error']['detail']['skipped'] ?? false);
+        $this->assertSame(0, $invocations[1]->duration_ms);
+    }
+
+    #[Test]
+    public function third_identical_call_after_the_warn_handoffs_identical_retry(): void
+    {
+        $script = $this->scriptedConversation();
+        $failure = ToolResult::fail(ToolError::invalidArguments('bad args', [
+            'tool' => 'test.script',
+            'hint' => 'retry with valid arguments',
+        ]));
+        $script->script = [$failure];
+
+        $args = ['n' => 1];
+        $this->driver
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => $args]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => $args]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c3', 'arguments' => $args]]);
+
+        $conversation = $this->conversation('test');
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please run it',
+        );
+
+        $this->assertNotNull($turn->handoff);
+        $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
+        $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff->trigger_source);
+        $this->assertSame('identical_retry', $turn->handoff->detail['detail'] ?? null);
+        $this->assertSame('test.script', $turn->handoff->detail['tool'] ?? null);
+        $this->assertSame('invalid_arguments', $turn->handoff->detail['error_code'] ?? null);
+        $this->assertSame(1, $script->calls);
+
+        $invocations = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'test.script')
+            ->count();
+        $this->assertSame(2, $invocations);
     }
 
     #[Test]
@@ -752,6 +834,13 @@ class AgentRuntimeTest extends TestCase
             'discount_id' => $discount->id,
         ];
 
+        $argumentsSecond = [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'discount_id' => $discount->id,
+            'expected_move_in' => '2026-08-31',
+        ];
+
         $this->driver
             ->enqueueToolCalls([[
                 'name' => 'sales.propose_offer',
@@ -761,7 +850,7 @@ class AgentRuntimeTest extends TestCase
             ->enqueueToolCalls([[
                 'name' => 'sales.propose_offer',
                 'id' => 'c2',
-                'arguments' => $arguments,
+                'arguments' => $argumentsSecond,
             ]]);
 
         $turn = app(AgentRuntime::class)->turn(
@@ -803,9 +892,9 @@ class AgentRuntimeTest extends TestCase
         ];
 
         $this->driver
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => []]])
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]])
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c3', 'arguments' => []]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c1', 'arguments' => ['n' => 1]]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => ['n' => 2]]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c3', 'arguments' => ['n' => 3]]])
             ->enqueueText('All done.');
 
         $conversation = $this->conversation('test');
@@ -851,7 +940,7 @@ class AgentRuntimeTest extends TestCase
                     'summary' => 'Still failing',
                 ],
             ]])
-            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => []]])
+            ->enqueueToolCalls([['name' => 'test.script', 'id' => 'c2', 'arguments' => ['retry' => true]]])
             ->enqueueText('I will keep trying.');
 
         $conversation = $this->conversation('test');
