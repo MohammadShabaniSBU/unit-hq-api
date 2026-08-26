@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/disclosure-opens-first-turn",
     "turn_index": 1,
-    "prompt_hash": "6d45c29e4c631140c1fcf774bb1cdd48671c48b22b904ff24facb80e2fb9322b",
-    "schema_hash": "a9381aa9435239c8ad1212f294f0e3e25c2d651f1d98fbf922456d152bceb0cb",
+    "prompt_hash": "ca4ca8a12e29d801f375c5a5aa7a8634a0b33bc9e97912411413617a88f2f439",
+    "schema_hash": "023127a40722c6bc7857bf4d95ea811bdf91aa91be2aeb1bb87b5b78557a2632",
     "responses": [
         {
             "content": "We have a few sizes we can talk through.",

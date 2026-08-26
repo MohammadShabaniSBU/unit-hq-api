@@ -10,6 +10,12 @@ return [
         'fr' => 'Je suis un assistant automatisé de {company}.',
     ],
 
+    'subject_stopwords' => [
+        'en' => ['the', 'a', 'an', 'is', 'of', 'to', 'for', 'which', 'that', 'and', 'or'],
+        'es' => ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'a', 'al', 'y', 'o', 'que', 'para', 'por'],
+        'fr' => ['le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'a', 'au', 'et', 'ou', 'que', 'qui', 'pour', 'est'],
+    ],
+
     'pending_approval' => [
         'en' => "I've asked a colleague to confirm that — you'll hear back shortly.",
         'es' => 'He pedido a un colega que lo confirme — te responderemos en breve.',

@@ -7,12 +7,19 @@ namespace Tests\Feature\Ai;
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\AiAgent;
+use App\Support\Ai\AgentContext;
+use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\AgentRuntime;
+use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\ChannelProfile;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\HandoffReason;
+use App\Support\Ai\Guards\ChannelGuard;
+use App\Support\Ai\Guards\GuardrailVerdict;
+use App\Support\Ai\Tools\FactBag;
 use App\Support\Communications\Gsm7Transliterator;
 use App\Support\Communications\Messages\SmsMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,7 +144,7 @@ class ChannelGuardTest extends TestCase
     public function non_channel_block_on_redraft_ends_the_turn_with_that_guard(): void
     {
         $long = str_repeat('A', 800);
-        $this->driver->enqueueText($long)->enqueueText('You owe €12.00.');
+        $this->driver->enqueueText($long)->enqueueText('We held unit EV-001 for you.');
 
         $conversation = $this->conversation(AgentChannel::Sms);
         $turn = app(AgentRuntime::class)->turn(
@@ -261,7 +268,7 @@ class ChannelGuardTest extends TestCase
         $this->assertSame(1, $this->driver->callCount);
         $this->assertNull($turn->handoff);
         $this->assertNull($turn->blockedBy);
-        $this->assertSame('Here is the quote.', $turn->subject);
+        $this->assertSame('Here is the quote', $turn->subject);
         $this->assertStringContainsString('Here is the quote.', $turn->draft);
     }
 
@@ -281,6 +288,71 @@ class ChannelGuardTest extends TestCase
         $this->assertSame('Availability', $turn->subject);
         $this->assertStringNotContainsString('Subject:', $turn->draft);
         $this->assertStringContainsString('We have space this week.', $turn->draft);
+    }
+
+    #[Test]
+    public function email_subject_uses_the_first_complete_clause(): void
+    {
+        $this->driver->enqueueText('We found several Keevaris sites in Madrid. Could you let me know which one is');
+
+        $conversation = $this->conversation(AgentChannel::Email);
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'I am in Madrid',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertSame('We found several Keevaris sites in Madrid', $turn->subject);
+        $this->assertLessThanOrEqual(70, mb_strlen((string) $turn->subject));
+    }
+
+    #[Test]
+    public function email_subject_word_boundary_cut_appends_ellipsis(): void
+    {
+        $draft = 'Please confirm availability at Madrid Norte starting whenever you decide next week together with us';
+        $this->assertGreaterThan(70, mb_strlen($draft));
+
+        $verdict = $this->subjectOf($draft, 'en');
+        $this->assertNotNull($verdict->subject);
+        $this->assertLessThanOrEqual(71, mb_strlen($verdict->subject));
+        $this->assertStringEndsWith('…', $verdict->subject);
+        $this->assertStringNotContainsString(',', $verdict->subject);
+    }
+
+    #[Test]
+    public function email_subject_drops_trailing_spanish_stopwords(): void
+    {
+        $verdict = $this->subjectOf('Encontramos varios centros Keevaris en Madrid que', 'es');
+
+        $this->assertSame('Encontramos varios centros Keevaris en Madrid', $verdict->subject);
+    }
+
+    #[Test]
+    public function email_subject_drops_trailing_french_stopwords(): void
+    {
+        $verdict = $this->subjectOf('Nous avons plusieurs sites Keevaris a Paris et', 'fr');
+
+        $this->assertSame('Nous avons plusieurs sites Keevaris a Paris', $verdict->subject);
+    }
+
+    private function subjectOf(string $draft, string $locale): GuardrailVerdict
+    {
+        $conversation = $this->conversation(AgentChannel::Email);
+        $conversation->locale = $locale;
+        $conversation->save();
+
+        return app(ChannelGuard::class)->check(
+            $draft,
+            new FactBag,
+            new AgentContext(
+                AgentPrincipal::anonymous(null, $locale),
+                ChannelProfile::for(AgentChannel::Email),
+                app(AgentRegistry::class)->get('support'),
+                $conversation,
+                $conversation->aiAgent,
+            ),
+        );
     }
 
     #[Test]

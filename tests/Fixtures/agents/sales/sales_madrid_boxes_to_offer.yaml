@@ -33,15 +33,16 @@ turns:
     expect_writes: {}
     expect_no_handoff: true
   - input: "i am mohammad shabani my email is m.shabani@ffrw.es  and i wanna move on next monday"
+    expect_tools: [calendar.resolve, crm.create_deal]
     expect_writes:
       contacts: 1
+      deals: 1
     expect_no_handoff: true
+    expect_deal_move_in: '2026-09-07'
   - input: "yes, every thing looks good"
     expect_tools: [sales.create_offer]
     expect_writes:
       offers: 1
-      deals: 1
     expect_no_handoff: true
     expect_offer_source: ai_agent
-    expect_deal_move_in: true
     expect_context_estimated_tokens_max: 8000

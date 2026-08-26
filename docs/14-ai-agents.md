@@ -316,7 +316,11 @@ schema key. Cassette hashes still use `key` + `description` + `schema` only
 Eval cassettes (`CassetteKey`) hash the **fully interpolated** system prompt
 and tool schema assembly (`key`, `description`, `schema`). Trace
 `prompt_version` hashes the template without `identityBlock` (D-AI-14). They
-share `CassetteKey::promptHash`, not the input. `display` does **not**
+share `CassetteKey::promptHash`, not the input. `identityBlock` always
+emits `Today: {ISO} ({weekday})` — `SiteClock::today($site)` when a site is
+set, otherwise `config('app.timezone')` — so a conversation with `site:
+none` still knows the civil date. Relative-date conversion is
+`calendar.resolve`, not a prompt instruction. `display` does **not**
 participate — it is instance-specific. A task that changes a prompt-visible
 `display` string must re-record affected cassettes
 (`agent:replay --live --record`).
@@ -412,6 +416,7 @@ catalogue below… Definitions in code (`SupportAgentDefinition` /
 | `facility.find_sites` | anonymous | | ✓ | ✓ |
 | `facility.site_info` | anonymous | | ✓ | ✓ |
 | `facility.size_guide` | anonymous | | ✓ | ✓ |
+| `calendar.resolve` | anonymous | | ✓ | ✓ |
 | `pricing.quote` | anonymous | | ✓ | |
 | `pricing.discounts` | anonymous | | ✓ | |
 | `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ | |
@@ -524,12 +529,16 @@ Other tool notes:
   `payment_methods`). Display tokens are absorbed into `FactBag`. No free-text
   search, no embeddings (D-AI-5). Unknown key → `not_found` → escalate, never
   improvise policy.
+- `calendar.resolve` is a deterministic parser (en/es/fr) against
+  `SiteClock::today($site)` or `config('app.timezone')`. The ISO date lands in
+  `FactBag`; garbage phrases return `invalid_arguments` with a hint to ask
+  for the exact date. No entities, so no `Refs:` line.
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
   `contact_channels`. An `ok` result in an anonymous customer conversation
   promotes the principal to `channel_asserted` (D-AI-18).
 - `crm.create_deal` / `sales.propose_offer` accept optional need fields
   (`expected_move_in`, stay length/period, `desired_size_m2`). Relative dates
-  are converted to ISO by the model using the identity-block `today`.
+  go through `calendar.resolve`; the model must not compute a date itself.
   `purpose` (`personal` \| `business`) is prefixed onto `deals.notes` until
   a column exists (`10`).
 - `pricing.discounts` returns only `agent_offerable` rows; `display` is the
@@ -631,7 +640,7 @@ by `max_redraft_attempts`, then a handoff.
 | `BudgetGuard` | yes | Inbound short-circuit |
 | `HandoffRules` | yes | Inbound short-circuit |
 | `DuplicateDraftGuard` | yes | Block + handoff |
-| `GroundingGuard` | yes | Block + handoff (invariant 55) |
+| `GroundingGuard` | yes | Single unlicensed date or money token: retry with the redraft budget, then block + handoff. Two or more tokens, or an identifier or percent: block + handoff immediately (invariant 55 — a suppressed draft is never delivered) |
 | `ForbiddenClaimGuard` | yes | Licensable keys (`availability_guarantee`, `capacity_guidance`): retry with a licensed alternative, then block + handoff if the redraft budget is exhausted. Other keys: block + handoff. Two keys are licensable (invariant 63) |
 | `DisclosureGuard` | leak: yes; AI Act line: fill-in | First customer turn is **prompted** to open with the configured sentence; if missing, the line is **prepended**, not blocked |
 | `ChannelGuard` | SMS ceiling: yes; warn band: no; WhatsApp window: advisory | Email missing `Subject:` is filled in, not blocked |
@@ -663,7 +672,10 @@ Highest-value outbound guard. Extracts currency amounts, civil dates
 draft; every token must be in the licensed `FactBag` (this turn's tools plus
 earlier unblocked assistant facts, plus numbers the customer themselves
 supplied). Relative-day words (`today` / `tomorrow`, and es/fr equivalents)
-are not dates. Invented `21%` VAT is the exact failure this exists for.
+are not dates. Invented `21%` VAT is the exact failure this exists for. A
+single unlicensed date or money amount is a `retry` (drop the value or ask
+the customer) bounded by `max_redraft_attempts`; two or more tokens, or an
+identifier or percent, still block and hand off immediately.
 
 ### Licensing
 
@@ -735,12 +747,18 @@ pre-transliteration body is `originalBody` on the **client session only**
 (D-AI-15). It is not a column, not on `agent_handoffs.detail`, and disappears
 on reload. Transliteration does not reverse.
 
-Email without a `Subject:` line is **filled in** from the first body line (or
-`Your enquiry`), not blocked. Lines before `Subject:` are discarded so the
-body is the sendable email, not model narration. HTML in a plain-text channel
-is stripped. The demo email skin renders Markdown. WhatsApp session-vs-template
-is advisory on demo / eval; on a live inbox turn the window is enforced
-(see Live channels).
+Email without a `Subject:` line is **filled in** from the first sentence of
+the body (or `Your enquiry`), not blocked. If that sentence is longer than
+70 characters, cut at the last clause boundary (`,` `;` `:` `—` `–`) before
+70; if none, cut at the last word boundary and append `…`. Trailing
+punctuation and locale stopwords (`config/ai-handoff.php`
+`subject_stopwords`) are dropped so the subject never ends mid-clause. An
+explicit `Subject:` line is honoured and stripped from the body; the prompt
+asks the model to open with one of at most 70 characters. Lines before
+`Subject:` are discarded so the body is the sendable email, not model
+narration. HTML in a plain-text channel is stripped. The demo email skin
+renders Markdown. WhatsApp session-vs-template is advisory on demo / eval;
+on a live inbox turn the window is enforced (see Live channels).
 
 ### Prompt injection
 

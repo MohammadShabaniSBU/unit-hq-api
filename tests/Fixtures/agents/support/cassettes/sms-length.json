@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/sms-length",
     "turn_index": 0,
-    "prompt_hash": "0762810fd212968e0b7f4e80a99943ebe2b19fcc1f9d3c7cb3f34be872d8c156",
-    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
+    "prompt_hash": "c7b853fa17e564a6434c430234aadba19f8c639815f45ddb14e1ba6075566813",
+    "schema_hash": "66f18b8a5c7b0b446ae82320075f3db477b0d847288cd5f51ec43f7c8e1f5c71",
     "responses": [
         {
             "content": "",

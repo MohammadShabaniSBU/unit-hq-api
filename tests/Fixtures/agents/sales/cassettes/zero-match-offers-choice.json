@@ -3,8 +3,8 @@
     "fixture": "sales/zero-match-offers-choice",
     "source": "authored",
     "turn_index": 0,
-    "prompt_hash": "43264392e0b9ef487d962bae58b605bcec3273e1b39908540063f391cd795d31",
-    "schema_hash": "a9381aa9435239c8ad1212f294f0e3e25c2d651f1d98fbf922456d152bceb0cb",
+    "prompt_hash": "17d30763893d1bc35fc7a2bab2d248f4d7981c95e6c462951201a3e1b9028cf3",
+    "schema_hash": "023127a40722c6bc7857bf4d95ea811bdf91aa91be2aeb1bb87b5b78557a2632",
     "responses": [
         {
             "content": "",

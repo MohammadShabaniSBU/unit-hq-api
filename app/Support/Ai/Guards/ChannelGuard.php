@@ -16,7 +16,7 @@ final class ChannelGuard implements OutboundGuard
 {
     private const SUBJECT_LOOKAHEAD_LINES = 10;
 
-    private const SUBJECT_MAX_CHARS = 78;
+    private const SUBJECT_MAX_CHARS = 70;
 
     public function key(): string
     {
@@ -155,28 +155,88 @@ final class ChannelGuard implements OutboundGuard
 
     private function synthesizeSubject(string $body, AgentContext $ctx): string
     {
-        $lines = preg_split("/\r\n|\r|\n/", $body);
-        $line = '';
+        $plain = trim((string) preg_replace('/\s+/u', ' ', strip_tags($body)));
+        $plain = $this->stripDisclosure($plain, $ctx);
 
-        foreach ($lines === false ? [] : $lines as $candidate) {
-            $candidate = trim((string) preg_replace('/\s+/u', ' ', strip_tags($candidate)));
-            if ($candidate !== '') {
-                $line = $candidate;
-                break;
-            }
-        }
-
-        $line = $this->stripDisclosure($line, $ctx);
-
-        if ($line === '') {
+        if ($plain === '') {
             return 'Your enquiry';
         }
 
-        if (mb_strlen($line) > self::SUBJECT_MAX_CHARS) {
-            $line = rtrim(mb_substr($line, 0, self::SUBJECT_MAX_CHARS));
+        $sentence = $this->firstSentence($plain);
+        if (mb_strlen($sentence) > self::SUBJECT_MAX_CHARS) {
+            $sentence = $this->cutToMax($sentence);
         }
 
-        return $line;
+        $sentence = $this->stripTrailingPunctuation($sentence);
+        $sentence = $this->dropTrailingStopwords($sentence, $ctx);
+
+        return $sentence !== '' ? $sentence : 'Your enquiry';
+    }
+
+    private function firstSentence(string $text): string
+    {
+        if (preg_match('/^(.+?[.!?])(?:\s|$)/u', $text, $match) === 1) {
+            return trim($match[1]);
+        }
+
+        return $text;
+    }
+
+    private function cutToMax(string $text): string
+    {
+        $window = mb_substr($text, 0, self::SUBJECT_MAX_CHARS);
+        $clausePos = -1;
+        foreach ([',', ';', ':', '—', '–'] as $mark) {
+            $pos = mb_strrpos($window, $mark);
+            if ($pos !== false && $pos > $clausePos) {
+                $clausePos = $pos;
+            }
+        }
+        if ($clausePos > 0) {
+            return rtrim(mb_substr($window, 0, $clausePos));
+        }
+
+        $space = mb_strrpos($window, ' ');
+        if ($space !== false && $space > 0) {
+            return rtrim(mb_substr($window, 0, $space)).'…';
+        }
+
+        return rtrim($window).'…';
+    }
+
+    private function stripTrailingPunctuation(string $text): string
+    {
+        return rtrim($text, " \t.,;:!?");
+    }
+
+    private function dropTrailingStopwords(string $text, AgentContext $ctx): string
+    {
+        $locale = $this->localeKey($ctx->conversation->locale ?? $ctx->principal->locale);
+        $stopwords = config("ai-handoff.subject_stopwords.{$locale}");
+        if (! is_array($stopwords)) {
+            $stopwords = config('ai-handoff.subject_stopwords.en', []);
+        }
+        /** @var list<string> $stopwords */
+        $folded = array_map(strtolower(...), $stopwords);
+
+        $words = preg_split('/\s+/u', $text) ?: [];
+        while ($words !== []) {
+            $last = strtolower(rtrim((string) $words[array_key_last($words)], '.,;:!?…'));
+            if (! in_array($last, $folded, true)) {
+                break;
+            }
+            array_pop($words);
+        }
+
+        return implode(' ', $words);
+    }
+
+    private function localeKey(string $locale): string
+    {
+        $base = strtolower(str_replace('_', '-', $locale));
+        $base = explode('-', $base)[0];
+
+        return in_array($base, ['en', 'es', 'fr'], true) ? $base : 'en';
     }
 
     private function stripDisclosure(string $line, AgentContext $ctx): string

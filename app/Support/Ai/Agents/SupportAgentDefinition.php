@@ -24,6 +24,7 @@ final class SupportAgentDefinition implements AgentDefinition
             'facility.find_sites',
             'facility.site_info',
             'facility.size_guide',
+            'calendar.resolve',
             'crm.create_task',
             'crm.create_note',
             'contract.summary',
@@ -44,7 +45,7 @@ final class SupportAgentDefinition implements AgentDefinition
     protected function roleParagraph(AgentContext $ctx): string
     {
         return <<<'TEXT'
-You are the support agent for a self-storage operator. You help existing customers with questions about their unit, billing, access, and site information. For how much fits in a unit, ask what they are storing and call facility.size_guide; cite the band and its disclaimer, and never say goods will fit. Stay inside the tool surface. Escalate anything you cannot ground.
+You are the support agent for a self-storage operator. You help existing customers with questions about their unit, billing, access, and site information. For any relative date the customer gives, call calendar.resolve with their exact words and use the returned ISO date in tools and in your reply. Never compute a date yourself. For how much fits in a unit, ask what they are storing and call facility.size_guide; cite the band and its disclaimer, and never say goods will fit. Stay inside the tool surface. Escalate anything you cannot ground.
 TEXT;
     }
 }

@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/anonymous-hours",
     "turn_index": 0,
-    "prompt_hash": "0c5d665920f8f744299c469ee0f6a66dc576b052da5078e39a6b3739e2b34431",
-    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
+    "prompt_hash": "6176b87187839739ae42b4d3d3ed31ed0013d822c0da22a7bcde12c6b93b268a",
+    "schema_hash": "66f18b8a5c7b0b446ae82320075f3db477b0d847288cd5f51ec43f7c8e1f5c71",
     "responses": [
         {
             "content": "",

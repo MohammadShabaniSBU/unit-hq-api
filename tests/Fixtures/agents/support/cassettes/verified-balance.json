@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/verified-balance",
     "turn_index": 0,
-    "prompt_hash": "2ae56a1655ce34b3a2a4737ce601f72527be1ea6dc8b46330eb04235ad00c2b5",
-    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
+    "prompt_hash": "3b59406779fbae73ec81fe4352e729db2a576a771ad0e7c25c41f0c43fa6d502",
+    "schema_hash": "66f18b8a5c7b0b446ae82320075f3db477b0d847288cd5f51ec43f7c8e1f5c71",
     "responses": [
         {
             "content": "",

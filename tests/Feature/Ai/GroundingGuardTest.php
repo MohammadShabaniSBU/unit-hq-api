@@ -42,6 +42,8 @@ class GroundingGuardTest extends TestCase
         $this->assertFalse($verdict->passed);
         $this->assertSame('grounding', $verdict->blockedBy);
         $this->assertSame('€12.00', $verdict->detail['token'] ?? null);
+        $this->assertNotNull($verdict->retry);
+        $this->assertTrue($verdict->events[0]['detail']['redraft'] ?? false);
     }
 
     #[Test]
@@ -82,6 +84,7 @@ class GroundingGuardTest extends TestCase
         $this->assertFalse($verdict->passed);
         $this->assertSame('grounding', $verdict->blockedBy);
         $this->assertStringContainsString('21%', (string) ($verdict->detail['token'] ?? ''));
+        $this->assertNull($verdict->retry);
     }
 
     #[Test]
@@ -165,6 +168,7 @@ class GroundingGuardTest extends TestCase
         $this->assertFalse($fail->passed);
         $this->assertSame('grounding', $fail->blockedBy);
         $this->assertSame('€12.00', $fail->detail['token'] ?? null);
+        $this->assertNotNull($fail->retry);
     }
 
     #[Test]
@@ -220,6 +224,52 @@ class GroundingGuardTest extends TestCase
         );
         $this->assertFalse($fail->passed);
         $this->assertSame('grounding', $fail->blockedBy);
+        $this->assertNotNull($fail->retry);
+    }
+
+    #[Test]
+    public function two_unlicensed_tokens_block_immediately(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'Hold until 2099-01-01 for €12.00.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertNull($verdict->retry);
+        $this->assertSame('block', $verdict->events[0]['verdict'] ?? null);
+        $this->assertSame('grounding', $verdict->blockedBy);
+    }
+
+    #[Test]
+    public function single_unlicensed_identifier_blocks_immediately(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'We held unit EV-001 for you.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertNull($verdict->retry);
+        $this->assertSame('block', $verdict->events[0]['verdict'] ?? null);
+        $this->assertSame('EV-001', $verdict->detail['token'] ?? null);
+    }
+
+    #[Test]
+    public function single_unlicensed_number_blocks_immediately(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'That comes to roughly 420.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertNull($verdict->retry);
+        $this->assertSame('block', $verdict->events[0]['verdict'] ?? null);
+        $this->assertSame('420', $verdict->detail['token'] ?? null);
     }
 
     #[Test]

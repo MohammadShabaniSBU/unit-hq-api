@@ -11,6 +11,7 @@ use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Eval\CassetteKey;
 use App\Support\Time\SiteClock;
+use Carbon\CarbonImmutable;
 
 trait AssemblesSystemPrompt
 {
@@ -74,21 +75,27 @@ trait AssemblesSystemPrompt
         $lines = ["You represent {$company}."];
 
         $siteId = $ctx->principal->siteId;
-        if ($siteId === null) {
-            return implode(' ', $lines);
+        $site = $siteId !== null ? Site::query()->find($siteId) : null;
+        if ($site !== null) {
+            $lines[] = "Site: {$site->name}.";
+            $lines[] = "Civil timezone: {$site->timezone}.";
         }
 
-        $site = Site::query()->find($siteId);
-        if ($site === null) {
-            return implode(' ', $lines);
-        }
-
-        $today = SiteClock::today($site)->toDateString();
-        $lines[] = "Site: {$site->name}.";
-        $lines[] = "Civil timezone: {$site->timezone}.";
-        $lines[] = "Today at this site: {$today}.";
+        $today = $site !== null
+            ? SiteClock::today($site)
+            : CarbonImmutable::now((string) config('app.timezone', 'UTC'))->startOfDay();
+        $locale = $this->localeKey($ctx->conversation->locale ?? $ctx->principal->locale);
+        $lines[] = 'Today: '.$today->toDateString().' ('.$today->copy()->locale($locale)->isoFormat('dddd').').';
 
         return implode(' ', $lines);
+    }
+
+    private function localeKey(string $locale): string
+    {
+        $base = strtolower(str_replace('_', '-', $locale));
+        $base = explode('-', $base)[0];
+
+        return in_array($base, ['en', 'es', 'fr'], true) ? $base : 'en';
     }
 
     private function disclosureBlock(AgentContext $ctx): string
@@ -123,7 +130,7 @@ TEXT;
             $bits[] = 'Plain text only. No HTML.';
         }
         if ($channel->supportsSubject) {
-            $bits[] = 'Start the draft with a line of the form `Subject: …` followed by the body the customer would receive. Do not wrap it in narration such as "Here is the draft" or "Here is the email".';
+            $bits[] = 'Start the draft with a line of the form `Subject: …` of at most 70 characters, followed by the body the customer would receive. Do not wrap it in narration such as "Here is the draft" or "Here is the email".';
         }
         if ($channel->expectsSignature) {
             $bits[] = 'End with a short sign-off.';

@@ -98,7 +98,7 @@ class GuardPipelineOrderTest extends TestCase
     public function grounding_beats_forbidden_claim(): void
     {
         $conversation = $this->conversation();
-        $this->driver->enqueueText("I've waived the fee of €999.00.");
+        $this->driver->enqueueText("I've waived the fee of €999.00 due 2099-01-01.");
 
         $turn = app(AgentRuntime::class)->turn(
             $conversation,

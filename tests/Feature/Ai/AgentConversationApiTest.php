@@ -467,7 +467,7 @@ class AgentConversationApiTest extends TestCase
             'created_by_employee_id' => $this->owner->id,
             'origin' => AgentOrigin::Demo,
         ]);
-        $this->driver->enqueueText('Invented balance €12.00');
+        $this->driver->enqueueText('Invented unit EV-001');
         Sanctum::actingAs($this->owner);
 
         $this->postJson("/api/agent-conversations/{$conversation->id}/turns", [
@@ -486,8 +486,8 @@ class AgentConversationApiTest extends TestCase
         $this->assertSame('grounding', $properties['blocked_by'] ?? null);
         $encoded = json_encode($properties);
         $this->assertIsString($encoded);
-        $this->assertStringNotContainsString('Invented balance', $encoded);
-        $this->assertStringNotContainsString('€12.00', $encoded);
+        $this->assertStringNotContainsString('Invented unit', $encoded);
+        $this->assertStringNotContainsString('EV-001', $encoded);
     }
 
     #[Test]

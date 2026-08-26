@@ -177,6 +177,10 @@ final class RegistryFixtures
             'billing.invoices' => $this->support($verified, []),
             'access.status' => $this->support($verified, ['contract_id' => $this->contract->id]),
             'kb.faq_lookup' => $this->sales($anon, ['key' => 'access_hours', 'site_id' => $this->site->id]),
+            'calendar.resolve' => $this->sales($anon, [
+                'phrase' => 'next Monday',
+                'site_id' => $this->site->id,
+            ]),
             'agent.escalate' => $this->sales($anon, [
                 'reason' => AgentHandoffReason::CustomerRequested->value,
                 'summary' => 'Customer asked for a person.',

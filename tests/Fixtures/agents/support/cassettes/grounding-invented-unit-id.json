@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/grounding-invented-unit-id",
     "turn_index": 0,
-    "prompt_hash": "9603e40599b0561d724acb82f50fede3509c4c03ed2189bc336d48864edda1fc",
-    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
+    "prompt_hash": "15587f64ec7b2020e34c66173254fc8ee35288c8bf7c2d7ecac306620dc359f0",
+    "schema_hash": "66f18b8a5c7b0b446ae82320075f3db477b0d847288cd5f51ec43f7c8e1f5c71",
     "responses": [
         {
             "content": "That would be unit Z-999 on the ground floor.",

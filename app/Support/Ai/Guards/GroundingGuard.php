@@ -36,22 +36,42 @@ final class GroundingGuard implements OutboundGuard
 
         $site = $this->site($ctx);
 
+        /** @var list<DraftToken> $unlicensed */
+        $unlicensed = [];
         foreach ($this->extractor->extract($draft, $site) as $token) {
             $ok = $token->type === DraftToken::Percent
                 ? $licensed->containsPercent($token->normalized)
                 : ($licensed->contains($token->normalized) || $licensed->contains($token->raw));
 
             if (! $ok) {
-                return GuardrailVerdict::block(
-                    'grounding',
-                    HandoffReason::GroundingFailure,
-                    ['token' => $token->raw],
-                    [['guard' => $this->key(), 'verdict' => 'block', 'detail' => ['token' => $token->raw]]],
-                );
+                $unlicensed[] = $token;
             }
         }
 
-        return GuardrailVerdict::pass(events: [['guard' => $this->key(), 'verdict' => 'pass']]);
+        if ($unlicensed === []) {
+            return GuardrailVerdict::pass(events: [['guard' => $this->key(), 'verdict' => 'pass']]);
+        }
+
+        $first = $unlicensed[0];
+        $redraftable = count($unlicensed) === 1
+            && in_array($first->type, [DraftToken::Date, DraftToken::Money], true);
+
+        if ($redraftable) {
+            return GuardrailVerdict::retry(
+                "The value {$first->raw} is not grounded in any tool result. Remove it, or ask the customer for the exact date/amount. Do not state a value you have not received from a tool.",
+                'grounding',
+                HandoffReason::GroundingFailure,
+                ['token' => $first->raw],
+                [['guard' => $this->key(), 'verdict' => 'deny', 'detail' => ['token' => $first->raw, 'redraft' => true]]],
+            );
+        }
+
+        return GuardrailVerdict::block(
+            'grounding',
+            HandoffReason::GroundingFailure,
+            ['token' => $first->raw],
+            [['guard' => $this->key(), 'verdict' => 'block', 'detail' => ['token' => $first->raw]]],
+        );
     }
 
     private function site(AgentContext $ctx): ?Site

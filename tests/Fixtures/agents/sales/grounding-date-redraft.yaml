@@ -1,0 +1,15 @@
+id: sales/grounding-date-redraft
+agent: sales
+channel: webchat
+locale: en
+tags: [grounding, s26]
+principal:
+  verification: anonymous
+turns:
+  - input: "When can I move in?"
+    expect_no_handoff: true
+    expect_guardrail:
+      - guard: grounding
+        verdict: deny
+        detail:
+          redraft: true

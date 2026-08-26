@@ -2,8 +2,8 @@
     "agent": "support",
     "fixture": "support/unverified-balance",
     "turn_index": 0,
-    "prompt_hash": "847e6985058884884d7d6a0fec1c3a8ec1464bd14289f074cffe8e29c35f9ae8",
-    "schema_hash": "eeb6c1b8fa377b7a2f719e8b27e6b4bf9cc77fdb8687a1f2109236df5b2a3cee",
+    "prompt_hash": "f95061cdcfe25cb16b6fdf5dda2722bdcf8c617087ce5a8fe2bc3d08d1bb09cc",
+    "schema_hash": "66f18b8a5c7b0b446ae82320075f3db477b0d847288cd5f51ec43f7c8e1f5c71",
     "responses": [
         {
             "content": "",

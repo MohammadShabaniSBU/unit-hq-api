@@ -11,3 +11,8 @@ turns:
     expect_handoff:
       reason: grounding_failure
       trigger_source: guardrail
+    expect_guardrail:
+      - guard: grounding
+        verdict: deny
+        detail:
+          redraft: true
