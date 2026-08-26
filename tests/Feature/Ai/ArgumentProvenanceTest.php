@@ -121,6 +121,30 @@ class ArgumentProvenanceTest extends TestCase
     }
 
     #[Test]
+    public function id_seen_only_in_a_prior_ok_invocation_stays_licensed_after_later_turns_would_evict_it_from_model_context(): void
+    {
+        [$site, $class] = $this->pricedClass();
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseEntities($ctx, [
+            EntityRef::site($site),
+            EntityRef::unitClass($class, $site),
+        ]);
+
+        for ($i = 0; $i < 12; $i++) {
+            $this->persistUser($ctx->conversation->id, "later turn {$i}", $i + 2);
+        }
+        app(ArgumentProvenance::class)->resetMemo();
+
+        $result = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+    }
+
+    #[Test]
     public function create_offer_rate_whose_class_is_unlicensed_is_denied(): void
     {
         $world = $this->agentPricedDeal();

@@ -44,3 +44,4 @@ turns:
     expect_no_handoff: true
     expect_offer_source: ai_agent
     expect_deal_move_in: true
+    expect_context_estimated_tokens_max: 8000

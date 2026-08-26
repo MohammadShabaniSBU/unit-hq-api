@@ -11,6 +11,7 @@ use App\Models\AgentHandoff;
 use App\Models\AgentToolInvocation;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
+use App\Models\Deal;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Support\Ai\Agents\AgentDefinition;
@@ -20,6 +21,7 @@ use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
@@ -35,6 +37,7 @@ use App\Support\Ai\Guards\InboundGuardPipeline;
 use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\ArgumentBag;
 use App\Support\Ai\Tools\FactBag;
+use App\Support\Ai\Tools\FactRegistry;
 use App\Support\Ai\Tools\RefsRenderer;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolError;
@@ -128,6 +131,7 @@ final class AgentRuntime
                     $onEvent,
                     $usageEvents,
                     $cursor,
+                    $ctx,
                 );
                 $latencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
                 $usageTotal = $usageTotal->add($response->usage);
@@ -543,6 +547,7 @@ final class AgentRuntime
                     $onEvent,
                     $usageEvents,
                     $cursor,
+                    $ctx,
                 );
                 $lastLatencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
                 $usageTotal = $usageTotal->add($response->usage);
@@ -731,15 +736,28 @@ final class AgentRuntime
                 $key = $assistantRow !== null && $row->tool_call_id !== null
                     ? $assistantRow->id.':'.$row->tool_call_id
                     : null;
+                $invocation = $key !== null ? ($invocations[$key] ?? null) : null;
 
-                $messages[] = [
+                $message = [
                     'role' => 'tool',
                     'content' => $this->wrapUntrusted($this->rehydratedToolText(
                         (string) $row->content,
-                        $key !== null ? ($invocations[$key] ?? null) : null,
+                        $invocation,
                     )),
                     'tool_call_id' => $row->tool_call_id,
                 ];
+                if ($invocation !== null) {
+                    $message['tool_name'] = $invocation->tool_key;
+                    $message['arguments'] = ArgumentBag::jsonReady(
+                        ArgumentBag::normalise($invocation->arguments),
+                    );
+                    $quotes = $this->retainedQuotesFor($invocation, (string) $row->content);
+                    if ($quotes !== []) {
+                        $message[ContextWindow::QUOTES_KEY] = $quotes;
+                    }
+                }
+
+                $messages[] = $message;
             }
         }
 
@@ -1105,7 +1123,12 @@ final class AgentRuntime
         ?Closure $onEvent,
         array &$usageEvents,
         TraceCursor $cursor,
+        AgentContext $ctx,
     ): ModelResponse {
+        $registry = FactRegistry::rebuild($ctx->principal, $ctx);
+        $window = ContextWindow::build($messages, $registry, $this->dealForSummary($registry));
+        $messages = ContextWindow::withoutInternalKeys($window->messages);
+
         $callId = (string) Str::uuid7();
         $provider = $this->providers->applyActiveCredentials() ?? (string) config('ai.default');
         AiUsageEvent::reserve(
@@ -1116,6 +1139,7 @@ final class AgentRuntime
             RequestId::get(),
             $agent->id,
             $conversation->id,
+            $window->telemetry(),
         );
 
         try {
@@ -1221,5 +1245,75 @@ final class AgentRuntime
         }
 
         return Site::query()->find($principal->siteId);
+    }
+
+    private function dealForSummary(FactRegistry $registry): ?Deal
+    {
+        $ids = $registry->ids(EntityType::Deal);
+        if ($ids === []) {
+            return null;
+        }
+
+        return Deal::query()
+            ->with(['contact', 'site', 'desiredUnitClass'])
+            ->find($ids[array_key_last($ids)]);
+    }
+
+    /**
+     * @return list<array{tool_key: string, unit_class_id: int|null, display: string}>
+     */
+    private function retainedQuotesFor(AgentToolInvocation $invocation, string $display): array
+    {
+        $display = trim($display);
+        if ($display === '') {
+            return [];
+        }
+        if (! $this->tools->has($invocation->tool_key)) {
+            return [];
+        }
+        if (! $this->tools->get($invocation->tool_key)->retainInSummary()) {
+            return [];
+        }
+
+        $ids = $this->unitClassIdsFromArguments(ArgumentBag::normalise($invocation->arguments));
+        if ($ids === []) {
+            return [[
+                'tool_key' => $invocation->tool_key,
+                'unit_class_id' => null,
+                'display' => $display,
+            ]];
+        }
+
+        $quotes = [];
+        foreach ($ids as $id) {
+            $quotes[] = [
+                'tool_key' => $invocation->tool_key,
+                'unit_class_id' => $id,
+                'display' => $display,
+            ];
+        }
+
+        return $quotes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return list<int>
+     */
+    private function unitClassIdsFromArguments(array $arguments): array
+    {
+        $ids = [];
+        if (isset($arguments['unit_class_id']) && is_numeric($arguments['unit_class_id'])) {
+            $ids[] = (int) $arguments['unit_class_id'];
+        }
+        if (isset($arguments['options']) && is_array($arguments['options'])) {
+            foreach ($arguments['options'] as $option) {
+                if (is_array($option) && isset($option['unit_class_id']) && is_numeric($option['unit_class_id'])) {
+                    $ids[] = (int) $option['unit_class_id'];
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 }

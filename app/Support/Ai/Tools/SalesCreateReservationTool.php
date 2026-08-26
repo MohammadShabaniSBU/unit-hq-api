@@ -71,6 +71,11 @@ final class SalesCreateReservationTool implements AgentTool, ProposableTool
         return true;
     }
 
+    public function retainInSummary(): bool
+    {
+        return false;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return [];

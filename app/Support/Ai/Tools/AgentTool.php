@@ -27,6 +27,12 @@ interface AgentTool
     public function isWrite(): bool;
 
     /**
+     * When true, this tool's display is kept in the rolling context summary
+     * after the verbatim tool message is evicted.
+     */
+    public function retainInSummary(): bool;
+
+    /**
      * Argument keys that must identify the principal's contact.
      *
      * @return list<string>

@@ -123,6 +123,11 @@ class AgentRuntimeTest extends TestCase
             $this->assertNotNull($usage->seq);
             $this->assertNotNull($usage->prompt_version);
             $this->assertNotNull($usage->agent_conversation_message_id);
+            $this->assertIsArray($usage->context);
+            $this->assertArrayHasKey('messages_sent', $usage->context);
+            $this->assertArrayHasKey('messages_evicted', $usage->context);
+            $this->assertArrayHasKey('summary_chars', $usage->context);
+            $this->assertArrayHasKey('estimated_tokens', $usage->context);
             $cost = AiUsageCost::forEvent($usage);
             $this->assertNotNull($cost);
             $this->assertSame('USD', $cost['currency']);
@@ -221,7 +226,7 @@ class AgentRuntimeTest extends TestCase
         $this->seedToolTurn($conversation, 'call_1', 'Three units available at Madrid Centro.', [
             EntityRef::of(EntityType::Site, 1, 'Madrid Centro'),
             EntityRef::of(EntityType::UnitClass, 12, 'Trastero 16 m² XL'),
-        ]);
+        ], arguments: ['site_id' => 1]);
 
         $this->driver->enqueueText('Let me check the price.');
 
@@ -238,6 +243,11 @@ class AgentRuntimeTest extends TestCase
             'Refs: site 1 = Madrid Centro; unit_class 12 = Trastero 16 m² XL',
             $toolMessages[0],
         );
+
+        $rows = $this->toolMessageArraysSentToModel();
+        $this->assertCount(1, $rows);
+        $this->assertSame('test.refs', $rows[0]['tool_name'] ?? null);
+        $this->assertSame(['site_id' => 1], $rows[0]['arguments'] ?? null);
     }
 
     #[Test]
@@ -264,6 +274,11 @@ class AgentRuntimeTest extends TestCase
         $this->assertCount(1, $toolMessages);
         $this->assertStringContainsString('Three units available at Madrid Centro.', $toolMessages[0]);
         $this->assertStringNotContainsString('Refs:', $toolMessages[0]);
+
+        $rows = $this->toolMessageArraysSentToModel();
+        $this->assertCount(1, $rows);
+        $this->assertArrayNotHasKey('tool_name', $rows[0]);
+        $this->assertArrayNotHasKey('arguments', $rows[0]);
     }
 
     #[Test]
@@ -1132,6 +1147,7 @@ class AgentRuntimeTest extends TestCase
      * storing `display` only, and the invocation carrying the entities.
      *
      * @param  list<EntityRef>  $entities
+     * @param  array<string, mixed>  $arguments
      */
     private function seedToolTurn(
         AgentConversation $conversation,
@@ -1139,6 +1155,7 @@ class AgentRuntimeTest extends TestCase
         string $display,
         array $entities,
         bool $linkInvocation = true,
+        array $arguments = [],
     ): void {
         $sequence = (int) AgentConversationMessage::query()
             ->where('agent_conversation_id', $conversation->id)
@@ -1156,7 +1173,7 @@ class AgentRuntimeTest extends TestCase
             'sequence' => ++$sequence,
             'role' => AgentMessageRole::Assistant,
             'content' => null,
-            'tool_calls' => [['name' => 'test.refs', 'id' => $callId, 'arguments' => []]],
+            'tool_calls' => [['name' => 'test.refs', 'id' => $callId, 'arguments' => $arguments]],
         ]);
 
         AgentConversationMessage::query()->create([
@@ -1172,7 +1189,7 @@ class AgentRuntimeTest extends TestCase
             'agent_conversation_message_id' => $assistant->id,
             'tool_call_id' => $linkInvocation ? $callId : null,
             'tool_key' => 'test.refs',
-            'arguments' => [],
+            'arguments' => $arguments,
             'result' => [
                 'entities' => array_map(
                     static fn (EntityRef $ref): array => $ref->toArray(),
@@ -1190,13 +1207,26 @@ class AgentRuntimeTest extends TestCase
     private function toolMessagesSentToModel(): array
     {
         $contents = [];
-        foreach ($this->driver->lastMessages as $message) {
-            if (($message['role'] ?? null) === 'tool') {
-                $contents[] = (string) $message['content'];
-            }
+        foreach ($this->toolMessageArraysSentToModel() as $message) {
+            $contents[] = (string) $message['content'];
         }
 
         return $contents;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function toolMessageArraysSentToModel(): array
+    {
+        $rows = [];
+        foreach ($this->driver->lastMessages as $message) {
+            if (($message['role'] ?? null) === 'tool') {
+                $rows[] = $message;
+            }
+        }
+
+        return $rows;
     }
 
     private function conversation(string $agentKey): AgentConversation

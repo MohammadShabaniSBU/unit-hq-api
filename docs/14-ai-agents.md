@@ -114,6 +114,7 @@ Shared helpers live under `App\Support\Ai\` (same tier as
 ```
 App\Support\Ai\
 ├── AgentRuntime.php              // the turn loop
+├── ContextWindow.php             // bound the message list sent to the driver
 ├── AgentPrincipal.php
 ├── AgentContext.php              // principal + channel + definition + conversation
 ├── AgentTurn.php

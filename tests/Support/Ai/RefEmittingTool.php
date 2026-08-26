@@ -40,6 +40,11 @@ final class RefEmittingTool implements AgentTool
         return false;
     }
 
+    public function retainInSummary(): bool
+    {
+        return false;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return [];

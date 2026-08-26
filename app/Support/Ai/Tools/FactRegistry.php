@@ -56,6 +56,14 @@ final class FactRegistry
         return $ids;
     }
 
+    /**
+     * @return list<EntityRef>
+     */
+    public function refs(): array
+    {
+        return array_values($this->refs);
+    }
+
     public static function rebuild(AgentPrincipal $principal, ?AgentContext $ctx): self
     {
         $registry = new self;

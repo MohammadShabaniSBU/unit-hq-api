@@ -34,4 +34,9 @@ return [
         ],
     ],
 
+    'context' => [
+        'recent_turns' => (int) env('AGENTS_CONTEXT_RECENT_TURNS', 4),
+        'max_history_chars' => (int) env('AGENTS_CONTEXT_MAX_HISTORY_CHARS', 6_000),
+    ],
+
 ];

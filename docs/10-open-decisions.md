@@ -183,6 +183,7 @@
 | Site-scoped discount catalogue | Catalogue rows are organisation-wide (no site column, no site pivot). `site_id` on `pricing.discounts` scopes the empty-catalogue message only, not the rows returned. A per-site offerable set is undecided. |
 | Agent→App UI navigation actions | Natural follow-up once the transcript loop is trusted. v1 is App→Agent `copilot_answer_ready` only. |
 | Agent reservation active-hold uniqueness | **Option 1 taken (S24-01):** in-transaction check inside `ReservationCreation::create` under the existing `lockForUpdate` on the candidate unit, scoped to `source = ai_agent`, plus supporting index `(contact_id, status)`. Operator double-holds stay legal. **Known gap:** two concurrent agent creates that pick *different* units of the same class do not share that lock, so a double-insert is still possible. **Rejected for now:** (2) denormalise `site_id` / `unit_class_id` onto `reservations` for a Postgres partial unique — derived state (invariant 5). (3) exclusion constraint — overkill. Revisit only if (1) proves insufficient in production. |
+| Per-provider prompt caching | S26-05 bounds what is *sent* to the model (`ContextWindow`). Provider cache flags (Anthropic `cache_control`, OpenAI cached input prefixes) are a separate follow-up: they need a per-adapter mapping, they change billing (`cached_input_tokens` is already recorded), and they must not become a second, provider-shaped copy of the eviction rules. Recorded so S26-05 does not grow a caching layer. |
 
 ## Active WIP
 

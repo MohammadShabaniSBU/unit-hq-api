@@ -103,6 +103,11 @@ final class SalesCreateOfferTool implements AgentTool, ProposableTool
         return true;
     }
 
+    public function retainInSummary(): bool
+    {
+        return true;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return [];

@@ -48,6 +48,11 @@ final class EscalateTool implements AgentTool
         return false;
     }
 
+    public function retainInSummary(): bool
+    {
+        return false;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return [];

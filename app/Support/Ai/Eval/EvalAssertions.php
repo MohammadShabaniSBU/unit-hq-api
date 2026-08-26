@@ -82,6 +82,22 @@ final class EvalAssertions
             }
         }
 
+        if (isset($expect['expect_context_estimated_tokens_max'])) {
+            $max = (int) $expect['expect_context_estimated_tokens_max'];
+            $got = null;
+            foreach ($turn->usageEvents as $event) {
+                $context = is_array($event->context) ? $event->context : [];
+                if (isset($context['estimated_tokens'])) {
+                    $got = (int) $context['estimated_tokens'];
+                }
+            }
+            if ($got === null) {
+                $failures[] = "expected estimated_tokens <= {$max}, got none";
+            } elseif ($got > $max) {
+                $failures[] = "expected estimated_tokens <= {$max}, got {$got}";
+            }
+        }
+
         if (isset($expect['expect_tools']) && is_array($expect['expect_tools'])) {
             $got = self::invokedKeys($turn);
             $missing = array_values(array_diff($expect['expect_tools'], $got));

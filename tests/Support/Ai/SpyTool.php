@@ -70,6 +70,11 @@ final class SpyTool implements AgentTool
         return $this->write;
     }
 
+    public function retainInSummary(): bool
+    {
+        return false;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return $this->contactKeys;

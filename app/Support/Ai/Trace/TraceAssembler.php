@@ -147,6 +147,9 @@ final class TraceAssembler
             'output_tokens' => $event->output_tokens,
             'estimated_cost' => $cost['estimated_cost'] ?? null,
             'currency' => $cost['currency'] ?? null,
+            'messages_sent' => is_array($event->context) ? ($event->context['messages_sent'] ?? null) : null,
+            'messages_evicted' => is_array($event->context) ? ($event->context['messages_evicted'] ?? null) : null,
+            'summary_chars' => is_array($event->context) ? ($event->context['summary_chars'] ?? null) : null,
         ];
     }
 

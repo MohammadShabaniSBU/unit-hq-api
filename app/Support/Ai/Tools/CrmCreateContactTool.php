@@ -69,6 +69,11 @@ final class CrmCreateContactTool implements AgentTool
         return true;
     }
 
+    public function retainInSummary(): bool
+    {
+        return false;
+    }
+
     public function contactScopedArgumentKeys(): array
     {
         return [];

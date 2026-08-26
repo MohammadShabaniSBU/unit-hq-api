@@ -34,6 +34,7 @@ use Laravel\Ai\Responses\Data\Usage;
  * @property int|null $duration_ms
  * @property string|null $request_id
  * @property array|null $raw_usage
+ * @property array|null $context
  * @property int|null $turn
  * @property int|null $seq
  * @property string|null $prompt_version
@@ -77,6 +78,7 @@ class AiUsageEvent extends Model
         'turn',
         'seq',
         'prompt_version',
+        'context',
     ];
 
     protected function casts(): array
@@ -84,6 +86,7 @@ class AiUsageEvent extends Model
         return [
             'tokens_estimated' => 'boolean',
             'raw_usage' => 'array',
+            'context' => 'array',
             'started_at' => 'datetime',
             'settled_at' => 'datetime',
         ];
@@ -113,6 +116,8 @@ class AiUsageEvent extends Model
         return $this->belongsTo(AgentConversationMessage::class, 'agent_conversation_message_id');
     }
 
+     * @param  array<string, mixed>|null  $context
+     */
     public static function reserve(
         ?string $callId,
         ?int $employeeId,
@@ -121,6 +126,7 @@ class AiUsageEvent extends Model
         ?string $requestId = null,
         ?int $aiAgentId = null,
         ?int $agentConversationId = null,
+        ?array $context = null,
     ): ?self {
         if ($callId === null || $callId === '') {
             return null;
@@ -137,6 +143,7 @@ class AiUsageEvent extends Model
                 'status' => self::STATUS_STARTED,
                 'started_at' => now(),
                 'request_id' => $requestId,
+                'context' => $context,
             ],
         );
     }

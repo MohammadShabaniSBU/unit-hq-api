@@ -85,6 +85,31 @@ class AgentToolCoverageTest extends TestCase
         }
     }
 
+    #[Test]
+    public function every_tool_that_puts_money_in_its_fact_bag_opts_into_the_summary_or_is_exempt(): void
+    {
+        $exempt = [
+            'billing.balance',
+            'billing.invoices',
+            'billing.next_charge',
+            'contract.summary',
+        ];
+
+        foreach (app(ToolRegistry::class)->all() as $key => $tool) {
+            $path = (new \ReflectionClass($tool))->getFileName();
+            $this->assertNotFalse($path);
+            $source = (string) file_get_contents($path);
+            if (! str_contains($source, '->money(')) {
+                continue;
+            }
+
+            $this->assertTrue(
+                $tool->retainInSummary() || in_array($key, $exempt, true),
+                "Tool [{$key}] puts money in FactBag but neither retainInSummary() nor the exemption list.",
+            );
+        }
+    }
+
     /**
      * @param  array<string, array<string, mixed>>  $schema
      * @return list<string>
