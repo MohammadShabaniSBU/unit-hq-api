@@ -90,6 +90,7 @@ class StageSeeder extends Seeder
 
         $rngSeed = (int) (env('DEMO_SEED', env('SEED_RNG', 424242)));
         mt_srand($rngSeed);
+        fake()->unique(true);
         fake()->seed($rngSeed);
 
         User::factory()->create([

@@ -3,7 +3,7 @@
     "fixture": "sales/summaries-only-six-turn",
     "turn_index": 5,
     "prompt_hash": "37919b24d27644feb8c5638d331c3433570a2a798759a126f06dba82d6115904",
-    "schema_hash": "c6f081e643648bd1fb2f2b4fb1cdbb819b142c4c50d94116e6323fa0439005a2",
+    "schema_hash": "a9381aa9435239c8ad1212f294f0e3e25c2d651f1d98fbf922456d152bceb0cb",
     "responses": [
         {
             "content": "",
@@ -80,7 +80,7 @@
             "finish_reason": "tool_calls"
         },
         {
-            "content": "€70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant for Keevaris.",
+            "content": "Quoted again: €70.00 net / €84.70 incl. 21% tax, per month — Small at Madrid Norte. I am an automated assistant for Keevaris.",
             "tool_calls": [],
             "finish_reason": "stop"
         },

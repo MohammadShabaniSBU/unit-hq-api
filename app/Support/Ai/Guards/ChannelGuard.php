@@ -103,6 +103,17 @@ final class ChannelGuard implements OutboundGuard
             return [$subject !== '' ? $subject : null, $body, false];
         }
 
+        // DisclosureGuard prepends on the same line (`phrase.' '.$trimmed`), so a first
+        // customer-turn email looks like `I am an automated assistant. Subject: Availability\n…`.
+        if (preg_match('/^([^\r\n]+)\h+Subject:\s*([^\r\n]+)(?:\r?\n([\s\S]*))?$/i', $draft, $match) === 1) {
+            $preamble = trim($match[1]);
+            $subject = trim($match[2]);
+            $rest = ltrim($match[3] ?? '');
+            $body = $rest === '' ? $preamble : ($preamble === '' ? $rest : $preamble.' '.$rest);
+
+            return [$subject !== '' ? $subject : null, $body, $preamble !== ''];
+        }
+
         $lines = preg_split("/\r\n|\r|\n/", $draft);
         if ($lines === false) {
             return [null, $draft, false];

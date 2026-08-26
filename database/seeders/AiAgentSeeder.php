@@ -54,5 +54,7 @@ class AiAgentSeeder extends Seeder
                 'max_per_day' => 20,
             ],
         );
+
+        $this->call(AgentChannelBindingSeeder::class);
     }
 }

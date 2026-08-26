@@ -68,6 +68,7 @@ enum Permission: string
     case AiAgentUse = 'ai_agent.use';
     case AgentActionApprove = 'agent_action.approve';
     case CopilotVoiceUse = 'copilot_voice.use';
+    case AiAgentBindingManage = 'ai_agent_binding.manage';
 
     // Cross-cutting
     case ReportView = 'report.view';

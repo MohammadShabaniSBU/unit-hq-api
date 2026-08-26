@@ -116,6 +116,7 @@ class AiUsageEvent extends Model
         return $this->belongsTo(AgentConversationMessage::class, 'agent_conversation_message_id');
     }
 
+    /**
      * @param  array<string, mixed>|null  $context
      */
     public static function reserve(

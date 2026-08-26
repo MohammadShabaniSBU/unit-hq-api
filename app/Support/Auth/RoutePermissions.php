@@ -375,6 +375,7 @@ final class RoutePermissions
             'PUT /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@update
 
             // ===== Operations (72) =====
+            'DELETE /api/ai/agents/bindings/{binding}' => Permission::AiAgentBindingManage, // AgentChannelBindingController@destroy
             'DELETE /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@destroy
             'DELETE /api/copilot/conversations/{conversation}' => Permission::ContactView, // CopilotController@destroy — placeholder until enum case exists
             'DELETE /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@destroy
@@ -389,6 +390,7 @@ final class RoutePermissions
             'GET /api/agent-pending-actions/badge' => Permission::AgentActionApprove, // AgentPendingActionController@badge
             'GET /api/agent-pending-actions/{agentPendingAction}' => Permission::AgentActionApprove, // AgentPendingActionController@show
             'GET /api/ai/agents' => Permission::AiAgentUse, // AiAgentController@index
+            'GET /api/ai/agents/bindings' => Permission::AiAgentBindingManage, // AgentChannelBindingController@index
             'GET /api/ai/demo-personas' => Permission::AiAgentUse, // AiDemoPersonaController@index
             'GET /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@index
             'GET /api/attribute-definitions/{attributeDefinition}' => Permission::SettingsManage, // AttributeDefinitionController@show
@@ -438,6 +440,7 @@ final class RoutePermissions
             'POST /api/agent-conversations/{agentConversation}/turns' => Permission::AiAgentUse, // AgentConversationController@storeTurn
             'POST /api/agent-pending-actions/{agentPendingAction}/approve' => Permission::AgentActionApprove, // AgentPendingActionController@approve
             'POST /api/agent-pending-actions/{agentPendingAction}/reject' => Permission::AgentActionApprove, // AgentPendingActionController@reject
+            'POST /api/ai/agents/bindings' => Permission::AiAgentBindingManage, // AgentChannelBindingController@store
             'POST /api/attribute-definitions' => Permission::SettingsManage, // AttributeDefinitionController@store
             'POST /api/attribute-definitions/{attributeDefinition}/archive' => Permission::SettingsManage, // AttributeDefinitionController@archive
             'POST /api/attribute-definitions/{attributeDefinition}/unarchive' => Permission::SettingsManage, // AttributeDefinitionController@unarchive
@@ -472,6 +475,7 @@ final class RoutePermissions
             'POST /api/settings/object-customization/groups/{group}/fields/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderFields
             'POST /api/settings/object-customization/{entityType}/groups' => Permission::SettingsManage, // ObjectCustomizationController@storeGroup
             'POST /api/settings/object-customization/{entityType}/groups/reorder' => Permission::SettingsManage, // ObjectCustomizationController@reorderGroups
+            'PUT /api/ai/agents/bindings/{binding}' => Permission::AiAgentBindingManage, // AgentChannelBindingController@update
             'PUT /api/ai/agents/{aiAgent}/write-policies' => Permission::SettingsManage, // AiAgentController@updateWritePolicy
             'PUT /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
             'PUT /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update

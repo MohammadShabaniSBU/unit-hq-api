@@ -40,6 +40,7 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Access\AccessProviderRegistry;
+use App\Support\Ai\AgentChannelBindings;
 use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Agents\SalesAgentDefinition;
 use App\Support\Ai\Agents\SupportAgentDefinition;
@@ -107,6 +108,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ProviderRegistry::class);
         $this->app->singleton(ProviderResolver::class);
+        $this->app->singleton(AgentChannelBindings::class);
         $this->app->singleton(ESignProviderRegistry::class);
         $this->app->singleton(AccessProviderRegistry::class);
         $this->app->singleton(AnalyticsProviderRegistry::class);

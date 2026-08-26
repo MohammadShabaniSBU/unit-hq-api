@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property-read Collection<int, AgentConversation> $conversations
  * @property-read Collection<int, AgentWritePolicy> $writePolicies
+ * @property-read Collection<int, AgentChannelBinding> $channelBindings
  */
 class AiAgent extends Model
 {
@@ -79,5 +80,11 @@ class AiAgent extends Model
     public function writePolicies(): HasMany
     {
         return $this->hasMany(AgentWritePolicy::class);
+    }
+
+    /** @return HasMany<AgentChannelBinding, $this> */
+    public function channelBindings(): HasMany
+    {
+        return $this->hasMany(AgentChannelBinding::class);
     }
 }

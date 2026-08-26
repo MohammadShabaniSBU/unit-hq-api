@@ -42,7 +42,12 @@
   on the `ai` channel (not `ai.conversation.principal_promoted`).
 - Undecided additions: `deals.purpose` column; missed-call SMS follow-up;
   prompt caching per provider; cross-agent handoff; OTP verification for
-  webchat.
+  webchat; per-site override of the company send window (`sendWindowStart` /
+  `sendWindowEnd`).
+- S26-06 already corrected in place (do not revert): API is
+  `/api/ai/agents/bindings` not `/api/settings/ai-agents/bindings`; bindable
+  channels are `email|sms|whatsapp|webchat` (`voice` and `internal` share
+  one 422); seeder match key is `(channel, site_id)`.
 - Remove "Not built: any transport / webchat channel / per-agent per-channel
   autonomy" bullets from `14`, moving the reservation-promotion bar (D-AI-11)
   text unchanged.

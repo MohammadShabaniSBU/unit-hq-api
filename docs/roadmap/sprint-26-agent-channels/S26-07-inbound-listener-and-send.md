@@ -31,8 +31,17 @@ a Tier-1 `SystemEvent` `ai.inbound.skipped` with `reason`:
    `null` or `mode = off` → skip `binding_off`.
 3. Audience gate per S26-06. Unmatched sender with `audience = all` →
    **auto-lead capture** (below); otherwise skip `audience`.
-4. Business hours: `outside_hours = inbox` and now is outside the site's
-   send window (`SiteClock`) → skip `outside_hours`.
+4. Business hours: `outside_hours = inbox` and now is outside the company
+   send window → skip `outside_hours`. The window is
+   `GeneralSettings::$sendWindowStart` → new nullable `$sendWindowEnd`
+   (default `null` = no end, i.e. never outside once started). Add
+   `sendWindowEnd` to `GeneralSettings` and the `GET/PATCH /api/settings/general`
+   payload and validation in this task. Evaluate the window via `SiteClock`
+   in the binding's **site** timezone for site-scoped bindings, and in the
+   company timezone for company-scoped ones. `SiteClock` today has only
+   date-level helpers — add a time-of-day comparison. **Site access hours
+   are not office hours** (`facility.site_info` must not be used). A
+   per-site override is undecided (`10-open-decisions.md`).
 5. **Human ownership**: thread has an existing `agent_conversation` with
    `state ∈ {awaiting_human, handed_off}` → skip `human_owned`. A thread
    the operator has replied to manually since the last agent turn is also

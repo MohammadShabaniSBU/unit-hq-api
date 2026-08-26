@@ -14,6 +14,7 @@ use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
+use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Discount;
 use App\Models\Employee;
@@ -28,7 +29,9 @@ use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Enums\AgentAudience;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
+use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
@@ -558,6 +561,28 @@ class AgentRuntimeTest extends TestCase
             $this->fail('Expected the kill switch to throw.');
         } catch (RuntimeException $e) {
             $this->assertSame('Customer-facing agents are disabled.', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->driver->callCount);
+    }
+
+    #[Test]
+    public function inbox_origin_without_a_binding_is_refused(): void
+    {
+        $conversation = AgentConversation::factory()->create([
+            'origin' => AgentOrigin::Inbox,
+            'channel' => AgentChannel::Sms,
+        ]);
+
+        try {
+            app(AgentRuntime::class)->turn(
+                $conversation,
+                $conversation->principal(),
+                'hello',
+            );
+            $this->fail('Expected an unbound inbox turn to throw.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('Agent is not bound to this channel.', $e->getMessage());
         }
 
         $this->assertSame(0, $this->driver->callCount);

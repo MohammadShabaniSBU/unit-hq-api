@@ -20,6 +20,8 @@ use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
 use App\Support\Ai\Enums\AgentMessageRole;
+use App\Support\Ai\Enums\AgentOrigin;
+use App\Support\Ai\Enums\BindingMode;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
@@ -64,6 +66,7 @@ final class AgentRuntime
         private readonly InboundGuardPipeline $inbound,
         private readonly GuardrailPipeline $guards,
         private readonly AiProviderRegistry $providers,
+        private readonly AgentChannelBindings $bindings,
     ) {}
 
     public function turn(
@@ -82,6 +85,17 @@ final class AgentRuntime
         $agent = $conversation->aiAgent;
         if (! $agent->is_active || $agent->archived_at !== null) {
             throw new RuntimeException('Agent is not active.');
+        }
+
+        if ($conversation->origin === AgentOrigin::Inbox) {
+            $resolved = $this->bindings->resolve($conversation->channel, $conversation->site_id);
+            if (
+                $resolved === null
+                || $resolved->mode === BindingMode::Off
+                || $resolved->agent->id !== $agent->id
+            ) {
+                throw new RuntimeException('Agent is not bound to this channel.');
+            }
         }
 
         $definition = $this->agents->get($agent->key);

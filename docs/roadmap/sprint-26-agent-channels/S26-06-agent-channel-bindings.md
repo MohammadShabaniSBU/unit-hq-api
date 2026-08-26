@@ -22,11 +22,11 @@ before it can be written.
 | Column | Type | Notes |
 |---|---|---|
 | `ai_agent_id` | FK `ai_agents` | |
-| `channel` | string enum (`AgentChannel`: `email`, `sms`, `whatsapp`, `webchat`) | `voice` rejected at validation |
+| `channel` | string enum (`AgentChannel`: `email`, `sms`, `whatsapp`, `webchat`) | Bindable set is `AgentChannel::bindable()`. `voice` **and** `internal` rejected at validation with the same 422 |
 | `site_id` | FK `sites`, nullable | null = company-wide sender identity / company-scoped account |
 | `mode` | `off` \| `draft` \| `auto` | `draft` = reply lands as a pending action in the Inbox; `auto` = sent in the turn |
 | `audience` | `known_contacts` \| `existing_tenants` \| `all` | who the agent will answer (below) |
-| `outside_hours` | `inbox` \| `answer` | `inbox` = no turn outside site send-window / business hours |
+| `outside_hours` | `inbox` \| `answer` | `inbox` = no turn outside the company send window (S26-07) |
 | `updated_by_employee_id` | FK `employees` nullable | |
 | `archived_at` | nullable | archive-only |
 | timestamps | | |
@@ -65,8 +65,11 @@ binding check is the listener's, and the runtime additionally refuses
 
 ### API
 
-`GET/POST /api/settings/ai-agents/bindings`, `PUT/DELETE …/{binding}`
-(`DELETE` = archive). Permission: new `Permission::AiAgentBindingManage`
+`GET/POST /api/ai/agents/bindings`, `PUT/DELETE /api/ai/agents/bindings/{binding}`
+(`DELETE` = archive). Sibling of `PUT /api/ai/agents/{aiAgent}/write-policies`,
+**not** nested under `{aiAgent}` — a binding is unique per `(channel, site)`
+across agents, so the list must show every agent's bindings together. Panel
+route in S26-08 is unchanged. Permission: new `Permission::AiAgentBindingManage`
 (`ai_agent_binding.manage`), added to system role `owner`; panel mirror
 updated (`PanelPermissionMirrorTest`). Tier-3 `RecordsActivity::core`
 `ai.binding.created` / `.updated` / `.archived` with `{channel, site_id,
@@ -77,7 +80,8 @@ mode, audience}`.
 `AgentChannelBindingSeeder`, called from `AiAgentSeeder::run()` so both
 `DatabaseSeeder` and `DemoPipeline` pick it up (DemoPipeline already runs
 `AiAgentSeeder` after `StageSeeder`, line ~43). Rows (deterministic,
-`updateOrCreate` on `(ai_agent_id, channel, site_id)`):
+`updateOrCreate` on `(channel, site_id)` — the same tuple as the partial
+unique index, so a re-run stays idempotent even if the owning agent changes):
 
 | Agent | Channel | Site | mode | audience | outside_hours |
 |---|---|---|---|---|---|
