@@ -21,6 +21,8 @@ class DiscountResource extends BaseResource
             'params' => $this->params ?? [],
             'applies_to' => $this->applies_to,
             'tracks_rate_changes' => (bool) $this->tracks_rate_changes,
+            'agent_offerable' => (bool) $this->agent_offerable,
+            'customer_terms' => $this->customer_terms ?? null,
             'usage_count' => $this->usageCount(),
             'alignment_warnings' => DiscountAlignment::warnings(
                 $this->kind,

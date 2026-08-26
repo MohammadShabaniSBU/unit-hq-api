@@ -10,6 +10,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Deal;
+use App\Models\Discount;
 use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\Site;
@@ -31,6 +32,7 @@ use App\Support\Ai\Tools\EntityRef;
 use App\Support\Ai\Tools\FactRegistry;
 use App\Support\Ai\Tools\ToolDispatcher;
 use App\Support\Ai\Tools\ToolRegistry;
+use App\Support\Ai\Tools\ToolResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\Ai\DispatchesAgentTools;
@@ -288,6 +290,86 @@ class ArgumentProvenanceTest extends TestCase
             'site_id' => $second->id,
         ], $ctx);
         $this->assertSame(ToolInvocationStatus::Ok, $okSecond->status);
+    }
+
+    #[Test]
+    public function licensed_but_not_offerable_discount_denies_propose_offer_before_handle(): void
+    {
+        [$site, $class] = $this->pricedClass();
+        $discount = Discount::factory()->percent('20.00')->create([
+            'name' => 'Walk-in 20',
+            'agent_offerable' => false,
+        ]);
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class, $discount);
+
+        $result = $this->dispatchTool('sales', 'sales.propose_offer', $principal, [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'discount_id' => $discount->id,
+        ], $ctx);
+
+        $this->assertNotOfferableDenial($result);
+        $this->assertArrayNotHasKey('persisted', $result->data);
+        $this->assertArrayNotHasKey('line_items', $result->data);
+    }
+
+    #[Test]
+    public function licensed_but_not_offerable_discount_denies_create_offer_nested_option(): void
+    {
+        $world = $this->agentPricedDeal();
+        $discount = Discount::factory()->percent('20.00')->create([
+            'name' => 'Walk-in 20',
+            'agent_offerable' => false,
+        ]);
+        $principal = AgentPrincipal::anonymous($world['site']->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $world['deal'], $world['class'], $world['site'], $discount);
+        $offersBefore = Offer::query()->count();
+
+        $result = $this->dispatchTool('sales', 'sales.create_offer', $principal, [
+            'deal_id' => $world['deal']->id,
+            'options' => [[
+                'site_id' => $world['site']->id,
+                'unit_class_id' => $world['class']->id,
+                'discount_id' => $discount->id,
+                'label' => $world['class']->label,
+            ]],
+        ], $ctx);
+
+        $this->assertNotOfferableDenial($result);
+        $this->assertSame($offersBefore, Offer::query()->count());
+    }
+
+    #[Test]
+    public function licensed_but_not_offerable_discount_denies_pricing_quote(): void
+    {
+        [$site, $class] = $this->pricedClass();
+        $discount = Discount::factory()->percent('20.00')->create([
+            'name' => 'Walk-in 20',
+            'agent_offerable' => false,
+        ]);
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales');
+        $this->licenseModels($ctx, $class, $discount);
+
+        $result = $this->dispatchTool('sales', 'pricing.quote', $principal, [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'discount_id' => $discount->id,
+        ], $ctx);
+
+        $this->assertNotOfferableDenial($result);
+        $this->assertArrayNotHasKey('gross', $result->data);
+    }
+
+    private function assertNotOfferableDenial(ToolResult $result): void
+    {
+        $this->assertSame(ToolInvocationStatus::Denied, $result->status);
+        $this->assertSame(ToolDeniedReason::NotAllowedForAgent, $result->deniedReason);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertStringContainsString('Recovery: call pricing.discounts', $result->modelText());
     }
 
     /**

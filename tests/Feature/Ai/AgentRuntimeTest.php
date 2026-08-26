@@ -14,8 +14,12 @@ use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
 use App\Models\AiUsageEvent;
-use App\Models\Contact;
+use App\Models\Country;
+use App\Models\Discount;
+use App\Models\Employee;
 use App\Models\Site;
+use App\Models\TaxRate;
+use App\Models\UnitClass;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentRuntime;
 use App\Support\Ai\Agents\AgentRegistry;
@@ -52,10 +56,12 @@ use Tests\Support\Ai\RecordingTool;
 use Tests\Support\Ai\RefEmittingTool;
 use Tests\Support\Ai\ScriptedTool;
 use Tests\Support\Ai\TestAgentDefinition;
+use Tests\Support\CreatesCataloguePrices;
 use Tests\TestCase;
 
 class AgentRuntimeTest extends TestCase
 {
+    use CreatesCataloguePrices;
     use RefreshDatabase;
 
     private FakeModelDriver $driver;
@@ -640,6 +646,105 @@ class AgentRuntimeTest extends TestCase
         $this->assertSame('test.script', $turn->handoff->detail['tool'] ?? null);
         $this->assertSame('invalid_arguments', $turn->handoff->detail['error_code'] ?? null);
         $this->assertSame(1, AgentHandoff::query()->where('agent_conversation_id', $conversation->id)->count());
+    }
+
+    #[Test]
+    public function two_non_offerable_discount_attempts_handoff_retry_exhausted(): void
+    {
+        $employee = Employee::factory()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $site = Site::factory()->create([
+            'country_id' => $country->id,
+            'currency' => 'EUR',
+            'name' => 'Madrid Centro',
+        ]);
+        $class = UnitClass::factory()->create(['tax_rate_code' => 'vat', 'label' => 'Small']);
+        $this->createUnitClassCataloguePrice($class->id, $site->id, $employee->id, [
+            'amount' => '70.00',
+            'currency' => 'EUR',
+        ]);
+        TaxRate::query()->create([
+            'name' => 'VAT ES',
+            'code' => 'vat',
+            'rate' => '21.00',
+            'jurisdiction' => 'ES',
+            'is_default' => false,
+            'effective_from' => '2020-01-01',
+            'effective_to' => null,
+            'created_by' => $employee->id,
+        ]);
+        $discount = Discount::factory()->percent('20.00')->create([
+            'name' => 'Walk-in 20',
+            'agent_offerable' => false,
+        ]);
+
+        $agent = AiAgent::factory()->create([
+            'key' => 'sales',
+            'name' => 'sales',
+            'is_active' => true,
+        ]);
+        $conversation = AgentConversation::factory()->anonymous()->create([
+            'ai_agent_id' => $agent->id,
+            'site_id' => $site->id,
+            'locale' => 'en',
+        ]);
+
+        AgentToolInvocation::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'tool_key' => 'pricing.discounts',
+            'arguments' => [],
+            'result' => [
+                'entities' => [
+                    EntityRef::site($site)->toArray(),
+                    EntityRef::unitClass($class, $site)->toArray(),
+                    EntityRef::discount($discount)->toArray(),
+                ],
+            ],
+            'result_summary' => 'licensed',
+            'status' => ToolInvocationStatus::Ok,
+            'principal_verification' => $conversation->verification_level,
+        ]);
+
+        $arguments = [
+            'site_id' => $site->id,
+            'unit_class_id' => $class->id,
+            'discount_id' => $discount->id,
+        ];
+
+        $this->driver
+            ->enqueueToolCalls([[
+                'name' => 'sales.propose_offer',
+                'id' => 'c1',
+                'arguments' => $arguments,
+            ]])
+            ->enqueueToolCalls([[
+                'name' => 'sales.propose_offer',
+                'id' => 'c2',
+                'arguments' => $arguments,
+            ]]);
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'please apply that catalogue promotion',
+        );
+
+        $this->assertNotNull($turn->handoff);
+        $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
+        $this->assertSame(HandoffTriggerSource::Rule, $turn->handoff->trigger_source);
+        $this->assertSame('tool_retry_exhausted', $turn->handoff->detail['detail'] ?? null);
+        $this->assertSame('sales.propose_offer', $turn->handoff->detail['tool'] ?? null);
+        $this->assertSame('invalid_arguments', $turn->handoff->detail['error_code'] ?? null);
+
+        $invocations = AgentToolInvocation::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_key', 'sales.propose_offer')
+            ->get();
+        $this->assertCount(2, $invocations);
+        foreach ($invocations as $invocation) {
+            $this->assertSame(ToolInvocationStatus::Denied, $invocation->status);
+            $this->assertSame(ToolDeniedReason::NotAllowedForAgent, $invocation->denied_reason);
+        }
     }
 
     #[Test]

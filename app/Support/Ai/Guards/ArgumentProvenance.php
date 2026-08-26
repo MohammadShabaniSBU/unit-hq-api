@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Guards;
 
+use App\Models\Discount;
 use App\Models\UnitClassRate;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\ToolDeniedReason;
@@ -74,7 +75,12 @@ final class ArgumentProvenance
             return $denied;
         }
 
-        return $this->checkRateIds($state->arguments, $registry);
+        $denied = $this->checkRateIds($state->arguments, $registry);
+        if ($denied !== null) {
+            return $denied;
+        }
+
+        return $this->denyIfNotOfferable($state->arguments, $tool->entityArguments());
     }
 
     private function registryFor(ToolDispatchState $state): FactRegistry
@@ -192,6 +198,83 @@ final class ArgumentProvenance
         }
 
         return $this->deny('unit_class_rate_id', $rateId, EntityType::UnitClass, $registry);
+    }
+
+    /**
+     * Fail-closed: a licensed discount still cannot be offered unless the
+     * operator opted the catalogue row in. Recurses one nesting level so
+     * `options[].discount_id` on sales.create_offer is covered.
+     *
+     * @param  array<string, mixed>  $bag
+     * @param  array<string, EntityType|string>  $entityArgs
+     */
+    private function denyIfNotOfferable(array $bag, array $entityArgs): ?ToolResult
+    {
+        foreach ($entityArgs as $key => $typeOrPointer) {
+            if (! $typeOrPointer instanceof EntityType || $typeOrPointer !== EntityType::Discount) {
+                continue;
+            }
+
+            $value = $this->presentInt($bag, $key);
+            if ($value === null) {
+                continue;
+            }
+
+            $denied = $this->denyUnofferableDiscount($key, $value);
+            if ($denied !== null) {
+                return $denied;
+            }
+        }
+
+        foreach ($bag as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (array_is_list($item)) {
+                foreach ($item as $row) {
+                    if (! is_array($row) || array_is_list($row)) {
+                        continue;
+                    }
+                    $denied = $this->denyIfNotOfferable($row, $entityArgs);
+                    if ($denied !== null) {
+                        return $denied;
+                    }
+                }
+
+                continue;
+            }
+
+            $denied = $this->denyIfNotOfferable($item, $entityArgs);
+            if ($denied !== null) {
+                return $denied;
+            }
+        }
+
+        return null;
+    }
+
+    private function denyUnofferableDiscount(string $argument, int $id): ?ToolResult
+    {
+        $discount = Discount::query()->find($id);
+        if ($discount !== null && $discount->agent_offerable && ! $discount->isArchived()) {
+            return null;
+        }
+
+        $detail = [
+            'argument' => $argument,
+            'value' => $id,
+            'reason' => 'not_offerable',
+        ];
+        $message = json_encode($detail, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: 'not_offerable';
+
+        return ToolResult::denied(
+            ToolDeniedReason::NotAllowedForAgent,
+            $message,
+            ToolError::invalidArguments($message, [
+                'tool' => 'pricing.discounts',
+                'hint' => 'only discount ids returned by pricing.discounts may be offered',
+            ]),
+        );
     }
 
     /**

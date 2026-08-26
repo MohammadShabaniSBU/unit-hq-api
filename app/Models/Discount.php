@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property array            $params
  * @property string           $applies_to
  * @property bool             $tracks_rate_changes
+ * @property bool             $agent_offerable
+ * @property array<string, string>|null $customer_terms
  * @property Carbon|null      $archived_at
  * @property int|null         $created_by
  * @property Carbon           $created_at
@@ -52,6 +54,8 @@ class Discount extends Model
         'params',
         'applies_to',
         'tracks_rate_changes',
+        'agent_offerable',
+        'customer_terms',
         'archived_at',
         'created_by',
     ];
@@ -62,6 +66,8 @@ class Discount extends Model
             'kind' => DiscountKind::class,
             'params' => 'array',
             'tracks_rate_changes' => 'boolean',
+            'agent_offerable' => 'boolean',
+            'customer_terms' => 'array',
             'archived_at' => 'datetime',
         ];
     }
@@ -81,6 +87,12 @@ class Discount extends Model
     public function scopeArchived(Builder $query): void
     {
         $query->whereNotNull('archived_at');
+    }
+
+    /** @param Builder<Discount> $query */
+    public function scopeAgentOfferable(Builder $query): void
+    {
+        $query->where('agent_offerable', true);
     }
 
     /** @return HasMany<OfferOption, $this> */

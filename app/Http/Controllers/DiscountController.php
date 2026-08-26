@@ -127,6 +127,8 @@ class DiscountController extends Controller
             'params' => $validated['params'],
             'applies_to' => $validated['applies_to'] ?? 'unit',
             'tracks_rate_changes' => $validated['tracks_rate_changes'],
+            'agent_offerable' => $validated['agent_offerable'] ?? false,
+            'customer_terms' => $validated['customer_terms'] ?? null,
             'created_by' => $request->user()?->id,
         ]);
 
@@ -159,6 +161,12 @@ class DiscountController extends Controller
         }
         if (array_key_exists('tracks_rate_changes', $validated)) {
             $attributes['tracks_rate_changes'] = $validated['tracks_rate_changes'];
+        }
+        if (array_key_exists('agent_offerable', $validated)) {
+            $attributes['agent_offerable'] = $validated['agent_offerable'];
+        }
+        if (array_key_exists('customer_terms', $validated)) {
+            $attributes['customer_terms'] = $validated['customer_terms'];
         }
 
         if ($attributes !== []) {
@@ -233,7 +241,13 @@ class DiscountController extends Controller
             'params' => [$creating ? 'present' : 'sometimes', 'array'],
             'applies_to' => ['sometimes', 'string', Rule::in(['unit'])],
             'tracks_rate_changes' => ['sometimes', 'boolean'],
+            'agent_offerable' => ['sometimes', 'boolean'],
+            'customer_terms' => ['sometimes', 'nullable', 'array'],
         ]);
+
+        if (array_key_exists('customer_terms', $validated) && is_array($validated['customer_terms'])) {
+            $this->validateCustomerTerms($validated['customer_terms']);
+        }
 
         $kind = isset($validated['kind'])
             ? DiscountKind::from($validated['kind'])
@@ -269,7 +283,58 @@ class DiscountController extends Controller
 
         $validated['kind'] = $kind->value;
 
+        $this->assertOfferableTerms($validated, $creating, $discount);
+
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $terms
+     */
+    private function validateCustomerTerms(array $terms): void
+    {
+        foreach ($terms as $locale => $value) {
+            if (! in_array($locale, ['en', 'es', 'fr'], true)) {
+                throw ValidationException::withMessages([
+                    "customer_terms.{$locale}" => ['Locale must be en, es, or fr.'],
+                ]);
+            }
+            if (! is_string($value) || trim($value) === '') {
+                throw ValidationException::withMessages([
+                    "customer_terms.{$locale}" => ['Customer terms must be a non-empty string.'],
+                ]);
+            }
+            if (mb_strlen($value) > 400) {
+                throw ValidationException::withMessages([
+                    "customer_terms.{$locale}" => ['Customer terms may not be greater than 400 characters.'],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertOfferableTerms(array $validated, bool $creating, ?Discount $discount): void
+    {
+        $offerable = array_key_exists('agent_offerable', $validated)
+            ? (bool) $validated['agent_offerable']
+            : (bool) ($discount?->agent_offerable ?? false);
+
+        if (! $offerable) {
+            return;
+        }
+
+        $terms = array_key_exists('customer_terms', $validated)
+            ? $validated['customer_terms']
+            : ($discount?->customer_terms);
+
+        $en = is_array($terms) ? trim((string) ($terms['en'] ?? '')) : '';
+        if ($en === '') {
+            throw ValidationException::withMessages([
+                'customer_terms.en' => ['English customer terms are required when the discount is offerable by AI agents.'],
+            ]);
+        }
     }
 
     /**

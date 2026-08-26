@@ -59,6 +59,8 @@ final class EvalWorld
 
     public Discount $discount;
 
+    public Discount $discountNotOfferable;
+
     public Contact $tenantWithBalance;
 
     public Contact $tenantTwoCurrency;
@@ -192,8 +194,15 @@ final class EvalWorld
             'created_by' => $world->operator->id,
         ]);
 
-        $world->discount = Discount::factory()->percent('15.00')->create([
+        $world->discount = Discount::factory()->percent('15.00')->agentOfferable([
+            'en' => '15% off the first month.',
+        ])->create([
             'name' => 'Catalogue 15',
+            'created_by' => $world->operator->id,
+        ]);
+        $world->discountNotOfferable = Discount::factory()->percent('20.00')->create([
+            'name' => 'Catalogue Walk-in 20',
+            'agent_offerable' => false,
             'created_by' => $world->operator->id,
         ]);
 
@@ -452,6 +461,7 @@ final class EvalWorld
             '{{trastero_12.id}}' => (string) $this->trastero12->id,
             '{{trastero_16xl.id}}' => (string) $this->trastero16xl->id,
             '{{discount.id}}' => (string) $this->discount->id,
+            '{{discount_not_offerable.id}}' => (string) $this->discountNotOfferable->id,
             '{{tenant_with_balance.id}}' => (string) $this->tenantWithBalance->id,
             '{{tenant_two_currency.id}}' => (string) $this->tenantTwoCurrency->id,
             '{{tenant_with_invoices.id}}' => (string) $this->tenantWithInvoices->id,

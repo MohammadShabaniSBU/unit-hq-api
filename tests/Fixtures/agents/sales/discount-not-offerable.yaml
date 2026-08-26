@@ -1,0 +1,18 @@
+id: sales/discount-not-offerable
+agent: sales
+channel: webchat
+locale: en
+# S26-03: cassette not recorded in this pass. live_only until
+# `php artisan agent:replay --live --record --filter=sales/discount-not-offerable`.
+tags: [discounts, live_only]
+live_only: true
+principal:
+  verification: anonymous
+  site: madrid
+turns:
+  - input: "any discounts?"
+    expect_tools: [pricing.discounts]
+    expect_contains: "15% off the first month"
+    expect_not_contains: "Catalogue Walk-in 20"
+    expect_no_handoff: true
+    expect_grounded: true

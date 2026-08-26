@@ -86,7 +86,9 @@ final class RegistryFixtures
             'unit_class_id' => $this->class->id,
             'enabled' => true,
         ]);
-        Discount::factory()->create(['name' => 'Spring promo']);
+        Discount::factory()->agentOfferable([
+            'en' => '15% off the first month.',
+        ])->create(['name' => 'Spring promo']);
         $this->contact = Contact::factory()->create([
             'source' => ContactSource::AiAgent,
             'first_name' => 'Ana',

@@ -26,6 +26,8 @@ class DiscountFactory extends Factory
             'params' => ['percent' => '20.00'],
             'applies_to' => 'unit',
             'tracks_rate_changes' => true,
+            'agent_offerable' => false,
+            'customer_terms' => null,
             'archived_at' => null,
             'created_by' => null,
         ];
@@ -61,6 +63,17 @@ class DiscountFactory extends Factory
     {
         return $this->state(fn () => [
             'archived_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, string>  $terms
+     */
+    public function agentOfferable(array $terms = ['en' => 'Commit to 4 weeks or more and your first 2 weeks are free.']): static
+    {
+        return $this->state(fn () => [
+            'agent_offerable' => true,
+            'customer_terms' => $terms,
         ]);
     }
 }

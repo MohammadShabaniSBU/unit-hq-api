@@ -230,4 +230,41 @@ class DiscountCatalogueTest extends TestCase
         $this->deleteJson("/api/discounts/{$active->id}")
             ->assertStatus(405);
     }
+
+    public function test_agent_offerable_requires_english_terms(): void
+    {
+        $this->postJson('/api/discounts', [
+            'name' => 'Walk-in 10',
+            'kind' => DiscountKind::Percent->value,
+            'params' => ['percent' => '10.00'],
+            'agent_offerable' => true,
+        ])->assertStatus(422)->assertJsonValidationErrors(['customer_terms.en']);
+
+        $created = $this->postJson('/api/discounts', [
+            'name' => 'Long-stay agent promo',
+            'kind' => DiscountKind::FreeTime->value,
+            'params' => [
+                'tiers' => [
+                    ['min_commitment_weeks' => 4, 'free_weeks' => 2],
+                ],
+            ],
+            'agent_offerable' => true,
+            'customer_terms' => [
+                'en' => 'Commit to 4 weeks or more and your first 2 weeks are free.',
+                'es' => 'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.',
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('data.agent_offerable', true)
+            ->assertJsonPath('data.customer_terms.en', 'Commit to 4 weeks or more and your first 2 weeks are free.')
+            ->assertJsonPath('data.customer_terms.es', 'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.');
+
+        $id = $created->json('data.id');
+
+        $this->patchJson("/api/discounts/{$id}", [
+            'agent_offerable' => false,
+            'customer_terms' => null,
+        ])->assertOk()
+            ->assertJsonPath('data.agent_offerable', false)
+            ->assertJsonPath('data.customer_terms', null);
+    }
 }

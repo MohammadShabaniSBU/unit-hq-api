@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Support\Ai\Tools;
 
 use App\Models\Discount;
+use App\Models\Site;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\VerificationLevel;
-use App\Support\Ai\Guards\DraftTokenExtractor;
-use App\Support\Discounts\DiscountSurface;
+use App\Support\Discounts\DiscountTerms;
 
 final class PricingDiscountsTool implements AgentTool
 {
@@ -21,7 +21,7 @@ final class PricingDiscountsTool implements AgentTool
 
     public function description(): string
     {
-        return 'List active catalogue discounts as id, label, and display copy. Select an id; never invent a percentage.';
+        return 'List promotions the agent may offer as id, label, and customer-facing terms. Select an id; never invent a percentage.';
     }
 
     public function schema(): array
@@ -30,7 +30,7 @@ final class PricingDiscountsTool implements AgentTool
             'site_id' => [
                 'type' => 'integer',
                 'required' => true,
-                'description' => 'Site id (catalogue is organisation-wide)',
+                'description' => 'Site id (scopes the empty-catalogue message; catalogue is organisation-wide)',
             ],
         ];
     }
@@ -59,26 +59,30 @@ final class PricingDiscountsTool implements AgentTool
 
     public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
     {
-        $discounts = Discount::query()->active()->orderBy('name')->get();
+        $site = Site::query()->find((int) $arguments['site_id']);
+        if ($site === null) {
+            return ToolResult::notFound('Site not found.');
+        }
+
+        $discounts = Discount::query()->active()->agentOfferable()->orderBy('name')->get();
         $rows = [];
         foreach ($discounts as $discount) {
-            $resolved = DiscountSurface::resolve($discount, locale: $principal->locale);
-            $display = $resolved['promo_line'] ?? $discount->name;
+            $terms = DiscountTerms::resolve($discount, $principal->locale, $site);
+            if ($terms === null) {
+                continue;
+            }
             $rows[] = [
                 'id' => $discount->id,
                 'label' => $discount->name,
-                'display' => $display,
+                'display' => $terms,
             ];
         }
 
         $facts = new FactBag;
-        $extractor = new DraftTokenExtractor;
         $entities = [];
         foreach ($rows as $row) {
             $facts->identifier((string) $row['id']);
-            foreach ($extractor->extractPercents((string) $row['display']) as $percent) {
-                $facts->percent($percent);
-            }
+            $facts->absorb((string) $row['display'], $site);
             $entities[] = EntityRef::of(
                 EntityType::Discount,
                 $row['id'],
@@ -87,7 +91,7 @@ final class PricingDiscountsTool implements AgentTool
         }
 
         $display = $rows === []
-            ? 'No catalogue discounts are currently active.'
+            ? "No promotions are currently available at {$site->name}."
             : implode(' ', array_map(
                 fn (array $row): string => "{$row['label']} (id {$row['id']}): {$row['display']}.",
                 $rows,

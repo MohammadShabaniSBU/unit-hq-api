@@ -18,27 +18,31 @@ class DiscountCatalogueSeeder extends Seeder
     {
         $createdById = $createdBy?->id ?? Employee::query()->value('id');
 
-        Discount::query()->firstOrCreate(
+        Discount::query()->updateOrCreate(
             ['name' => '10% off', 'kind' => DiscountKind::Percent],
             [
                 'params' => ['percent' => '10.00'],
                 'applies_to' => 'unit',
                 'tracks_rate_changes' => true,
+                'agent_offerable' => false,
+                'customer_terms' => null,
                 'created_by' => $createdById,
             ],
         );
 
-        Discount::query()->firstOrCreate(
+        Discount::query()->updateOrCreate(
             ['name' => '20% off', 'kind' => DiscountKind::Percent],
             [
                 'params' => ['percent' => '20.00'],
                 'applies_to' => 'unit',
                 'tracks_rate_changes' => true,
+                'agent_offerable' => false,
+                'customer_terms' => null,
                 'created_by' => $createdById,
             ],
         );
 
-        Discount::query()->firstOrCreate(
+        Discount::query()->updateOrCreate(
             ['name' => 'Long-stay promo', 'kind' => DiscountKind::FreeTime],
             [
                 'params' => [
@@ -50,6 +54,12 @@ class DiscountCatalogueSeeder extends Seeder
                 ],
                 'applies_to' => 'unit',
                 'tracks_rate_changes' => false,
+                'agent_offerable' => true,
+                'customer_terms' => [
+                    'en' => 'Commit to 4 weeks or more and your first 2 weeks are free.',
+                    'es' => 'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.',
+                    'fr' => 'Engagez-vous pour 4 semaines ou plus et vos 2 premières semaines sont offertes.',
+                ],
                 'created_by' => $createdById,
             ],
         );

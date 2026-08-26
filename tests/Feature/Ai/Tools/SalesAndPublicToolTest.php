@@ -187,9 +187,15 @@ class SalesAndPublicToolTest extends TestCase
     #[Test]
     public function discounts_return_id_label_display_only(): void
     {
-        $site = Site::factory()->create();
-        $discount = Discount::factory()->percent('10.00')->create(['name' => 'Spring 10']);
-        Discount::factory()->percent('20.00')->archived()->create();
+        $site = Site::factory()->create(['name' => 'Madrid Centro']);
+        $terms = 'Commit to 4 weeks or more and your first 2 weeks are free.';
+        $discount = Discount::factory()->percent('10.00')->agentOfferable([
+            'en' => $terms,
+        ])->create(['name' => 'Spring 10']);
+        Discount::factory()->percent('20.00')->create(['name' => 'Walk-in 20']);
+        Discount::factory()->percent('30.00')->archived()->agentOfferable([
+            'en' => '30% off archived.',
+        ])->create();
 
         $result = $this->dispatchTool(
             'sales',
@@ -202,8 +208,64 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertCount(1, $result->data['discounts']);
         $this->assertSame($discount->id, $result->data['discounts'][0]['id']);
         $this->assertSame('Spring 10', $result->data['discounts'][0]['label']);
-        $this->assertArrayHasKey('display', $result->data['discounts'][0]);
+        $this->assertSame($terms, $result->data['discounts'][0]['display']);
         $this->assertArrayNotHasKey('params', $result->data['discounts'][0]);
+        $this->assertStringNotContainsString('Walk-in 20', $result->display);
+        $this->assertStringContainsString($terms, $result->display);
+        $this->assertCount(1, $result->entities);
+        $this->assertSame($discount->id, $result->entities[0]->id);
+    }
+
+    #[Test]
+    public function discounts_locale_ladder_picks_principal_then_english(): void
+    {
+        $site = Site::factory()->create(['name' => 'Madrid Centro']);
+        Discount::factory()->percent('10.00')->agentOfferable([
+            'en' => 'Commit to 4 weeks or more and your first 2 weeks are free.',
+            'es' => 'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.',
+        ])->create(['name' => 'Long-stay promo']);
+
+        $spanish = $this->dispatchTool(
+            'sales',
+            'pricing.discounts',
+            AgentPrincipal::anonymous($site->id, 'es'),
+            ['site_id' => $site->id],
+        );
+        $this->assertSame(
+            'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.',
+            $spanish->data['discounts'][0]['display'],
+        );
+
+        $frenchFallsBack = $this->dispatchTool(
+            'sales',
+            'pricing.discounts',
+            AgentPrincipal::anonymous($site->id, 'fr'),
+            ['site_id' => $site->id],
+        );
+        $this->assertSame(
+            'Commit to 4 weeks or more and your first 2 weeks are free.',
+            $frenchFallsBack->data['discounts'][0]['display'],
+        );
+    }
+
+    #[Test]
+    public function discounts_empty_catalogue_names_the_site_and_licenses_nothing(): void
+    {
+        $site = Site::factory()->create(['name' => 'Madrid Centro']);
+        Discount::factory()->percent('20.00')->create(['name' => 'Walk-in 20']);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'pricing.discounts',
+            AgentPrincipal::anonymous($site->id, 'en'),
+            ['site_id' => $site->id],
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame([], $result->data['discounts']);
+        $this->assertSame([], $result->entities);
+        $this->assertSame('No promotions are currently available at Madrid Centro.', $result->display);
+        $this->assertStringNotContainsString('Refs:', $result->modelText());
     }
 
     #[Test]
