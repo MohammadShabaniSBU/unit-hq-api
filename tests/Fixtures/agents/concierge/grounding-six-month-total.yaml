@@ -1,5 +1,5 @@
-id: support/grounding-six-month-total
-agent: support
+id: concierge/grounding-six-month-total
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding]

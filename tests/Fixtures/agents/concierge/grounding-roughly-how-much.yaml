@@ -1,5 +1,5 @@
-id: sales/grounding-roughly-how-much
-agent: sales
+id: concierge/grounding-roughly-how-much
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding]

@@ -1,5 +1,5 @@
-id: sales/grounding-six-month-multiply
-agent: sales
+id: concierge/grounding-six-month-multiply
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding]

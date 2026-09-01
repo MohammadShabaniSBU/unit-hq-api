@@ -1,7 +1,8 @@
-id: support/access-suspended-debt
-agent: support
+id: concierge/access-suspended-debt
+agent: concierge
 channel: webchat
 locale: en
+tags: [no-model-call]
 principal:
   verification: verified
   contact: fixture.tenant_delinquent

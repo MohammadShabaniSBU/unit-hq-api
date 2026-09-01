@@ -1,5 +1,5 @@
-id: sales/authored-unlicensed-class-recovers
-agent: sales
+id: concierge/authored-unlicensed-class-recovers
+agent: concierge
 channel: webchat
 locale: en
 # S26-01: live re-record, do not --seal. facility.availability at Madrid now

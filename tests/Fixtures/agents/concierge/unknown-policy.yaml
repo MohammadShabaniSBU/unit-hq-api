@@ -1,5 +1,5 @@
-id: support/unknown-policy
-agent: support
+id: concierge/unknown-policy
+agent: concierge
 channel: webchat
 locale: en
 principal:

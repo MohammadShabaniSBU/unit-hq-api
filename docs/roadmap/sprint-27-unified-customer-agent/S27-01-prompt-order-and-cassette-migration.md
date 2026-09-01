@@ -66,12 +66,16 @@ if it is zero on every provider, find out whether that is this ordering or
 `laravel/ai` issue #119 (a `SystemMessage` built from a string never carries
 `cache_control` to Anthropic) before assuming the reorder fixes it. Record
 the numbers in the task's PR description either way — this is the only
-measurement that tells us whether prompt caching works at all.
+measurement that tells us whether prompt caching works at all. A local
+`--live` run cannot substitute: `EvalWorld` freezes one date and one site,
+so the prefix is stable by accident. This prep pass has no deployment
+database attached; paste the query results into the PR when they exist.
 
 ### Fixture migration
 
-`tests/Fixtures/agents/{sales,support}/` — 57 fixtures, each with a
-`cassettes/` sibling keyed by prompt and schema hash.
+`tests/Fixtures/agents/{sales,support}/` — 56 fixtures (36 sales + 20 support).
+43 of them have cassettes; 9 are `expect_no_model_call` and 4 are `live_only`
+with no cassette recorded.
 
 1. `git mv tests/Fixtures/agents/sales tests/Fixtures/agents/concierge`, then
    move `support/*.yaml` into the same directory. Filename collisions:
@@ -79,17 +83,23 @@ measurement that tells us whether prompt caching works at all.
    in both. Suffix the support ones `-tenant` rather than merging them; they
    assert different tool paths.
 2. Rewrite each fixture's `agent:` key to `concierge` and its `id:` prefix to
-   `concierge/`.
+   `concierge/`. The nine `expect_no_model_call` fixtures also get
+   `tags: [no-model-call]` so `agent:replay --filter=no-model-call` selects
+   them; `--filter=handoff` matches nothing (no id contains "handoff", none
+   had tags) and would exit green on an empty set.
 3. Delete both `cassettes/` directories. Do not attempt to rekey them; both
    hashes changed.
 4. Re-record in one pass with `RecordingModelDriver` against the real
-   provider.
+   provider (`php artisan agent:replay --live --record`). **Deferred** until
+   after S27-04 — see below. This landing deletes the cassettes.
 
 Fixtures whose `principal.verification` is `verified` (the former support
 suite) now exercise the verified branch of the role paragraph; fixtures at
-`anonymous` / `channel_asserted` exercise the other. No fixture's assertions
-should need editing — if one does, that is a behaviour change S27-00 did not
-intend and is a finding, not a fixture fix.
+`anonymous` / `channel_asserted` exercise the other. One fixture's assertion
+did need editing: `asks-about-balance` expected `not_allowed_for_agent`
+because sales lacked `billing.balance`. Under the union that is now
+`verification` (gate 3). That is S27-00's safety argument working, not a
+behaviour change the merge did not intend.
 
 ### New fixtures
 
@@ -107,10 +117,11 @@ The third is the sprint's DoD in fixture form.
 
 - [ ] `systemPrompt()` emits identity and disclosure last; `promptVersion()`
       output is unchanged for an identical role paragraph.
-- [ ] `sales/disclosure-opens-first-turn.yaml` (migrated) still passes:
+- [ ] `concierge/disclosure-opens-first-turn.yaml` still passes:
       disclosure still opens turn one.
-- [ ] All 57 migrated fixtures pass with freshly recorded cassettes; zero
-      `EvalCassetteStaleException`.
+- [ ] All 56 migrated fixtures pass with freshly recorded cassettes; zero
+      `EvalCassetteStaleException`. (Recording is the S27-04 follow-up;
+      this landing leaves `concierge/cassettes/` absent.)
 - [ ] Three new fixtures pass.
 - [ ] `tests/Fixtures/agents/{sales,support}` no longer exist;
       `_harness/` fixtures updated to whatever key they assert against.
@@ -122,3 +133,21 @@ The third is the sprint's DoD in fixture form.
   the provider through the SDK, record that in `10-open-decisions.md` under
   Undecided with the measured numbers; do not fork the SDK in this sprint.
 - Any change to `CassetteKey`. The hashes are doing exactly their job here.
+
+## Deferred to after S27-04 (recording pass)
+
+S27-04 appends `identity.request_code` / `identity.verify_code` to
+`toolKeys()`, which changes `schemaHash()` again. Recording before that
+lands pays the cost twice.
+
+- Live `php artisan agent:replay --live --record` of the 43 cassettes
+  (47 if the four `live_only` fixtures are finally recorded).
+- `concierge/prospect-asks-balance.yaml` — needs `identity.request_code`
+  in `expect_tools`. `unverified-balance` already covers the gate denial.
+- `concierge/prospect-becomes-tenant-midthread.yaml` — needs both identity
+  tools, plus a harness change: re-derive `$principal` from
+  `$conversation->fresh()->principal()` between turns, and an
+  `expect_verification` assertion. That is a semantic change for
+  multi-turn fixtures (`lead-capture`, `duplicate-lead`) and must land
+  in the pass that records fresh cassettes, not the pass that deleted them.
+

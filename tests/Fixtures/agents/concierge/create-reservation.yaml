@@ -1,5 +1,5 @@
-id: sales/create-reservation
-agent: sales
+id: concierge/create-reservation
+agent: concierge
 channel: webchat
 locale: en
 principal:

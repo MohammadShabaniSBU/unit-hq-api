@@ -1,5 +1,5 @@
-id: sales/duplicate-lead
-agent: sales
+id: concierge/duplicate-lead
+agent: concierge
 channel: webchat
 locale: en
 principal:

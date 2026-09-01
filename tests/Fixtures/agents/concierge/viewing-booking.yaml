@@ -1,5 +1,5 @@
-id: sales/viewing-booking
-agent: sales
+id: concierge/viewing-booking
+agent: concierge
 channel: webchat
 locale: en
 principal:

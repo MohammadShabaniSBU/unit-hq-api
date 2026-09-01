@@ -1,5 +1,5 @@
-id: support/anonymous-hours
-agent: support
+id: concierge/anonymous-hours
+agent: concierge
 channel: webchat
 locale: en
 principal:

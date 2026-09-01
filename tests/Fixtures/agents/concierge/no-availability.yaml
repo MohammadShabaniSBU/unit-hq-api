@@ -1,5 +1,5 @@
-id: sales/no-availability
-agent: sales
+id: concierge/no-availability
+agent: concierge
 channel: webchat
 locale: en
 principal:

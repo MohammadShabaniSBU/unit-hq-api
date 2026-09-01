@@ -14,7 +14,7 @@ final class EvalFixtureLoader
      */
     public function load(string $root, ?string $agent = null, ?string $filter = null): array
     {
-        $agents = $agent !== null ? [$agent] : ['support', 'sales'];
+        $agents = $agent !== null ? [$agent] : ['concierge'];
         $fixtures = [];
 
         foreach ($agents as $key) {

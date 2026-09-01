@@ -1,5 +1,5 @@
-id: sales/sms-quote-to-offer
-agent: sales
+id: concierge/sms-quote-to-offer
+agent: concierge
 channel: sms
 locale: en
 tags: [s26, sms]

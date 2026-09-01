@@ -1,5 +1,5 @@
-id: sales/reservation-claim-redraft
-agent: sales
+id: concierge/reservation-claim-redraft
+agent: concierge
 channel: webchat
 locale: en
 principal:

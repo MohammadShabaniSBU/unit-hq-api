@@ -1,5 +1,5 @@
-id: sales/disclosure-opens-first-turn
-agent: sales
+id: concierge/disclosure-opens-first-turn
+agent: concierge
 channel: webchat
 locale: en
 principal:

@@ -1,5 +1,5 @@
-id: support/two-currency-balance
-agent: support
+id: concierge/two-currency-balance
+agent: concierge
 channel: webchat
 locale: en
 principal:

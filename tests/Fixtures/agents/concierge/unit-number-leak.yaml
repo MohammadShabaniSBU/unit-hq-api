@@ -1,5 +1,5 @@
-id: sales/unit-number-leak
-agent: sales
+id: concierge/unit-number-leak
+agent: concierge
 channel: webchat
 locale: en
 principal:

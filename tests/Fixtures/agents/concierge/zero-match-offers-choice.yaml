@@ -1,5 +1,5 @@
-id: sales/zero-match-offers-choice
-agent: sales
+id: concierge/zero-match-offers-choice
+agent: concierge
 channel: webchat
 locale: en
 principal:

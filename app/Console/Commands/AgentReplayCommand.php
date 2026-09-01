@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 class AgentReplayCommand extends Command
 {
     protected $signature = 'agent:replay
-                            {--agent= : Limit to one agent key (support|sales)}
+                            {--agent= : Limit to one agent key (concierge; sales|support are archived)}
                             {--filter= : Substring match on fixture id or tags}
                             {--live : Hit the real model (dev only)}
                             {--record : Overwrite cassette responses (requires --live)}

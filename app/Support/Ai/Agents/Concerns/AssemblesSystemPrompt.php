@@ -21,14 +21,14 @@ trait AssemblesSystemPrompt
     {
         $parts = [
             $this->roleParagraph($ctx),
-            $this->identityBlock($ctx),
-            $this->disclosureBlock($ctx),
             $this->untrustedInputBlock(),
             $this->channelBlock($ctx->channel),
             $this->verificationBlock($ctx->principal->verification),
             $this->toolContractBlock(),
             $this->neverListBlock(),
             $this->escalationBlock(),
+            $this->identityBlock($ctx),
+            $this->disclosureBlock($ctx),
         ];
 
         return implode("\n\n", array_filter($parts, fn (string $part): bool => $part !== ''));

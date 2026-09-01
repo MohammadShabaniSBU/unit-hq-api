@@ -1,7 +1,8 @@
-id: support/asks-for-human
-agent: support
+id: concierge/asks-for-human
+agent: concierge
 channel: webchat
 locale: en
+tags: [no-model-call]
 principal:
   verification: verified
   contact: fixture.tenant_with_balance

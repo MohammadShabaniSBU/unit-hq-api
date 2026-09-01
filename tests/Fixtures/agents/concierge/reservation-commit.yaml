@@ -1,5 +1,5 @@
-id: sales/reservation-commit
-agent: sales
+id: concierge/reservation-commit
+agent: concierge
 channel: webchat
 locale: en
 principal:

@@ -1,5 +1,5 @@
-id: sales/lead-capture
-agent: sales
+id: concierge/lead-capture
+agent: concierge
 channel: webchat
 locale: en
 principal:

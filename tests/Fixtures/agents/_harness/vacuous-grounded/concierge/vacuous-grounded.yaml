@@ -1,5 +1,5 @@
-id: support/vacuous-grounded
-agent: support
+id: concierge/vacuous-grounded
+agent: concierge
 channel: webchat
 locale: en
 principal:

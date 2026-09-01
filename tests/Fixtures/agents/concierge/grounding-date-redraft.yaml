@@ -1,5 +1,5 @@
-id: sales/grounding-date-redraft
-agent: sales
+id: concierge/grounding-date-redraft
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding, s26]

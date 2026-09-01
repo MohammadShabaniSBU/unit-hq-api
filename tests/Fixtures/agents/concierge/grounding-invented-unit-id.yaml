@@ -1,5 +1,5 @@
-id: sales/grounding-invented-unit-id
-agent: sales
+id: concierge/grounding-invented-unit-id
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding]

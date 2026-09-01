@@ -1,5 +1,5 @@
-id: support/wrong-expect
-agent: support
+id: concierge/wrong-expect
+agent: concierge
 channel: webchat
 locale: en
 principal:

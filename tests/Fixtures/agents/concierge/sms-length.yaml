@@ -1,5 +1,5 @@
-id: support/sms-length
-agent: support
+id: concierge/sms-length
+agent: concierge
 channel: sms
 locale: en
 principal:

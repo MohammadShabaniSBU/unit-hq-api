@@ -1,5 +1,5 @@
-id: sales/unlicensed-class-then-grounding
-agent: sales
+id: concierge/unlicensed-class-then-grounding
+agent: concierge
 channel: webchat
 locale: en
 # S26-01: live re-record, do not --seal. facility.availability at Madrid now

@@ -62,9 +62,9 @@ responses were produced with the full history in context, so long fixtures
 must be re-recorded. Only fixtures with more than `recent_turns` turns are
 affected:
 
-- `tests/Fixtures/agents/sales/sales_madrid_boxes_to_offer.yaml` (10 turns)
-- `tests/Fixtures/agents/sales/summaries-only-six-turn.yaml` (6)
-- `tests/Fixtures/agents/sales/reservation-stale-claim.yaml` (5)
+- `tests/Fixtures/agents/concierge/sales_madrid_boxes_to_offer.yaml` (10 turns)
+- `tests/Fixtures/agents/concierge/summaries-only-six-turn.yaml` (6)
+- `tests/Fixtures/agents/concierge/reservation-stale-claim.yaml` (5)
 
 Re-record with `php artisan agent:replay --live --record`. List them in the PR.
 

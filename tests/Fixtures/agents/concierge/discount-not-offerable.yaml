@@ -1,5 +1,5 @@
-id: sales/discount-not-offerable
-agent: sales
+id: concierge/discount-not-offerable
+agent: concierge
 channel: webchat
 locale: en
 # S26-03: cassette not recorded in this pass. live_only until

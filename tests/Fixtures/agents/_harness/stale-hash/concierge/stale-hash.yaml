@@ -1,5 +1,5 @@
-id: support/stale-hash
-agent: support
+id: concierge/stale-hash
+agent: concierge
 channel: webchat
 locale: en
 principal:

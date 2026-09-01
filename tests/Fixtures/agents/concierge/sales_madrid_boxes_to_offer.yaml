@@ -1,5 +1,5 @@
-id: sales/sales_madrid_boxes_to_offer
-agent: sales
+id: concierge/sales_madrid_boxes_to_offer
+agent: concierge
 channel: webchat
 locale: en
 tags: [s26, live_only]

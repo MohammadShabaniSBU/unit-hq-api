@@ -33,7 +33,7 @@ dead outside `origin = demo`. Merge and verification ship together.
 | 6 | `AgentRegistry::get()` throws on an unknown key and `AiAgent::definition()` does not guard it; `agent_conversations.ai_agent_id` is `restrictOnDelete`, so dropping a definition class 500s every historical conversation | `AgentRegistry.php:26`, `AiAgent.php:68` | S27-00, S27-03 |
 | 7 | `agent_write_policies` is unique on `(ai_agent_id, tool_key)`; seven tool keys are held by both agents and need a stated conflict rule | migration, `AiAgentSeeder` | S27-03 |
 | 8 | `identityBlock` is prompt part 2 and carries `Today: {date}` + site name, so the cache prefix breaks daily and per site | `AssemblesSystemPrompt::systemPrompt()` | S27-01 |
-| 9 | `CassetteKey::schemaHash()` canonicalises the tool list — a union surface invalidates all 57 fixtures' cassettes independently of the prompt | `CassetteKey.php` | S27-01 |
+| 9 | `CassetteKey::schemaHash()` canonicalises the tool list — a union surface invalidates all 56 fixtures' cassettes independently of the prompt | `CassetteKey.php` | S27-01 |
 | 10 | `AgentDefinitionCoverageTest::sales_claims_no_verified_tools` asserts the split as a property; it must be replaced, not deleted | `tests/Feature/Ai/AgentDefinitionCoverageTest.php` | S27-00 |
 
 ## Sequencing
@@ -64,7 +64,7 @@ One conversation, one thread, both halves:
    balance. The agent requests a verification code, the code arrives on the
    contact's registered channel, the customer returns it, the principal
    promotes to `verified`, and `billing.balance` answers in the next turn.
-4. `agent:eval` is green across the migrated fixture suite with zero stale
+4. `agent:replay` is green across the migrated fixture suite with zero stale
    cassettes.
 
 Steps 2 and 3 in one thread are the sprint. Either alone is a previous sprint.

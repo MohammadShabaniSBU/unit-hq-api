@@ -1,5 +1,5 @@
-id: support/invoice-list
-agent: support
+id: concierge/invoice-list
+agent: concierge
 channel: webchat
 locale: en
 principal:

@@ -1,5 +1,5 @@
-id: support/foreign-contract-id
-agent: support
+id: concierge/foreign-contract-id
+agent: concierge
 channel: webchat
 locale: en
 principal:

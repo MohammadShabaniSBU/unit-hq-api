@@ -91,6 +91,8 @@ final class EvalWorld
 
     public AiAgent $sales;
 
+    public AiAgent $concierge;
+
     public static function freezeClock(): void
     {
         Carbon::setTestNow(self::CLOCK);
@@ -410,6 +412,27 @@ final class EvalWorld
             ],
         );
 
+        $world->concierge = AiAgent::query()->updateOrCreate(
+            ['key' => 'concierge'],
+            ['name' => 'Customer Agent', 'model' => $model, 'is_active' => true],
+        );
+        $world->concierge->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_offer'],
+            [
+                'mode' => WritePolicyMode::Commit,
+                'max_per_conversation' => 2,
+                'max_per_day' => 50,
+            ],
+        );
+        $world->concierge->writePolicies()->updateOrCreate(
+            ['tool_key' => 'sales.create_reservation'],
+            [
+                'mode' => WritePolicyMode::Propose,
+                'max_per_conversation' => 1,
+                'max_per_day' => 20,
+            ],
+        );
+
         return $world;
     }
 
@@ -461,7 +484,12 @@ final class EvalWorld
 
     public function agent(string $key): AiAgent
     {
-        return $key === 'sales' ? $this->sales : $this->support;
+        return match ($key) {
+            'concierge' => $this->concierge,
+            'sales' => $this->sales,
+            'support' => $this->support,
+            default => throw new \RuntimeException("EvalWorld has no agent [{$key}]."),
+        };
     }
 
     /**

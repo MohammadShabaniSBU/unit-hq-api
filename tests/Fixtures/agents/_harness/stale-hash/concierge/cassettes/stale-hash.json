@@ -1,6 +1,6 @@
 {
-    "agent": "support",
-    "fixture": "support/stale-hash",
+    "agent": "concierge",
+    "fixture": "concierge/stale-hash",
     "turn_index": 0,
     "prompt_hash": "deadbeef",
     "schema_hash": "deadbeef",

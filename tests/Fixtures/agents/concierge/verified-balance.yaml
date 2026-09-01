@@ -1,5 +1,5 @@
-id: support/verified-balance
-agent: support
+id: concierge/verified-balance
+agent: concierge
 channel: email
 locale: en
 principal:

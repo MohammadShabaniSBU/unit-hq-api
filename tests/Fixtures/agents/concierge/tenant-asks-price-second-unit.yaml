@@ -1,0 +1,13 @@
+id: concierge/tenant-asks-price-second-unit
+agent: concierge
+channel: webchat
+locale: en
+principal:
+  verification: verified
+  contact: fixture.tenant_with_balance
+  site: madrid
+turns:
+  - input: "I already rent with you. What's the price for a second small unit at this site?"
+    expect_tools: [pricing.quote, sales.propose_offer]
+    expect_no_handoff: true
+    expect_grounded: true

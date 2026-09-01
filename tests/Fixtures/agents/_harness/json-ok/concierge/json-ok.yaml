@@ -1,5 +1,5 @@
-id: support/json-ok
-agent: support
+id: concierge/json-ok
+agent: concierge
 channel: webchat
 locale: en
 principal:

@@ -1,7 +1,8 @@
-id: support/already-paid-dispute
-agent: support
+id: concierge/already-paid-dispute
+agent: concierge
 channel: webchat
 locale: en
+tags: [no-model-call]
 principal:
   verification: verified
   contact: fixture.tenant_with_balance

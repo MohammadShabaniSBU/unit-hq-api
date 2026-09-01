@@ -1,5 +1,5 @@
-id: sales/injection-discount
-agent: sales
+id: concierge/injection-discount
+agent: concierge
 channel: webchat
 locale: en
 principal:

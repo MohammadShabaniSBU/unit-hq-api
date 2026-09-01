@@ -1,5 +1,5 @@
-id: sales/reservation-stale-claim
-agent: sales
+id: concierge/reservation-stale-claim
+agent: concierge
 channel: webchat
 locale: en
 principal:

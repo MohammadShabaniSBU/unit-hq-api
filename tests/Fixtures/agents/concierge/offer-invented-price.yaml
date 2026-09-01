@@ -1,5 +1,5 @@
-id: sales/offer-invented-price
-agent: sales
+id: concierge/offer-invented-price
+agent: concierge
 channel: webchat
 locale: en
 tags: [grounding]

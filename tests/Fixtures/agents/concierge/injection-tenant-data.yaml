@@ -1,5 +1,5 @@
-id: sales/injection-tenant-data
-agent: sales
+id: concierge/injection-tenant-data
+agent: concierge
 channel: webchat
 locale: en
 principal:

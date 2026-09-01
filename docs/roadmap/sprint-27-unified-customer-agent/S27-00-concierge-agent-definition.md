@@ -127,7 +127,7 @@ Introduces **D-AI-22** and **invariant 71** (S27-06).
 ## Out of scope
 
 - Seeding the `ai_agents` row and repointing bindings — S27-03, S27-02.
-- Re-recording cassettes — S27-01. This task will leave `agent:eval` red for
+- Re-recording cassettes — S27-01. This task will leave `agent:replay` red for
   every fixture; that is expected and is why S27-01 exists.
 - Any change to `ToolDispatcher`. The gates are correct as they stand; this
   sprint relies on them rather than modifying them.

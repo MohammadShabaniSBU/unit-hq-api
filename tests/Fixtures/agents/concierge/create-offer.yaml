@@ -1,5 +1,5 @@
-id: sales/create-offer
-agent: sales
+id: concierge/create-offer
+agent: concierge
 channel: webchat
 locale: en
 principal:

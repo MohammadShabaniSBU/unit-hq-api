@@ -1,7 +1,8 @@
-id: support/auction-letter
-agent: support
+id: concierge/auction-letter
+agent: concierge
 channel: email
 locale: en
+tags: [no-model-call]
 principal:
   verification: verified
   contact: fixture.tenant_with_balance

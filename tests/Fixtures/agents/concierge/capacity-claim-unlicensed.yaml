@@ -1,5 +1,5 @@
-id: sales/capacity-claim-unlicensed
-agent: sales
+id: concierge/capacity-claim-unlicensed
+agent: concierge
 channel: webchat
 locale: en
 principal:

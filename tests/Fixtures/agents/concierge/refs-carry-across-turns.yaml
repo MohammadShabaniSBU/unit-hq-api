@@ -1,5 +1,5 @@
-id: sales/refs-carry-across-turns
-agent: sales
+id: concierge/refs-carry-across-turns
+agent: concierge
 channel: webchat
 locale: en
 tags: [refs, live_only]

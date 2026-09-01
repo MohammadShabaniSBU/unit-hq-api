@@ -1,5 +1,5 @@
-id: sales/quote-with-catalogue-discount
-agent: sales
+id: concierge/quote-with-catalogue-discount
+agent: concierge
 channel: webchat
 locale: en
 principal:
