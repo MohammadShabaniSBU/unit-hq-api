@@ -44,6 +44,7 @@ use App\Session\MorphDatabaseSessionHandler;
 use App\Support\Access\AccessProviderRegistry;
 use App\Support\Ai\AgentChannelBindings;
 use App\Support\Ai\Agents\AgentRegistry;
+use App\Support\Ai\Agents\ConciergeAgentDefinition;
 use App\Support\Ai\Agents\SalesAgentDefinition;
 use App\Support\Ai\Agents\SupportAgentDefinition;
 use App\Support\Ai\Drivers\CassetteDriver;
@@ -119,8 +120,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(AgentRegistry::class, function (): AgentRegistry {
             $registry = new AgentRegistry;
-            $registry->register(new SupportAgentDefinition);
-            $registry->register(new SalesAgentDefinition);
+            $registry->register(new SupportAgentDefinition); // legacy — historical rows
+            $registry->register(new SalesAgentDefinition); // legacy — historical rows
+            $registry->register(new ConciergeAgentDefinition);
 
             return $registry;
         });

@@ -2,8 +2,8 @@
     "agent": "sales",
     "fixture": "sales/grounding-date-redraft",
     "turn_index": 0,
-    "prompt_hash": "ca4ca8a12e29d801f375c5a5aa7a8634a0b33bc9e97912411413617a88f2f439",
-    "schema_hash": "023127a40722c6bc7857bf4d95ea811bdf91aa91be2aeb1bb87b5b78557a2632",
+    "prompt_hash": "f6a8bfcceb4922532781f01c70f70566782bd79168edee227af103ed70f8b6f3",
+    "schema_hash": "9dfe774f767f9cd095f26464446ac9fbbdc4b6ad793fbf0cad4d06ae1f47bb0c",
     "responses": [
         {
             "content": "Hold until 2099-01-01.",

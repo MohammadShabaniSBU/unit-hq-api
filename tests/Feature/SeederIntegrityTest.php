@@ -6,15 +6,14 @@ namespace Tests\Feature;
 
 use App\Enums\ContractStatus;
 use App\Enums\UnitState;
-use App\Models\Charge;
 use App\Models\Contract;
-use App\Models\Payment;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitOccupancy;
 use App\Support\Occupancy\Availability;
-use App\Support\Time\SiteClock;
 use Carbon\Carbon;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Bootstrap\HandleExceptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\AssertsOccupancyIntegrity;
@@ -42,17 +41,23 @@ class SeederIntegrityTest extends TestCase
         $this->assertSame(0, $migrate, Artisan::output());
     }
 
-    protected function tearDown(): void
+    public static function tearDownAfterClass(): void
     {
-        // Leave an empty schema for subsequent RefreshDatabase tests.
+        $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
+        $app->make(Kernel::class)->bootstrap();
         Artisan::call('migrate:fresh', ['--force' => true]);
-        parent::tearDown();
+        HandleExceptions::flushState();
+
+        parent::tearDownAfterClass();
     }
 
     public function test_seeded_dataset_integrity(): void
     {
         $exit = Artisan::call('db:seed', ['--force' => true]);
         $this->assertSame(0, $exit, Artisan::output());
+
+        $this->assertGreaterThan(0, Site::query()->count());
+        $this->assertSame(0, Site::query()->whereNull('legal_entity_id')->count());
 
         $this->assertNoOverlappingOccupancies();
         $this->assertNoOverlappingBlockingHolds();
@@ -99,17 +104,9 @@ class SeederIntegrityTest extends TestCase
 
     private function assertAllUnitStatesPresent(): void
     {
-        $states = [];
-
-        Unit::query()->with('site')->each(function (Unit $unit) use (&$states): void {
-            $on = SiteClock::today($unit->site);
-            $states[Availability::stateOn($unit->id, $on)->value] = true;
-        });
-
         foreach (UnitState::cases() as $state) {
-            $this->assertArrayHasKey(
-                $state->value,
-                $states,
+            $this->assertTrue(
+                Availability::scopeStateTodayPerSite(Unit::query(), $state)->exists(),
                 "Expected at least one unit in state {$state->value}",
             );
         }
@@ -121,7 +118,7 @@ class SeederIntegrityTest extends TestCase
         // billing:run surfaces failed/currency_mismatch.
         $mixedCurrencyContracts = 0;
 
-        Contract::query()->with('items.price')->each(function (Contract $contract) use (&$mixedCurrencyContracts): void {
+        Contract::query()->with(['items.price', 'charges', 'payments'])->each(function (Contract $contract) use (&$mixedCurrencyContracts): void {
             $currencies = $contract->items
                 ->map(fn ($item) => $item->price?->currency)
                 ->unique()
@@ -137,12 +134,12 @@ class SeederIntegrityTest extends TestCase
             $this->assertCount(1, $currencies, "Contract {$contract->id} has mixed item currencies");
             $this->assertSame($contract->currency, $currencies->first());
 
-            foreach (Charge::query()->where('contract_id', $contract->id)->pluck('currency') as $currency) {
-                $this->assertSame($contract->currency, $currency);
+            foreach ($contract->charges as $charge) {
+                $this->assertSame($contract->currency, $charge->currency);
             }
 
-            foreach (Payment::query()->where('contract_id', $contract->id)->pluck('currency') as $currency) {
-                $this->assertSame($contract->currency, $currency);
+            foreach ($contract->payments as $payment) {
+                $this->assertSame($contract->currency, $payment->currency);
             }
         });
 

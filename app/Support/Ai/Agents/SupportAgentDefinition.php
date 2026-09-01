@@ -9,6 +9,19 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentEligibility;
 use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
 
+/**
+ * Legacy persona, superseded by ConciergeAgentDefinition (D-AI-22). Never
+ * delete. AiAgent::definition() calls AgentRegistry::get() unguarded and it
+ * throws RuntimeException on an unknown key; agent_conversations.ai_agent_id
+ * is restrictOnDelete, so removing this class 500s the Inbox conversation
+ * list on historical support rows.
+ *
+ * Until S27-04 returns crm.create_note to the concierge at
+ * VerificationLevel::Verified, this is the only definition claiming that
+ * tool. AgentToolCoverageTest::every_registered_tool_has_schema_description_and_appears_in_a_definition
+ * builds $claimed from AgentRegistry::all(), so a premature deregistration
+ * turns that test red.
+ */
 final class SupportAgentDefinition implements AgentDefinition
 {
     use AssemblesSystemPrompt;

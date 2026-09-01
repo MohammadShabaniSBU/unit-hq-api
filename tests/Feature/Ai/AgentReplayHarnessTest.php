@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ai;
 
+use App\Models\Employee;
+use App\Models\TaxRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use PHPUnit\Framework\Attributes\Test;
@@ -80,6 +82,27 @@ class AgentReplayHarnessTest extends TestCase
         $this->assertArrayHasKey('passed', $decoded['results'][0]);
         $this->assertArrayHasKey('failures', $decoded['results'][0]);
         $this->assertTrue($decoded['results'][0]['passed']);
+    }
+
+    #[Test]
+    public function seed_reuses_existing_default_tax_rate(): void
+    {
+        $employee = Employee::factory()->create();
+        TaxRate::query()->create([
+            'name' => 'VAT ES',
+            'code' => 'vat',
+            'rate' => '21.00',
+            'jurisdiction' => 'ES',
+            'is_default' => true,
+            'effective_from' => '2020-01-01',
+            'effective_to' => null,
+            'created_by' => $employee->id,
+        ]);
+
+        $this->artisan('agent:replay', [
+            '--path' => base_path('tests/Fixtures/agents/_harness/json-ok'),
+            '--json' => true,
+        ])->assertSuccessful();
     }
 
     #[Test]

@@ -10,7 +10,6 @@ use App\Models\Country;
 use App\Models\LegalEntity;
 use App\Models\Site;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 use Tests\Support\AuthenticatesAsEmployee;
 
@@ -24,14 +23,6 @@ class LegalEntityTest extends TestCase
         parent::setUp();
 
         $this->authenticateAsEmployee();
-    }
-
-    public function test_seed_assigns_every_site(): void
-    {
-        Artisan::call('db:seed', ['--force' => true]);
-
-        $this->assertGreaterThan(0, Site::query()->count());
-        $this->assertSame(0, Site::query()->whereNull('legal_entity_id')->count());
     }
 
     public function test_archive_refused_with_active_sites(): void

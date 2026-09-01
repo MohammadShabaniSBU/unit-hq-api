@@ -173,26 +173,8 @@ final class EvalWorld
         $world->cataloguePrice($world->madrid, '137.94', 'EUR', $world->trastero12);
         $world->cataloguePrice($world->madrid, '180.00', 'EUR', $world->trastero16xl);
 
-        TaxRate::query()->create([
-            'name' => 'VAT ES',
-            'code' => 'vat',
-            'rate' => '21.00',
-            'jurisdiction' => 'ES',
-            'is_default' => true,
-            'effective_from' => '2020-01-01',
-            'effective_to' => null,
-            'created_by' => $world->operator->id,
-        ]);
-        TaxRate::query()->create([
-            'name' => 'VAT GB',
-            'code' => 'vat',
-            'rate' => '20.00',
-            'jurisdiction' => 'GB',
-            'is_default' => false,
-            'effective_from' => '2020-01-01',
-            'effective_to' => null,
-            'created_by' => $world->operator->id,
-        ]);
+        $world->ensureVatRate($world->operator->id, 'ES', '21.00', wantDefault: true);
+        $world->ensureVatRate($world->operator->id, 'GB', '20.00', wantDefault: false);
 
         $world->discount = Discount::factory()->percent('15.00')->agentOfferable([
             'en' => '15% off the first month.',
@@ -480,6 +462,30 @@ final class EvalWorld
     public function agent(string $key): AiAgent
     {
         return $key === 'sales' ? $this->sales : $this->support;
+    }
+
+    /**
+     * Reuse a current vat row for the jurisdiction when one already exists
+     * (e.g. DatabaseSeeder on the app DB). Only claim is_default when none exists.
+     */
+    private function ensureVatRate(int $operatorId, string $jurisdiction, string $rate, bool $wantDefault): void
+    {
+        $isDefault = $wantDefault && TaxRate::query()->where('is_default', true)->doesntExist();
+
+        TaxRate::query()->firstOrCreate(
+            [
+                'code' => 'vat',
+                'jurisdiction' => $jurisdiction,
+                'effective_to' => null,
+            ],
+            [
+                'name' => 'VAT '.$jurisdiction,
+                'rate' => $rate,
+                'is_default' => $isDefault,
+                'effective_from' => '2020-01-01',
+                'created_by' => $operatorId,
+            ],
+        );
     }
 
     private function cataloguePrice(Site $site, string $amount, string $currency, ?UnitClass $class = null): Price

@@ -9,6 +9,13 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentEligibility;
 use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
 
+/**
+ * Legacy persona, superseded by ConciergeAgentDefinition (D-AI-22). Never
+ * delete. AiAgent::definition() calls AgentRegistry::get() unguarded and it
+ * throws RuntimeException on an unknown key; agent_conversations.ai_agent_id
+ * is restrictOnDelete, so removing this class 500s the Inbox conversation
+ * list on historical sales rows.
+ */
 final class SalesAgentDefinition implements AgentDefinition
 {
     use AssemblesSystemPrompt;
