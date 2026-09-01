@@ -308,6 +308,7 @@ final class AgentRuntime
                         $call['name'],
                         $result,
                         $ctx,
+                        $invocation,
                     );
                     if ($promoted !== null) {
                         $principal = $promoted;

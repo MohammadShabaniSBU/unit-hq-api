@@ -5,7 +5,7 @@ a demo surface at panel `/demo/chat` and live inbound on email / SMS /
 WhatsApp under an explicit `agent_channel_bindings` row (default **off**,
 invariant 68). Copilot (internal, employee principal, screen output) stays
 on its existing Laravel AI SDK path and is **not** migrated onto this
-runtime. Support and sales agents are customer-facing: contact principal.
+runtime. The customer-facing agent is `concierge`: contact principal.
 Output is a draft turn; a send goes through `AgentSend` onto the channel
 senders (invariant 69). Agent code never inserts a `messages` row
 (invariant 38).
@@ -21,8 +21,11 @@ Three surfaces share the word "agent" and must not be confused:
 | Surface | Principal | Output | Runtime |
 |---|---|---|---|
 | Copilot | Employee (`AgentAudience::Internal`) | Screen (sidebar) | Existing Laravel AI SDK path — left alone |
-| Support agent | Contact | Draft turn (channel-shaped) | `App\Support\Ai\AgentRuntime` |
-| Sales agent | Contact (often anonymous) | Draft turn (channel-shaped) | same |
+| Concierge | Contact (anonymous, channel-asserted, or verified) | Draft turn (channel-shaped) | `App\Support\Ai\AgentRuntime` |
+
+`SalesAgentDefinition` and `SupportAgentDefinition` remain registered
+classes so historical `ai_agents` rows still resolve. They are not live
+personas (D-AI-22, invariant 58).
 
 Inbound sender matching in `06-communications.md` was designed as a
 **routing** decision: match `contact_channels` → attach to a thread; no match
@@ -31,7 +34,7 @@ decision — "does this row belong to the contact I am talking to, and at what
 verification level?" That promotion is why `VerificationLevel` exists. A
 matched inbound address is `channel_asserted`, not `verified`. Asking "what's
 my balance?" at `channel_asserted` is refused; the same question at `verified`
-returns a ledger figure. See D-AI-2 in `10-open-decisions.md`.
+returns a ledger figure. See D-AI-2 and D-AI-23 in `10-open-decisions.md`.
 
 ## Principal and verification
 
@@ -59,10 +62,34 @@ authorization scope on a model. Never resolve a principal from `auth()`,
 | Tier | Level | Content |
 |---|---|---|
 | Public | `anonymous` | Catalogue prices, availability, site info, FAQ |
-| Asserted | `channel_asserted` | Nothing extra — reserved for lead-shaped writes (`crm.create_note` requires it) |
+| Asserted | `channel_asserted` | Nothing extra — reserved for lead-shaped writes (`sales.create_reservation`, `identity.request_code` / `identity.verify_code`). A matched inbound address lands here; it is not proof. |
 | Private | `verified` | Anything tenant-specific: balance, invoices, contract, access, unit identifier |
 
 A unit number is tenant-specific. So is a move-out date. Err upward.
+
+**`verified` is earned inside the conversation (invariant 72, D-AI-23).** A
+principal reaches it only by consuming a `contact_verifications` challenge
+delivered to a `contact_channels` row that already belonged to the contact:
+
+- The destination is resolved server-side. The model may pass an optional
+  channel *type* (`email` \| `sms`); it never supplies an address or number.
+  Accepting a destination from the conversation would turn the flow into
+  attacker-nominated delivery.
+- The plaintext code exists only in the outbound message. The row stores
+  `code_hash` (sha256). Delivery goes through `SmsSender` / `EmailSender`
+  with `SendContext(class: transactional)` (invariant 38 / 69). A suppressed
+  address returns a machine error + recovery affordance; no send is
+  attempted.
+- Config (`agents.verification.*`): TTL 10 minutes, 6 digits, 5 attempts,
+  3 issues per contact per hour. "Open" is a read-time predicate — not
+  consumed, not expired, attempts remaining (invariant 13). Single-open-
+  challenge is enforced under a row lock in `VerificationChallenge::issue()`,
+  not by a partial unique on `now()`.
+- A new conversation with the same contact starts at `channel_asserted`
+  again. Caller ID, a self-stated address matching an existing contact, and
+  a prior verified conversation all stop at `channel_asserted`.
+- `origin = demo` is the remaining writer of `verified` without a challenge.
+  Demo traffic is excluded from every metric (invariant 59).
 
 **Employee RBAC does not authorize agent tools (D-AI-2).** RBAC answers "which
 sites may this staff member see" (`07-people-and-auth.md`). Agent
@@ -83,9 +110,16 @@ the agent is talking to.
 display name, archive/active flags, and tuning knobs in `settings`. It never
 holds the prompt or the tool list.
 
-Two personas ship as definitions (`SupportAgentDefinition`,
-`SalesAgentDefinition`); seeded rows use keys `support` and `sales`. Adding a
-persona is a code change plus a coverage-test update, not a Settings form.
+One live persona ships as a definition (`ConciergeAgentDefinition`); the
+seeded live row uses key `concierge`, name `Customer Agent`.
+`SalesAgentDefinition` and `SupportAgentDefinition` stay registered forever
+so historical conversations still resolve — `AiAgent::definition()` calls
+`AgentRegistry::get()`, which throws on an unknown key, and
+`agent_conversations.ai_agent_id` is `restrictOnDelete`. Deleting either
+class 500s the Inbox list. Archived seeded rows (`sales`, `support`, names
+`Sales Agent (archived)` / `Support Agent (archived)`) stay seeded on a
+fresh `db:seed`. Adding a persona is a code change plus a coverage-test
+update, not a Settings form.
 
 Site scope is conversation provenance, not a grant. `agent_conversations.site_id`
 is seeded at create (inbound destination, demo pane, or null). It is not RBAC.
@@ -124,7 +158,8 @@ App\Support\Ai\
 ├── AgentContext.php              // principal + channel + definition + conversation
 ├── AgentTurn.php
 ├── ChannelProfile.php
-├── Agents/                       // AgentDefinition, registry, support / sales
+├── Agents/                       // AgentDefinition, registry, concierge + retained sales / support
+├── Identity/                     // VerificationChallenge, destination, masked display
 ├── Tools/                        // AgentTool, ToolDispatcher, ToolResult, FactBag, FactRegistry
 ├── Guards/                       // inbound + outbound pipelines
 ├── Drivers/                      // ModelDriver, LaravelAiDriver, CassetteDriver
@@ -170,13 +205,19 @@ a different agent (defence in depth, invariant 68).
    (`detail.skipped = true`), and allows one more model call. A further
    identical call, or any retryable failure of that tool after the warning,
    hands off with `detail: identical_retry`.
-   **Principal promotion (D-AI-18):** after an `ok` `crm.create_contact` (or
-   its dedupe path) in a customer-audience conversation whose principal is
-   `anonymous`, `PrincipalPromotion` stamps `contact_id`, sets
-   `verification_level = channel_asserted`, and rebuilds the principal for
-   the remainder of the turn. Upward only; never `verified` from a
-   self-stated identity. Activity:
-   `agent.conversation.principal_promoted` on the `ai` channel.
+   **Principal promotion (D-AI-18, D-AI-23):** after an `ok` tool result in a
+   customer-audience conversation, `PrincipalPromotion` may stamp the
+   conversation and rebuild the principal for the remainder of the turn.
+   Two paths, both upward only:
+   - `crm.create_contact` (or its dedupe path) from `anonymous` →
+     `channel_asserted`. Never `verified` from a self-stated identity.
+   - `identity.verify_code` from `channel_asserted` → `verified`. The
+     conversation's `contact_id` must already equal the verified contact.
+   Each successful promotion writes `agent.conversation.principal_promoted`
+   on the `ai` channel **and** an append-only `agent_principal_promotions`
+   row (trace kind `promotion`, `{from, to, method}`:
+   `contact_created` \| `otp`). No SSE event — the row arrives through
+   `hydrate()` after the turn.
 6. Final assistant draft → **outbound guards**. A block writes the message
    with `blocked_by` set and converts the turn to a handoff. The customer
    never sees a blocked draft.
@@ -347,7 +388,7 @@ Tier-1 `SystemEvent` `ai.inbound.skipped` with `reason`. Order:
 | `audience` | unmatched sender, or `existing_tenants` and the contact has no in-force contract at the binding site. Unmatched + `audience = all` is still `audience` until S26-07b |
 | `outside_hours` | `outside_hours = inbox` and now is outside `GeneralSettings::$sendWindowStart` → `$sendWindowEnd` via `SiteClock::withinWindow()`. Site-scoped bindings use that site's timezone; company-scoped use the inbound site's timezone, else `config('app.timezone')`. Site access hours are not office hours. Per-site window override is unset (`10`) |
 | `human_owned` | conversation `state ∈ {awaiting_human, handed_off}`, or an outbound `source = manual` message newer than `greatest(last_turn_at, agent_handback_at)` (invariant 70). Currently `RespondWithAgent::isHumanOwned()`; S26-08 relocates it to `ThreadAgentState` |
-| `agent_ineligible` | bound agent's `AgentDefinition::eligible(contact, siteId)` declines (`sales` declines an active contract at the site; `support` declines a contact with none). Thread stays unread. Cross-agent handoff is deferred |
+| `agent_ineligible` | bound agent's `AgentDefinition::eligible(contact, siteId)` declines. The live `concierge` definition always returns `true`; the gate and skip reason stay for historical conversations resumed against a legacy agent. On live traffic the count should be zero. |
 | `debounced` | another inbound on the same thread arrived within `config('agents.inbound_debounce_seconds')` (default 20); the job is released with delay so the last one runs |
 
 Find-or-create the `agent_conversation` for `message_thread_id`
@@ -362,6 +403,24 @@ nullable `site_id`, `mode` (`off` \| `draft` \| `auto`), `audience`
 (`known_contacts` \| `existing_tenants` \| `all`), `outside_hours`
 (`inbox` \| `answer`). Archive-only.
 
+Under one agent, `audience` selects *who gets answered*, not *which agent
+answers* (invariant 71). `eligible()` is not a routing mechanism:
+
+| Value | Behaviour with `concierge` |
+|---|---|
+| `known_contacts` | Inbound matched a `contact_channels` row. Prospects and tenants both answered, at whatever verification they hold. Unmatched → `comms_triage` |
+| `existing_tenants` | As above, and `AgentEligibility::hasInForceContractAtSite()` must pass |
+| `all` | Matched contacts plus unmatched senders under the auto-lead-capture policy (D-AI-20, default off). Without that flag, unmatched still goes to triage |
+
+Seeded company-wide rows (match key `(channel, site_id)`):
+
+| Agent | Channel | mode | audience | outside_hours |
+|---|---|---|---|---|
+| concierge | webchat | `auto` | `all` | `answer` |
+| concierge | sms | `draft` | `known_contacts` | `inbox` |
+| concierge | whatsapp | `draft` | `known_contacts` | `inbox` |
+| concierge | email | `draft` | `known_contacts` | `inbox` |
+
 **Hazard: absent row = `off`.** Opposite default from `agent_write_policies`
 (absent = commit). A missing binding means an agent talks to real customers;
 that must be an explicit act (invariant 68). Resolution mirrors
@@ -370,7 +429,8 @@ that must be an explicit act (invariant 68). Resolution mirrors
 Kill switches, in order: `config('agents.enabled')` → `ai_agents.is_active &&
 !archived` → binding present and `mode != off`. API:
 `GET/POST /api/ai/agents/bindings`, `PUT/DELETE …/bindings/{binding}`
-(`DELETE` = archive). Permission `AiAgentBindingManage`. Panel is S26-08.
+(`DELETE` = archive). Permission `AiAgentBindingManage`. Panel is S26-08
+(create/edit slideover); S27-05 ships a read-only Channels tab.
 
 ### Send path
 
@@ -412,41 +472,51 @@ routes (`POST /api/chat/sessions`, …) are S26-07c.
 
 ## Tool catalogue
 
-The tool surface is the defence; prompt text is defence-in-depth. The
-catalogue below… Definitions in code (`SupportAgentDefinition` /
-`SalesAgentDefinition`); `ai_agents` rows are instances (D-AI-6, invariant 58).
+The tool surface is the defence; prompt text is defence-in-depth. The live
+definition is `ConciergeAgentDefinition` (22 keys). `ai_agents` rows are
+instances (D-AI-6, invariant 58). The Level column is the whole story:
+tenant tools sit on the list and are refused at dispatch gate 3 until the
+principal is `verified` (invariant 71).
 
-| Tool | Level | Write | Sales | Support |
-|---|---|---|---|---|
-| `facility.availability` | anonymous | | ✓ | |
-| `facility.find_sites` | anonymous | | ✓ | ✓ |
-| `facility.site_info` | anonymous | | ✓ | ✓ |
-| `facility.size_guide` | anonymous | | ✓ | ✓ |
-| `calendar.resolve` | anonymous | | ✓ | ✓ |
-| `pricing.quote` | anonymous | | ✓ | |
-| `pricing.discounts` | anonymous | | ✓ | |
-| `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ | |
-| `sales.create_offer` | anonymous | ✓ (`commit`) | ✓ | |
-| `sales.create_reservation` | channel_asserted | ✓ (`propose`) | ✓ | |
-| `crm.create_contact` | anonymous | ✓ | ✓ | |
-| `crm.create_deal` | anonymous | ✓ | ✓ | |
-| `crm.create_task` | anonymous | ✓ | ✓ | ✓ |
-| `crm.create_note` | channel_asserted | ✓ | | ✓ |
-| `contract.summary` | verified | | | ✓ |
-| `billing.balance` | verified | | | ✓ |
-| `billing.next_charge` | verified | | | ✓ |
-| `billing.invoices` | verified | | | ✓ |
-| `access.status` | verified | | | ✓ |
-| `kb.faq_lookup` | anonymous | | ✓ | ✓ |
-| `agent.escalate` | anonymous | | ✓ | ✓ |
-| `channel.send` | — | ✓ (runtime-only) | | |
+| Tool | Level | Write | Concierge |
+|---|---|---|---|
+| `facility.availability` | anonymous | | ✓ |
+| `facility.find_sites` | anonymous | | ✓ |
+| `facility.site_info` | anonymous | | ✓ |
+| `facility.size_guide` | anonymous | | ✓ |
+| `calendar.resolve` | anonymous | | ✓ |
+| `pricing.quote` | anonymous | | ✓ |
+| `pricing.discounts` | anonymous | | ✓ |
+| `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ |
+| `sales.create_offer` | anonymous | ✓ (`commit`) | ✓ |
+| `sales.create_reservation` | channel_asserted | ✓ (`propose`) | ✓ |
+| `crm.create_contact` | anonymous | ✓ | ✓ |
+| `crm.create_deal` | anonymous | ✓ | ✓ |
+| `crm.create_task` | anonymous | ✓ | ✓ |
+| `crm.create_note` | verified | ✓ | |
+| `identity.request_code` | channel_asserted | ✓ (`commit`, 3 / conversation, 10 / day) | ✓ |
+| `identity.verify_code` | channel_asserted | ✓ | ✓ |
+| `contract.summary` | verified | | ✓ |
+| `billing.balance` | verified | | ✓ |
+| `billing.next_charge` | verified | | ✓ |
+| `billing.invoices` | verified | | ✓ |
+| `access.status` | verified | | ✓ |
+| `kb.faq_lookup` | anonymous | | ✓ |
+| `agent.escalate` | anonymous | | ✓ |
+| `channel.send` | — | ✓ (runtime-only) | |
 
 `channel.send` is registered and **unclaimed** (`RuntimeOnlyTools`). A
 definition listing it fails `AgentToolCoverageTest`. Binding mode picks
 `propose()` vs `handle()`; the model never sees the tool.
 
-Sales has **no** billing, contract, or access tools. A prospect asking about
-someone's balance is a handoff.
+`crm.create_note` is registered and **unclaimed by the live agent**. A
+customer conversation has no `created_by_employee_id`, so a note it wrote
+could not be attributed. Its floor is `verified`. Legacy `support` still
+lists it.
+
+A prospect asking about someone's balance is refused at gate 3
+(`denied: verification`), then offered `identity.request_code`. The
+union of tool lists exposes nothing extra to an unverified caller.
 
 Writes that **are** permitted: `Contact`, `Deal`, `Task`, `Note` (the same
 four as `CreateObjectAllowlist`), plus `Offer` and `Reservation` through named
@@ -463,9 +533,16 @@ selection and contact are server-derived; none may be a model argument.
 
 `billing.balance` requires `verified`. At `anonymous` or `channel_asserted`
 the dispatcher returns `denied: verification` **before** `handle()` and never
-touches the ledger. Sales cannot call the tool at all
-(`not_allowed_for_agent`). That is why flipping the demo verification toggle
-is the argument for the architecture.
+touches the ledger. The live agent holds the tool; the gate is the whole
+defence (invariant 71).
+
+The path through the gate: `identity.request_code` sends a hashed OTP to a
+`contact_channels` row already on the contact; `identity.verify_code`
+consumes it; `PrincipalPromotion` stamps `verified` and writes a
+`kind: promotion` trace row (`method: otp`). The next turn's
+`billing.balance` passes gate 3. Flipping the demo verification toggle
+still writes `verified` directly and remains a demo-only affordance
+(invariant 59 / 72).
 
 ### Why a quoted price is trustworthy
 
@@ -545,6 +622,13 @@ Other tool notes:
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
   `contact_channels`. An `ok` result in an anonymous customer conversation
   promotes the principal to `channel_asserted` (D-AI-18).
+- `identity.request_code` sends a 6-digit code to a `contact_channels` row
+  already on the contact. Optional argument is channel *type* only. Display
+  names a masked destination. Seeded policy: `commit`,
+  `max_per_conversation = 3`, `max_per_day = 10`.
+- `identity.verify_code` consumes the open challenge under a row lock.
+  Wrong / expired / exhausted / consumed all fail identically. An `ok`
+  result promotes the principal to `verified` (D-AI-23).
 - `crm.create_deal` / `sales.propose_offer` accept optional need fields
   (`expected_move_in`, stay length/period, `desired_size_m2`). Relative dates
   go through `calendar.resolve`; the model must not compute a date itself.
@@ -585,6 +669,16 @@ and is not "propose". That default must not change `crm.create_contact` /
 `sales.create_reservation` seed their own rows explicitly so they cannot
 inherit it by accident. Deleting a policy row restores unlimited commit.
 
+Write policies are per-instance. S27-03 merged sales and support onto
+`concierge` with strictest-wins (`off` < `propose` < `commit`; lower quota
+wins; higher `min_verification` wins). Against seeded data the merge
+narrows nothing — support held zero write policies, sales policies carried
+forward unchanged — so `ai.write_policy.merged` never fires and the panel
+does not surface an inline note. The activity row remains the audit trail
+if a future non-seeded conflict does narrow a value. Legacy `sales` /
+`support` policy rows stay in place as the audit trail of what the merge
+read.
+
 Quotas (`max_per_conversation`, `max_per_day`) count `agent_tool_invocations`
 where `status = ok` — committed writes, not attempts. A denied call does not
 burn quota. `max_per_day` rolls at app-timezone midnight. Null = unlimited.
@@ -593,7 +687,7 @@ burn quota. `max_per_day` rolls at app-timezone midnight. Null = unlimited.
 (`AgentWritePolicy::effectiveVerification()`). String comparison against
 verification levels is a defect.
 
-### Promotion
+### Reservation promotion
 
 Reservation stays in `propose` until a measured bar is met — never a calendar
 date (D-AI-11): 200+ replayed conversations through `agent:replay` with zero
@@ -601,6 +695,11 @@ grounding suppressions on reservation turns, zero cross-site holds, zero
 duplicate holds, and a measured approval rate above 90% (operators were
 rubber-stamping, so the click was buying nothing). The bars are measured.
 They are never dated.
+
+This is not `PrincipalPromotion`. Principal promotion (anonymous →
+`channel_asserted` via `crm.create_contact`; `channel_asserted` → `verified`
+via `identity.verify_code`) is a runtime event on the conversation, recorded
+as trace kind `promotion`. See the turn loop above.
 
 ## Pending actions
 
@@ -798,6 +897,8 @@ Agent registry above. No `HasAutomationTriggers` on any agent table.
 | `AgentHandoff` | `agent_handoffs` | Escalation: `reason`, `trigger_source` (`rule` \| `model` \| `customer` \| `guardrail`), `detail` |
 | `AgentWritePolicy` | `agent_write_policies` | Per-agent, per-tool autonomy: `mode`, quotas, raise-only `min_verification`. Absent row = `commit` unlimited |
 | `AgentGuardrailEvent` | `agent_guardrail_events` | One verdict per guard per message. Consumers key by `message_id`, never array order |
+| `AgentPrincipalPromotion` | `agent_principal_promotions` | Mid-conversation principal upgrade. `from_level` / `to_level` / `method` (`contact_created` \| `otp`). Append-only; assembled as trace kind `promotion`. No SSE event — arrives through `hydrate()` after the turn |
+| `ContactVerification` | `contact_verifications` | Conversation-scoped OTP challenge. Code hashed at rest; destination is a `contact_channels` id. In AR-03 redaction scope |
 
 CHECK constraints bind the shape in the database: internal audience requires
 `employee_id` and forbids `contact_id`; customer audience forbids
@@ -822,6 +923,10 @@ operator-facing metric.
 | `model` | The model that produced the turn |
 | `prompt_version` | Hash of the **template**, not the interpolated prompt (D-AI-14). `identityBlock` (company, site, timezone, today's date) is omitted so the field is not a per-site, per-day fingerprint. Channel and verification stay in the hash. Eval cassettes hash the fully interpolated prompt — they share `CassetteKey::promptHash`, not the input |
 | `occurred_at` | |
+
+Kinds: `tool`, `guardrail`, `usage`, `handoff`, `promotion`. A `promotion`
+row carries `{from, to, method}` and sorts after the invocation that caused
+it (`seq = TraceSeq::max() + 1`).
 
 The model receives `modelText()` (`display` plus the `Refs:` line,
 invariant 67); `data` and `entities` persist on the invocation.
@@ -866,9 +971,13 @@ an operator surface**.
   (seeded contacts with contract / balance / delinquency flags).
 
 Three inputs a live channel would supply are selected by the operator instead
-of being faked: agent (`support` / `sales`), channel (`email` / `sms` /
-`whatsapp` / `webchat`), principal + verification (persona + level toggle).
-The right pane is the trace — tools, guardrail pass/block, usage.
+of being faked: agent (the live `concierge` instance; archived `sales` /
+`support` rows do not appear), channel (`email` / `sms` / `whatsapp` /
+`webchat`), principal + verification (persona + level toggle). The
+verification select is a demo affordance with no production equivalent — it
+is the only remaining writer of `verified` outside a real challenge
+(invariant 59 / 72). The right pane is the trace — tools, guardrail
+pass/block, usage, and `kind: promotion` rows.
 
 API (all `auth:sanctum`, no `/api/demo/*` prefix): `GET /api/ai/agents`,
 `POST/GET /api/agent-conversations`, `GET …/{id}`, `POST …/{id}/turns` (SSE),
@@ -940,19 +1049,30 @@ These are defects with a home, not open questions.
    `agent_tool_invocations`, `agent_handoffs.detail`, and
    `agent_pending_actions.payload.body` hold names, emails, balances, and
    drafted replies. `chat_sessions.visitor_meta` arrives with S26-07c.
-   `config/redaction.php` covers `activity_log` and `system_events` only.
-   `contacts:redact` does not touch the agent tables. `ai_summaries` **is**
-   already covered (invariant 53). Transcripts are evidence in a lien or
-   auction dispute — they retain on contract terms, not on the telemetry
-   pruning schedule that covers tier-1 system events. **Blocking before a
-   provider channel binding is set to `auto` in production.** S26-07 already
-   writes real inbound text onto these tables. Detail: `10-open-decisions.md`.
+   `contact_verifications` holds a contact id, a channel id and a code hash
+   — no plaintext PII, but a record that a named person was asked to prove
+   identity. `config/redaction.php` covers `activity_log` and `system_events`
+   only (it comments `contact_verifications` but `contacts:redact` does not
+   touch the table). `ai_summaries` **is** already covered (invariant 53).
+   Transcripts are evidence in a lien or auction dispute — they retain on
+   contract terms, not on the telemetry pruning schedule that covers tier-1
+   system events. **Blocking before a provider channel binding is set to
+   `auto` in production.** S26-07 already writes real inbound text onto these
+   tables. Detail: `10-open-decisions.md`.
 2. **Two authorization systems.** `agent_write_policies` governs what agents
    may write; `roles` / `role_permissions` / `employee_roles` governs what
    people may write. They will drift. Whether an agent should hold a real
    grant with a real site scope (write policy reduced to mode and quota) is
    Undecided in `10` — recorded so it is settled deliberately rather than by
-   accretion.
+   accretion. S27-03's policy merge (strictest-wins onto `concierge`) does
+   not settle this.
+3. **The panel has no test tooling.** `unit-hq-panel/package.json` carries
+   `lint`, `typecheck`, `build` and nothing else: no vitest, no runner, no
+   spec files. CI runs lint then typecheck only. Every panel-side property
+   — verification state labels, the promotion timeline row, the
+   verification-denied chip, the read-only bindings table — rests on
+   typecheck plus manual verification. Typecheck does not catch an
+   unreachable branch.
 
 ## What is deliberately not built
 
@@ -979,11 +1099,9 @@ Also not built:
 - **Sending** an offer. Creation is not delivery (D-AI-10). Replies go out
   through `AgentSend`; the offer link is still sent by an operator or a later
   playbook action. No `OfferDelivery` row from the agent.
-- Support-agent write tools for Offer / Reservation. Sales only.
 - `webchat` as a comms `Channel` enum value and its adapter — S26-07c.
   Agent `AgentChannel::Webchat` is a profile only.
 - RAG / vector retrieval (D-AI-5). Knowledge is curated key lookup.
-- `contact_verifications` / OTP — the verification level is a demo toggle.
 - Binding mode `review` (delayed auto-send with a cancel window). `draft` and
   `auto` shipped in S26-06/07; do not set a provider channel to `auto` in
   production until AR-03 lands.
@@ -992,7 +1110,11 @@ Also not built:
   principle applies).
 - Delinquency autonomy — never, in any sprint.
 - Auto-lead capture — S26-07b.
-- Panel bindings page, Inbox draft card, `/chat/:token` — S26-08.
+- Binding create/edit/archive slideover, Inbox draft card, `/chat/:token` —
+  S26-08. A read-only Channels tab shipped in S27-05.
+- Customer-facing voice. `AgentChannel::Voice` stays out of
+  `AgentChannel::bindable()` and `POST /api/agent-conversations` keeps its
+  422. Sprint 28.
 
 ## Related docs
 
@@ -1004,9 +1126,9 @@ Also not built:
   agent drafts only
 - `07-people-and-auth.md` — employee RBAC is a different axis from agent
   authorization (D-AI-2)
-- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–70, amended 38 / 48 / 64; 40 pointer to S26-07b
+- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–72, amended 38 / 48 / 58 / 64; 40 pointer to S26-07b
 - `12-automation-engine.md` — `CreateObjectAllowlist` (unchanged; agent surface is deliberately wider)
-- `10-open-decisions.md` — D-AI-1…21, D-V1…4; AR-03 is a known compliance
+- `10-open-decisions.md` — D-AI-1…23, D-V1…4; AR-03 is a known compliance
   defect (blocking before a provider binding is `auto` in production), not
   an open question
 - `08-activity-logging.md` — tier-2 `ai` channel; tier-3 copilot voice sessions; activity log is not a transcript

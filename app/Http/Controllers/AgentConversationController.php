@@ -167,6 +167,7 @@ class AgentConversationController extends Controller
             'handoffs',
             'guardrailEvents',
             'usageEvents',
+            'principalPromotions',
         ]);
 
         return $this->success(
@@ -209,6 +210,7 @@ class AgentConversationController extends Controller
             'handoffs',
             'guardrailEvents',
             'usageEvents',
+            'principalPromotions',
         ]);
 
         return $this->success(

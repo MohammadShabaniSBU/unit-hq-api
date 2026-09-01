@@ -269,7 +269,12 @@
     or a definition claiming an unregistered tool key, is a defect, not data —
     `AgentDefinitionCoverageTest` / `AgentToolCoverageTest`. Same grep-as-test
     discipline as invariant 43. `ai_agents.settings` holds tuning knobs only, never
-    the prompt or the tool list.
+    the prompt or the tool list. Archived instances stay seeded. A definition
+    class whose key still appears in `ai_agents` is never deleted — historical
+    conversations resolve the class on read (`AiAgent::definition()` →
+    `AgentRegistry::get()`), and `agent_conversations.ai_agent_id` is
+    `restrictOnDelete`. Enforced by `legacy_definitions_stay_registered` and
+    `archived_seeded_rows_still_resolve_their_definition`.
 59. **`agent_conversations.origin` is never null, and demo traffic is excluded
     by an explicit filter at each call site.** Never a global scope (invariant 46).
     Demo conversations must not reach Insights, eval corpora, or any operator-facing
@@ -377,6 +382,23 @@
     message newer than `greatest(last_turn_at, agent_handback_at)`) and
     `InboxController@resume`. S26-08 relocates that predicate to
     `ThreadAgentState` and re-anchors this line — see S26-09b.
+71. **One customer-facing agent definition serves a conversation, and tool
+    exposure is decided by verification, not by which agent answered.**
+    `AgentDefinition::eligible()` is not a routing mechanism — audience
+    selection lives on `agent_channel_bindings.audience`, where an operator can
+    see and change it. A definition may narrow its own tool list, but a tool
+    that returns `VerificationLevel::Verified` from `requiredVerification()` is
+    protected by dispatch gate `verification`, never by its absence from a
+    `toolKeys()` array. Adding a tenant tool to an agent's list is therefore
+    safe; lowering a tool's floor is not.
+72. **Verification is earned inside a conversation and never inherited.**
+    A principal reaches `VerificationLevel::Verified` only by consuming a
+    `contact_verifications` challenge delivered to a `contact_channels` row that
+    already belonged to the contact. The destination is resolved server-side and
+    is never an argument. Caller ID, a self-stated address matching an existing
+    contact, and a prior verified conversation for the same contact all stop at
+    `channel_asserted`. `origin = demo` writes `verified` directly and is
+    excluded from every metric (invariant 59).
 
 ## Code conventions
 

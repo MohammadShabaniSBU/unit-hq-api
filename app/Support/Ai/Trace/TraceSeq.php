@@ -6,6 +6,7 @@ namespace App\Support\Ai\Trace;
 
 use App\Models\AgentGuardrailEvent;
 use App\Models\AgentHandoff;
+use App\Models\AgentPrincipalPromotion;
 use App\Models\AgentToolInvocation;
 use App\Models\AiUsageEvent;
 
@@ -18,6 +19,7 @@ final class TraceSeq
             (int) AgentHandoff::query()->where('agent_conversation_id', $conversationId)->max('seq'),
             (int) AgentGuardrailEvent::query()->where('agent_conversation_id', $conversationId)->max('seq'),
             (int) AiUsageEvent::query()->where('agent_conversation_id', $conversationId)->max('seq'),
+            (int) AgentPrincipalPromotion::query()->where('agent_conversation_id', $conversationId)->max('seq'),
         ];
 
         return max($values);

@@ -83,9 +83,28 @@
 - **D-AI-16 — Tool results expose licensed ids on a `Refs:` line.** `ToolResult::modelText()` appends a deterministic `Refs:` line from `entities` (grouped by type then id). `result_summary` and persisted message content stay `display`. An id the model can pass but was never shown is a defect in the tool (invariant 67). S26-00.
 - **D-AI-17 — `sales.create_offer` resolves the rate server-side.** The model passes licensed `site_id` + `unit_class_id`; `unit_class_rate_id` is never a model argument. Resolution is the active `UnitClassRate` for that pair at `SiteClock::today($site)`. `ArgumentProvenance::checkRateIds` stays as defence. S26-01.
 - **D-AI-18 — Principal promotion is upward-only and stops at `channel_asserted`.** After an `ok` `crm.create_contact` (or its dedupe path) in a customer-audience conversation whose principal is `anonymous`, the runtime stamps `contact_id` and rebuilds `AgentPrincipal::channelAsserted` for the rest of the turn. Never demote; never `verified` from a self-stated identity. Activity is `agent.conversation.principal_promoted` on the `ai` channel (not `ai.conversation.principal_promoted`). S26-02.
-- **D-AI-19 — One agent per `(channel, site)`.** Partial unique on live `agent_channel_bindings`. Cross-agent handoff is deferred. API is `GET/POST /api/ai/agents/bindings` (not nested under `{aiAgent}` and not `/api/settings/ai-agents/bindings`). Bindable channels are `email|sms|whatsapp|webchat`; `voice` and `internal` share one 422. Seeder match key is `(channel, site_id)`. S26-06.
+- **D-AI-19 — One agent per `(channel, site)`.** Partial unique on live `agent_channel_bindings`. Cross-agent handoff is closed by D-AI-22: there is no second customer agent to hand off to. API is `GET/POST /api/ai/agents/bindings` (not nested under `{aiAgent}` and not `/api/settings/ai-agents/bindings`). Bindable channels are `email|sms|whatsapp|webchat`; `voice` and `internal` share one 422. Seeder match key is `(channel, site_id)`. S26-06.
 - **D-AI-20 — Auto-lead capture is a company flag, default off.** `config('communications.auto_lead_capture')`. **Not built yet** (S26-07b).
 - **D-AI-21 — Auto-captured leads extend `contacts.source`; there is no `contacts.origin` column.** `App\Enums\ContactSource` today has one case, `ai_agent`. S26-07b adds `inbound_auto` to that enum so a contact has exactly one answer to "where did this person come from". The `AllowlistedParent::resolve()` / `CrmCreateDealTool` predicate stays `source === ContactSource::AiAgent`. That branch only runs when `$principal->contactId === null`, so it is a same-conversation ownership check standing in for a principal that has no contact yet — not a provenance lookup. Widening it to `inbound_auto` would let an anonymous conversation attach writes to a lead some other conversation captured (invariant 56). Auto-capture never reaches this branch: the S26-07b listener creates the contact and then builds `AgentPrincipal::channelAsserted($contact->id, …)`. Anonymous principal + `inbound_auto` contact stays `denied: ownership`.
+- **D-AI-22 — One customer-facing agent (`concierge`).** `SalesAgentDefinition`
+  and `SupportAgentDefinition` are merged into `ConciergeAgentDefinition`
+  holding the union of both tool surfaces. The split could not route: D-AI-19
+  allows one agent per `(channel, site)`, so `eligible()` could only subtract
+  from `audience`, and the seeded email binding dropped every prospect. The
+  safety property that justified the split (sales lacks billing tools) was
+  gate 1 of nine, and gate 3 already required `verified` for all five tenant
+  tools. The role paragraph branches on verification so an unverified caller
+  is not told the account tools exist. Both legacy definitions stay
+  registered forever — `AiAgent::definition()` resolves them for historical
+  conversations and `agent_conversations.ai_agent_id` is `restrictOnDelete`.
+- **D-AI-23 — Verification is a conversation-scoped OTP over an existing
+  channel.** `contact_verifications`; code hashed at rest; destination
+  resolved server-side from `contact_channels`, never supplied; delivery via
+  `SmsSender` / `EmailSender` with a transactional `SendContext`; TTL 10
+  minutes, 5 attempts, 3 issues per contact per hour. Promotion runs through
+  `PrincipalPromotion`. Not inherited across conversations. No tenant
+  credential, session, or portal is created — this verifies a conversation,
+  not a login.
 
 ## Blocking for S23
 
@@ -95,8 +114,13 @@
   question. `contacts:redact` must cover `agent_conversation_messages`,
   `agent_tool_invocations`, `agent_handoffs.detail`, and
   `agent_pending_actions.payload.body`. `chat_sessions.visitor_meta` arrives
-  with S26-07c. `config/redaction.php` covers `activity_log` and
-  `system_events` only. S26-07 now writes real inbound text onto those
+  with S26-07c. `contact_verifications` joins that list: the row holds a
+  contact id, a channel id and a code hash — no plaintext PII, but it is a
+  record that a named person was asked to prove identity, and it belongs in
+  the redaction scope with the rest. `config/redaction.php` covers
+  `activity_log` and `system_events` only; it carries a comment naming
+  `contact_verifications` but `contacts:redact` does not touch the table.
+  S26-07 now writes real inbound text onto those
   tables, so the gap is no longer demo-only. Extend `config/redaction.php`
   before, not after, promoting a provider binding to `auto`. **Retention:**
   agent transcripts are evidence in a lien or auction dispute. They retain on
@@ -127,7 +151,6 @@
   Agent `AgentChannel::Webchat` is a profile today; the comms `Channel` enum
   has no `webchat` case yet.
 - RAG / vector retrieval for agent knowledge (D-AI-5).
-- `contact_verifications` / OTP — the verification level is a demo toggle in S22. `channel_asserted` from a self-stated identity is acceptable only because that level exposes nothing private (`billing.*`, `contract.summary`, `access.status` all require `verified`) and its only writes are `crm.create_note` (support agent only) and `sales.create_reservation` in propose mode. Lowering any tool's floor to `channel_asserted` must re-examine this path. OTP verification for webchat is what closes it.
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
 
@@ -151,14 +174,14 @@
 | Task reminders | Delivery channel undecided |
 | GDPR | Note/comment redaction approach (activity log redaction decided above) |
 | Autonomy beyond `suggest` | `review` (delayed auto-send with a cancel window) and `auto` (allowlisted intents only) are S23+. Gate `auto` on measured containment, never on a date. |
-| Agent → `awaiting_signature` | S14's e-sign path makes offer → accept → envelope reachable, and S14-00's no-pre-signature-deposit rule means a sales agent could reach signature but never money. Decide before tool boundaries harden. |
+| Agent → `awaiting_signature` | S14's e-sign path makes offer → accept → envelope reachable, and S14-00's no-pre-signature-deposit rule means a concierge agent could reach signature but never money. Decide before tool boundaries harden. |
 | Escalation SLA ownership | An agent that hands off at 02:00 into an unwatched queue produces excellent containment metrics and a worse experience than the autoresponder it replaced. Product decision, not engineering. |
 | Agent performance Insights | Containment rate, handoff mix by reason, operator edit distance in `suggest` mode, first-response time, agent-sourced reservations, cost per conversation per currency. Tables are shaped for it; harvest principle applies (live bounded queries, no rollups). |
 | Copilot onto the shared runtime | Deliberately not done in S22. Separate, testable migration once the customer-facing path proves itself. |
 | Copilot `CreateOffer` / `CreateReservation` vs `App\Support\Leasing\` | S24-00 extracted HTTP offer/reservation/accept entry points. The two Copilot tools remain duplicate implementations, held by the allowlist in `LeasingEntryPointParityTest`. S25 did not collapse them. Known divergences that survive: `CreateOffer` applies no custom attributes; `CreateReservation` accepts a model-supplied `expires_at` and `unit_id`. Invariant 54b and `docs/AGENTS.md` point here; this is the one home for the exception. |
 | Agent authorization model | `agent_write_policies` governs what agents may write; `roles` / `role_permissions` / `employee_roles` governs what people may write. Two authorization systems will drift silently. Settle whether an agent holds a real grant with a real site scope — with write policy reduced to mode and quota — or whether the parallel table is the deliberate answer. Not settled in S25; recorded so it is settled deliberately rather than by accretion. Detail: `14-ai-agents.md` Known gaps. |
 | Agent-initiated sending | An agent may create an offer (D-AI-10) and may not send it. Consent, suppression, and threading consequences of agent sending are a separate decision. Turns invariant 57 (trace, not message store) into a live question. |
-| Support-agent write tools | S24 is sales only. Support keeps `crm.create_task` / `crm.create_note`; it does not create Offer or Reservation. |
+| Concierge Offer / Reservation writes | Shipped on the live `concierge` surface under write policy (offer `commit`, reservation `propose`). The archived `support` instance never held those tools; its historical conversations still resolve that definition. |
 | `unit_holds.created_by` as a morph | Today an agent-created hold stamps `created_by` null and carries the agent in properties / reservation `ai_agent_id`. Widening to a morph so an agent can be stamped directly is a schema change, not a given. |
 | Playbook payment links | Debt playbook emails may reference balance / a pay-link *placeholder*; auto-creating a payment request per enrolment is an **S10-era action**, not S09. |
 | Multi-playbook debt routing | v1 rejects overlapping active debt playbooks for the same site-filter coverage (empty `site_ids` = all sites). Richer priority / routing across overlapping site sets deferred. |
@@ -193,7 +216,6 @@
 | Per-provider prompt caching | S26-05 bounds what is *sent* to the model (`ContextWindow`). Provider cache flags (Anthropic `cache_control`, OpenAI cached input prefixes) are a separate follow-up: they need a per-adapter mapping, they change billing (`cached_input_tokens` is already recorded), and they must not become a second, provider-shaped copy of the eviction rules. Recorded so S26-05 does not grow a caching layer. **S27-01** moved `identityBlock` / `disclosureBlock` to the end of `systemPrompt()` so the stable prefix is what a provider would cache. That is necessary but not sufficient: `LaravelAiDriver::toSdkMessages()` extracts the system prompt into a plain `$instructions` string (no `SystemMessage`, no `cache_control`). That is laravel/ai issue #119; do not fork the SDK this sprint. Independently, the stable prefix is ~2700 characters / ~677 tokens under `ContextWindow`'s 4-chars-per-token estimator — below Anthropic's 1024-token Sonnet floor. Deployment `ai_usage_events.cached_input_tokens` numbers belong in the S27-01 PR, not here; a local `--live` run cannot measure the pathology (one frozen date, one site). |
 | Per-site agent send window | S26-07 evaluates `outside_hours` against the company-wide `GeneralSettings::$sendWindowStart` → `$sendWindowEnd` via `SiteClock`. Site-scoped bindings use that site's timezone. There is no company timezone (`docs/02-facility.md` forbids adding one): a company-scoped binding evaluates in the timezone of the site resolved by `InboundSiteContext` when there is one, else `config('app.timezone')`. A per-site override of that window is unset. Site access hours (`facility.site_info`) are when renters can reach a unit — they are not office hours and must not be reused for this. |
 | Missed-call SMS follow-up | An inbound call that the agent cannot answer (call channel is skipped `ignored`) does not trigger an SMS. Whether a missed call should enqueue a follow-up SMS on a live SMS binding is unset. |
-| Cross-agent handoff | D-AI-19 is one agent per `(channel, site)`. A sales conversation that becomes a tenant, or a support conversation that is a prospect, skips `agent_ineligible` and stays in the Inbox. Routing between sales and support inside one thread is deferred. |
 | Tool calls inside a guard redraft | S26-10 grounding redrafts on a single unlicensed date or amount tell the model to drop the value or ask the customer. `AgentRuntime::applyOutboundGuards()` converts a redraft that returns tool calls into a block, so a redraft cannot call `calendar.resolve`. Hoisting the guard/redraft loop into the main tool loop in `turn()` would let it; worth doing if traces show redrafts routinely needing a tool, not before. |
 
 ## Active WIP

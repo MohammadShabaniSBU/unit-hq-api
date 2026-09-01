@@ -5,17 +5,17 @@ Kill-switch second half. `AGENTS_ENABLED=false` stops new turns; this undoes age
 Not a route. Not a panel button. Operator runbook only.
 
 ```bash
-php artisan agents:recall --agent=sales --since=1h
-php artisan agents:recall --agent=sales --since=1h --dry-run=false
-php artisan agents:recall --agent=sales --since=30m --offers
-php artisan agents:recall --agent=sales --since=2d --reservations
+php artisan agents:recall --agent=concierge --since=1h
+php artisan agents:recall --agent=concierge --since=1h --dry-run=false
+php artisan agents:recall --agent=concierge --since=30m --offers
+php artisan agents:recall --agent=concierge --since=2d --reservations
 ```
 
 ## Flags
 
 | Flag | Default | Notes |
 |---|---|---|
-| `--agent` | (required) | `ai_agents.key` (`sales`, `support`, …) |
+| `--agent` | (required) | `ai_agents.key` (`concierge`, or an archived `sales` / `support` key for historical rows) |
 | `--since` | `1h` | Duration: `30m`, `1h`, `2d` (`s` / `m` / `h` / `d`) |
 | `--dry-run` | `true` | Preview only. Commit requires `--dry-run=false` |
 | `--offers` | off | If neither `--offers` nor `--reservations` is passed, both run |
@@ -38,4 +38,4 @@ Each mutated row gets a core activity event (`offer.expired` / `reservation.canc
 
 ## When to use it
 
-A looping sales agent wrote bad offers or held units. Flip `AGENTS_ENABLED=false` first so new turns stop, then dry-run this command, then `--dry-run=false` once the plan looks right.
+A looping concierge agent wrote bad offers or held units. Flip `AGENTS_ENABLED=false` first so new turns stop, then dry-run this command, then `--dry-run=false` once the plan looks right.

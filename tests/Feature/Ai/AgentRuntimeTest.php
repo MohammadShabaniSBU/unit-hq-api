@@ -10,6 +10,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\AgentGuardrailEvent;
 use App\Models\AgentHandoff;
 use App\Models\AgentPendingAction;
+use App\Models\AgentPrincipalPromotion;
 use App\Models\AgentToolInvocation;
 use App\Models\AgentWritePolicy;
 use App\Models\AiAgent;
@@ -49,6 +50,7 @@ use App\Support\Ai\Tools\FactBag;
 use App\Support\Ai\Tools\ToolError;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
+use App\Support\Ai\Trace\TraceAssembler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -1107,6 +1109,13 @@ class AgentRuntimeTest extends TestCase
         $this->assertSame('anonymous', $properties['from'] ?? null);
         $this->assertSame('channel_asserted', $properties['to'] ?? null);
         $this->assertSame($conversation->contact_id, $properties['contact_id'] ?? null);
+        $this->assertSame('contact_created', $properties['method'] ?? null);
+
+        $promotion = collect(TraceAssembler::for($conversation->fresh()))->firstWhere('kind', 'promotion');
+        $this->assertIsArray($promotion);
+        $this->assertSame('anonymous', $promotion['from'] ?? null);
+        $this->assertSame('channel_asserted', $promotion['to'] ?? null);
+        $this->assertSame('contact_created', $promotion['method'] ?? null);
     }
 
     #[Test]
@@ -1179,6 +1188,9 @@ class AgentRuntimeTest extends TestCase
         $this->assertSame($contact->id, $conversation->contact_id);
         $this->assertSame(0, Activity::query()
             ->where('description', 'agent.conversation.principal_promoted')
+            ->count());
+        $this->assertSame(0, AgentPrincipalPromotion::query()
+            ->where('agent_conversation_id', $conversation->id)
             ->count());
         $this->assertSame(ToolErrorCode::InvalidArguments->value, AgentToolInvocation::query()
             ->where('tool_key', 'crm.create_contact')

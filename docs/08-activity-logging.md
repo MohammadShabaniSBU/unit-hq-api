@@ -68,8 +68,20 @@ transcript. Properties never carry draft text.
 | Event | Subject | Properties |
 |---|---|---|
 | `agent.conversation.started` | `AgentConversation` | `agent_key`, `channel`, `origin`, `audience`, `verification_level` |
+| `agent.conversation.principal_promoted` | `AgentConversation` | `from`, `to`, `contact_id`, `method` (`otp` \| `contact_created`) |
 | `agent.handoff` | `AgentConversation` | `reason`, `trigger_source` |
 | `agent.guardrail.blocked` | `AgentConversation` | `guard`, `blocked_by` — **never the draft text** |
+
+A matching append-only `agent_principal_promotions` row (trace kind
+`promotion`) is written alongside `principal_promoted`. It is not an activity
+event.
+
+### Agent bindings and write-policy merge (Tier-3 `core`)
+
+| Event | Subject | Properties |
+|---|---|---|
+| `ai.binding.updated` | `AgentChannelBinding` | `channel`, `site_id`; the S27-02 repoint also carries `from_agent_key`, `to_agent_key` |
+| `ai.write_policy.merged` | `AgentWritePolicy` | `tool_key`, `from`, `to`. Strictest-wins merge onto `concierge`. Does not fire against seeded data (support held zero policies) |
 
 ### Copilot voice (Tier-3 `core`)
 

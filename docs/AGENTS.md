@@ -52,5 +52,9 @@ Before writing code, consult the doc that matches the task:
   row means the agent does not answer that channel (invariant 68).
 - A human-owned thread is silent for agents until an explicit click
   hand-back; never a model or inbound event (invariant 70).
+- Verification is earned inside a conversation and never asserted
+  (invariant 72). A principal reaches `verified` only by consuming an OTP
+  delivered to a channel already on the contact; demo origin is excluded
+  from every metric (invariant 59).
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

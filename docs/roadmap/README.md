@@ -38,9 +38,10 @@ All 24 sprints (S01–S24) have shipped and are tested, covering:
   playbooks, and real RBAC replaces the old `canEdit` stopgap
 - **Reporting & insights** — rent roll, occupancy measures, delinquency ageing, and a
   pluggable insights registry that later sprints' reports attach to
-- **Customer-facing AI** — sales agent creates Offer (`commit`) and Reservation (`propose`)
-  through `App\Support\Leasing\` under per-tool write policy; Contract stays operator-only
-  (invariant 54a / 54b)
+- **Customer-facing AI** — one concierge agent creates Offer (`commit`) and
+  Reservation (`propose`) through `App\Support\Leasing\` under per-tool write
+  policy; tenant tools require a conversation-scoped OTP. Contract stays
+  operator-only (invariant 54a / 54b / 72)
 
 Two real gaps remain:
 
@@ -103,9 +104,12 @@ configuration, not hard-coded law.
 
 Each phase leaves the product materially more sellable than the last.
 
-> **Status.** All 24 sprints below are shipped and tested, except where the exit criterion
-> says otherwise. S04 (Verifactu) is schema-only. SEPA Direct Debit was never scheduled as a
-> sprint at all — see §1 — and is not in the table below because no directory for it exists.
+> **Status.** Sprints S01–S24 below are shipped and tested, except where the
+> exit criterion says otherwise. S04 (Verifactu) is schema-only. S25–S27
+> (Phase H) shipped after the original 24-sprint horizon; S27's cassette
+> re-record (`agent:replay --live --record`) is still outstanding. SEPA Direct
+> Debit was never scheduled as a sprint at all — see §1 — and is not in the
+> table below because no directory for it exists.
 
 ### Phase A — Make it operable (S01–S02)
 
@@ -165,6 +169,14 @@ Each phase leaves the product materially more sellable than the last.
 | **S22** | Customer-facing AI agents | Runtime + `/demo/chat` demo harness; no channel connected |
 | **S23** | Voice copilot | Vocal Bridge voice on the employee copilot; click-only tool approvals (invariant 60) |
 | **S24** | Agent pipeline writes | Sales agent creates Offer (`commit`) and Reservation (`propose`) through `App\Support\Leasing\`; invariant 54 split |
+
+### Phase H — Agent correctness, channels, unification (S25–S27)
+
+| Sprint | Theme | Exit criterion |
+|---|---|---|
+| **S25** | Agent conversation correctness | Entity ids are licensed before dispatch (invariant 64); tool failures return a machine code + recovery; `facility.find_sites` resolves a site from a place |
+| **S26** | Agent channels | Inbound email / SMS / WhatsApp reach the runtime under an explicit `agent_channel_bindings` row (default off); replies go out through `AgentSend` |
+| **S27** | Unified customer agent | One `concierge` definition answers prospects and tenants on the same channel; `verified` is reachable via a conversation-scoped OTP. **Cassette re-record is outstanding** (`concierge/cassettes/` empty; two of the three new fixtures unwritten) — S27-01 deferred that pass until after S27-04, and it needs a live provider |
 
 Note: SEPA Direct Debit — mandates, pre-notification, Cuaderno 19-14/`pain.008` batch export,
 returns import — was planned in an earlier draft of this roadmap but was dropped before any

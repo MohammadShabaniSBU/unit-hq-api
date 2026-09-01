@@ -7,6 +7,7 @@ namespace App\Support\Ai\Trace;
 use App\Models\AgentConversation;
 use App\Models\AgentGuardrailEvent;
 use App\Models\AgentHandoff;
+use App\Models\AgentPrincipalPromotion;
 use App\Models\AgentToolInvocation;
 use App\Models\AiUsageEvent;
 use App\Support\Ai\AiUsageCost;
@@ -22,7 +23,13 @@ final class TraceAssembler
      */
     public static function for(AgentConversation $conversation): array
     {
-        $conversation->loadMissing(['toolInvocations.pendingAction', 'handoffs', 'guardrailEvents', 'usageEvents']);
+        $conversation->loadMissing([
+            'toolInvocations.pendingAction',
+            'handoffs',
+            'guardrailEvents',
+            'usageEvents',
+            'principalPromotions',
+        ]);
 
         $rows = [];
 
@@ -40,6 +47,10 @@ final class TraceAssembler
 
         foreach ($conversation->handoffs as $handoff) {
             $rows[] = self::handoffRow($handoff);
+        }
+
+        foreach ($conversation->principalPromotions as $promotion) {
+            $rows[] = self::promotionRow($promotion);
         }
 
         usort($rows, static function (array $a, array $b): int {
@@ -177,6 +188,33 @@ final class TraceAssembler
                 ? $handoff->trigger_source->value
                 : $handoff->trigger_source,
             'detail' => $handoff->detail,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function promotionRow(AgentPrincipalPromotion $promotion): array
+    {
+        return [
+            ...self::envelope(
+                $promotion->agent_conversation_id,
+                $promotion->turn,
+                $promotion->seq,
+                $promotion->agent_conversation_message_id,
+                $promotion->model,
+                $promotion->prompt_version,
+                $promotion->created_at,
+            ),
+            'kind' => 'promotion',
+            'id' => $promotion->id,
+            'from' => $promotion->from_level instanceof \BackedEnum
+                ? $promotion->from_level->value
+                : $promotion->from_level,
+            'to' => $promotion->to_level instanceof \BackedEnum
+                ? $promotion->to_level->value
+                : $promotion->to_level,
+            'method' => $promotion->method,
         ];
     }
 
