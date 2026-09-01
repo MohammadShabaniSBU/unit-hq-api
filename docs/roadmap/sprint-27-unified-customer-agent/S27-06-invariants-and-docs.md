@@ -83,6 +83,14 @@ The largest edit. Sections to rewrite:
 | **What is deliberately not built** | Remove `contact_verifications` / OTP from the list. Leave everything else, including customer-facing voice — that stays not-built until sprint 28. |
 | **Known gaps** | Gap 1 (AR-03) gains `contact_verifications`. Gap 2 (two authorization systems) is unchanged and explicitly not settled by the S27-03 policy merge. |
 
+S27-05 originally asked the write-policy page to surface an inline note on
+any row whose activity log carried `ai.write_policy.merged`. That
+affordance is dropped: S27-03's strictest-wins merge narrows nothing against
+seeded data (support holds zero write policies; sales policies carry
+forward unchanged), so the event never fires and the note can never render.
+The activity row remains the audit trail if a future non-seeded conflict
+does narrow a value.
+
 ## `AGENTS.md`
 
 No routing-table change (`14-ai-agents.md` is already the entry for agent

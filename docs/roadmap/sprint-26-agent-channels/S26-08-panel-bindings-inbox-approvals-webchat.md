@@ -21,7 +21,12 @@ they are already looking at, and hand a thread back to the agent.
   `?status=all` toggle.
 - Create/edit slideover. Site picker respects the employee's grants
   (company-wide sees all + "All sites"). Mode/audience selects with helper
-  text per option (i18n, en/es/fr).
+  text per option (i18n, en/es/fr). The agent field is a static label while
+  exactly one live (`!archived_at`) agent exists; render the select only
+  when `agents.filter(a => !a.archived_at).length > 1`. Archived agents
+  never appear as a binding target. S27-05 ships the read-only table and
+  carries this picker rule here — S27-03 keeps the schema multi-agent and
+  D-AI-19 is a per-`(channel, site)` uniqueness rule, not a one-agent rule.
 - Empty state copy makes the default explicit: *"No agent answers this
   channel until a binding exists."*
 - `useAgentBindings` / `useAgentBindingList` composables; types in

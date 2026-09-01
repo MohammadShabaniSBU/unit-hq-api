@@ -105,10 +105,24 @@ Extend `PrincipalPromotion` with a second path, `afterToolResult()` on
 - writes `agent_conversations.verification_level = verified`
 - logs `agent.conversation.principal_promoted` with `{from, to, contact_id,
   method: 'otp'}` through `AgentWriteAttribution`
+- emits a matching `TraceAssembler` row `kind => 'promotion'` carrying
+  `{from, to, method}` alongside the existing `tool` / `guardrail` /
+  `usage` / `handoff` kinds, on the same turn as the `identity.verify_code`
+  invocation that preceded it. S27-05 consumes this row; it does not
+  re-derive the promotion from the tool result.
 
 The existing anonymous → channel_asserted path is untouched. Update the
 docblock: the sentence about OTP being what closes the gap is now describing
 the code below it, not a future sprint.
+
+**SSE coupling with S27-05.** The panel's `AgentStreamEvent` union and
+`applyEvent` switch are exhaustive and end in `assertNever`. They currently
+carry no promotion member, on the assumption that this task emits the
+promotion only as a `TraceAssembler` row (picked up by `hydrate()` after the
+turn), not as an SSE event. **If this task emits an SSE event for the
+promotion, S27-05's union and switch must be extended in the same change.**
+An unhandled event throws at runtime on `/demo/chat`, which is the single
+surface this sprint is demonstrated on.
 
 ### Verification is not inherited
 
@@ -141,6 +155,9 @@ comment, because the shortcut is tempting and the failure is silent.
 - [ ] Consumed code cannot be reused.
 - [ ] On success the conversation's `verification_level` is `verified` and
       the next turn's `billing.balance` passes the verification gate.
+- [ ] `GET /api/agent-conversations/{id}` trace includes a `kind:
+      promotion` row with `{from, to, method}` on the same turn as the
+      successful `identity.verify_code` invocation.
 - [ ] A verified conversation does not verify a second conversation for the
       same contact.
 - [ ] `contact_verifications` added to `config/redaction.php` scope — see
