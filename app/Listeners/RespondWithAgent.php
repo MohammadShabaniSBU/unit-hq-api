@@ -32,6 +32,7 @@ use App\Support\Ai\ResolvedBinding;
 use App\Support\Communications\Channel;
 use App\Support\Communications\MessageDirection;
 use App\Support\Communications\MessageSource;
+use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -269,6 +270,19 @@ class RespondWithAgent implements ShouldQueue
             ->where('origin', AgentOrigin::Inbox)
             ->first();
         if ($existing !== null) {
+            if ($existing->ai_agent_id !== $binding->agent->id) {
+                $fromKey = $existing->aiAgent->key;
+                $existing->ai_agent_id = $binding->agent->id;
+                $existing->save();
+                $existing->unsetRelation('aiAgent');
+
+                RecordsActivity::core('ai.conversation.repointed', $existing, [
+                    'from_agent_key' => $fromKey,
+                    'to_agent_key' => $binding->agent->key,
+                    'message_count' => $existing->messages()->count(),
+                ], anonymous: true);
+            }
+
             return $existing;
         }
 

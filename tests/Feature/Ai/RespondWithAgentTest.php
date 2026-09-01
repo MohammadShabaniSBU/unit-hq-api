@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Ai;
 
 use App\Enums\ContractStatus;
+use App\Enums\LogChannel;
 use App\Events\InboundMessageReceived;
 use App\Listeners\RespondWithAgent;
 use App\Models\AgentChannelBinding;
@@ -12,6 +13,7 @@ use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\AgentHandoff;
 use App\Models\AgentPendingAction;
+use App\Models\AiAgent;
 use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Contract;
@@ -25,14 +27,17 @@ use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
+use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\BindingAudience;
 use App\Support\Ai\Enums\BindingMode;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\OutsideHoursPolicy;
 use App\Support\Ai\Enums\PendingActionStatus;
+use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Communications\Channel;
 use App\Support\Communications\MessageDirection;
 use App\Support\Communications\MessageSource;
@@ -43,6 +48,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Spatie\Activitylog\Models\Activity;
 use Tests\Support\CreatesCataloguePrices;
 use Tests\Support\SeedsCommunicationAccounts;
 use Tests\TestCase;
@@ -61,7 +67,7 @@ class RespondWithAgentTest extends TestCase
     {
         parent::setUp();
 
-        $this->travelTo('2026-08-26 10:00:00');
+        $this->travelTo('2026-09-01 10:00:00');
         config(['agents.inbound_debounce_seconds' => 0]);
 
         $this->driver = new FakeModelDriver;
@@ -152,16 +158,84 @@ class RespondWithAgentTest extends TestCase
     }
 
     #[Test]
-    public function sales_agent_skips_an_active_tenant(): void
+    public function concierge_answers_an_active_tenant(): void
     {
         $world = $this->smsWorld();
         $this->bindSms(BindingMode::Draft);
         $this->giveInForceContract($world['contact'], $world['site']);
+        $this->enqueueSafeReply();
 
         $this->handle($world['inbound']);
 
-        $this->assertSkipped($world['inbound'], 'agent_ineligible');
-        $this->assertSame(0, AgentConversation::query()->count());
+        $this->assertNull($this->skipFor($world['inbound']));
+        $this->assertSame(1, AgentPendingAction::query()->where('tool_key', 'channel.send')->count());
+    }
+
+    #[Test]
+    public function seeded_email_binding_answers_a_prospect(): void
+    {
+        $world = $this->emailWorld();
+        $this->enqueueSafeReply();
+
+        $this->handle($world['inbound']);
+
+        $this->assertNull($this->skipFor($world['inbound']));
+        $this->assertNotSame('agent_ineligible', $this->skipFor($world['inbound']));
+        $this->assertSame(1, AgentPendingAction::query()->where('tool_key', 'channel.send')->count());
+    }
+
+    #[Test]
+    public function seeded_email_binding_answers_a_tenant(): void
+    {
+        $world = $this->emailWorld();
+        $this->giveInForceContract($world['contact'], $world['site']);
+        $this->enqueueSafeReply();
+
+        $this->handle($world['inbound']);
+
+        $this->assertNull($this->skipFor($world['inbound']));
+        $this->assertSame(1, AgentPendingAction::query()->where('tool_key', 'channel.send')->count());
+    }
+
+    #[Test]
+    public function legacy_conversation_repoints_to_concierge_on_the_next_inbound(): void
+    {
+        $world = $this->smsWorld();
+        $this->bindSms(BindingMode::Draft);
+        $this->enqueueSafeReply();
+
+        $sales = AiAgent::query()->where('key', 'sales')->firstOrFail();
+        $sales->forceFill(['is_active' => false, 'archived_at' => now()])->save();
+        $concierge = AiAgent::query()->where('key', 'concierge')->firstOrFail();
+
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $sales->id,
+            'audience' => AgentAudience::Customer,
+            'origin' => AgentOrigin::Inbox,
+            'channel' => AgentChannel::Sms,
+            'contact_id' => $world['contact']->id,
+            'site_id' => $world['site']->id,
+            'verification_level' => VerificationLevel::ChannelAsserted,
+            'state' => ConversationState::Active,
+            'message_thread_id' => $world['thread']->id,
+        ]);
+
+        $this->handle($world['inbound']);
+
+        $this->assertNull($this->skipFor($world['inbound']));
+        $this->assertSame($concierge->id, $conversation->fresh()?->ai_agent_id);
+        $this->assertContains('pricing.quote', $this->driver->lastToolKeys);
+        $this->assertSame(1, AgentPendingAction::query()->where('tool_key', 'channel.send')->count());
+
+        $activity = Activity::query()
+            ->where('log_name', LogChannel::Core->value)
+            ->where('description', 'ai.conversation.repointed')
+            ->where('subject_id', $conversation->id)
+            ->first();
+        $this->assertNotNull($activity);
+        $this->assertSame('sales', $activity->properties->get('from_agent_key'));
+        $this->assertSame('concierge', $activity->properties->get('to_agent_key'));
+        $this->assertNull($activity->causer_id);
     }
 
     #[Test]
@@ -280,7 +354,7 @@ class RespondWithAgentTest extends TestCase
     {
         $world = $this->smsWorld();
         Setting::setGeneral(Setting::general()->with(sendWindowStart: '09:00', sendWindowEnd: '17:00'));
-        $this->travelTo('2026-08-26 18:00:00');
+        $this->travelTo('2026-09-01 18:00:00');
 
         $this->bindSms(BindingMode::Draft, outsideHours: OutsideHoursPolicy::Inbox);
         $this->handle($world['inbound']);
@@ -470,6 +544,39 @@ class RespondWithAgentTest extends TestCase
             $account,
             $customerPhone,
             '+15550001111',
+            'Do you have a unit near the centre?',
+        );
+
+        return compact('site', 'account', 'contact', 'thread', 'inbound');
+    }
+
+    /**
+     * @return array{site: Site, account: CommunicationAccount, contact: Contact, thread: MessageThread, inbound: Message}
+     */
+    private function emailWorld(
+        string $customerEmail = 'prospect@example.com',
+        ?Site $site = null,
+        ?CommunicationAccount $account = null,
+    ): array {
+        $site ??= Site::factory()->create(['timezone' => 'Europe/Madrid']);
+        $account ??= $this->seedEmailAccount($site);
+        $contact = Contact::factory()->create();
+        $this->givePrimaryEmail($contact, $customerEmail);
+
+        $thread = MessageThread::query()->create([
+            'contact_id' => $contact->id,
+            'channel' => Channel::Email,
+            'channel_key' => $customerEmail,
+            'last_message_at' => now(),
+            'last_inbound_at' => now(),
+            'unread_count' => 1,
+        ]);
+
+        $inbound = $this->writeInbound(
+            $thread,
+            $account,
+            $customerEmail,
+            'desk@example.com',
             'Do you have a unit near the centre?',
         );
 

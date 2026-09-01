@@ -26,31 +26,31 @@ class AgentChannelBindingSeederTest extends TestCase
         $this->assertSame(4, AgentChannelBinding::query()->count());
 
         $this->assertTrue($this->hasRow(
-            'sales',
+            'concierge',
             AgentChannel::Webchat,
             BindingMode::Auto,
             BindingAudience::All,
             OutsideHoursPolicy::Answer,
         ));
         $this->assertTrue($this->hasRow(
-            'sales',
+            'concierge',
             AgentChannel::Sms,
             BindingMode::Draft,
             BindingAudience::KnownContacts,
             OutsideHoursPolicy::Inbox,
         ));
         $this->assertTrue($this->hasRow(
-            'sales',
+            'concierge',
             AgentChannel::Whatsapp,
             BindingMode::Draft,
             BindingAudience::KnownContacts,
             OutsideHoursPolicy::Inbox,
         ));
         $this->assertTrue($this->hasRow(
-            'support',
+            'concierge',
             AgentChannel::Email,
             BindingMode::Draft,
-            BindingAudience::ExistingTenants,
+            BindingAudience::KnownContacts,
             OutsideHoursPolicy::Inbox,
         ));
     }

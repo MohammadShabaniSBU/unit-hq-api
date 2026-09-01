@@ -44,7 +44,7 @@ class AgentInboxDraftSeeder extends Seeder
             return;
         }
 
-        $sales = AiAgent::query()->where('key', 'sales')->first();
+        $concierge = AiAgent::query()->where('key', 'concierge')->first();
         $thread = MessageThread::query()
             ->where('channel', Channel::Sms)
             ->whereNotNull('contact_id')
@@ -52,7 +52,7 @@ class AgentInboxDraftSeeder extends Seeder
             ->first();
         $site = Site::query()->orderBy('id')->first();
 
-        if ($sales === null || $thread === null || $site === null) {
+        if ($concierge === null || $thread === null || $site === null) {
             return;
         }
 
@@ -62,7 +62,7 @@ class AgentInboxDraftSeeder extends Seeder
                 'origin' => AgentOrigin::Inbox,
             ],
             [
-                'ai_agent_id' => $sales->id,
+                'ai_agent_id' => $concierge->id,
                 'audience' => AgentAudience::Customer,
                 'channel' => AgentChannel::Sms,
                 'contact_id' => $thread->contact_id,
@@ -128,7 +128,7 @@ class AgentInboxDraftSeeder extends Seeder
         AgentPendingAction::query()->create([
             'agent_conversation_id' => $conversation->id,
             'agent_tool_invocation_id' => $invocation->id,
-            'ai_agent_id' => $sales->id,
+            'ai_agent_id' => $concierge->id,
             'site_id' => $site->id,
             'tool_key' => 'channel.send',
             'payload' => $payload,

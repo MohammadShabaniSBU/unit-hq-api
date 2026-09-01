@@ -18,25 +18,64 @@ class AiAgentSeederTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function seeds_support_and_sales(): void
+    public function seeds_support_sales_and_concierge(): void
     {
         $this->seed(AiAgentSeeder::class);
 
-        $this->assertSame(2, AiAgent::query()->count());
-        $this->assertTrue(AiAgent::query()->where('key', 'support')->where('name', 'Support Agent')->exists());
-        $this->assertTrue(AiAgent::query()->where('key', 'sales')->where('name', 'Sales Agent')->exists());
-        $this->assertSame(
-            config('agents.default_model'),
-            AiAgent::query()->where('key', 'support')->value('model'),
-        );
+        $this->assertSame(3, AiAgent::query()->count());
+
+        $support = AiAgent::query()->where('key', 'support')->firstOrFail();
+        $this->assertSame('Support Agent (archived)', $support->name);
+        $this->assertFalse($support->is_active);
+        $this->assertNotNull($support->archived_at);
+
+        $sales = AiAgent::query()->where('key', 'sales')->firstOrFail();
+        $this->assertSame('Sales Agent (archived)', $sales->name);
+        $this->assertFalse($sales->is_active);
+        $this->assertNotNull($sales->archived_at);
+
+        $concierge = AiAgent::query()->where('key', 'concierge')->firstOrFail();
+        $this->assertSame('Customer Agent', $concierge->name);
+        $this->assertTrue($concierge->is_active);
+        $this->assertNull($concierge->archived_at);
+        $this->assertSame(config('agents.default_model'), $support->model);
 
         $registry = app(AgentRegistry::class);
         $this->assertSame('support', $registry->get('support')->key());
         $this->assertSame('sales', $registry->get('sales')->key());
+        $this->assertSame('concierge', $registry->get('concierge')->key());
 
-        $sales = AiAgent::query()->where('key', 'sales')->firstOrFail();
+        $this->assertSalesPair($sales);
+        $this->assertSalesPair($concierge);
+    }
+
+    #[Test]
+    public function rerun_is_idempotent(): void
+    {
+        $this->seed(AiAgentSeeder::class);
+        $before = AiAgent::query()
+            ->orderBy('key')
+            ->get(['id', 'key', 'name', 'model', 'is_active', 'archived_at'])
+            ->toArray();
+
+        $this->seed(AiAgentSeeder::class);
+
+        $this->assertSame(
+            $before,
+            AiAgent::query()
+                ->orderBy('key')
+                ->get(['id', 'key', 'name', 'model', 'is_active', 'archived_at'])
+                ->toArray(),
+        );
+        $this->assertSame(3, AiAgent::query()->count());
+        $this->assertSame(2, AgentWritePolicy::query()->where('tool_key', 'sales.create_offer')->count());
+        $this->assertSame(2, AgentWritePolicy::query()->where('tool_key', 'sales.create_reservation')->count());
+    }
+
+    private function assertSalesPair(AiAgent $agent): void
+    {
         $policy = AgentWritePolicy::query()
-            ->where('ai_agent_id', $sales->id)
+            ->where('ai_agent_id', $agent->id)
             ->where('tool_key', 'sales.create_offer')
             ->first();
         $this->assertNotNull($policy);
@@ -45,26 +84,12 @@ class AiAgentSeederTest extends TestCase
         $this->assertSame(50, $policy->max_per_day);
 
         $hold = AgentWritePolicy::query()
-            ->where('ai_agent_id', $sales->id)
+            ->where('ai_agent_id', $agent->id)
             ->where('tool_key', 'sales.create_reservation')
             ->first();
         $this->assertNotNull($hold);
         $this->assertSame(WritePolicyMode::Propose, $hold->mode);
         $this->assertSame(1, $hold->max_per_conversation);
         $this->assertSame(20, $hold->max_per_day);
-    }
-
-    #[Test]
-    public function rerun_is_idempotent(): void
-    {
-        $this->seed(AiAgentSeeder::class);
-        $before = AiAgent::query()->orderBy('key')->get(['id', 'key', 'name', 'model'])->toArray();
-
-        $this->seed(AiAgentSeeder::class);
-
-        $this->assertSame($before, AiAgent::query()->orderBy('key')->get(['id', 'key', 'name', 'model'])->toArray());
-        $this->assertSame(2, AiAgent::query()->count());
-        $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'sales.create_offer')->count());
-        $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'sales.create_reservation')->count());
     }
 }

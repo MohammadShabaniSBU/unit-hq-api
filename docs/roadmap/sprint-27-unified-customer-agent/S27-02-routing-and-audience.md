@@ -72,6 +72,15 @@ A data migration, after S27-03 has inserted the `concierge` row:
 The migration must be idempotent — a second run is a no-op because the rows
 already point at `concierge`.
 
+Runtime note: the binding change is not merely tidy. `AgentRuntime::turn()`
+(lines 102–111) already throws `Agent is not bound to this channel.` when an
+inbox conversation's `ai_agent_id` is not the live binding's agent. After
+this migration, every pre-existing inbox conversation hard-fails on its next
+turn unless `RespondWithAgent::findOrCreateConversation()` repoints it first.
+That repoint is mandatory, not optional. Pending actions stay on the legacy
+agent; S27-03's merge must keep `sales.create_reservation` at no weaker than
+`propose` / 1 / 20 so those rows do not widen.
+
 ### Seeder
 
 `AgentChannelBindingSeeder` — same four rows, one agent, and email moves off

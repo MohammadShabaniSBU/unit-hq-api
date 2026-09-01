@@ -83,6 +83,22 @@ class AgentDefinitionCoverageTest extends TestCase
     }
 
     #[Test]
+    public function archived_seeded_rows_still_resolve_their_definition(): void
+    {
+        $this->seed(AiAgentSeeder::class);
+
+        $sales = AiAgent::query()->where('key', 'sales')->firstOrFail();
+        $support = AiAgent::query()->where('key', 'support')->firstOrFail();
+
+        $this->assertNotNull($sales->archived_at);
+        $this->assertNotNull($support->archived_at);
+        $this->assertFalse($sales->is_active);
+        $this->assertFalse($support->is_active);
+        $this->assertSame('sales', $sales->definition()->key());
+        $this->assertSame('support', $support->definition()->key());
+    }
+
+    #[Test]
     public function concierge_tool_keys_are_pinned(): void
     {
         $this->assertSame([

@@ -172,7 +172,7 @@ final class DemoScript
             '',
             '## Agent channel bindings',
             '',
-            'Four company-wide rows (no site override). Webchat is the only `auto` send — the sales agent replies in the turn. SMS and WhatsApp are `draft` for known contacts, so a reply lands in the Inbox as an approval, not a send. Support email is `draft` for existing tenants only. No provider channel is `auto` in the demo world; if WhatsApp or SMS replies appear as approvals, that is the binding, not a bug.',
+            'Four company-wide rows (no site override), all owned by the concierge agent. Webchat is the only `auto` send — the agent replies in the turn. SMS, WhatsApp, and email are `draft` for known contacts, so a reply lands in the Inbox as an approval, not a send. The demo now answers a prospect and a tenant on the same channel; that is the thing to show. No provider channel is `auto` in the demo world; if WhatsApp or SMS replies appear as approvals, that is the binding, not a bug.',
             '',
             '## Numbers that must match',
             '',

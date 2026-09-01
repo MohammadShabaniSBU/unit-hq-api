@@ -51,6 +51,16 @@ class AgentWritePolicyTest extends TestCase
     }
 
     #[Test]
+    public function mode_rank_orders_lowest_autonomy_first(): void
+    {
+        $this->assertSame(0, WritePolicyMode::Off->rank());
+        $this->assertSame(1, WritePolicyMode::Propose->rank());
+        $this->assertSame(2, WritePolicyMode::Commit->rank());
+        $this->assertTrue(WritePolicyMode::Off->rank() < WritePolicyMode::Propose->rank());
+        $this->assertTrue(WritePolicyMode::Propose->rank() < WritePolicyMode::Commit->rank());
+    }
+
+    #[Test]
     public function allows_is_false_only_for_off(): void
     {
         $off = new AgentWritePolicy(['mode' => WritePolicyMode::Off]);

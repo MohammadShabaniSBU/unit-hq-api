@@ -20,40 +20,39 @@ class AgentChannelBindingSeeder extends Seeder
 
     public function run(): void
     {
-        $sales = AiAgent::query()->where('key', 'sales')->first();
-        $support = AiAgent::query()->where('key', 'support')->first();
+        $concierge = AiAgent::query()->where('key', 'concierge')->first();
 
-        if ($sales === null || $support === null) {
+        if ($concierge === null) {
             throw new RuntimeException('AiAgentSeeder must run before AgentChannelBindingSeeder.');
         }
 
         $rows = [
             [
-                'ai_agent_id' => $sales->id,
+                'ai_agent_id' => $concierge->id,
                 'channel' => AgentChannel::Webchat,
                 'mode' => BindingMode::Auto,
                 'audience' => BindingAudience::All,
                 'outside_hours' => OutsideHoursPolicy::Answer,
             ],
             [
-                'ai_agent_id' => $sales->id,
+                'ai_agent_id' => $concierge->id,
                 'channel' => AgentChannel::Sms,
                 'mode' => BindingMode::Draft,
                 'audience' => BindingAudience::KnownContacts,
                 'outside_hours' => OutsideHoursPolicy::Inbox,
             ],
             [
-                'ai_agent_id' => $sales->id,
+                'ai_agent_id' => $concierge->id,
                 'channel' => AgentChannel::Whatsapp,
                 'mode' => BindingMode::Draft,
                 'audience' => BindingAudience::KnownContacts,
                 'outside_hours' => OutsideHoursPolicy::Inbox,
             ],
             [
-                'ai_agent_id' => $support->id,
+                'ai_agent_id' => $concierge->id,
                 'channel' => AgentChannel::Email,
                 'mode' => BindingMode::Draft,
-                'audience' => BindingAudience::ExistingTenants,
+                'audience' => BindingAudience::KnownContacts,
                 'outside_hours' => OutsideHoursPolicy::Inbox,
             ],
         ];

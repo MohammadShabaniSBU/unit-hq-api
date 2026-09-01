@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Drivers;
 
+use App\Support\Ai\Tools\AgentTool;
 use App\Support\Ai\Tools\ArgumentBag;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -63,11 +64,18 @@ final class FakeModelDriver implements ModelDriver
     /** @var list<array<string, mixed>> */
     public array $lastMessages = [];
 
+    /** @var list<string> */
+    public array $lastToolKeys = [];
+
     public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
     {
         $this->callCount++;
         $this->lastTransactionLevel = DB::transactionLevel();
         $this->lastMessages = $messages;
+        $this->lastToolKeys = [];
+        foreach ($tools as $tool) {
+            $this->lastToolKeys[] = $tool instanceof AgentTool ? $tool->key() : '';
+        }
 
         if ($this->queue === []) {
             throw new RuntimeException('FakeModelDriver queue is empty.');

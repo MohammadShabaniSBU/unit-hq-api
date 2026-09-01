@@ -539,6 +539,30 @@ class AgentConversationApiTest extends TestCase
     }
 
     #[Test]
+    public function archived_sales_conversation_lists_and_resolves_definition(): void
+    {
+        $sales = AiAgent::factory()->archived()->create([
+            'key' => 'sales',
+            'name' => 'Sales Agent (archived)',
+        ]);
+        $conversation = AgentConversation::factory()->create([
+            'ai_agent_id' => $sales->id,
+            'created_by_employee_id' => $this->owner->id,
+        ]);
+
+        Sanctum::actingAs($this->owner);
+
+        $this->getJson('/api/agent-conversations')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $conversation->id,
+                'agent_key' => 'sales',
+            ]);
+
+        $this->assertSame('sales', $conversation->fresh(['aiAgent'])->aiAgent->definition()->key());
+    }
+
+    #[Test]
     public function site_scoped_operator_only_lists_conversations_they_created(): void
     {
         $operator = Employee::factory()->withoutRoleGrant()->create();
