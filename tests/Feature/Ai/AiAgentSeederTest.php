@@ -47,6 +47,13 @@ class AiAgentSeederTest extends TestCase
 
         $this->assertSalesPair($sales);
         $this->assertSalesPair($concierge);
+        $this->assertRequestCodePolicy($concierge);
+        $this->assertNull(
+            AgentWritePolicy::query()
+                ->where('ai_agent_id', $sales->id)
+                ->where('tool_key', 'identity.request_code')
+                ->first(),
+        );
     }
 
     #[Test]
@@ -70,6 +77,7 @@ class AiAgentSeederTest extends TestCase
         $this->assertSame(3, AiAgent::query()->count());
         $this->assertSame(2, AgentWritePolicy::query()->where('tool_key', 'sales.create_offer')->count());
         $this->assertSame(2, AgentWritePolicy::query()->where('tool_key', 'sales.create_reservation')->count());
+        $this->assertSame(1, AgentWritePolicy::query()->where('tool_key', 'identity.request_code')->count());
     }
 
     private function assertSalesPair(AiAgent $agent): void
@@ -91,5 +99,17 @@ class AiAgentSeederTest extends TestCase
         $this->assertSame(WritePolicyMode::Propose, $hold->mode);
         $this->assertSame(1, $hold->max_per_conversation);
         $this->assertSame(20, $hold->max_per_day);
+    }
+
+    private function assertRequestCodePolicy(AiAgent $agent): void
+    {
+        $policy = AgentWritePolicy::query()
+            ->where('ai_agent_id', $agent->id)
+            ->where('tool_key', 'identity.request_code')
+            ->first();
+        $this->assertNotNull($policy);
+        $this->assertSame(WritePolicyMode::Commit, $policy->mode);
+        $this->assertSame(3, $policy->max_per_conversation);
+        $this->assertSame(10, $policy->max_per_day);
     }
 }

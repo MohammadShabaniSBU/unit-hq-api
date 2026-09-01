@@ -41,4 +41,11 @@ return [
         'max_history_chars' => (int) env('AGENTS_CONTEXT_MAX_HISTORY_CHARS', 6_000),
     ],
 
+    'verification' => [
+        'ttl_minutes' => 10,
+        'code_length' => 6,
+        'max_attempts' => 5,
+        'max_issued_per_hour' => 3,
+    ],
+
 ];

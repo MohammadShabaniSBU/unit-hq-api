@@ -115,6 +115,8 @@ class AgentDefinitionCoverageTest extends TestCase
             'crm.create_contact',
             'crm.create_deal',
             'crm.create_task',
+            'identity.request_code',
+            'identity.verify_code',
             'contract.summary',
             'billing.balance',
             'billing.next_charge',

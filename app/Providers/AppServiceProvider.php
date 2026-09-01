@@ -72,6 +72,8 @@ use App\Support\Ai\Tools\FacilityAvailabilityTool;
 use App\Support\Ai\Tools\FacilityFindSitesTool;
 use App\Support\Ai\Tools\FacilitySiteInfoTool;
 use App\Support\Ai\Tools\FacilitySizeGuideTool;
+use App\Support\Ai\Tools\IdentityRequestCodeTool;
+use App\Support\Ai\Tools\IdentityVerifyCodeTool;
 use App\Support\Ai\Tools\KbFaqLookupTool;
 use App\Support\Ai\Tools\PricingDiscountsTool;
 use App\Support\Ai\Tools\PricingQuoteTool;
@@ -148,6 +150,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new BillingNextChargeTool);
             $registry->register(new BillingInvoicesTool);
             $registry->register(new AccessStatusTool);
+            $registry->register(new IdentityRequestCodeTool);
+            $registry->register(new IdentityVerifyCodeTool);
             $registry->register(new KbFaqLookupTool);
             $registry->register(new EscalateTool);
             $registry->register(new ChannelSendTool);

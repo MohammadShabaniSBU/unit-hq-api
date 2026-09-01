@@ -254,6 +254,9 @@ class AgentConversationController extends Controller
                 : VerificationLevel::from((string) $submitted);
         }
 
+        // Verification is earned inside a conversation and never inherited.
+        // A prior verified conversation for this contact must not be looked
+        // up here — the shortcut is tempting and the failure is silent.
         return $contactId !== null
             ? VerificationLevel::ChannelAsserted
             : VerificationLevel::Anonymous;

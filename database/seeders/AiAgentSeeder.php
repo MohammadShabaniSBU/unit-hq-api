@@ -87,6 +87,14 @@ class AiAgentSeeder extends Seeder
                 'max_per_day' => 20,
             ],
         );
+        $concierge->writePolicies()->updateOrCreate(
+            ['tool_key' => 'identity.request_code'],
+            [
+                'mode' => WritePolicyMode::Commit,
+                'max_per_conversation' => 3,
+                'max_per_day' => 10,
+            ],
+        );
 
         $this->call(AgentChannelBindingSeeder::class);
     }

@@ -7,6 +7,8 @@ namespace Tests\Support\Ai;
 use App\Enums\ContactSource;
 use App\Enums\DealStatus;
 use App\Models\Contact;
+use App\Models\ContactChannel;
+use App\Models\ContactVerification;
 use App\Models\Contract;
 use App\Models\Country;
 use App\Models\Deal;
@@ -23,6 +25,7 @@ use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\HandoffReason as AgentHandoffReason;
 use Tests\Support\CreatesCataloguePrices;
+use Tests\Support\SeedsCommunicationAccounts;
 
 /**
  * One seeded world and per-tool arguments for ToolResultContractTest.
@@ -38,6 +41,7 @@ final class RegistryFixtures
 {
     use CreatesCataloguePrices;
     use DispatchesAgentTools;
+    use SeedsCommunicationAccounts;
 
     public Site $site;
 
@@ -52,6 +56,8 @@ final class RegistryFixtures
     public Contract $contract;
 
     public Employee $employee;
+
+    public ContactChannel $emailChannel;
 
     public function seed(): void
     {
@@ -94,6 +100,9 @@ final class RegistryFixtures
             'first_name' => 'Ana',
             'last_name' => 'Ruiz',
         ]);
+        $this->fakeCommunicationProviders();
+        $this->seedEmailAccount($this->site);
+        $this->emailChannel = $this->givePrimaryEmail($this->contact, 'ana@example.com');
         $this->deal = Deal::factory()->create([
             'contact_id' => $this->contact->id,
             'site_id' => $this->site->id,
@@ -166,11 +175,13 @@ final class RegistryFixtures
                 'related_to_type' => 'contact',
                 'related_to_id' => $this->contact->id,
             ], [$this->contact]),
-            'crm.create_note' => $this->support($asserted, [
+            'crm.create_note' => $this->support($verified, [
                 'content' => 'Called the prospect.',
                 'related_to_type' => 'contact',
                 'related_to_id' => $this->contact->id,
             ], [$this->contact]),
+            'identity.request_code' => $this->concierge($asserted, ['channel_type' => 'email']),
+            'identity.verify_code' => $this->verifyCodeFixture($asserted),
             'contract.summary' => $this->support($verified, ['contract_id' => $this->contract->id]),
             'billing.balance' => $this->support($verified, []),
             'billing.next_charge' => $this->support($verified, ['contract_id' => $this->contract->id]),
@@ -227,5 +238,43 @@ final class RegistryFixtures
             'arguments' => $arguments,
             'ctx' => $ctx,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @param  list<object>  $licenceModels
+     * @return Fixture
+     */
+    private function concierge(AgentPrincipal $principal, array $arguments, array $licenceModels = []): array
+    {
+        $ctx = $this->writeContext($principal, 'concierge', $this->employee);
+        if ($licenceModels !== []) {
+            $this->licenseModels($ctx, ...$licenceModels);
+        }
+
+        return [
+            'agent' => 'concierge',
+            'principal' => $principal,
+            'arguments' => $arguments,
+            'ctx' => $ctx,
+        ];
+    }
+
+    /**
+     * @return Fixture
+     */
+    private function verifyCodeFixture(AgentPrincipal $principal): array
+    {
+        ContactVerification::query()->create([
+            'contact_id' => $this->contact->id,
+            'contact_channel_id' => $this->emailChannel->id,
+            'site_id' => $this->site->id,
+            'code_hash' => hash('sha256', '123456'),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(10),
+            'created_at' => now(),
+        ]);
+
+        return $this->concierge($principal, ['code' => '123456']);
     }
 }

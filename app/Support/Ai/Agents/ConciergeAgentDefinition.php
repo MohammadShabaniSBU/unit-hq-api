@@ -34,7 +34,11 @@ final class ConciergeAgentDefinition implements AgentDefinition
             'crm.create_contact',
             'crm.create_deal',
             'crm.create_task',
-            // TODO(S27-04): crm.create_note returns here at VerificationLevel::Verified
+            // crm.create_note is an operator-conversation tool: a customer
+            // conversation has no created_by_employee_id, so a note it wrote
+            // could not be attributed to anyone. Stay off this list.
+            'identity.request_code',
+            'identity.verify_code',
             'contract.summary',
             'billing.balance',
             'billing.next_charge',

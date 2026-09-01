@@ -13,17 +13,20 @@ use App\Support\Ai\Tools\AgentWriteAttribution;
 use App\Support\Ai\Tools\ToolResult;
 
 /**
- * Mid-turn upgrade of an anonymous customer principal after crm.create_contact.
+ * Mid-turn upgrade of a customer principal.
  *
- * Promotion also fires when crm.create_contact dedupe-matches an existing
- * contact, so a webchat visitor who types an existing tenant's email becomes
- * channel_asserted for that contact. channel_asserted from a self-stated
- * identity is acceptable only because that level exposes nothing private
- * (billing.*, contract.summary, access.status all require verified) and its
- * only writes are crm.create_note (support agent only) and
- * sales.create_reservation in propose mode. Lowering any tool's floor to
- * channel_asserted must re-examine this path. OTP verification for webchat
- * is what closes it.
+ * crm.create_contact (including a dedupe match) promotes anonymous →
+ * channel_asserted. A self-stated identity at that level is acceptable
+ * only because that level exposes nothing private (billing.*,
+ * contract.summary, access.status all require verified) and its only write
+ * is sales.create_reservation in propose mode. crm.create_note used to be
+ * listed here; it never landed on inbound traffic because
+ * AgentWriteAttribution::requireEmployeeId() blocked it independently of
+ * the verification gate, and its floor is now verified. Lowering any
+ * tool's floor to channel_asserted must re-examine this path.
+ *
+ * identity.verify_code with an ok result promotes channel_asserted →
+ * verified. OTP verification for webchat is what closes the gap.
  */
 final class PrincipalPromotion
 {
@@ -34,6 +37,10 @@ final class PrincipalPromotion
         ToolResult $result,
         ?AgentContext $ctx,
     ): ?AgentPrincipal {
+        if ($toolKey === 'identity.verify_code') {
+            return self::promoteVerified($conversation, $principal, $result, $ctx);
+        }
+
         if ($toolKey !== 'crm.create_contact') {
             return null;
         }
@@ -67,6 +74,45 @@ final class PrincipalPromotion
                 'from' => $from->value,
                 'to' => VerificationLevel::ChannelAsserted->value,
                 'contact_id' => $result->resultId,
+            ],
+        );
+
+        return $conversation->principal();
+    }
+
+    private static function promoteVerified(
+        AgentConversation $conversation,
+        AgentPrincipal $principal,
+        ToolResult $result,
+        ?AgentContext $ctx,
+    ): ?AgentPrincipal {
+        if ($result->status !== ToolInvocationStatus::Ok) {
+            return null;
+        }
+        if ($principal->audience !== AgentAudience::Customer) {
+            return null;
+        }
+        if ($principal->contactId === null || $conversation->contact_id !== $principal->contactId) {
+            return null;
+        }
+        if ($principal->verification->satisfies(VerificationLevel::Verified)) {
+            return null;
+        }
+
+        $from = $principal->verification;
+        $conversation->verification_level = VerificationLevel::Verified;
+        $conversation->save();
+
+        AgentWriteAttribution::log(
+            LogChannel::Ai,
+            'agent.conversation.principal_promoted',
+            $conversation,
+            $ctx,
+            [
+                'from' => $from->value,
+                'to' => VerificationLevel::Verified->value,
+                'contact_id' => $principal->contactId,
+                'method' => 'otp',
             ],
         );
 

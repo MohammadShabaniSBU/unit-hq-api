@@ -16,11 +16,11 @@ use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
  * is restrictOnDelete, so removing this class 500s the Inbox conversation
  * list on historical support rows.
  *
- * Until S27-04 returns crm.create_note to the concierge at
- * VerificationLevel::Verified, this is the only definition claiming that
- * tool. AgentToolCoverageTest::every_registered_tool_has_schema_description_and_appears_in_a_definition
- * builds $claimed from AgentRegistry::all(), so a premature deregistration
- * turns that test red.
+ * crm.create_note stays claimed here. A customer conversation has no
+ * operator attribution (created_by_employee_id is set only on origin=demo),
+ * so the tool cannot succeed on inbound traffic. It is an operator-
+ * conversation tool, not a concierge tool. AgentToolCoverageTest builds
+ * $claimed from AgentRegistry::all(), so this class must keep listing it.
  */
 final class SupportAgentDefinition implements AgentDefinition
 {

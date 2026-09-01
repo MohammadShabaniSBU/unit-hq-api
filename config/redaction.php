@@ -36,6 +36,13 @@ return [
     | every deal belonging to it (current and superseded). Rows are kept;
     | content is destroyed. See RedactContactCommand — not a property_keys path.
     |
+    | contact_verifications (S27-04 / AR-03): the table holds a contact id, a
+    | channel id and a code hash — no plaintext PII in JSON properties, so it
+    | is not a property_keys entry. It is still a record that a named person
+    | was asked to prove identity and belongs in the redaction scope with the
+    | rest of the agent tables. AR-03 stays blocking before any provider
+    | binding goes to auto.
+    |
     */
 
     'property_keys' => [

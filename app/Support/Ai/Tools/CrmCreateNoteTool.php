@@ -48,7 +48,7 @@ final class CrmCreateNoteTool implements AgentTool
 
     public function requiredVerification(): VerificationLevel
     {
-        return VerificationLevel::ChannelAsserted;
+        return VerificationLevel::Verified;
     }
 
     public function isWrite(): bool

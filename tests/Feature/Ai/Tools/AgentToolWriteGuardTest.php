@@ -28,14 +28,18 @@ class AgentToolWriteGuardTest extends TestCase
         $this->startWriteGuard();
 
         foreach (app(ToolRegistry::class)->all() as $key => $tool) {
-            $agent = in_array($key, [
-                'contract.summary',
-                'billing.balance',
-                'billing.next_charge',
-                'billing.invoices',
-                'access.status',
-                'crm.create_note',
-            ], true) ? 'support' : 'sales';
+            $agent = match (true) {
+                str_starts_with($key, 'identity.') => 'concierge',
+                in_array($key, [
+                    'contract.summary',
+                    'billing.balance',
+                    'billing.next_charge',
+                    'billing.invoices',
+                    'access.status',
+                    'crm.create_note',
+                ], true) => 'support',
+                default => 'sales',
+            };
 
             $this->dispatchTool($agent, $key, $principal, $this->minimalArgs($key));
         }
@@ -53,6 +57,7 @@ class AgentToolWriteGuardTest extends TestCase
                 'billing.next_charge',
                 'billing.invoices',
                 'access.status',
+                'crm.create_note',
             ],
         ];
 
