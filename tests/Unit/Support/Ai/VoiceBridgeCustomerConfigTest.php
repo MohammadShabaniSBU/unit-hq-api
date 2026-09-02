@@ -41,4 +41,14 @@ class VoiceBridgeCustomerConfigTest extends TestCase
         $this->assertStringContainsString('Do not infer locale', $payload['greeting_locale_note']);
         $this->assertStringContainsString('site default locale', $payload['agent_prompt_additions'][0]);
     }
+
+    #[Test]
+    public function endpoint_is_a2a_message_send_with_single_delivery(): void
+    {
+        $payload = VoiceBridgeCustomerConfig::payload();
+
+        $this->assertSame('a2a', $payload['endpoint']['protocol']);
+        $this->assertSame('message/send', $payload['endpoint']['a2a']['method']);
+        $this->assertSame('single', $payload['endpoint']['response_delivery']['mode']);
+    }
 }

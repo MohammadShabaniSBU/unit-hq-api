@@ -43,6 +43,16 @@ final class VoiceBridgeCustomerConfig
                 'language' => 'multi',
                 'session.max_call_duration_minutes' => 30,
             ],
+            'endpoint' => [
+                'protocol' => 'a2a',
+                'a2a' => [
+                    'method' => 'message/send',
+                ],
+                'response_delivery' => [
+                    'mode' => 'single',
+                ],
+                'protocol_note' => 'Use A2A message/send, not the flat HTTP contract and not message/stream. contextId is the session key: we originate one on the first turn if Vocal Bridge omits it, and they must echo it on later turns of the same call. We always return one complete Message; response_delivery.mode stays single.',
+            ],
         ];
     }
 

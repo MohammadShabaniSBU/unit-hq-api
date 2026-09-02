@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Ai\VoiceBridgeAuth;
 use App\Support\Ai\VoiceBridgeTurn;
+use App\Support\Ai\VoiceBridgeWireFormat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,6 +19,11 @@ class VoiceBridgeController extends Controller
             return $this->unauthorized();
         }
 
-        return response()->json(app(VoiceBridgeTurn::class)->handle($request, $token));
+        $inbound = VoiceBridgeWireFormat::parse($request);
+
+        return response()->json(VoiceBridgeWireFormat::respond(
+            $inbound,
+            app(VoiceBridgeTurn::class)->handle($inbound, $token),
+        ));
     }
 }

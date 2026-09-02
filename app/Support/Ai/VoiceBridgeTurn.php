@@ -27,7 +27,6 @@ use App\Support\Communications\ContactChannelMatcher;
 use App\Support\Communications\SiteLocale;
 use App\Support\Time\SiteClock;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Throwable;
@@ -49,7 +48,7 @@ final class VoiceBridgeTurn
     /**
      * @return array{text: string, transfer: bool, destination?: string}
      */
-    public function handle(Request $request, VoiceBridgeToken $token): array
+    public function handle(VoiceBridgeInboundTurn $inbound, VoiceBridgeToken $token): array
     {
         $site = Site::query()->find($token->site_id);
         $key = 'voice-bridge|'.$token->id;
@@ -63,10 +62,10 @@ final class VoiceBridgeTurn
 
         RateLimiter::hit($key, 60);
 
-        $query = $this->string($request, 'query');
-        $turnId = $this->string($request, 'turn_id', 'turnId');
-        $sessionId = $this->string($request, 'session_id', 'sessionId');
-        $callerNumber = $this->string($request, 'caller_number', 'from');
+        $query = $inbound->query;
+        $turnId = $inbound->turnId;
+        $sessionId = $inbound->sessionId;
+        $callerNumber = $inbound->callerNumber;
 
         if ($query === null || $turnId === null || $sessionId === null) {
             return $this->handoffBody($site);
@@ -529,22 +528,6 @@ final class VoiceBridgeTurn
         }
 
         return $this->bodyFromTurn($row);
-    }
-
-    private function string(Request $request, string $snake, ?string $camel = null): ?string
-    {
-        $value = $request->input($snake);
-        if ((! is_string($value) || $value === '') && $camel !== null) {
-            $value = $request->input($camel);
-        }
-
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $trimmed = trim($value);
-
-        return $trimmed !== '' ? $trimmed : null;
     }
 
     private function wasRedrafted(AgentTurn $turn): bool

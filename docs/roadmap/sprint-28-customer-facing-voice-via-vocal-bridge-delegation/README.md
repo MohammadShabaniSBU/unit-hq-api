@@ -95,7 +95,7 @@ here and re-checked before launch rather than trusted to memory.
 | Setting | Value | Why it matters |
 |---|---|---|
 | AI agent endpoint URL | the S28-01 bridge URL, per number | |
-| Protocol | HTTP | the A2A option buys nothing here |
+| Protocol | **A2A (`message/send`)** | Vocal Bridge's flat HTTP contract does not send `session_id`. A2A `contextId` is the session key that keeps a multi-step call on one `voice_sessions` / `agent_conversations` row. Do not use `message/stream` — we always answer with one complete Message, so `response_delivery.mode` stays `single`. Rollback is flipping the dashboard dropdown back to HTTP; the endpoint auto-detects both. |
 | **Response mode** | **Verbatim** | the sprint's load-bearing setting — see below |
 | **External TTS** | **on** | verbatim is best-effort on the native voice, guaranteed only with external TTS |
 | Custom header | the HMAC header from S28-01 | the endpoint is public; this is what authenticates it |

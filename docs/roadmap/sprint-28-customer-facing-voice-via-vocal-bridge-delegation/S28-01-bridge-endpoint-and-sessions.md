@@ -109,12 +109,43 @@ trace is worse than a caller hearing "let me put you through to someone".
 
 Introduces **D-AI-25** (S28-06).
 
+## Protocol: A2A `message/send` (revisited)
+
+S28-01 originally shipped the flat HTTP contract (`query` / `turn_id` /
+`session_id`). Vocal Bridge's hosted-endpoint HTTP body never includes
+`session_id` (confirmed on a live `vb debug` HTTP trace). Without it every
+turn transferred immediately and the multi-step agent was unusable.
+
+The endpoint now auto-detects both wire formats from the body
+(`jsonrpc` present → A2A, else HTTP). Vocal Bridge dashboard setting:
+
+- `endpoint.protocol` = `a2a`
+- `endpoint.a2a.method` = `message/send` (not `message/stream`)
+- `response_delivery.mode` = `single`
+
+Field mapping (A2A spec + Vocal Bridge CLI docs; a live A2A `vb debug`
+trace was not available before implementation — correct against one before
+launch if Vocal Bridge's client diverges):
+
+| Our field | HTTP | A2A |
+|---|---|---|
+| `query` | `query` | `params.message.parts[]` where `kind`/`type` is `text` |
+| `turn_id` | `turn_id` / `turnId` | `params.message.messageId` / `message_id` |
+| `session_id` | `session_id` / `sessionId` | `params.message.contextId` / `context_id`; we originate a UUID if omitted and return it on the response Message |
+| `caller_number` | `caller_number` / `from` | `params.metadata` or `params.message.metadata`: `caller_number`, `callerNumber`, `from`, `caller`, `phone` |
+| transfer signal | top-level `transfer` / `destination` | `result.metadata.transfer` / `result.metadata.destination` |
+
+The A2A response `result` **is** the Message (spec: `Task | Message`), not
+`{ message: … }`. Auth failures stay a flat 401. Every failure after auth
+is HTTP 200 with the canned handoff sentence inside the matching envelope
+— never a JSON-RPC `error` the foreground model can read aloud.
+
+`message/stream`, `tasks/get`, and `tasks/cancel` are not implemented.
+
 ## Out of scope
 
 - Minting Vocal Bridge access tokens. That is the copilot's
   `POST /api/copilot/voice/token` pattern and it is not needed here — the
   bridge calls us, we never call it.
-- The `a2a` protocol option. Use `http`; revisit only if Vocal Bridge's
-  agent-to-agent mode buys something the plain POST doesn't.
 - Streaming a partial answer back. Vocal Bridge waits for a complete
   response; partials are a Tier 2 concern.
