@@ -135,6 +135,9 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertNotContains('identity.request_code', $definition->toolKeys(AgentChannel::Voice));
         $this->assertNotContains('identity.verify_code', $definition->toolKeys(AgentChannel::Voice));
         $this->assertNotContains('billing.balance', $definition->toolKeys(AgentChannel::Voice));
+        $this->assertNotContains('voice.transfer', $definition->toolKeys(AgentChannel::Voice));
+        $this->assertNotContains('voice.transfer', VoiceToolSurface::keys());
+        $this->assertFalse(app(ToolRegistry::class)->has('voice.transfer'));
     }
 
     #[Test]

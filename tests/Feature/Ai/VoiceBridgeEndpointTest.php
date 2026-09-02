@@ -11,6 +11,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Models\ContactChannel;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\VoiceBridgeToken;
@@ -63,6 +64,7 @@ class VoiceBridgeEndpointTest extends TestCase
         ]);
         RateLimiter::clear('voice-bridge|'.$this->token->id);
 
+        Setting::setGeneral(Setting::general()->with(sendWindowStart: '00:00', sendWindowEnd: null));
         $this->bindVoice(BindingMode::Auto, BindingAudience::All);
     }
 
@@ -197,7 +199,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge(['turn_id' => 'turn-throw'])
             ->assertOk()
             ->assertJsonPath('text', $handoff)
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertTrue(
             SystemEvent::query()->where('event', 'ai.voice.turn_failed')->exists()
@@ -225,7 +228,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge()
             ->assertOk()
             ->assertJsonPath('text', config('agents.voice.handoff_sentence'))
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertSame(0, AgentConversation::query()->count());
@@ -240,7 +244,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge()
             ->assertOk()
             ->assertJsonPath('text', config('agents.voice.handoff_sentence'))
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertSame(0, AgentConversation::query()->count());
@@ -254,7 +259,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge(['caller_number' => '+34911000999'])
             ->assertOk()
             ->assertJsonPath('text', config('agents.voice.handoff_sentence'))
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertSame(0, $this->driver->callCount);
         $this->assertSame(0, AgentConversation::query()->count());
@@ -296,7 +302,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge(['turn_id' => 'turn-throttled'])
             ->assertOk()
             ->assertJsonPath('text', config('agents.voice.handoff_sentence'))
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertSame(1, $this->driver->callCount);
         $this->assertSame(1, VoiceSessionTurn::query()->count());
@@ -334,7 +341,8 @@ class VoiceBridgeEndpointTest extends TestCase
         $this->postBridge(['query' => '', 'turn_id' => 't', 'session_id' => 's'])
             ->assertOk()
             ->assertJsonPath('text', config('agents.voice.handoff_sentence'))
-            ->assertJsonPath('transfer', true);
+            ->assertJsonPath('transfer', true)
+            ->assertJsonPath('destination', 'main_line');
 
         $this->assertSame(0, $this->driver->callCount);
     }

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Support\Ai;
 
 use App\Models\AgentConversation;
+use App\Models\AgentHandoff;
 use App\Models\Contact;
+use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\VoiceBridgeToken;
@@ -17,9 +19,13 @@ use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\BindingAudience;
 use App\Support\Ai\Enums\BindingMode;
 use App\Support\Ai\Enums\ConversationState;
+use App\Support\Ai\Enums\HandoffReason;
+use App\Support\Ai\Enums\HandoffTriggerSource;
+use App\Support\Ai\Enums\OutsideHoursPolicy;
 use App\Support\Communications\Channel;
 use App\Support\Communications\ContactChannelMatcher;
 use App\Support\Communications\SiteLocale;
+use App\Support\Time\SiteClock;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,27 +36,29 @@ use Throwable;
  * Vocal Bridge delegation: bind, map the VB session, run one turn, speak a
  * sentence. Never returns an error string the foreground model can read aloud.
  *
- * @phpstan-type BridgeBody array{text: string, transfer: bool}
+ * @phpstan-type BridgeBody array{text: string, transfer: bool, destination?: string}
  */
 final class VoiceBridgeTurn
 {
     public function __construct(
         private readonly AgentChannelBindings $bindings,
         private readonly AgentRuntime $runtime,
+        private readonly VoiceTransfer $transfer,
     ) {}
 
     /**
-     * @return array{text: string, transfer: bool}
+     * @return array{text: string, transfer: bool, destination?: string}
      */
     public function handle(Request $request, VoiceBridgeToken $token): array
     {
+        $site = Site::query()->find($token->site_id);
         $key = 'voice-bridge|'.$token->id;
         $max = (int) config('agents.voice.bridge_rate_per_minute', 60);
 
         if (RateLimiter::tooManyAttempts($key, $max)) {
             SystemEvent::record('ai.voice.bridge_throttled', $token, []);
 
-            return $this->handoffBody();
+            return $this->handoffBody($site);
         }
 
         RateLimiter::hit($key, 60);
@@ -61,7 +69,7 @@ final class VoiceBridgeTurn
         $callerNumber = $this->string($request, 'caller_number', 'from');
 
         if ($query === null || $turnId === null || $sessionId === null) {
-            return $this->handoffBody();
+            return $this->handoffBody($site);
         }
 
         $resolved = $this->bindings->resolve(AgentChannel::Voice, $token->site_id);
@@ -70,13 +78,13 @@ final class VoiceBridgeTurn
             || $resolved->mode === BindingMode::Off
             || $resolved->mode === BindingMode::Draft
         ) {
-            return $this->handoffBody();
+            return $this->handoffBody($site);
         }
 
         $identity = VoiceCallerIdentity::resolve($callerNumber);
 
         if (! $this->audienceAllows($resolved, $identity, $token->site_id)) {
-            return $this->handoffBody();
+            return $this->handoffBody($site);
         }
 
         $session = $this->findOrCreateSession($token, $resolved, $sessionId, $callerNumber, $identity);
@@ -86,6 +94,14 @@ final class VoiceBridgeTurn
         $existing = $this->storedTurn($session, $turnId);
         if ($existing !== null) {
             return $this->bodyFromTurn($existing);
+        }
+
+        if (
+            $site !== null
+            && $resolved->outsideHours === OutsideHoursPolicy::Inbox
+            && $this->outsideHours($site)
+        ) {
+            return $this->outsideHoursInbox($session, $turnId, $site);
         }
 
         try {
@@ -103,7 +119,7 @@ final class VoiceBridgeTurn
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->persistHandoff($session, $turnId);
+            return $this->persistHandoff($session, $turnId, site: $site);
         }
 
         $text = trim($turn->draft);
@@ -112,32 +128,76 @@ final class VoiceBridgeTurn
                 'error' => $turn->blockedBy ?? 'empty_draft',
             ]);
 
-            return $this->persistHandoff($session, $turnId, $turn->emittedMessageId);
+            return $this->persistHandoff($session, $turnId, $turn->emittedMessageId, $site);
+        }
+
+        if ($turn->handoff !== null) {
+            return $this->persistTransfer(
+                $session,
+                $turnId,
+                $text,
+                $turn->handoff->reason,
+                $site,
+                $turn->emittedMessageId,
+            );
         }
 
         return $this->persistAnswer(
             $session,
             $turnId,
             $text,
-            $turn->handoff !== null,
+            false,
             $turn->emittedMessageId,
         );
     }
 
     /**
-     * @return array{text: string, transfer: bool}
+     * @return array{text: string, transfer: bool, destination?: string}
      */
-    private function handoffBody(): array
+    private function handoffBody(?Site $site): array
     {
-        return [
-            'text' => $this->handoffSentence(),
-            'transfer' => true,
-        ];
+        return $this->bodyFromResult(
+            $this->transfer->handoffSentence(),
+            $this->transfer->resolve(HandoffReason::Error, $site),
+        );
     }
 
-    private function handoffSentence(): string
+    /**
+     * @return array{text: string, transfer: bool, destination?: string}
+     */
+    private function outsideHoursInbox(VoiceSession $session, string $turnId, Site $site): array
     {
-        return (string) config('agents.voice.handoff_sentence');
+        $conversation = $session->conversation;
+
+        AgentHandoff::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'reason' => HandoffReason::OutOfHours,
+            'trigger_source' => HandoffTriggerSource::Rule,
+            'detail' => ['policy' => OutsideHoursPolicy::Inbox->value],
+        ]);
+
+        $conversation->state = ConversationState::AwaitingHuman;
+        $conversation->last_turn_at = now();
+        $conversation->save();
+
+        SystemEvent::record('ai.voice.outside_hours', $session, [
+            'reason' => HandoffReason::OutOfHours->value,
+        ]);
+
+        return $this->persistTransfer(
+            $session,
+            $turnId,
+            $this->transfer->cannedText(HandoffReason::OutOfHours),
+            HandoffReason::OutOfHours,
+            $site,
+        );
+    }
+
+    private function outsideHours(Site $site): bool
+    {
+        $settings = Setting::general();
+
+        return ! SiteClock::withinWindow($site, $settings->sendWindowStart, $settings->sendWindowEnd);
     }
 
     private function audienceAllows(ResolvedBinding $binding, VoiceCallerIdentity $identity, int $siteId): bool
@@ -269,26 +329,97 @@ final class VoiceBridgeTurn
     }
 
     /**
-     * @return array{text: string, transfer: bool}
+     * @return array{text: string, transfer: bool, destination?: string}
      */
     private function bodyFromTurn(VoiceSessionTurn $turn): array
     {
-        return [
+        $body = [
             'text' => $turn->answer_text,
             'transfer' => $turn->transfer,
         ];
+        if ($turn->transfer && is_string($turn->destination) && $turn->destination !== '') {
+            $body['destination'] = $turn->destination;
+        }
+
+        return $body;
     }
 
     /**
-     * @return array{text: string, transfer: bool}
+     * @return array{text: string, transfer: bool, destination?: string}
      */
-    private function persistHandoff(VoiceSession $session, string $turnId, ?int $messageId = null): array
+    private function bodyFromResult(string $text, VoiceTransferResult $result): array
     {
-        return $this->persistAnswer($session, $turnId, $this->handoffSentence(), true, $messageId);
+        if (! $result->transfer) {
+            return [
+                'text' => $this->transfer->apology(),
+                'transfer' => false,
+            ];
+        }
+
+        $body = [
+            'text' => $text,
+            'transfer' => true,
+        ];
+        if (is_string($result->destination) && $result->destination !== '') {
+            $body['destination'] = $result->destination;
+        }
+
+        return $body;
     }
 
     /**
-     * @return array{text: string, transfer: bool}
+     * @return array{text: string, transfer: bool, destination?: string}
+     */
+    private function persistTransfer(
+        VoiceSession $session,
+        string $turnId,
+        string $text,
+        HandoffReason $reason,
+        ?Site $site,
+        ?int $messageId = null,
+    ): array {
+        $result = $this->transfer->resolve($reason, $site);
+        if (! $result->transfer) {
+            return $this->persistAnswer(
+                $session,
+                $turnId,
+                $this->transfer->apology(),
+                false,
+                $messageId,
+            );
+        }
+
+        return $this->persistAnswer(
+            $session,
+            $turnId,
+            $text,
+            true,
+            $messageId,
+            $result->destination,
+        );
+    }
+
+    /**
+     * @return array{text: string, transfer: bool, destination?: string}
+     */
+    private function persistHandoff(
+        VoiceSession $session,
+        string $turnId,
+        ?int $messageId = null,
+        ?Site $site = null,
+    ): array {
+        return $this->persistTransfer(
+            $session,
+            $turnId,
+            $this->transfer->handoffSentence(),
+            HandoffReason::Error,
+            $site ?? $session->site,
+            $messageId,
+        );
+    }
+
+    /**
+     * @return array{text: string, transfer: bool, destination?: string}
      */
     private function persistAnswer(
         VoiceSession $session,
@@ -296,6 +427,7 @@ final class VoiceBridgeTurn
         string $text,
         bool $transfer,
         ?int $messageId = null,
+        ?string $destination = null,
     ): array {
         try {
             $row = VoiceSessionTurn::query()->create([
@@ -303,6 +435,7 @@ final class VoiceBridgeTurn
                 'turn_id' => $turnId,
                 'answer_text' => $text,
                 'transfer' => $transfer,
+                'destination' => $transfer ? $destination : null,
                 'agent_conversation_message_id' => $messageId,
             ]);
         } catch (UniqueConstraintViolationException) {

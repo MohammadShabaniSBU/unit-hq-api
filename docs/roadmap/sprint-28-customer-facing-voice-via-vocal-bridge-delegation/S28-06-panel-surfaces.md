@@ -25,8 +25,16 @@ Keep it to what answers the question above.
 ### Voice sessions list
 
 A page listing `voice_sessions`: when, caller number, matched contact if any,
-site, duration, disposition, whether it transferred. Filterable by date and
+site, duration, whether it transferred. Filterable by date and
 site. This is the entry point, and on its own it is most of the value.
+
+**Disposition is unknown.** Vocal Bridge does not POST a session-end
+disposition to the AI-agent endpoint (confirmed S28-03: `--transfer-enabled`
+/ `--transfer-destination` and `vb logs` exist; no inbound webhook). Do not
+add `voice_sessions.disposition` until something writes it. The list and
+detail views render “unknown — Vocal Bridge does not report transfer
+disposition” with no column. `ended_at` stays null unless a later inbound
+event appears.
 
 ### Session detail
 

@@ -46,13 +46,27 @@ output.
 
 ### Out of hours
 
-`agent_channel_bindings.outside_hours` is `inbox` or `answer`. Neither is
-right for voice: there is no inbox a caller can wait in, and answering
-out-of-hours with no human to transfer to is a dead end. Voice needs the
-binding to resolve, at minimum, to a voicemail destination when
-`SiteClock::now()` is outside the site's hours. Extend the enum or treat
-`inbox` as "take a message" on voice — decide in the task and write down
-which, because the silent version of this is a caller on hold at 2am.
+`agent_channel_bindings.outside_hours` stays `inbox` | `answer` — the enum
+is not extended. Hours are `SiteClock::withinWindow()` against the company
+send window in the site's timezone (there is no `SiteClock::now()`).
+
+**Decision:** treat `inbox` as "take a message" on voice.
+
+- `inbox` + outside the send window → do not run the runtime. Write
+  `agent_handoffs` (`reason=out_of_hours`, `trigger_source=rule`), speak
+  the canned voicemail sentence, transfer to the `voicemail` key.
+- `answer` + outside hours → run the agent. Any transfer remaps to
+  `voicemail` (no human on the main line).
+- Inside hours → destination from the `HandoffReason` map (almost always
+  `main_line`).
+
+An unmapped reason with `main_line` still approved transfers to
+`main_line` and logs `ai.voice.transfer_unmapped`. True fail-closed (no
+transfer, apology) is only when `approved_destinations` is empty or
+missing.
+
+This is also on `OutsideHoursPolicy` itself — the next reader of that
+enum will not have this file.
 
 ### Handoff records
 
@@ -69,12 +83,14 @@ number.
 - [ ] A voice turn producing a handoff returns a transfer signal with a
       destination **key**, never a number.
 - [ ] The spoken sentence accompanying a transfer passes the guards.
-- [ ] An unknown or unmapped destination key fails closed: no transfer
-      signal, a spoken apology, and a logged event.
+- [ ] An unmapped reason with `main_line` approved transfers to
+      `main_line` and logs `ai.voice.transfer_unmapped`. Empty
+      `approved_destinations` fails closed: no transfer, apology, no
+      destination field.
 - [ ] Out-of-hours behaviour on voice is defined, implemented, and tested
       against `SiteClock` in the site's timezone.
-- [ ] Transfer disposition is recorded on `voice_sessions` if Vocal Bridge
-      reports it; if it does not, the gap is written into S28-06.
+- [ ] Transfer disposition is not a column. Vocal Bridge does not report
+      it to us; the gap is written into S28-06.
 - [ ] No new tool key exists for transfer.
 
 ## Out of scope
