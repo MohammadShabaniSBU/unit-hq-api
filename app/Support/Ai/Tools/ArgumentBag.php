@@ -18,6 +18,10 @@ final class ArgumentBag
             return [];
         }
 
+        if ($raw instanceof \stdClass) {
+            $raw = (array) $raw;
+        }
+
         if (! is_array($raw)) {
             return [];
         }

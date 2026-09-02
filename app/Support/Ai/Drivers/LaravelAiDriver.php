@@ -150,7 +150,7 @@ final class LaravelAiDriver implements ModelDriver
                     new ToolResult(
                         (string) ($message['tool_call_id'] ?? ''),
                         $names->toWire((string) ($message['tool_name'] ?? '')),
-                        $message['arguments'] ?? [],
+                        ArgumentBag::normalise($message['arguments'] ?? []),
                         $content,
                     ),
                 ])),
@@ -170,7 +170,7 @@ final class LaravelAiDriver implements ModelDriver
         return collect($calls)->map(fn (array $call): ToolCall => new ToolCall(
             (string) ($call['id'] ?? ''),
             $names->toWire((string) ($call['name'] ?? '')),
-            $call['arguments'] ?? [],
+            ArgumentBag::normalise($call['arguments'] ?? []),
         ));
     }
 
