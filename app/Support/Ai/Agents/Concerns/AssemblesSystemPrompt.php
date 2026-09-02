@@ -138,6 +138,9 @@ TEXT;
         if ($channel->requiresTemplateOutsideWindow) {
             $bits[] = 'WhatsApp may require an approved template outside the customer-care window. Treat that as advisory this sprint.';
         }
+        if ($channel->promptAddendum !== '') {
+            $bits[] = $channel->promptAddendum;
+        }
 
         return implode(' ', $bits);
     }

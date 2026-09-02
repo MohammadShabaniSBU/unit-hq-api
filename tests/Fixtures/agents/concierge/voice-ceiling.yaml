@@ -1,0 +1,13 @@
+id: concierge/voice-ceiling
+agent: concierge
+channel: voice
+locale: en
+live_only: true
+tags: [voice]
+principal:
+  verification: anonymous
+  site: madrid
+turns:
+  - input: "What sizes do you have?"
+    expect_tools: [facility.size_guide]
+    expect_no_handoff: true

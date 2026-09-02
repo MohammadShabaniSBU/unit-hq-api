@@ -71,6 +71,23 @@ final class ChannelGuard implements OutboundGuard
             }
         }
 
+        if ($channel->channel === AgentChannel::Voice && $channel->maxCharacters !== null) {
+            $length = mb_strlen($body);
+            $detail['characters'] = $length;
+            $detail['max_characters'] = $channel->maxCharacters;
+            if ($length > $channel->maxCharacters) {
+                $detail['reason'] = 'voice_too_long';
+
+                return GuardrailVerdict::retry(
+                    "Rewrite this reply in at most {$channel->maxCharacters} characters. Keep the same facts.",
+                    'channel',
+                    HandoffReason::ChannelConstraint,
+                    $detail,
+                    [['guard' => $this->key(), 'verdict' => 'deny', 'reason' => 'voice_too_long', 'detail' => $detail]],
+                );
+            }
+        }
+
         if ($channel->supportsSubject && ($subject === null || $subject === '')) {
             $subject = $this->synthesizeSubject($body, $ctx);
             $detail['subject_synthesized'] = true;

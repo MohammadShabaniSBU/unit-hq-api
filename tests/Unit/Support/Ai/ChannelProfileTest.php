@@ -65,5 +65,19 @@ class ChannelProfileTest extends TestCase
         $this->assertFalse($voice->requiresTemplateOutsideWindow);
         $this->assertFalse($voice->expectsSignature);
         $this->assertSame(2, $voice->targetSentences);
+        $this->assertStringContainsString('Do not speak any figure', $voice->promptAddendum);
+        $this->assertStringContainsString('voice.send_quote_by_text', $voice->promptAddendum);
+    }
+
+    #[Test]
+    public function other_channels_have_no_prompt_addendum(): void
+    {
+        foreach (AgentChannel::cases() as $channel) {
+            if ($channel === AgentChannel::Voice) {
+                continue;
+            }
+
+            $this->assertSame('', ChannelProfile::for($channel)->promptAddendum);
+        }
     }
 }

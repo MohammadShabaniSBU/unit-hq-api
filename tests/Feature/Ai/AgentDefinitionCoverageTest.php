@@ -17,6 +17,7 @@ use App\Support\Ai\Enums\ToolDeniedReason;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\ToolRegistry;
+use App\Support\Ai\VoiceToolSurface;
 use Database\Seeders\AiAgentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -101,6 +102,8 @@ class AgentDefinitionCoverageTest extends TestCase
     #[Test]
     public function concierge_tool_keys_are_pinned(): void
     {
+        $definition = app(AgentRegistry::class)->get('concierge');
+
         $this->assertSame([
             'facility.availability',
             'facility.find_sites',
@@ -124,7 +127,33 @@ class AgentDefinitionCoverageTest extends TestCase
             'access.status',
             'kb.faq_lookup',
             'agent.escalate',
-        ], app(AgentRegistry::class)->get('concierge')->toolKeys());
+            'voice.send_quote_by_text',
+        ], $definition->toolKeys());
+
+        $this->assertSame($definition->toolKeys(), $definition->toolKeys(AgentChannel::Webchat));
+        $this->assertSame(VoiceToolSurface::keys(), $definition->toolKeys(AgentChannel::Voice));
+        $this->assertNotContains('identity.request_code', $definition->toolKeys(AgentChannel::Voice));
+        $this->assertNotContains('identity.verify_code', $definition->toolKeys(AgentChannel::Voice));
+        $this->assertNotContains('billing.balance', $definition->toolKeys(AgentChannel::Voice));
+    }
+
+    #[Test]
+    public function identity_tools_are_denied_on_voice_and_allowed_on_webchat(): void
+    {
+        $contact = Contact::factory()->create();
+        $principal = AgentPrincipal::channelAsserted($contact->id, null, 'en');
+
+        $voice = $this->conciergeContext($principal, AgentChannel::Voice);
+        $webchat = $this->conciergeContext($principal, AgentChannel::Webchat);
+
+        foreach (['identity.request_code', 'identity.verify_code'] as $tool) {
+            $denied = $this->dispatchTool('concierge', $tool, $principal, [], $voice);
+            $this->assertSame(ToolInvocationStatus::Denied, $denied->status, $tool);
+            $this->assertSame(ToolDeniedReason::NotAllowedForAgent, $denied->deniedReason, $tool);
+
+            $web = $this->dispatchTool('concierge', $tool, $principal, [], $webchat);
+            $this->assertNotSame(ToolDeniedReason::NotAllowedForAgent, $web->deniedReason, $tool);
+        }
     }
 
     #[Test]
@@ -159,22 +188,27 @@ class AgentDefinitionCoverageTest extends TestCase
             $this->assertStringNotContainsString('contract.summary', $prompt);
             $this->assertStringNotContainsString('access.status', $prompt);
         }
+
+        $voiceCtx = $this->conciergeContext(AgentPrincipal::anonymous(null, 'en'), AgentChannel::Voice);
+        $voicePrompt = $definition->systemPrompt($voiceCtx);
+        $this->assertStringContainsString('Do not speak any figure', $voicePrompt);
+        $this->assertStringContainsString('voice.send_quote_by_text', $voicePrompt);
     }
 
-    private function conciergeContext(AgentPrincipal $principal): AgentContext
+    private function conciergeContext(AgentPrincipal $principal, AgentChannel $channel = AgentChannel::Webchat): AgentContext
     {
         $definition = app(AgentRegistry::class)->get('concierge');
         $agent = AiAgent::factory()->create(['key' => 'concierge-'.uniqid(), 'is_active' => true]);
         $conversation = AgentConversation::factory()->anonymous()->create([
             'ai_agent_id' => $agent->id,
-            'channel' => AgentChannel::Webchat,
+            'channel' => $channel,
             'contact_id' => $principal->contactId,
             'verification_level' => $principal->verification,
         ]);
 
         return new AgentContext(
             $principal,
-            ChannelProfile::for(AgentChannel::Webchat),
+            ChannelProfile::for($channel),
             $definition,
             $conversation,
             $agent,

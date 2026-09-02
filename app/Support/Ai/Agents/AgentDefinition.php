@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Ai\Agents;
 
-use App\Support\Ai\AgentContext;
-use App\Support\Ai\Enums\HandoffRuleKey;
 use App\Models\Contact;
+use App\Support\Ai\AgentContext;
+use App\Support\Ai\Enums\AgentChannel;
+use App\Support\Ai\Enums\HandoffRuleKey;
 
 interface AgentDefinition
 {
@@ -21,9 +22,13 @@ interface AgentDefinition
     public function promptVersion(AgentContext $ctx): string;
 
     /**
+     * Tools this definition may call. Voice is a narrower allowlist.
+     * Null returns the union of every key the definition can ever claim
+     * (coverage tests and the write-policy UI).
+     *
      * @return list<string>
      */
-    public function toolKeys(): array;
+    public function toolKeys(?AgentChannel $channel = null): array;
 
     /**
      * Extra rule keys on top of the shared config set.

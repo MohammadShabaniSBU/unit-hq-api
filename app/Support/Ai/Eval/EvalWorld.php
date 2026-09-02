@@ -378,6 +378,12 @@ final class EvalWorld
             'email' => 'agent-lead@keevaris.test',
             'source' => ContactSource::AiAgent,
         ]);
+        ContactChannel::query()->create([
+            'contact_id' => $world->agentLead->id,
+            'type' => ContactChannelType::Phone,
+            'value' => '+34600111000',
+            'is_primary' => true,
+        ]);
         $world->agentDeal = Deal::factory()->create([
             'contact_id' => $world->agentLead->id,
             'site_id' => $world->madrid->id,

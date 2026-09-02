@@ -316,7 +316,7 @@ final class EvalHarness
     {
         $registry = $this->app->make(ToolRegistry::class);
         $tools = [];
-        foreach ($ctx->definition->toolKeys() as $key) {
+        foreach ($ctx->definition->toolKeys($ctx->channel->channel) as $key) {
             $tools[] = $registry->get($key);
         }
 

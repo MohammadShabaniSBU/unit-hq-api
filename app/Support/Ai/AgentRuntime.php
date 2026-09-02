@@ -20,6 +20,7 @@ use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
 use App\Support\Ai\Enums\AgentAudience;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\BindingMode;
@@ -142,7 +143,7 @@ final class AgentRuntime
         /** @var array<string, true> $identicalWarned */
         $identicalWarned = [];
         $messages = $this->buildMessages($ctx, $priorMessages, $input);
-        $toolObjects = $this->toolObjects($definition);
+        $toolObjects = $this->toolObjects($definition, $conversation->channel);
         $draft = '';
         $finishReason = 'stop';
         $lastUsage = new Usage;
@@ -967,10 +968,10 @@ final class AgentRuntime
     /**
      * @return list<AgentTool>
      */
-    private function toolObjects(AgentDefinition $definition): array
+    private function toolObjects(AgentDefinition $definition, AgentChannel $channel): array
     {
         $objects = [];
-        foreach ($definition->toolKeys() as $key) {
+        foreach ($definition->toolKeys($channel) as $key) {
             if ($this->tools->has($key)) {
                 $objects[] = $this->tools->get($key);
             }

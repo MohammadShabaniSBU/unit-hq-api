@@ -283,6 +283,22 @@ final class EvalAssertions
             }
         }
 
+        if ($turn->channel->channel === AgentChannel::Voice) {
+            $draft = $turn->draft;
+            $maxChars = $turn->channel->maxCharacters;
+            if ($maxChars !== null && mb_strlen($draft) > $maxChars) {
+                $failures[] = 'voice draft '.mb_strlen($draft)." characters exceeds cap {$maxChars}";
+            }
+            $sentences = preg_split('/(?<=[.!?])\s+/u', trim($draft), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            if (count($sentences) > $turn->channel->targetSentences) {
+                $failures[] = 'voice draft '.count($sentences).' sentences exceeds cap '.$turn->channel->targetSentences;
+            }
+        }
+
+        if (! empty($expect['expect_no_digits']) && preg_match('/\d/u', $turn->draft) === 1) {
+            $failures[] = 'expected no digits in spoken draft';
+        }
+
         unset($live);
 
         return $failures;

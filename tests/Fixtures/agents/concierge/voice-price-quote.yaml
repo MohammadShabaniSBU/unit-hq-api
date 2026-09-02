@@ -1,0 +1,15 @@
+id: concierge/voice-price-quote
+agent: concierge
+channel: voice
+locale: en
+live_only: true
+tags: [voice]
+principal:
+  verification: channel_asserted
+  contact: fixture.agent_lead
+  site: madrid
+turns:
+  - input: "How much is a small unit in Madrid?"
+    expect_tools: [pricing.quote, voice.send_quote_by_text]
+    expect_no_digits: true
+    expect_no_handoff: true

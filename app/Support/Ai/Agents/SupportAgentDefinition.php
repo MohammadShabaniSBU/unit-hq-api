@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentEligibility;
 use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
+use App\Support\Ai\Enums\AgentChannel;
 
 /**
  * Legacy persona, superseded by ConciergeAgentDefinition (D-AI-22). Never
@@ -31,7 +32,10 @@ final class SupportAgentDefinition implements AgentDefinition
         return 'support';
     }
 
-    public function toolKeys(): array
+    /**
+     * @return list<string>
+     */
+    public function toolKeys(?AgentChannel $channel = null): array
     {
         return [
             'facility.find_sites',

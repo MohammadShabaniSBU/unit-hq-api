@@ -356,6 +356,31 @@ class ChannelGuardTest extends TestCase
     }
 
     #[Test]
+    public function voice_draft_over_the_character_ceiling_retries(): void
+    {
+        $draft = str_repeat('We have a few of that size left. ', 40);
+        $this->assertGreaterThan(600, mb_strlen($draft));
+
+        $conversation = $this->conversation(AgentChannel::Voice);
+        $verdict = app(ChannelGuard::class)->check(
+            $draft,
+            new FactBag,
+            new AgentContext(
+                AgentPrincipal::anonymous(null, 'en'),
+                ChannelProfile::for(AgentChannel::Voice),
+                app(AgentRegistry::class)->get('concierge'),
+                $conversation,
+                $conversation->aiAgent,
+            ),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertSame('channel', $verdict->blockedBy);
+        $this->assertNotNull($verdict->retry);
+        $this->assertSame('voice_too_long', $verdict->detail['reason'] ?? null);
+    }
+
+    #[Test]
     public function html_is_stripped_on_plain_text_channels(): void
     {
         $this->driver->enqueueText('<b>Hi</b> there.');

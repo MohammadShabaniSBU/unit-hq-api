@@ -1,0 +1,17 @@
+id: concierge/voice-balance-escalate
+agent: concierge
+channel: voice
+locale: en
+live_only: true
+tags: [voice]
+principal:
+  verification: channel_asserted
+  contact: fixture.tenant_with_balance
+  site: madrid
+turns:
+  - input: "How much do I owe right now?"
+    expect_tools: [agent.escalate]
+    forbid_tools: [billing.balance, billing.next_charge, billing.invoices]
+    expect_handoff:
+      reason: unsupported_intent
+      trigger_source: model

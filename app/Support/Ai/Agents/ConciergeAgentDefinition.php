@@ -7,7 +7,9 @@ namespace App\Support\Ai\Agents;
 use App\Models\Contact;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\Agents\Concerns\AssemblesSystemPrompt;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\VerificationLevel;
+use App\Support\Ai\VoiceToolSurface;
 
 final class ConciergeAgentDefinition implements AgentDefinition
 {
@@ -18,7 +20,25 @@ final class ConciergeAgentDefinition implements AgentDefinition
         return 'concierge';
     }
 
-    public function toolKeys(): array
+    /**
+     * @return list<string>
+     */
+    public function toolKeys(?AgentChannel $channel = null): array
+    {
+        if ($channel === AgentChannel::Voice) {
+            return VoiceToolSurface::keys();
+        }
+
+        return $this->allToolKeys();
+    }
+
+    /**
+     * Union / non-voice surface. Voice is a subset, so this is also
+     * toolKeys(null).
+     *
+     * @return list<string>
+     */
+    private function allToolKeys(): array
     {
         return [
             'facility.availability',
@@ -46,6 +66,7 @@ final class ConciergeAgentDefinition implements AgentDefinition
             'access.status',
             'kb.faq_lookup',
             'agent.escalate',
+            'voice.send_quote_by_text',
         ];
     }
 

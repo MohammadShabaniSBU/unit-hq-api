@@ -17,6 +17,7 @@ final readonly class ChannelProfile
         public bool $requiresTemplateOutsideWindow,
         public bool $expectsSignature,
         public int $targetSentences,
+        public string $promptAddendum = '',
     ) {}
 
     public static function for(AgentChannel $channel): self
@@ -81,6 +82,7 @@ final readonly class ChannelProfile
                 requiresTemplateOutsideWindow: false,
                 expectsSignature: false,
                 targetSentences: 2,
+                promptAddendum: 'Do not speak any figure, price, count, date, or balance aloud. Offer to text the exact quote with voice.send_quote_by_text.',
             ),
         };
     }

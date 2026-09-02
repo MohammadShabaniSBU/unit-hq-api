@@ -98,7 +98,13 @@ final class ToolDispatcher
 
     private function gateAllowlist(ToolDispatchState $state): ?ToolResult
     {
-        if (! in_array($state->toolKey, $state->definition->toolKeys(), true)) {
+        // A null channel yields toolKeys(null) — the union of every key the
+        // definition can claim. That branch is test-only (S27-00 dispatches
+        // without a ctx). Production dispatch must pass an AgentContext so
+        // voice cannot silently widen to the union.
+        $allowed = $state->definition->toolKeys($state->ctx?->channel->channel);
+
+        if (! in_array($state->toolKey, $allowed, true)) {
             return ToolResult::denied(
                 ToolDeniedReason::NotAllowedForAgent,
                 "Tool [{$state->toolKey}] is not allowed for agent [{$state->definition->key()}].",

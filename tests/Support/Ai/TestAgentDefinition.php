@@ -7,6 +7,8 @@ namespace Tests\Support\Ai;
 use App\Models\Contact;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\Agents\AgentDefinition;
+use App\Support\Ai\Enums\AgentChannel;
+use App\Support\Ai\Eval\CassetteKey;
 
 final class TestAgentDefinition implements AgentDefinition
 {
@@ -30,10 +32,13 @@ final class TestAgentDefinition implements AgentDefinition
 
     public function promptVersion(AgentContext $ctx): string
     {
-        return \App\Support\Ai\Eval\CassetteKey::promptHash($this->systemPrompt($ctx));
+        return CassetteKey::promptHash($this->systemPrompt($ctx));
     }
 
-    public function toolKeys(): array
+    /**
+     * @return list<string>
+     */
+    public function toolKeys(?AgentChannel $channel = null): array
     {
         return $this->toolKeys;
     }
