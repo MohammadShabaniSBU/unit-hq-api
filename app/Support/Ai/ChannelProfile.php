@@ -82,7 +82,7 @@ final readonly class ChannelProfile
                 requiresTemplateOutsideWindow: false,
                 expectsSignature: false,
                 targetSentences: 2,
-                promptAddendum: 'Do not speak any figure, price, count, date, or balance aloud. Offer to text the exact quote with voice.send_quote_by_text.',
+                promptAddendum: 'Do not speak any figure, price, count, date, size, size range, or balance aloud — describe availability and sizes in general terms (for example, "a range of sizes") and offer to text the exact figures with voice.send_quote_by_text. The opening disclosure sentence is fixed to the site\'s registered language; answer every sentence after it in the language the caller is speaking, even if that differs from the disclosure sentence.',
             ),
         };
     }
