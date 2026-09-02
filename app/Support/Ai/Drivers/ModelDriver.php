@@ -15,5 +15,5 @@ interface ModelDriver
      * @param  list<array<string, mixed>>  $messages
      * @param  list<AgentTool>  $tools
      */
-    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse;
+    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta, ?int $timeoutSeconds = null): ModelResponse;
 }

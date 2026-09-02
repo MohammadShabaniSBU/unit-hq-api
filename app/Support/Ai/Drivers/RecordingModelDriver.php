@@ -18,10 +18,10 @@ final class RecordingModelDriver implements ModelDriver
 
     public function __construct(private readonly ModelDriver $inner) {}
 
-    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
+    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta, ?int $timeoutSeconds = null): ModelResponse
     {
         $this->callCount++;
-        $response = $this->inner->stream($messages, $tools, $model, $onDelta);
+        $response = $this->inner->stream($messages, $tools, $model, $onDelta, $timeoutSeconds);
         $this->recorded[] = $response;
 
         return $response;

@@ -20,6 +20,8 @@ final class FakeModelDriver implements ModelDriver
 
     public int $lastTransactionLevel = 0;
 
+    public int $sleepMs = 0;
+
     public function enqueue(ModelResponse ...$responses): self
     {
         foreach ($responses as $response) {
@@ -67,8 +69,12 @@ final class FakeModelDriver implements ModelDriver
     /** @var list<string> */
     public array $lastToolKeys = [];
 
-    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
+    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta, ?int $timeoutSeconds = null): ModelResponse
     {
+        if ($this->sleepMs > 0) {
+            usleep($this->sleepMs * 1000);
+        }
+
         $this->callCount++;
         $this->lastTransactionLevel = DB::transactionLevel();
         $this->lastMessages = $messages;

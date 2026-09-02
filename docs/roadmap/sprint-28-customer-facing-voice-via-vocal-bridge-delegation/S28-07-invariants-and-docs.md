@@ -70,7 +70,7 @@ question on provider residency with whatever S28-05 established.
 
 | Section | Change |
 |---|---|
-| Channels | Voice becomes bindable; describe the relay shape and where each half runs |
+| Channels | Voice becomes bindable; describe the relay shape and where each half runs. Timeouts are per-channel; voice uses `channel.voice.turn_timeout_ms` (S28-04). |
 | Principal and verification | Voice caps at `channel_asserted`; state why caller ID is not identity |
 | Tool catalogue | Add `voice.send_quote_by_text`; note the per-binding denylist and which keys voice denies |
 | Bindings | Per-binding tool denylist; voice out-of-hours behaviour |
@@ -85,7 +85,8 @@ question on provider residency with whatever S28-05 established.
   since `voice.send_quote_by_text` does write one and the distinction will
   confuse someone.
 - `08-activity-logging.md` — add the events this sprint introduced:
-  `ai.voice.caller_ambiguous`, `ai.voice.bridge_auth_failed`, and anything
+  `ai.voice.caller_ambiguous`, `ai.voice.bridge_auth_failed`,
+  `ai.voice.turn_budget_exceeded`, `ai.voice.provider_throttled`, and anything
   S28-03 added for transfer disposition.
 - `AGENTS.md` — one line: a voice caller is never verified.
 - `docs/roadmap/README.md` — S28 in the Phase H block, with an exit criterion

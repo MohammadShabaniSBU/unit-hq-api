@@ -100,9 +100,11 @@ here and re-checked before launch rather than trusted to memory.
 | **External TTS** | **on** | verbatim is best-effort on the native voice, guaranteed only with external TTS |
 | Custom header | the HMAC header from S28-01 | the endpoint is public; this is what authenticates it |
 | Max characters per turn | 600 | matches `ChannelProfile::Voice` |
-| Late response behaviour | **Store**, never Speak | S28-04 — a late answer spoken after the conversation moved on is worse than none |
-| Per-query timeout | just above the S28-04 turn budget | |
+| Late response behaviour | **Store**, never Speak | S28-04 — a late answer spoken after the conversation moved on is worse than none. Paired with `agents.voice.late_response_behavior` and the 8s turn budget. |
+| Per-query timeout | **10s** (just above `channel.voice.turn_timeout_ms` = 8s) | S28-04 — Vocal Bridge must wait longer than we will spend |
+| Filler audio | **on**, short hold phrase (must not loop past the 8s budget) | S28-04 — configuration, not code; silence is the latency the caller feels |
 | Transfer | enabled, with only the approved destinations from S28-03 | a model that can dial arbitrary numbers is a different product |
+| Worker pool | php-fpm / nginx for `/api/voice/bridge`; `queue:work --queue=ai` is email/copilot only | S28-04 — voice never shares the `ai` queue worker |
 
 **Verbatim is the setting the sprint rests on.** In adaptive mode the
 foreground model paraphrases our answer before speaking it. Our draft passed

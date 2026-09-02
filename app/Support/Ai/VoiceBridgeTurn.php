@@ -104,6 +104,8 @@ final class VoiceBridgeTurn
             return $this->outsideHoursInbox($session, $turnId, $site);
         }
 
+        $started = hrtime(true);
+
         try {
             $turn = $this->runtime->turn($conversation, $principal, $query);
         } catch (UniqueConstraintViolationException $e) {
@@ -119,7 +121,54 @@ final class VoiceBridgeTurn
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->persistHandoff($session, $turnId, site: $site);
+            return $this->persistHandoff(
+                $session,
+                $turnId,
+                site: $site,
+                latencyMs: (int) ((hrtime(true) - $started) / 1_000_000),
+            );
+        }
+
+        $elapsedMs = (int) ((hrtime(true) - $started) / 1_000_000);
+        $redrafted = $this->wasRedrafted($turn);
+        $detail = is_array($turn->handoff?->detail) ? $turn->handoff->detail : [];
+        $timeBudget = ($detail['detail'] ?? null) === 'turn_timeout'
+            || $elapsedMs >= AgentChannelLimits::turnTimeoutMs(AgentChannel::Voice);
+
+        if ($timeBudget) {
+            SystemEvent::record('ai.voice.turn_budget_exceeded', $session, [
+                'latency_ms' => $elapsedMs,
+            ]);
+
+            return $this->persistTransfer(
+                $session,
+                $turnId,
+                $this->transfer->handoffSentence(),
+                HandoffReason::Error,
+                $site,
+                $turn->emittedMessageId,
+                $elapsedMs,
+                $redrafted,
+                true,
+                HandoffReason::Error,
+            );
+        }
+
+        if (($detail['detail'] ?? null) === 'provider_throttled') {
+            SystemEvent::record('ai.voice.provider_throttled', $session, []);
+
+            return $this->persistTransfer(
+                $session,
+                $turnId,
+                $this->transfer->handoffSentence(),
+                HandoffReason::Error,
+                $site,
+                $turn->emittedMessageId,
+                $elapsedMs,
+                $redrafted,
+                false,
+                HandoffReason::Error,
+            );
         }
 
         $text = trim($turn->draft);
@@ -128,7 +177,7 @@ final class VoiceBridgeTurn
                 'error' => $turn->blockedBy ?? 'empty_draft',
             ]);
 
-            return $this->persistHandoff($session, $turnId, $turn->emittedMessageId, $site);
+            return $this->persistHandoff($session, $turnId, $turn->emittedMessageId, $site, $elapsedMs, $redrafted);
         }
 
         if ($turn->handoff !== null) {
@@ -139,6 +188,10 @@ final class VoiceBridgeTurn
                 $turn->handoff->reason,
                 $site,
                 $turn->emittedMessageId,
+                $elapsedMs,
+                $redrafted,
+                false,
+                $turn->handoff->reason,
             );
         }
 
@@ -148,6 +201,8 @@ final class VoiceBridgeTurn
             $text,
             false,
             $turn->emittedMessageId,
+            latencyMs: $elapsedMs,
+            redrafted: $redrafted,
         );
     }
 
@@ -377,6 +432,10 @@ final class VoiceBridgeTurn
         HandoffReason $reason,
         ?Site $site,
         ?int $messageId = null,
+        ?int $latencyMs = null,
+        bool $redrafted = false,
+        bool $budgetExceeded = false,
+        ?HandoffReason $handoffReason = null,
     ): array {
         $result = $this->transfer->resolve($reason, $site);
         if (! $result->transfer) {
@@ -386,6 +445,10 @@ final class VoiceBridgeTurn
                 $this->transfer->apology(),
                 false,
                 $messageId,
+                latencyMs: $latencyMs,
+                redrafted: $redrafted,
+                budgetExceeded: $budgetExceeded,
+                handoffReason: $handoffReason ?? $reason,
             );
         }
 
@@ -396,6 +459,10 @@ final class VoiceBridgeTurn
             true,
             $messageId,
             $result->destination,
+            $latencyMs,
+            $redrafted,
+            $budgetExceeded,
+            $handoffReason ?? $reason,
         );
     }
 
@@ -407,6 +474,8 @@ final class VoiceBridgeTurn
         string $turnId,
         ?int $messageId = null,
         ?Site $site = null,
+        ?int $latencyMs = null,
+        bool $redrafted = false,
     ): array {
         return $this->persistTransfer(
             $session,
@@ -415,6 +484,10 @@ final class VoiceBridgeTurn
             HandoffReason::Error,
             $site ?? $session->site,
             $messageId,
+            $latencyMs,
+            $redrafted,
+            false,
+            HandoffReason::Error,
         );
     }
 
@@ -428,6 +501,10 @@ final class VoiceBridgeTurn
         bool $transfer,
         ?int $messageId = null,
         ?string $destination = null,
+        ?int $latencyMs = null,
+        bool $redrafted = false,
+        bool $budgetExceeded = false,
+        ?HandoffReason $handoffReason = null,
     ): array {
         try {
             $row = VoiceSessionTurn::query()->create([
@@ -437,6 +514,10 @@ final class VoiceBridgeTurn
                 'transfer' => $transfer,
                 'destination' => $transfer ? $destination : null,
                 'agent_conversation_message_id' => $messageId,
+                'latency_ms' => $latencyMs,
+                'redrafted' => $redrafted,
+                'budget_exceeded' => $budgetExceeded,
+                'handoff_reason' => $handoffReason?->value,
             ]);
         } catch (UniqueConstraintViolationException) {
             $replay = $this->storedTurn($session, $turnId);
@@ -464,5 +545,17 @@ final class VoiceBridgeTurn
         $trimmed = trim($value);
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    private function wasRedrafted(AgentTurn $turn): bool
+    {
+        foreach ($turn->guardrailEvents as $event) {
+            $detail = $event['detail'] ?? null;
+            if (is_array($detail) && ($detail['redraft'] ?? false) === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

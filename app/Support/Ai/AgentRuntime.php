@@ -19,6 +19,7 @@ use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Drivers\ModelDriver;
 use App\Support\Ai\Drivers\ModelResponse;
 use App\Support\Ai\Drivers\ModelTimeoutException;
+use App\Support\Ai\Drivers\ProviderRateLimitedException;
 use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
@@ -55,6 +56,7 @@ use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\Data\Usage;
 use LogicException;
@@ -66,6 +68,8 @@ final class AgentRuntime
     private ?int $subjectMessageId = null;
 
     private ?ResolvedBinding $resolvedBinding = null;
+
+    private ?int $turnDeadlineNs = null;
 
     public function __construct(
         private readonly ModelDriver $driver,
@@ -87,6 +91,8 @@ final class AgentRuntime
     ): AgentTurn {
         $this->subjectMessageId = $subjectMessageId;
         $this->resolvedBinding = null;
+        $this->turnDeadlineNs = hrtime(true)
+            + (AgentChannelLimits::turnTimeoutMs($conversation->channel) * 1_000_000);
 
         if (! filter_var(config('agents.enabled', true), FILTER_VALIDATE_BOOLEAN)) {
             throw new RuntimeException('Customer-facing agents are disabled.');
@@ -153,6 +159,19 @@ final class AgentRuntime
 
         try {
             while (true) {
+                if ($this->budgetExceeded()) {
+                    return $this->finishTurnTimeout(
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        $usageEvents,
+                        $cursor,
+                        $draft,
+                        $lastUsage,
+                        $lastLatencyMs,
+                    );
+                }
+
                 $started = hrtime(true);
                 $response = $this->streamMetered(
                     $agent,
@@ -454,34 +473,40 @@ final class AgentRuntime
                 }
             }
         } catch (ModelTimeoutException) {
-            return $this->finishWithHandoff(
+            return $this->finishTurnTimeout(
                 $ctx,
                 $facts,
                 $invocations,
-                HandoffReason::Error,
-                HandoffTriggerSource::Rule,
-                CannedReply::Error,
-                ['detail' => 'timeout'],
                 $usageEvents,
-                cursor: $cursor,
+                $cursor,
+                $draft,
+                $lastUsage,
+                $lastLatencyMs,
             );
+        } catch (ProviderRateLimitedException $e) {
+            return $this->finishProviderThrottled($ctx, $facts, $invocations, $usageEvents, $cursor, $e);
         }
 
-        $verdict = $this->applyOutboundGuards(
-            $draft,
-            $facts,
-            $ctx->withLicensedClaims($licensedClaims),
-            $messages,
-            $toolObjects,
-            $model,
-            $onEvent,
-            $usageTotal,
-            $lastUsage,
-            $lastLatencyMs,
-            $finishReason,
-            $usageEvents,
-            $cursor,
-        );
+        try {
+            $verdict = $this->applyOutboundGuards(
+                $draft,
+                $facts,
+                $ctx->withLicensedClaims($licensedClaims),
+                $messages,
+                $toolObjects,
+                $model,
+                $onEvent,
+                $usageTotal,
+                $lastUsage,
+                $lastLatencyMs,
+                $finishReason,
+                $usageEvents,
+                $cursor,
+            );
+        } catch (ProviderRateLimitedException $e) {
+            return $this->finishProviderThrottled($ctx, $facts, $invocations, $usageEvents, $cursor, $e);
+        }
+
         $draft = $verdict['draft'];
         $usageTotal = $verdict['usage'];
         $lastUsage = $verdict['lastUsage'];
@@ -527,6 +552,20 @@ final class AgentRuntime
 
         if ($outbound->mutatedDraft !== null) {
             $draft = $outbound->mutatedDraft;
+        }
+
+        if ($this->budgetExceeded()) {
+            return $this->finishTurnTimeout(
+                $ctx,
+                $facts,
+                $invocations,
+                $usageEvents,
+                $cursor,
+                $draft,
+                $lastUsage,
+                $lastLatencyMs,
+                $outbound->events,
+            );
         }
 
         $assistantForSend = null;
@@ -622,10 +661,28 @@ final class AgentRuntime
         $verdict = $this->guards->check($draft, $facts, $ctx);
         $this->persistAndEmitGuardrails($onEvent, $verdict, $cursor);
         $accumulated = $verdict->events;
-        $maxRedrafts = (int) config('agents.channel.sms.max_redraft_attempts', 2);
+        $maxRedrafts = AgentChannelLimits::maxRedraftAttempts($ctx->channel->channel);
         $attempts = 0;
 
         while ($verdict->retry !== null && $attempts < $maxRedrafts) {
+            if ($this->budgetExceeded()) {
+                $verdict = GuardrailVerdict::block(
+                    'turn_timeout',
+                    HandoffReason::Error,
+                    ['detail' => 'turn_timeout'],
+                    $accumulated,
+                );
+
+                return [
+                    'draft' => $draft,
+                    'verdict' => $verdict,
+                    'usage' => $usageTotal,
+                    'lastUsage' => $lastUsage,
+                    'lastLatencyMs' => $lastLatencyMs,
+                    'finishReason' => $finishReason,
+                ];
+            }
+
             $attempts++;
             $messages[] = ['role' => 'assistant', 'content' => $draft];
             $messages[] = ['role' => 'system', 'content' => $verdict->retry];
@@ -649,9 +706,9 @@ final class AgentRuntime
                 $finishReason = $response->finishReason;
             } catch (ModelTimeoutException) {
                 $verdict = GuardrailVerdict::block(
-                    $verdict->blockedBy ?? 'channel',
+                    'turn_timeout',
                     HandoffReason::Error,
-                    ['detail' => 'timeout'],
+                    ['detail' => 'turn_timeout'],
                     $accumulated,
                 );
 
@@ -1175,6 +1232,7 @@ final class AgentRuntime
             $state,
             $blockedBy,
             guardrailEvents: $guardrailEvents,
+            emittedMessageId: $assistantMessageId,
         );
     }
 
@@ -1203,6 +1261,114 @@ final class AgentRuntime
     }
 
     /**
+     * @param  list<AgentToolInvocation>  $invocations
+     * @param  list<AiUsageEvent>  $usageEvents
+     * @param  list<array<string, mixed>>  $guardrailEvents
+     */
+    private function finishTurnTimeout(
+        AgentContext $ctx,
+        FactBag $facts,
+        array $invocations,
+        array $usageEvents,
+        TraceCursor $cursor,
+        string $draft,
+        Usage $lastUsage,
+        ?int $lastLatencyMs,
+        array $guardrailEvents = [],
+    ): AgentTurn {
+        $draft = trim($draft);
+        $assistantMessageId = null;
+        if ($draft !== '') {
+            $blocked = $this->persistAssistantMessage(
+                $ctx->conversation,
+                $draft,
+                [],
+                $ctx->agent->model,
+                $lastUsage,
+                $lastLatencyMs,
+                'timeout',
+                'turn_timeout',
+                $facts,
+                $ctx->principal,
+            );
+            $this->bindOpenTraceRows($cursor, $blocked->id, $usageEvents);
+            $assistantMessageId = $blocked->id;
+        }
+
+        return $this->finishWithHandoff(
+            $ctx,
+            $facts,
+            $invocations,
+            HandoffReason::Error,
+            HandoffTriggerSource::Rule,
+            $draft !== '' ? $draft : CannedReply::Error,
+            ['detail' => 'turn_timeout'],
+            $usageEvents,
+            'turn_timeout',
+            persistAssistant: $assistantMessageId === null,
+            guardrailEvents: $guardrailEvents,
+            cursor: $cursor,
+            assistantMessageId: $assistantMessageId,
+        );
+    }
+
+    /**
+     * @param  list<AgentToolInvocation>  $invocations
+     * @param  list<AiUsageEvent>  $usageEvents
+     */
+    private function finishProviderThrottled(
+        AgentContext $ctx,
+        FactBag $facts,
+        array $invocations,
+        array $usageEvents,
+        TraceCursor $cursor,
+        ProviderRateLimitedException $e,
+    ): AgentTurn {
+        if ($ctx->conversation->channel !== AgentChannel::Voice) {
+            throw $e;
+        }
+
+        return $this->finishWithHandoff(
+            $ctx,
+            $facts,
+            $invocations,
+            HandoffReason::Error,
+            HandoffTriggerSource::Rule,
+            CannedReply::Error,
+            ['detail' => 'provider_throttled'],
+            $usageEvents,
+            cursor: $cursor,
+        );
+    }
+
+    private function budgetExceeded(): bool
+    {
+        return $this->turnDeadlineNs !== null && hrtime(true) >= $this->turnDeadlineNs;
+    }
+
+    private function remainingTimeoutSeconds(): int
+    {
+        if ($this->turnDeadlineNs === null) {
+            return max(1, (int) ceil(((int) config('agents.turn_timeout_ms', 60_000)) / 1000));
+        }
+
+        $remainingNs = $this->turnDeadlineNs - hrtime(true);
+
+        return max(1, (int) ceil($remainingNs / 1_000_000_000));
+    }
+
+    private function assertProviderBudget(AgentChannel $channel): void
+    {
+        $key = AgentChannelLimits::providerLimiterKey($channel);
+        $max = AgentChannelLimits::providerRatePerMinute($channel);
+        if (RateLimiter::tooManyAttempts($key, $max)) {
+            throw new ProviderRateLimitedException($key);
+        }
+
+        RateLimiter::hit($key, 60);
+    }
+
+    /**
      * Reserve an ai_usage_events row, call the driver, then settle with real tokens.
      *
      * @param  list<array<string, mixed>>  $messages
@@ -1220,6 +1386,8 @@ final class AgentRuntime
         TraceCursor $cursor,
         AgentContext $ctx,
     ): ModelResponse {
+        $this->assertProviderBudget($ctx->channel->channel);
+
         $registry = FactRegistry::rebuild($ctx->principal, $ctx);
         $window = ContextWindow::build($messages, $registry, $this->dealForSummary($registry));
         $messages = ContextWindow::withoutInternalKeys($window->messages);
@@ -1243,6 +1411,7 @@ final class AgentRuntime
                 $toolObjects,
                 $model,
                 $onEvent === null ? null : fn (string $delta) => $onEvent('token', ['delta' => $delta]),
+                $this->remainingTimeoutSeconds(),
             );
         } catch (ModelTimeoutException $e) {
             $failed = AiUsageEvent::settle($callId, status: AiUsageEvent::STATUS_FAILED, provider: $provider, model: $model);

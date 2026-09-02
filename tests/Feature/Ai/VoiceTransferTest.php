@@ -67,6 +67,8 @@ class VoiceTransferTest extends TestCase
             'secret_previous' => null,
         ]);
         RateLimiter::clear('voice-bridge|'.$this->token->id);
+        RateLimiter::clear('ai-provider:voice');
+        RateLimiter::clear('ai-provider:batch');
 
         Setting::setGeneral(Setting::general()->with(sendWindowStart: '09:00', sendWindowEnd: '17:00'));
         $this->travelTo(CarbonImmutable::parse('2026-09-01 12:00:00', $this->site->timezone));

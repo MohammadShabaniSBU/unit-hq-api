@@ -32,7 +32,7 @@ final class CassetteDriver implements ModelDriver
         return $this;
     }
 
-    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
+    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta, ?int $timeoutSeconds = null): ModelResponse
     {
         $this->callCount++;
         $this->lastTransactionLevel = DB::transactionLevel();

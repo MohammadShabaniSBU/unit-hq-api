@@ -38,7 +38,7 @@ final class LaravelAiDriver implements ModelDriver
         private readonly AiProviderRegistry $providers,
     ) {}
 
-    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta): ModelResponse
+    public function stream(array $messages, array $tools, string $model, ?Closure $onDelta, ?int $timeoutSeconds = null): ModelResponse
     {
         $providerName = $this->providers->applyActiveCredentials();
         $provider = $this->manager->textProvider($providerName);
@@ -50,7 +50,7 @@ final class LaravelAiDriver implements ModelDriver
             fn (AgentTool $tool): SchemaOnlySdkTool => new SchemaOnlySdkTool($tool, $names->toWire($tool->key())),
             $tools,
         );
-        $timeoutSeconds = max(1, (int) ceil(((int) config('agents.turn_timeout_ms')) / 1000));
+        $timeoutSeconds = max(1, $timeoutSeconds ?? (int) ceil(((int) config('agents.turn_timeout_ms')) / 1000));
         $stepContext = new StepContext(stepNumber: 0, isFinalStep: true);
 
         try {

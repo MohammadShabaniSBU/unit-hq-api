@@ -207,7 +207,7 @@
 | Per-report caching | Provider-side caching only for now. |
 | Per-locale Vocal Bridge agents | v1 is one VB agent with `language: multi` auto-detect. Panel ships en/es/fr. |
 | VB credentials in env vs Settings | `VOCAL_BRIDGE_API_KEY` is env today. A Settings-managed encrypted account (as `communication_accounts` does) is the follow-up if operators must rotate without a deploy. |
-| Voice for customer-facing agents | Employee copilot only this sprint. `AgentChannel::Voice` exists for ChannelProfile exhaustiveness; `POST /api/agent-conversations` rejects it. |
+| Voice for customer-facing agents | **S28 in flight.** Customer voice is a Vocal Bridge delegation relay (`POST /api/voice/bridge/{token}`). Copilot voice stays the browser data-channel path. |
 | `deals.purpose` | Customer-stated personal vs business is currently dropped. A `deals.purpose` enum column (`personal`\|`business`) is its own small task after this sprint; do not stash it on a note. |
 | Agent-authored notes | `notes.employee_id` is a non-nullable FK, so `crm.create_deal` / `crm.create_contact` skip the note on every real customer-channel conversation and warn in `display`. Whether `employee_id` becomes nullable with `ai_agent_id` as an alternative author (D-AI-4 already lets `AiAgent` be an activity causer) is unset. Until it is, do not tell the model a note was recorded. |
 | Site-scoped discount catalogue | Catalogue rows are organisation-wide (no site column, no site pivot). `site_id` on `pricing.discounts` scopes the empty-catalogue message only, not the rows returned. A per-site offerable set is undecided. |
@@ -217,6 +217,39 @@
 | Per-site agent send window | S26-07 evaluates `outside_hours` against the company-wide `GeneralSettings::$sendWindowStart` → `$sendWindowEnd` via `SiteClock`. Site-scoped bindings use that site's timezone. There is no company timezone (`docs/02-facility.md` forbids adding one): a company-scoped binding evaluates in the timezone of the site resolved by `InboundSiteContext` when there is one, else `config('app.timezone')`. A per-site override of that window is unset. Site access hours (`facility.site_info`) are when renters can reach a unit — they are not office hours and must not be reused for this. |
 | Missed-call SMS follow-up | An inbound call that the agent cannot answer (call channel is skipped `ignored`) does not trigger an SMS. Whether a missed call should enqueue a follow-up SMS on a live SMS binding is unset. |
 | Tool calls inside a guard redraft | S26-10 grounding redrafts on a single unlicensed date or amount tell the model to drop the value or ask the customer. `AgentRuntime::applyOutboundGuards()` converts a redraft that returns tool calls into a block, so a redraft cannot call `calendar.resolve`. Hoisting the guard/redraft loop into the main tool loop in `turn()` would let it; worth doing if traces show redrafts routinely needing a tool, not before. |
+| Tier 2 (realtime speech-to-speech) | Sub-second latency at the cost of every outbound guard. Decide only against measured voice p95 from `voice_session_turns`, not a date. S28-04 ships the columns; numbers await the first live calls (or a `--live` run). Also: `VoiceNumberGuard` + `pricing.quote` on `VoiceToolSurface` + voice `max_redraft_attempts = 1` — a price question can transfer after one failed redraft. Strongest remaining argument for dropping `pricing.quote` from the voice allowlist (raised against S28-02, still unanswered). Awaiting first-call sample — fill this row and the S28-04 PR body; do not invent the numbers. Query below. |
+
+Query `voice_session_turns` once there is traffic (Postgres):
+
+```sql
+-- p50 / p95 / p99 endpoint latency, split by redraft
+SELECT redrafted,
+       percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50,
+       percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95,
+       percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99
+FROM voice_session_turns
+WHERE latency_ms IS NOT NULL
+GROUP BY redrafted;
+
+-- budget-exceeded rate
+SELECT avg(budget_exceeded::int) AS budget_exceeded_rate
+FROM voice_session_turns;
+
+-- share of transfers that verification would have answered (voice OTP case)
+SELECT avg((handoff_reason = 'verification_required')::int) AS verification_share
+FROM voice_session_turns
+WHERE transfer;
+
+-- late drafts: budget exceeded but the model still produced an answer
+SELECT count(*) FILTER (
+           WHERE budget_exceeded
+             AND agent_conversation_message_id IN (
+               SELECT id FROM agent_conversation_messages WHERE blocked_by = 'turn_timeout'
+             )
+       )::float
+       / nullif(count(*) FILTER (WHERE budget_exceeded), 0) AS late_draft_share
+FROM voice_session_turns;
+```
 
 ## Active WIP
 

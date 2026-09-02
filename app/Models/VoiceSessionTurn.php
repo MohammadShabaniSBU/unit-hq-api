@@ -20,6 +20,10 @@ use Illuminate\Support\Carbon;
  * @property bool $transfer
  * @property string|null $destination
  * @property int|null $agent_conversation_message_id
+ * @property int|null $latency_ms
+ * @property bool $redrafted
+ * @property bool $budget_exceeded
+ * @property string|null $handoff_reason
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read VoiceSession $session
@@ -37,12 +41,18 @@ class VoiceSessionTurn extends Model
         'transfer',
         'destination',
         'agent_conversation_message_id',
+        'latency_ms',
+        'redrafted',
+        'budget_exceeded',
+        'handoff_reason',
     ];
 
     protected function casts(): array
     {
         return [
             'transfer' => 'boolean',
+            'redrafted' => 'boolean',
+            'budget_exceeded' => 'boolean',
         ];
     }
 

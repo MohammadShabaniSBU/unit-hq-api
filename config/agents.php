@@ -34,6 +34,16 @@ return [
             'max_segments' => 5,
             'max_redraft_attempts' => 2,
         ],
+        'voice' => [
+            'turn_timeout_ms' => 8_000,
+            'max_redraft_attempts' => 1,
+        ],
+    ],
+
+    // Resize from measured p95 × arrival. Voice is reserved; batch cannot spend it.
+    'provider_rate_per_minute' => [
+        'voice' => (int) env('AGENTS_PROVIDER_RATE_VOICE_PER_MINUTE', 30),
+        'batch' => (int) env('AGENTS_PROVIDER_RATE_BATCH_PER_MINUTE', 20),
     ],
 
     'context' => [
@@ -54,6 +64,9 @@ return [
         // 20/min saturates at three concurrent calls.
         'bridge_rate_per_minute' => (int) env('AGENTS_VOICE_BRIDGE_RATE_PER_MINUTE', 60),
         'bridge_secret_header' => env('AGENTS_VOICE_BRIDGE_SECRET_HEADER', 'X-Voice-Bridge-Secret'),
+        // Vocal Bridge dashboard values paired with channel.voice.turn_timeout_ms.
+        'late_response_behavior' => 'store',
+        'bridge_query_timeout_s' => 10,
         'handoff_sentence' => 'Let me put you through to someone who can help.',
         'voicemail_sentence' => 'The office is closed. I will put you through to voicemail.',
         'apology_sentence' => 'I am sorry, I cannot connect you right now. Please try again later.',

@@ -63,6 +63,8 @@ class VoiceBridgeEndpointTest extends TestCase
             'secret_previous' => null,
         ]);
         RateLimiter::clear('voice-bridge|'.$this->token->id);
+        RateLimiter::clear('ai-provider:voice');
+        RateLimiter::clear('ai-provider:batch');
 
         Setting::setGeneral(Setting::general()->with(sendWindowStart: '00:00', sendWindowEnd: null));
         $this->bindVoice(BindingMode::Auto, BindingAudience::All);
