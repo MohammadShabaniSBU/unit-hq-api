@@ -105,6 +105,7 @@ here and re-checked before launch rather than trusted to memory.
 | Filler audio | **on**, short hold phrase (must not loop past the 8s budget) | S28-04 — configuration, not code; silence is the latency the caller feels |
 | Transfer | enabled, with only the approved destinations from S28-03 | a model that can dial arbitrary numbers is a different product |
 | Worker pool | php-fpm / nginx for `/api/voice/bridge`; `queue:work --queue=ai` is email/copilot only | S28-04 — voice never shares the `ai` queue worker |
+| Greeting `{company}` | replace with the operator's registered name before saving | `vb-customer-config.json` ships the unsubstituted template; a seed or env name must never be baked in |
 
 **Verbatim is the setting the sprint rests on.** In adaptive mode the
 foreground model paraphrases our answer before speaking it. Our draft passed
@@ -122,8 +123,10 @@ it is reviewed and diffable rather than living only in a text box. It must say:
   one.
 - Never answer a question about a specific customer's account. Delegate it.
 - Never speculate about what the company offers. Delegate it.
-- Open every call with the fixed disclosure line (S28-05) before anything
-  else, because the foreground agent speaks first.
+- Open every call with the fixed disclosure line (S28-05) for the **site
+  default locale** before anything else. Do not infer locale from the
+  caller. Replace `{company}` with the operator's registered name at paste
+  time.
 - Speak the delegated answer as given.
 
 That is number discipline applied one layer up. Our tools enforce it on our

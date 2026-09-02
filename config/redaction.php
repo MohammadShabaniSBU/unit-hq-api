@@ -43,6 +43,12 @@ return [
     | rest of the agent tables. AR-03 stays blocking before any provider
     | binding goes to auto.
     |
+    | voice_sessions / voice_session_turns (S28-05 / AR-03): caller_number,
+    | contact_id, bridge_session_id, and answer_text are voice-channel PII /
+    | transcript. Processor audio joins the list if Vocal Bridge retains call
+    | audio. contacts:redact does not touch these tables. Customer voice does
+    | not launch while AR-03 is open.
+    |
     */
 
     'property_keys' => [

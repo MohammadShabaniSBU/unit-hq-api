@@ -7,6 +7,7 @@ namespace App\Support\Ai;
 use App\Models\Setting;
 use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentMessageRole;
+use InvalidArgumentException;
 
 final class DisclosureSentence
 {
@@ -26,6 +27,37 @@ final class DisclosureSentence
         }
 
         return str_replace('{company}', $company ?? self::company(), $template);
+    }
+
+    /**
+     * Spoken Art. 50 greeting for the Vocal Bridge foreground agent.
+     *
+     * No production caller by design — this is the source for the generated
+     * `vb-customer-config.json` artifact, not a runtime path.
+     *
+     * Separate from {@see for()}: voice will take a recording clause later,
+     * and the spoken line has a different legal sign-off owner than chat.
+     * Do not delegate to for(); editing disclosure.* must not change what
+     * is spoken on a call.
+     *
+     * Never falls back to "Keevaris". An empty company name throws.
+     */
+    public static function voiceGreeting(string $locale, ?string $company = null): string
+    {
+        $base = self::localeKey($locale);
+        $template = (string) (config("ai-handoff.voice_greeting.{$base}") ?: config('ai-handoff.voice_greeting.en', ''));
+        if ($template === '') {
+            return '';
+        }
+
+        $name = $company ?? Setting::general()->companyName;
+        if ($name === '') {
+            throw new InvalidArgumentException(
+                'Voice greeting requires a company name; the Keevaris fallback is chat-only.'
+            );
+        }
+
+        return str_replace('{company}', $name, $template);
     }
 
     public static function isPresentIn(string $draft, string $locale): bool

@@ -105,6 +105,24 @@
   `PrincipalPromotion`. Not inherited across conversations. No tenant
   credential, session, or portal is created — this verifies a conversation,
   not a login.
+- **D-AI-27 — Customer-voice recording is off for milestone one (intent, not
+  greeting fact).** The transcript already lives in
+  `agent_conversation_messages` and `voice_session_turns.answer_text`. Audio
+  adds a consent obligation, a retention obligation, and a processor
+  deletion path. The spoken greeting stays the Art. 50 line only until Vocal
+  Bridge answers in writing that recording can be left off and what platform
+  logs still retain. A false not-recorded claim is worse than silence. If a
+  narrower claim is wanted before then, word it as what we control ("we do
+  not store a recording of this call") and get legal sign-off; do not ship
+  either wording in `ai-handoff.voice_greeting` until then.
+  `contacts:redact` has nothing to delete at the processor until recording
+  is confirmed on. Detail: S28-05 findings.
+- **D-AI-28 — Aircall is CRM-level for humans; Vocal Bridge numbers answer
+  AI.** No evidence of first-party bidirectional media streaming, SIPREC, or
+  bring-your-own SIP trunk on Aircall. Questions asked (or awaiting send);
+  answers or non-answers live in S28-05 findings. Plan for no. Transfer from
+  a Vocal Bridge number to an approved Aircall destination; Aircall stays
+  integrated through webhooks.
 
 ## Blocking for S23
 
@@ -114,12 +132,19 @@
   question. `contacts:redact` must cover `agent_conversation_messages`,
   `agent_tool_invocations`, `agent_handoffs.detail`, and
   `agent_pending_actions.payload.body`. `chat_sessions.visitor_meta` arrives
-  with S26-07c. `contact_verifications` joins that list: the row holds a
+  with S26-07c.   `contact_verifications` joins that list: the row holds a
   contact id, a channel id and a code hash — no plaintext PII, but it is a
   record that a named person was asked to prove identity, and it belongs in
-  the redaction scope with the rest. `config/redaction.php` covers
+  the redaction scope with the rest. Voice adds `voice_sessions`
+  (`caller_number`, `contact_id`, `bridge_session_id`) and
+  `voice_session_turns.answer_text`. Processor audio joins the list if Vocal
+  Bridge retains call audio; milestone-one intent is recording off, pending
+  written vendor confirmation. The greeting does not claim not-recorded
+  until that confirmation. **Customer voice does not launch while AR-03 is
+  open.** `config/redaction.php` covers
   `activity_log` and `system_events` only; it carries a comment naming
-  `contact_verifications` but `contacts:redact` does not touch the table.
+  `contact_verifications` and the voice tables but `contacts:redact` does
+  not touch them.
   S26-07 now writes real inbound text onto those
   tables, so the gap is no longer demo-only. Extend `config/redaction.php`
   before, not after, promoting a provider binding to `auto`. **Retention:**
@@ -208,6 +233,7 @@
 | Per-locale Vocal Bridge agents | v1 is one VB agent with `language: multi` auto-detect. Panel ships en/es/fr. |
 | VB credentials in env vs Settings | `VOCAL_BRIDGE_API_KEY` is env today. A Settings-managed encrypted account (as `communication_accounts` does) is the follow-up if operators must rotate without a deploy. |
 | Voice for customer-facing agents | **S28 in flight.** Customer voice is a Vocal Bridge delegation relay (`POST /api/voice/bridge/{token}`). Copilot voice stays the browser data-channel path. |
+| Vocal Bridge / foreground-model residency | **Asked, awaiting (S28-05).** Where audio is processed; where any transcript rests; which model sits behind the foreground agent and where; DPA covering audio + transcript + foreground model; retention defaults and whether configurable, including what platform logs retain when recording is off. Unsatisfactory answer is a launch blocker, not a caveat. |
 | `deals.purpose` | Customer-stated personal vs business is currently dropped. A `deals.purpose` enum column (`personal`\|`business`) is its own small task after this sprint; do not stash it on a note. |
 | Agent-authored notes | `notes.employee_id` is a non-nullable FK, so `crm.create_deal` / `crm.create_contact` skip the note on every real customer-channel conversation and warn in `display`. Whether `employee_id` becomes nullable with `ai_agent_id` as an alternative author (D-AI-4 already lets `AiAgent` be an activity causer) is unset. Until it is, do not tell the model a note was recorded. |
 | Site-scoped discount catalogue | Catalogue rows are organisation-wide (no site column, no site pivot). `site_id` on `pricing.discounts` scopes the empty-catalogue message only, not the rows returned. A per-site offerable set is undecided. |

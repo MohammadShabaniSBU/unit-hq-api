@@ -10,6 +10,22 @@ return [
         'fr' => 'Je suis un assistant automatisé de {company}.',
     ],
 
+    /*
+    | Spoken Art. 50 line for the Vocal Bridge foreground agent (S28-05).
+    | Separate from disclosure.* on purpose: voice will take a recording
+    | clause later, and the spoken line has a different legal sign-off
+    | owner than chat. Editing disclosure.* must not silently change what
+    | is spoken on a call. Byte-identical today is deliberate, not a
+    | cleanup. Operator-editable disclosure is an Art. 50 defect — change
+    | only via code review after legal. Leave {company} unsubstituted;
+    | replace at Vocal Bridge paste time.
+    */
+    'voice_greeting' => [
+        'en' => 'I am an automated assistant for {company}.',
+        'es' => 'Soy un asistente automatizado de {company}.',
+        'fr' => 'Je suis un assistant automatisé de {company}.',
+    ],
+
     'subject_stopwords' => [
         'en' => ['the', 'a', 'an', 'is', 'of', 'to', 'for', 'which', 'that', 'and', 'or'],
         'es' => ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'a', 'al', 'y', 'o', 'que', 'para', 'por'],

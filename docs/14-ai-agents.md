@@ -833,7 +833,14 @@ Art. 50): the first assistant turn of a customer-facing conversation must
 open by stating that it is an automated assistant for the company. The
 system prompt names the configured sentence verbatim on that turn. If the
 model omits it, `DisclosureGuard` **prepends** the line (safety net), and
-the guard event records `prompted` / `appended`.
+the guard event records `prompted` / `appended`. On voice the Vocal Bridge
+foreground agent speaks first, so the spoken line is
+`ai-handoff.voice_greeting` in the **site default locale** (`SiteLocale`
+from the site the number is bound to — not inferred from the caller).
+`DisclosureGuard` remains the backstop on the first delegated reply.
+`voice_greeting` is a separate key from `disclosure` on purpose: voice will
+take a recording clause later, and the spoken line has a different legal
+sign-off owner than chat.
 
 ### Channel
 
@@ -1051,13 +1058,17 @@ These are defects with a home, not open questions.
    drafted replies. `chat_sessions.visitor_meta` arrives with S26-07c.
    `contact_verifications` holds a contact id, a channel id and a code hash
    — no plaintext PII, but a record that a named person was asked to prove
-   identity. `config/redaction.php` covers `activity_log` and `system_events`
-   only (it comments `contact_verifications` but `contacts:redact` does not
-   touch the table). `ai_summaries` **is** already covered (invariant 53).
+   identity. Voice adds `voice_sessions` (`caller_number`, `contact_id`,
+   `bridge_session_id`) and `voice_session_turns.answer_text`. Processor
+   audio joins the list if Vocal Bridge retains call audio. `config/redaction.php`
+   covers `activity_log` and `system_events` only (it comments
+   `contact_verifications` and the voice tables but `contacts:redact` does
+   not touch them). `ai_summaries` **is** already covered (invariant 53).
    Transcripts are evidence in a lien or auction dispute — they retain on
    contract terms, not on the telemetry pruning schedule that covers tier-1
    system events. **Blocking before a provider channel binding is set to
-   `auto` in production.** S26-07 already writes real inbound text onto these
+   `auto` in production. Customer voice does not launch while AR-03 is
+   open.** S26-07 already writes real inbound text onto these
    tables. Detail: `10-open-decisions.md`.
 2. **Two authorization systems.** `agent_write_policies` governs what agents
    may write; `roles` / `role_permissions` / `employee_roles` governs what
