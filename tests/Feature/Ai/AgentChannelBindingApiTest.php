@@ -8,10 +8,12 @@ use App\Enums\LogChannel;
 use App\Models\AgentChannelBinding;
 use App\Models\AiAgent;
 use App\Models\Site;
+use App\Support\Ai\Agents\ConciergeAgentDefinition;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\BindingAudience;
 use App\Support\Ai\Enums\BindingMode;
 use App\Support\Ai\Enums\OutsideHoursPolicy;
+use App\Support\Ai\VoiceToolSurface;
 use App\Support\Auth\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -45,7 +47,25 @@ class AgentChannelBindingApiTest extends TestCase
             ->assertJsonPath('data.0.id', $live->id)
             ->assertJsonPath('data.0.channel', AgentChannel::Sms->value)
             ->assertJsonPath('data.0.agent.key', 'sales')
+            ->assertJsonPath('data.0.allowed_tools', (new ConciergeAgentDefinition)->toolKeys(null))
             ->assertJsonCount(1, 'data');
+    }
+
+    #[Test]
+    public function voice_binding_projects_the_voice_tool_surface(): void
+    {
+        $agent = AiAgent::factory()->create(['key' => 'concierge', 'name' => 'Customer Agent']);
+        AgentChannelBinding::factory()->auto()->create([
+            'ai_agent_id' => $agent->id,
+            'channel' => AgentChannel::Voice,
+        ]);
+
+        Sanctum::actingAs($this->employeeWithPermission(Permission::AiAgentBindingManage));
+
+        $this->getJson('/api/ai/agents/bindings')
+            ->assertOk()
+            ->assertJsonPath('data.0.channel', AgentChannel::Voice->value)
+            ->assertJsonPath('data.0.allowed_tools', VoiceToolSurface::keys());
     }
 
     #[Test]

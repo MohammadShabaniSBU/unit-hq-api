@@ -23,6 +23,7 @@ use App\Models\Reservation;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitHold;
+use App\Models\VoiceSession;
 use App\Policies\AccessEventPolicy;
 use App\Policies\AccessGrantPolicy;
 use App\Policies\AccessPointPolicy;
@@ -41,6 +42,7 @@ use App\Policies\ReservationPolicy;
 use App\Policies\SitePolicy;
 use App\Policies\UnitHoldPolicy;
 use App\Policies\UnitPolicy;
+use App\Policies\VoiceSessionPolicy;
 use App\Support\Auth\DenialContext;
 use App\Support\Auth\Permission;
 use App\Support\Auth\SubjectSite;
@@ -79,6 +81,7 @@ class AuthServiceProvider extends ServiceProvider
         CopilotConversation::class => ConversationPolicy::class,
         AgentConversation::class => AgentConversationPolicy::class,
         AgentPendingAction::class => AgentPendingActionPolicy::class,
+        VoiceSession::class => VoiceSessionPolicy::class,
     ];
 
     public function boot(): void

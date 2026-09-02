@@ -63,6 +63,7 @@ use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Models\VoiceSession;
 use App\Models\WhatsappTemplate;
 use Illuminate\Database\Eloquent\Model;
 
@@ -169,6 +170,9 @@ final class SubjectSite
             AgentPendingAction::class => $subject instanceof AgentPendingAction
                 ? self::agentPendingActionSite($subject)
                 : null,
+            VoiceSession::class => $subject instanceof VoiceSession
+                ? self::voiceSessionSite($subject)
+                : null,
             default => throw new UnresolvableSubjectSite($subject),
         };
     }
@@ -193,6 +197,15 @@ final class SubjectSite
         }
 
         return Site::query()->find($action->site_id);
+    }
+
+    private static function voiceSessionSite(VoiceSession $session): ?Site
+    {
+        if ($session->relationLoaded('site')) {
+            return $session->site;
+        }
+
+        return Site::query()->find($session->site_id);
     }
 
     private static function agentConversationSite(AgentConversation $conversation): ?Site

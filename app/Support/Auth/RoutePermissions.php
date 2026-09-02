@@ -422,6 +422,8 @@ final class RoutePermissions
             'GET /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@showLeasing
             'GET /api/settings/object-customization/{entityType}' => Permission::SettingsManage, // ObjectCustomizationController@show
             'GET /api/units/{unit}/access-events' => Permission::AccessView, // AccessEventController@forUnit
+            'GET /api/voice-sessions' => Permission::AiAgentUse, // VoiceSessionController@index
+            'GET /api/voice-sessions/{voiceSession}' => Permission::AiAgentUse, // VoiceSessionController@show
             'GET /api/{entityType}/attribute-definitions' => Permission::ContactManage, // AttributeDefinitionController@forEntity — actual permission resolved per entityType via AttributeEntityType::managePermission(), not a single static case
             'GET /api/{entityType}/{entityId}/attribute-values' => Permission::ContactView, // AttributeValueController@index — actual permission resolved per entityType via AttributeEntityType::viewPermission(), not a single static case
             'PATCH /api/attribute-definitions/{attributeDefinition}' => Permission::SettingsManage, // AttributeDefinitionController@update

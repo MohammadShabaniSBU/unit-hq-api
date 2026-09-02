@@ -24,6 +24,7 @@ use App\Models\Task;
 use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Models\UnitHold;
+use App\Models\VoiceSession;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -56,7 +57,8 @@ final class SitePath
             Contact::class,
             MessageThread::class,
             Task::class,
-            AgentPendingAction::class => true,
+            AgentPendingAction::class,
+            VoiceSession::class => true,
             default => false,
         };
     }
@@ -94,7 +96,8 @@ final class SitePath
             Contact::class => self::contactDRbac1($q, $siteIds),
             MessageThread::class => self::viaMessageThread($q, $siteIds),
             Task::class => self::viaTaskable($q, $siteIds),
-            AgentPendingAction::class => $q->whereIn($q->getModel()->getTable().'.site_id', $siteIds),
+            AgentPendingAction::class,
+            VoiceSession::class => $q->whereIn($q->getModel()->getTable().'.site_id', $siteIds),
             default => $q->whereRaw('1 = 0'),
         };
     }

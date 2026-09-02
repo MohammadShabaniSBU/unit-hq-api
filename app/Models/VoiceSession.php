@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Auth\Concerns\VisibleToEmployee;
 use Database\Factories\VoiceSessionFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,6 +38,8 @@ class VoiceSession extends Model
 {
     /** @use HasFactory<VoiceSessionFactory> */
     use HasFactory;
+
+    use VisibleToEmployee;
 
     protected $fillable = [
         'bridge_session_id',

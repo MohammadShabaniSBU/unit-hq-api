@@ -21,6 +21,7 @@ use App\Models\Reservation;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitHold;
+use App\Models\VoiceSession;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
@@ -78,6 +79,8 @@ final class VisibleRouteBindings
         'contract_notice' => [ContractNotice::class, [Permission::ContractView, Permission::DelinquencyView]],
         'agentPendingAction' => [AgentPendingAction::class, [Permission::AgentActionApprove]],
         'agent_pending_action' => [AgentPendingAction::class, [Permission::AgentActionApprove]],
+        'voiceSession' => [VoiceSession::class, [Permission::AiAgentUse]],
+        'voice_session' => [VoiceSession::class, [Permission::AiAgentUse]],
     ];
 
     public static function register(): void
@@ -109,7 +112,7 @@ final class VisibleRouteBindings
 
     /**
      * @param  list<Permission>  $permissions
-     * @return list<int>|null  null = company-wide; [] = nowhere; list = union of sites
+     * @return list<int>|null null = company-wide; [] = nowhere; list = union of sites
      */
     private static function unionSiteIds(Employee $employee, array $permissions): ?array
     {

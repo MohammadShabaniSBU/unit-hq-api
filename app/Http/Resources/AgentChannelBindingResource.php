@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Support\Ai\Agents\ConciergeAgentDefinition;
+use App\Support\Ai\Enums\AgentChannel;
+use App\Support\Ai\VoiceToolSurface;
 use Illuminate\Http\Request;
 
 class AgentChannelBindingResource extends BaseResource
@@ -32,6 +35,7 @@ class AgentChannelBindingResource extends BaseResource
             'mode' => $this->mode->value,
             'audience' => $this->audience->value,
             'outside_hours' => $this->outside_hours->value,
+            'allowed_tools' => $this->allowedTools(),
             'archived_at' => $this->datetime($this->archived_at),
             'updated_by' => $updatedBy === null ? null : [
                 'id' => $updatedBy->id,
@@ -39,5 +43,21 @@ class AgentChannelBindingResource extends BaseResource
             ],
             'updated_at' => $this->datetime($this->updated_at),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allowedTools(): array
+    {
+        $channel = $this->channel instanceof AgentChannel
+            ? $this->channel
+            : AgentChannel::from((string) $this->channel);
+
+        if ($channel === AgentChannel::Voice) {
+            return VoiceToolSurface::keys();
+        }
+
+        return (new ConciergeAgentDefinition)->toolKeys(null);
     }
 }

@@ -376,6 +376,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('agent-pending-actions/{agentPendingAction}/approve', [Controllers\AgentPendingActionController::class, 'approve']);
     Route::post('agent-pending-actions/{agentPendingAction}/reject', [Controllers\AgentPendingActionController::class, 'reject']);
 
+    Route::get('voice-sessions', [Controllers\VoiceSessionController::class, 'index']);
+    Route::get('voice-sessions/{voiceSession}', [Controllers\VoiceSessionController::class, 'show']);
+
     Route::get('copilot/conversations', [Controllers\CopilotController::class, 'index']);
     Route::post('copilot/conversations', [Controllers\CopilotController::class, 'store']);
     Route::get('copilot/conversations/{conversation}', [Controllers\CopilotController::class, 'show']);
