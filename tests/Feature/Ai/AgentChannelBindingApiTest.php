@@ -140,19 +140,58 @@ class AgentChannelBindingApiTest extends TestCase
     }
 
     #[Test]
-    public function rejects_voice_and_internal_with_the_same_message(): void
+    public function stores_a_voice_binding(): void
     {
         $agent = AiAgent::factory()->create();
         Sanctum::actingAs($this->employeeWithPermission(Permission::AiAgentBindingManage));
 
-        foreach ([AgentChannel::Voice, AgentChannel::Internal] as $channel) {
-            $this->postJson('/api/ai/agents/bindings', $this->payload($agent, [
-                'channel' => $channel->value,
-            ]))
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors(['channel'])
-                ->assertJsonPath('errors.channel.0', 'This channel cannot be bound to an agent.');
-        }
+        $this->postJson('/api/ai/agents/bindings', $this->payload($agent, [
+            'channel' => AgentChannel::Voice->value,
+            'mode' => BindingMode::Auto->value,
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('data.channel', AgentChannel::Voice->value);
+    }
+
+    #[Test]
+    public function rejects_draft_mode_on_a_voice_binding(): void
+    {
+        $agent = AiAgent::factory()->create();
+        Sanctum::actingAs($this->employeeWithPermission(Permission::AiAgentBindingManage));
+
+        $this->postJson('/api/ai/agents/bindings', $this->payload($agent, [
+            'channel' => AgentChannel::Voice->value,
+            'mode' => BindingMode::Draft->value,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['mode']);
+
+        $binding = AgentChannelBinding::factory()->create([
+            'ai_agent_id' => $agent->id,
+            'channel' => AgentChannel::Voice,
+            'mode' => BindingMode::Auto,
+        ]);
+
+        $this->putJson('/api/ai/agents/bindings/'.$binding->id, $this->payload($agent, [
+            'channel' => AgentChannel::Voice->value,
+            'mode' => BindingMode::Draft->value,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['mode']);
+    }
+
+    #[Test]
+    public function rejects_internal_with_the_unbound_message(): void
+    {
+        $agent = AiAgent::factory()->create();
+        Sanctum::actingAs($this->employeeWithPermission(Permission::AiAgentBindingManage));
+
+        $this->postJson('/api/ai/agents/bindings', $this->payload($agent, [
+            'channel' => AgentChannel::Internal->value,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['channel'])
+            ->assertJsonPath('errors.channel.0', 'This channel cannot be bound to an agent.');
     }
 
     #[Test]

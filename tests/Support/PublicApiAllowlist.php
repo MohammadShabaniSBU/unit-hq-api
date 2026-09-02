@@ -33,6 +33,7 @@ final class PublicApiAllowlist
         'api/legal-entities/{legal_entity}/stripe/public-key',
         'api/invitations/{token}',
         'api/invitations/{token}/accept',
+        'api/voice/bridge/{bridgeToken}',
     ];
 
     public static function contains(string $uri): bool

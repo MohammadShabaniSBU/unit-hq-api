@@ -48,4 +48,13 @@ return [
         'max_issued_per_hour' => 3,
     ],
 
+    'voice' => [
+        // One number, one delegation every 10–20s; three concurrent calls ≈ 9–18/min.
+        // Budget ~8 concurrent calls at the 10s floor (≈48/min) plus retry slack.
+        // 20/min saturates at three concurrent calls.
+        'bridge_rate_per_minute' => (int) env('AGENTS_VOICE_BRIDGE_RATE_PER_MINUTE', 60),
+        'bridge_secret_header' => env('AGENTS_VOICE_BRIDGE_SECRET_HEADER', 'X-Voice-Bridge-Secret'),
+        'handoff_sentence' => 'Let me put you through to someone who can help.',
+    ],
+
 ];

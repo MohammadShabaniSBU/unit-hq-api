@@ -49,6 +49,7 @@ class AgentChannelBindingController extends Controller
 
         $validated = $this->validated($request);
         $this->assertBindableChannel($validated['channel']);
+        $this->assertVoiceModeAllowed($validated['channel'], $validated['mode']);
         $this->assertUniqueChannelSite($validated['channel'], $validated['site_id'] ?? null);
 
         try {
@@ -94,6 +95,7 @@ class AgentChannelBindingController extends Controller
 
         $validated = $this->validated($request);
         $this->assertBindableChannel($validated['channel']);
+        $this->assertVoiceModeAllowed($validated['channel'], $validated['mode']);
         $this->assertUniqueChannelSite(
             $validated['channel'],
             $validated['site_id'] ?? null,
@@ -201,6 +203,15 @@ class AgentChannelBindingController extends Controller
         if (! AgentChannel::from($channel)->isBindable()) {
             throw ValidationException::withMessages([
                 'channel' => ['This channel cannot be bound to an agent.'],
+            ]);
+        }
+    }
+
+    private function assertVoiceModeAllowed(string $channel, string $mode): void
+    {
+        if ($channel === AgentChannel::Voice->value && $mode === BindingMode::Draft->value) {
+            throw ValidationException::withMessages([
+                'mode' => ['Voice bindings cannot use draft mode.'],
             ]);
         }
     }

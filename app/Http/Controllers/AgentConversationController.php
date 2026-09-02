@@ -12,6 +12,7 @@ use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Site;
+use App\Models\SystemEvent;
 use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
@@ -19,6 +20,7 @@ use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\InboundSiteContext;
 use App\Support\Ai\Sse\AgentTurnSse;
+use App\Support\Ai\VoiceCallerIdentity;
 use App\Support\Auth\Permission;
 use App\Support\Communications\SiteLocale;
 use App\Support\RecordsActivity;
@@ -79,9 +81,15 @@ class AgentConversationController extends Controller
 
         $validated = $request->validate([
             'agent_key' => ['required', 'string'],
-            'channel' => ['required', Rule::enum(AgentChannel::class)->except([AgentChannel::Voice])],
+            'channel' => ['required', Rule::enum(AgentChannel::class)],
             'origin' => ['required', Rule::enum(AgentOrigin::class)],
-            'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
+            'contact_id' => [
+                'nullable',
+                'integer',
+                'exists:contacts,id',
+                'prohibited_if:origin,voice',
+            ],
+            'caller_number' => ['nullable', 'string', 'max:32'],
             'verification_level' => [
                 'prohibited_unless:origin,demo',
                 'required_if:origin,demo',
@@ -107,7 +115,16 @@ class AgentConversationController extends Controller
             ]);
         }
 
-        $contactId = isset($validated['contact_id']) ? (int) $validated['contact_id'] : null;
+        $identity = null;
+        if ($origin === AgentOrigin::Voice) {
+            $identity = VoiceCallerIdentity::resolve(
+                isset($validated['caller_number']) ? (string) $validated['caller_number'] : null,
+            );
+            $contactId = $identity->contactId;
+        } else {
+            $contactId = isset($validated['contact_id']) ? (int) $validated['contact_id'] : null;
+        }
+
         $verification = $this->resolveVerification($origin, $validated['verification_level'] ?? null, $contactId);
 
         if ($verification === VerificationLevel::Verified && $contactId === null) {
@@ -133,6 +150,12 @@ class AgentConversationController extends Controller
             'state' => ConversationState::Active,
             'locale' => $locale,
         ]);
+
+        if ($identity?->ambiguous) {
+            SystemEvent::record('ai.voice.caller_ambiguous', $conversation, [
+                'matches' => $identity->matches,
+            ]);
+        }
 
         RecordsActivity::log(
             LogChannel::Ai,
@@ -241,11 +264,19 @@ class AgentConversationController extends Controller
 
     private function deriveAudience(AgentOrigin $origin, ?int $contactId): AgentAudience
     {
-        if ($contactId !== null || $origin === AgentOrigin::Demo) {
+        // An unknown party is still a customer. Internal is not a
+        // fallthrough — a voice caller we do not recognise is not an
+        // employee. A new origin will not compile until someone picks.
+        if ($contactId !== null) {
             return AgentAudience::Customer;
         }
 
-        return AgentAudience::Internal;
+        return match ($origin) {
+            AgentOrigin::Demo,
+            AgentOrigin::Inbox,
+            AgentOrigin::Webchat,
+            AgentOrigin::Voice => AgentAudience::Customer,
+        };
     }
 
     private function resolveVerification(AgentOrigin $origin, mixed $submitted, ?int $contactId): VerificationLevel
@@ -259,6 +290,10 @@ class AgentConversationController extends Controller
         // Verification is earned inside a conversation and never inherited.
         // A prior verified conversation for this contact must not be looked
         // up here — the shortcut is tempting and the failure is silent.
+        //
+        // Live voice cannot reach verified: the voice OTP threat model has
+        // not been done, so voice is capped at channel_asserted and account
+        // questions are transfers. Revisit when that work is done.
         return $contactId !== null
             ? VerificationLevel::ChannelAsserted
             : VerificationLevel::Anonymous;

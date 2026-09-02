@@ -9,6 +9,8 @@ use App\Models\AgentConversation;
 use App\Models\AgentPrincipalPromotion;
 use App\Models\AgentToolInvocation;
 use App\Support\Ai\Enums\AgentAudience;
+use App\Support\Ai\Enums\AgentChannel;
+use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Tools\AgentWriteAttribution;
@@ -110,6 +112,9 @@ final class PrincipalPromotion
         if ($principal->verification->satisfies(VerificationLevel::Verified)) {
             return null;
         }
+        if (self::voiceIsCapped($conversation)) {
+            return null;
+        }
 
         $from = $principal->verification;
         $conversation->verification_level = VerificationLevel::Verified;
@@ -131,6 +136,23 @@ final class PrincipalPromotion
         self::recordTrace($conversation, $from, VerificationLevel::Verified, 'otp', $invocation);
 
         return $conversation->principal();
+    }
+
+    /**
+     * Live voice cannot reach verified. The voice OTP threat model has not
+     * been done, so voice is capped at channel_asserted and account
+     * questions are transfers. Demo remains a writer of verified
+     * (invariant 59). Revisit when that work is done — this is a
+     * deferral, not a finding that voice OTP is unsafe.
+     */
+    private static function voiceIsCapped(AgentConversation $conversation): bool
+    {
+        if ($conversation->origin === AgentOrigin::Demo) {
+            return false;
+        }
+
+        return $conversation->origin === AgentOrigin::Voice
+            || $conversation->channel === AgentChannel::Voice;
     }
 
     private static function recordTrace(

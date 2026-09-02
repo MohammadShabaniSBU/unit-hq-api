@@ -14,15 +14,14 @@ enum AgentChannel: string
     case Voice = 'voice';
 
     /**
-     * Channels an operator may bind an agent to. Voice and internal are
-     * rejected at validation with the same 422; a future enum case is not
-     * bindable until it is listed here.
+     * Channels an operator may bind an agent to. Internal is rejected at
+     * validation; a future enum case is not bindable until it is listed here.
      *
      * @return array<int, self>
      */
     public static function bindable(): array
     {
-        return [self::Email, self::Sms, self::Whatsapp, self::Webchat];
+        return [self::Email, self::Sms, self::Whatsapp, self::Webchat, self::Voice];
     }
 
     public function isBindable(): bool

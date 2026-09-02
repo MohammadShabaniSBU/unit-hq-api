@@ -114,7 +114,7 @@ class AgentConversationApiTest extends TestCase
     }
 
     #[Test]
-    public function channel_voice_is_rejected(): void
+    public function channel_voice_is_accepted(): void
     {
         config(['agents.demo_enabled' => true]);
         $agent = AiAgent::factory()->create(['key' => 'support', 'is_active' => true]);
@@ -126,8 +126,10 @@ class AgentConversationApiTest extends TestCase
             'origin' => AgentOrigin::Demo->value,
             'verification_level' => VerificationLevel::Anonymous->value,
         ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('channel');
+            ->assertCreated()
+            ->assertJsonPath('data.channel', AgentChannel::Voice->value)
+            ->assertJsonPath('data.audience', AgentAudience::Customer->value)
+            ->assertJsonPath('data.origin', AgentOrigin::Demo->value);
     }
 
     #[Test]

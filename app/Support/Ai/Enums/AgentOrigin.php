@@ -9,4 +9,5 @@ enum AgentOrigin: string
     case Demo = 'demo';
     case Inbox = 'inbox';
     case Webchat = 'webchat';
+    case Voice = 'voice';
 }

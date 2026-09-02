@@ -56,6 +56,9 @@ Route::get('invitations/{token}', [Controllers\EmployeeInvitationController::cla
 Route::post('invitations/{token}/accept', [Controllers\EmployeeInvitationController::class, 'accept'])
     ->middleware('throttle:invitation');
 
+// Vocal Bridge AI-agent delegation — path token + shared-secret header.
+Route::post('voice/bridge/{bridgeToken}', Controllers\VoiceBridgeController::class);
+
 // ---------------------------------------------------------------------------
 // AUTHENTICATED — everything else. No route may be added below without being
 // inside this group. RouteAuthCoverageTest enforces it.
