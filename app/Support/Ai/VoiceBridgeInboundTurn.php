@@ -18,6 +18,7 @@ final readonly class VoiceBridgeInboundTurn
         public ?string $turnId,
         public ?string $sessionId,
         public ?string $callerNumber,
+        public ?string $callerUtterance,
         public string|int|null $jsonRpcId,
     ) {}
 }

@@ -60,6 +60,7 @@ class VoiceBridgeWireFormatTest extends TestCase
         $this->assertSame('msg-1', $inbound->turnId);
         $this->assertSame('ctx-1', $inbound->sessionId);
         $this->assertSame('+34911000001', $inbound->callerNumber);
+        $this->assertNull($inbound->callerUtterance);
         $this->assertSame('req-1', $inbound->jsonRpcId);
     }
 
@@ -113,6 +114,59 @@ class VoiceBridgeWireFormatTest extends TestCase
     }
 
     #[Test]
+    public function http_extracts_caller_utterance_snake_and_camel(): void
+    {
+        $snake = VoiceBridgeWireFormat::parse(Request::create('/bridge', 'POST', [
+            'query' => 'Do you have a small unit?',
+            'turn_id' => 'turn-1',
+            'session_id' => 'session-1',
+            'caller_utterance' => 'so if I wanted the ten square meter one, what would that run me',
+        ]));
+
+        $this->assertSame(
+            'so if I wanted the ten square meter one, what would that run me',
+            $snake->callerUtterance,
+        );
+
+        $camel = VoiceBridgeWireFormat::parse(Request::create('/bridge', 'POST', [
+            'query' => 'Do you have a small unit?',
+            'turn_id' => 'turn-1',
+            'session_id' => 'session-1',
+            'callerUtterance' => 'so if I wanted the ten square meter one, what would that run me',
+        ]));
+
+        $this->assertSame(
+            'so if I wanted the ten square meter one, what would that run me',
+            $camel->callerUtterance,
+        );
+    }
+
+    #[Test]
+    public function http_missing_caller_utterance_stays_null(): void
+    {
+        $inbound = VoiceBridgeWireFormat::parse(Request::create('/bridge', 'POST', [
+            'query' => 'Do you have a small unit?',
+            'turn_id' => 'turn-1',
+            'session_id' => 'session-1',
+        ]));
+
+        $this->assertNull($inbound->callerUtterance);
+    }
+
+    #[Test]
+    public function http_empty_caller_utterance_stays_null(): void
+    {
+        $inbound = VoiceBridgeWireFormat::parse(Request::create('/bridge', 'POST', [
+            'query' => 'Do you have a small unit?',
+            'turn_id' => 'turn-1',
+            'session_id' => 'session-1',
+            'caller_utterance' => '   ',
+        ]));
+
+        $this->assertNull($inbound->callerUtterance);
+    }
+
+    #[Test]
     public function respond_http_is_passthrough(): void
     {
         $inbound = new VoiceBridgeInboundTurn(
@@ -120,6 +174,7 @@ class VoiceBridgeWireFormatTest extends TestCase
             'q',
             't',
             's',
+            null,
             null,
             null,
         );
@@ -137,6 +192,7 @@ class VoiceBridgeWireFormatTest extends TestCase
             'q',
             't',
             'ctx-1',
+            null,
             null,
             'req-9',
         );

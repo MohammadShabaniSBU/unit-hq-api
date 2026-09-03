@@ -81,6 +81,7 @@ final class VoiceBridgeWireFormat
             self::string($request->input('turn_id')) ?? self::string($request->input('turnId')),
             self::string($request->input('session_id')) ?? self::string($request->input('sessionId')),
             self::string($request->input('caller_number')) ?? self::string($request->input('from')),
+            self::string($request->input('caller_utterance')) ?? self::string($request->input('callerUtterance')),
             null,
         );
     }
@@ -105,6 +106,7 @@ final class VoiceBridgeWireFormat
             self::stringFrom($message, 'messageId', 'message_id'),
             $sessionId,
             self::callerFromMetadata($metadata),
+            null,
             self::jsonRpcId($body['id'] ?? null),
         );
     }

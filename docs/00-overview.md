@@ -19,12 +19,13 @@ Keevaris is a **mono-tenant** (single-company) self-storage operations platform.
 
 ## Workspace layout
 
-Not a monorepo — two git repos side by side:
+Not a monorepo — three git repos side by side:
 
 | Repo | Role | Stack |
 |---|---|---|
 | `unit-hq-api/` | Backend API | Laravel 13, PHP 8.3, Sanctum, SQLite (local) / PostgreSQL (deploy) |
 | `unit-hq-panel/` | Operator dashboard | Nuxt 4 (SPA, no SSR), Nuxt UI v4, Tailwind v4, Pinia, i18n (en/es), bun |
+| `keevaris-voice/` | Voice media bridge (Twilio / web → Deepgram → Vocal Bridge) | Node, TypeScript, pnpm |
 
 Deploy: API docker-compose runs PHP-Nginx behind Traefik and joins an external Postgres network.
 

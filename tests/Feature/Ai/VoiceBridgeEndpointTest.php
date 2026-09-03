@@ -338,6 +338,48 @@ class VoiceBridgeEndpointTest extends TestCase
     }
 
     #[Test]
+    public function caller_utterance_is_persisted_on_a_successful_turn(): void
+    {
+        $this->enqueueSafeReply();
+
+        $this->postBridge([
+            'turn_id' => 'turn-utterance',
+            'caller_utterance' => 'so if I wanted the ten square meter one, what would that run me',
+        ])->assertOk()->assertJsonPath('transfer', false);
+
+        $this->assertSame(
+            'so if I wanted the ten square meter one, what would that run me',
+            VoiceSessionTurn::query()->where('turn_id', 'turn-utterance')->value('caller_utterance'),
+        );
+    }
+
+    #[Test]
+    public function caller_utterance_is_persisted_on_a_runtime_throw_handoff(): void
+    {
+        $this->postBridge([
+            'turn_id' => 'turn-throw-utterance',
+            'caller_utterance' => 'so if I wanted the ten square meter one, what would that run me',
+        ])
+            ->assertOk()
+            ->assertJsonPath('transfer', true);
+
+        $this->assertSame(
+            'so if I wanted the ten square meter one, what would that run me',
+            VoiceSessionTurn::query()->where('turn_id', 'turn-throw-utterance')->value('caller_utterance'),
+        );
+    }
+
+    #[Test]
+    public function omitted_caller_utterance_stays_null_on_the_persisted_turn(): void
+    {
+        $this->enqueueSafeReply();
+
+        $this->postBridge(['turn_id' => 'turn-no-utterance'])->assertOk();
+
+        $this->assertNull(VoiceSessionTurn::query()->where('turn_id', 'turn-no-utterance')->value('caller_utterance'));
+    }
+
+    #[Test]
     public function missing_fields_after_auth_return_handoff_not_a_validation_error(): void
     {
         $this->postBridge(['query' => '', 'turn_id' => 't', 'session_id' => 's'])

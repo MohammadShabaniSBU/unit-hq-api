@@ -66,6 +66,7 @@ final class VoiceBridgeTurn
         $turnId = $inbound->turnId;
         $sessionId = $inbound->sessionId;
         $callerNumber = $inbound->callerNumber;
+        $callerUtterance = $inbound->callerUtterance;
 
         if ($query === null || $turnId === null || $sessionId === null) {
             return $this->handoffBody($site);
@@ -100,7 +101,7 @@ final class VoiceBridgeTurn
             && $resolved->outsideHours === OutsideHoursPolicy::Inbox
             && $this->outsideHours($site)
         ) {
-            return $this->outsideHoursInbox($session, $turnId, $site);
+            return $this->outsideHoursInbox($session, $turnId, $site, callerUtterance: $callerUtterance);
         }
 
         $started = hrtime(true);
@@ -125,6 +126,7 @@ final class VoiceBridgeTurn
                 $turnId,
                 site: $site,
                 latencyMs: (int) ((hrtime(true) - $started) / 1_000_000),
+                callerUtterance: $callerUtterance,
             );
         }
 
@@ -150,6 +152,7 @@ final class VoiceBridgeTurn
                 $redrafted,
                 true,
                 HandoffReason::Error,
+                callerUtterance: $callerUtterance,
             );
         }
 
@@ -167,6 +170,7 @@ final class VoiceBridgeTurn
                 $redrafted,
                 false,
                 HandoffReason::Error,
+                callerUtterance: $callerUtterance,
             );
         }
 
@@ -176,7 +180,15 @@ final class VoiceBridgeTurn
                 'error' => $turn->blockedBy ?? 'empty_draft',
             ]);
 
-            return $this->persistHandoff($session, $turnId, $turn->emittedMessageId, $site, $elapsedMs, $redrafted);
+            return $this->persistHandoff(
+                $session,
+                $turnId,
+                $turn->emittedMessageId,
+                $site,
+                $elapsedMs,
+                $redrafted,
+                callerUtterance: $callerUtterance,
+            );
         }
 
         if ($turn->handoff !== null) {
@@ -191,6 +203,7 @@ final class VoiceBridgeTurn
                 $redrafted,
                 false,
                 $turn->handoff->reason,
+                callerUtterance: $callerUtterance,
             );
         }
 
@@ -202,6 +215,7 @@ final class VoiceBridgeTurn
             $turn->emittedMessageId,
             latencyMs: $elapsedMs,
             redrafted: $redrafted,
+            callerUtterance: $callerUtterance,
         );
     }
 
@@ -219,7 +233,7 @@ final class VoiceBridgeTurn
     /**
      * @return array{text: string, transfer: bool, destination?: string}
      */
-    private function outsideHoursInbox(VoiceSession $session, string $turnId, Site $site): array
+    private function outsideHoursInbox(VoiceSession $session, string $turnId, Site $site, ?string $callerUtterance = null): array
     {
         $conversation = $session->conversation;
 
@@ -244,6 +258,7 @@ final class VoiceBridgeTurn
             $this->transfer->cannedText(HandoffReason::OutOfHours),
             HandoffReason::OutOfHours,
             $site,
+            callerUtterance: $callerUtterance,
         );
     }
 
@@ -435,6 +450,7 @@ final class VoiceBridgeTurn
         bool $redrafted = false,
         bool $budgetExceeded = false,
         ?HandoffReason $handoffReason = null,
+        ?string $callerUtterance = null,
     ): array {
         $result = $this->transfer->resolve($reason, $site);
         if (! $result->transfer) {
@@ -448,6 +464,7 @@ final class VoiceBridgeTurn
                 redrafted: $redrafted,
                 budgetExceeded: $budgetExceeded,
                 handoffReason: $handoffReason ?? $reason,
+                callerUtterance: $callerUtterance,
             );
         }
 
@@ -462,6 +479,7 @@ final class VoiceBridgeTurn
             $redrafted,
             $budgetExceeded,
             $handoffReason ?? $reason,
+            callerUtterance: $callerUtterance,
         );
     }
 
@@ -475,6 +493,7 @@ final class VoiceBridgeTurn
         ?Site $site = null,
         ?int $latencyMs = null,
         bool $redrafted = false,
+        ?string $callerUtterance = null,
     ): array {
         return $this->persistTransfer(
             $session,
@@ -487,6 +506,7 @@ final class VoiceBridgeTurn
             $redrafted,
             false,
             HandoffReason::Error,
+            callerUtterance: $callerUtterance,
         );
     }
 
@@ -504,12 +524,14 @@ final class VoiceBridgeTurn
         bool $redrafted = false,
         bool $budgetExceeded = false,
         ?HandoffReason $handoffReason = null,
+        ?string $callerUtterance = null,
     ): array {
         try {
             $row = VoiceSessionTurn::query()->create([
                 'voice_session_id' => $session->id,
                 'turn_id' => $turnId,
                 'answer_text' => $text,
+                'caller_utterance' => $callerUtterance,
                 'transfer' => $transfer,
                 'destination' => $transfer ? $destination : null,
                 'agent_conversation_message_id' => $messageId,

@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $voice_session_id
  * @property string $turn_id
  * @property string $answer_text
+ * @property string|null $caller_utterance
  * @property bool $transfer
  * @property string|null $destination
  * @property int|null $agent_conversation_message_id
@@ -38,6 +39,7 @@ class VoiceSessionTurn extends Model
         'voice_session_id',
         'turn_id',
         'answer_text',
+        'caller_utterance',
         'transfer',
         'destination',
         'agent_conversation_message_id',
