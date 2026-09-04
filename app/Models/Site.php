@@ -52,6 +52,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, SiteSenderIdentity> $senderIdentities
  * @property-read Collection<int, SiteServiceArea> $serviceAreas
  * @property-read Collection<int, CommunicationAccount> $communicationAccounts
+ * @property-read Collection<int, VoiceBridgeToken> $voiceBridgeTokens
  * @property-read Collection<int, Contact>       $contacts
  */
 class Site extends Model
@@ -202,6 +203,12 @@ class Site extends Model
     public function communicationAccounts(): HasMany
     {
         return $this->hasMany(CommunicationAccount::class);
+    }
+
+    /** @return HasMany<VoiceBridgeToken> */
+    public function voiceBridgeTokens(): HasMany
+    {
+        return $this->hasMany(VoiceBridgeToken::class);
     }
 
     /** @return BelongsToMany<Contact, $this> */

@@ -193,6 +193,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('sites/{site}/sender-identities', [Facility\SiteSenderIdentityController::class, 'index']);
     Route::put('sites/{site}/sender-identities/{channel}', [Facility\SiteSenderIdentityController::class, 'update']);
 
+    // Voice bridge tokens — CredentialManage against the site. Secret revealed once
+    // on create / regenerate (invariant 26b / V03-04); omitted from every other response.
+    Route::get('sites/{site}/voice-bridge-tokens', [Facility\VoiceBridgeTokenController::class, 'index']);
+    Route::post('sites/{site}/voice-bridge-tokens', [Facility\VoiceBridgeTokenController::class, 'store']);
+    Route::patch('sites/{site}/voice-bridge-tokens/{voiceBridgeToken}', [Facility\VoiceBridgeTokenController::class, 'update']);
+    Route::post('sites/{site}/voice-bridge-tokens/{voiceBridgeToken}/regenerate-secret', [Facility\VoiceBridgeTokenController::class, 'regenerateSecret']);
+    Route::post('sites/{site}/voice-bridge-tokens/{voiceBridgeToken}/revoke', [Facility\VoiceBridgeTokenController::class, 'revoke']);
+
     Route::get('billing-runs', [Controllers\BillingRunController::class, 'index']);
     Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);

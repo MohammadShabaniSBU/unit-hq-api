@@ -323,11 +323,13 @@ final class RoutePermissions
             'GET /api/settings/communications/call/aircall/users' => Permission::CredentialManage, // AircallUserLinkController@index
             'GET /api/settings/esign' => Permission::CredentialManage, // EsignProviderAccountController@show
             'GET /api/sites/{site}/sender-identities' => Permission::CredentialManage, // Facility\SiteSenderIdentityController@index
+            'GET /api/sites/{site}/voice-bridge-tokens' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@index
             'GET /api/template-builder/sample-contexts' => Permission::TemplateManage, // TemplateFamilyController@sampleContexts
             'GET /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@index
             'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
             'GET /api/whatsapp-templates' => Permission::TemplateManage, // WhatsappTemplateController@index
             'GET /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@show
+            'PATCH /api/sites/{site}/voice-bridge-tokens/{voiceBridgeToken}' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@update
             'PATCH /api/settings/ai-provider-accounts/{aiProviderAccount}' => Permission::CredentialManage, // AiProviderAccountController@update
             'PATCH /api/settings/analytics-accounts/{analyticsAccount}' => Permission::CredentialManage, // AnalyticsAccountController@update
             'PATCH /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@update
@@ -344,6 +346,9 @@ final class RoutePermissions
             'POST /api/inbox/threads/{messageThread}/reply' => Permission::InboxSend, // InboxController@reply
             'POST /api/inbox/threads/{messageThread}/unread' => Permission::InboxView, // InboxController@unread
             'POST /api/messages/{message}/move-thread' => Permission::InboxAssign, // MessageController@moveThread
+            'POST /api/sites/{site}/voice-bridge-tokens' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@store
+            'POST /api/sites/{site}/voice-bridge-tokens/{voiceBridgeToken}/regenerate-secret' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@regenerateSecret
+            'POST /api/sites/{site}/voice-bridge-tokens/{voiceBridgeToken}/revoke' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@revoke
             'POST /api/settings/ai-provider-accounts' => Permission::CredentialManage, // AiProviderAccountController@store
             'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/archive' => Permission::CredentialManage, // AiProviderAccountController@archive
             'POST /api/settings/ai-provider-accounts/{aiProviderAccount}/default' => Permission::CredentialManage, // AiProviderAccountController@setDefault

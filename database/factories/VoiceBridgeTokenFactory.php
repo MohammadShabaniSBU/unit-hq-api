@@ -27,6 +27,8 @@ class VoiceBridgeTokenFactory extends Factory
             'secret_previous' => null,
             'site_id' => Site::factory(),
             'phone_number' => '+1'.fake()->numerify('##########'),
+            'main_line_number' => '+1'.fake()->numerify('##########'),
+            'voicemail_number' => '+1'.fake()->numerify('##########'),
             'label' => null,
             'revoked_at' => null,
         ];
