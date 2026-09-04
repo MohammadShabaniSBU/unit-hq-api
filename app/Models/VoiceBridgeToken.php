@@ -21,6 +21,9 @@ use Illuminate\Support\Str;
  * @property string $secret
  * @property string|null $secret_previous
  * @property int $site_id
+ * @property string|null $phone_number
+ * @property string|null $main_line_number
+ * @property string|null $voicemail_number
  * @property string|null $label
  * @property Carbon|null $revoked_at
  * @property Carbon $created_at
@@ -37,6 +40,9 @@ class VoiceBridgeToken extends Model
         'secret',
         'secret_previous',
         'site_id',
+        'phone_number',
+        'main_line_number',
+        'voicemail_number',
         'label',
         'revoked_at',
     ];
