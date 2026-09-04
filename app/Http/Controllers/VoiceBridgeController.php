@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Support\Ai\VoiceBridgeAuth;
 use App\Support\Ai\VoiceBridgeTurn;
 use App\Support\Ai\VoiceBridgeWireFormat;
+use App\Support\Ai\VoiceSessionCrossTokenException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,9 +22,12 @@ class VoiceBridgeController extends Controller
 
         $inbound = VoiceBridgeWireFormat::parse($request);
 
-        return response()->json(VoiceBridgeWireFormat::respond(
-            $inbound,
-            app(VoiceBridgeTurn::class)->handle($inbound, $token),
-        ));
+        try {
+            $body = app(VoiceBridgeTurn::class)->handle($inbound, $token);
+        } catch (VoiceSessionCrossTokenException) {
+            return $this->notFound();
+        }
+
+        return response()->json(VoiceBridgeWireFormat::respond($inbound, $body));
     }
 }

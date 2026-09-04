@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int $site_id
  * @property Carbon $started_at
  * @property Carbon|null $ended_at
+ * @property string|null $end_reason
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read AgentConversation $conversation
@@ -50,6 +51,7 @@ class VoiceSession extends Model
         'site_id',
         'started_at',
         'ended_at',
+        'end_reason',
     ];
 
     protected function casts(): array

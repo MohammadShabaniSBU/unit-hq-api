@@ -62,6 +62,10 @@ Route::post('voice/bridge/{bridgeToken}', Controllers\VoiceBridgeController::cla
 // keevaris-voice runtime config — same path token + shared-secret header.
 Route::get('voice/bridge/{bridgeToken}/config', Controllers\VoiceBridgeConfigController::class);
 
+// Vocal Bridge session lifecycle — same path token + shared-secret header.
+Route::post('voice/bridge/{bridgeToken}/session', Controllers\VoiceBridgeSessionOpenController::class);
+Route::post('voice/bridge/{bridgeToken}/session/{bridgeSessionId}/end', Controllers\VoiceBridgeSessionEndController::class);
+
 // ---------------------------------------------------------------------------
 // AUTHENTICATED — everything else. No route may be added below without being
 // inside this group. RouteAuthCoverageTest enforces it.

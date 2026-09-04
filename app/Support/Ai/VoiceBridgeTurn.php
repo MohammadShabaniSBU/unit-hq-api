@@ -6,28 +6,20 @@ namespace App\Support\Ai;
 
 use App\Models\AgentConversation;
 use App\Models\AgentHandoff;
-use App\Models\Contact;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\VoiceBridgeToken;
 use App\Models\VoiceSession;
 use App\Models\VoiceSessionTurn;
-use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
-use App\Support\Ai\Enums\AgentOrigin;
-use App\Support\Ai\Enums\BindingAudience;
 use App\Support\Ai\Enums\BindingMode;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\OutsideHoursPolicy;
-use App\Support\Communications\Channel;
-use App\Support\Communications\ContactChannelMatcher;
-use App\Support\Communications\SiteLocale;
 use App\Support\Time\SiteClock;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Throwable;
 
@@ -43,6 +35,7 @@ final class VoiceBridgeTurn
         private readonly AgentChannelBindings $bindings,
         private readonly AgentRuntime $runtime,
         private readonly VoiceTransfer $transfer,
+        private readonly VoiceSessionOpener $opener,
     ) {}
 
     /**
@@ -81,13 +74,11 @@ final class VoiceBridgeTurn
             return $this->handoffBody($site);
         }
 
-        $identity = VoiceCallerIdentity::resolve($callerNumber);
-
-        if (! $this->audienceAllows($resolved, $identity, $token->site_id)) {
+        $session = $this->opener->open($token, $sessionId, $callerNumber);
+        if ($session === null) {
             return $this->handoffBody($site);
         }
 
-        $session = $this->findOrCreateSession($token, $resolved, $sessionId, $callerNumber, $identity);
         $conversation = $session->conversation;
         $principal = $this->principalFrom($conversation);
 
@@ -269,91 +260,6 @@ final class VoiceBridgeTurn
         return ! SiteClock::withinWindow($site, $settings->sendWindowStart, $settings->sendWindowEnd);
     }
 
-    private function audienceAllows(ResolvedBinding $binding, VoiceCallerIdentity $identity, int $siteId): bool
-    {
-        return match ($binding->audience) {
-            BindingAudience::All => true,
-            BindingAudience::KnownContacts => $identity->contactId !== null,
-            BindingAudience::ExistingTenants => $identity->contactId !== null
-                && AgentEligibility::hasInForceContractAtSite(
-                    Contact::query()->find($identity->contactId),
-                    $siteId,
-                ),
-        };
-    }
-
-    private function findOrCreateSession(
-        VoiceBridgeToken $token,
-        ResolvedBinding $binding,
-        string $bridgeSessionId,
-        ?string $callerNumber,
-        VoiceCallerIdentity $identity,
-    ): VoiceSession {
-        $existing = VoiceSession::query()
-            ->with('conversation')
-            ->where('bridge_session_id', $bridgeSessionId)
-            ->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $normalized = $this->normalizeCaller($callerNumber);
-        $site = Site::query()->find($token->site_id);
-        $contact = $identity->contactId !== null
-            ? Contact::query()->find($identity->contactId)
-            : null;
-        $locale = $this->locale($contact, $site);
-
-        try {
-            return DB::transaction(function () use ($token, $binding, $bridgeSessionId, $normalized, $identity, $locale): VoiceSession {
-                $conversation = AgentConversation::query()->create([
-                    'ai_agent_id' => $binding->agent->id,
-                    'audience' => AgentAudience::Customer,
-                    'origin' => AgentOrigin::Voice,
-                    'channel' => AgentChannel::Voice,
-                    'employee_id' => null,
-                    'created_by_employee_id' => null,
-                    'contact_id' => $identity->contactId,
-                    'site_id' => $token->site_id,
-                    'verification_level' => $identity->verification,
-                    'state' => ConversationState::Active,
-                    'locale' => $locale,
-                ]);
-
-                if ($identity->ambiguous) {
-                    SystemEvent::record('ai.voice.caller_ambiguous', $conversation, [
-                        'matches' => $identity->matches,
-                    ]);
-                }
-
-                $session = VoiceSession::query()->create([
-                    'bridge_session_id' => $bridgeSessionId,
-                    'agent_conversation_id' => $conversation->id,
-                    'voice_bridge_token_id' => $token->id,
-                    'caller_number' => $normalized,
-                    'contact_id' => $identity->contactId,
-                    'site_id' => $token->site_id,
-                    'started_at' => now(),
-                ]);
-                $session->setRelation('conversation', $conversation);
-
-                return $session;
-            });
-        } catch (UniqueConstraintViolationException) {
-            $replay = VoiceSession::query()
-                ->with('conversation')
-                ->where('bridge_session_id', $bridgeSessionId)
-                ->first();
-
-            if ($replay !== null) {
-                return $replay;
-            }
-
-            throw new \RuntimeException('Voice session insert raced and the row could not be re-read.');
-        }
-    }
-
     private function principalFrom(AgentConversation $conversation): AgentPrincipal
     {
         $locale = $conversation->locale ?? (string) config('app.locale');
@@ -367,26 +273,6 @@ final class VoiceBridgeTurn
             $conversation->site_id,
             $locale,
         );
-    }
-
-    private function locale(?Contact $contact, ?Site $site): string
-    {
-        if (is_string($contact?->locale) && $contact->locale !== '') {
-            return $contact->locale;
-        }
-
-        return SiteLocale::for($site);
-    }
-
-    private function normalizeCaller(?string $callerNumber): ?string
-    {
-        if ($callerNumber === null) {
-            return null;
-        }
-
-        $normalized = ContactChannelMatcher::normalize(Channel::Call, $callerNumber);
-
-        return $normalized !== '' ? $normalized : null;
     }
 
     private function storedTurn(VoiceSession $session, string $turnId): ?VoiceSessionTurn
