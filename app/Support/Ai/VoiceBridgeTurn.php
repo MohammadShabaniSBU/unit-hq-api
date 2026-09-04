@@ -277,10 +277,7 @@ final class VoiceBridgeTurn
 
     private function storedTurn(VoiceSession $session, string $turnId): ?VoiceSessionTurn
     {
-        return VoiceSessionTurn::query()
-            ->where('voice_session_id', $session->id)
-            ->where('turn_id', $turnId)
-            ->first();
+        return VoiceSessionTurn::findByTurnId($session, $turnId);
     }
 
     /**

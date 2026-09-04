@@ -37,6 +37,7 @@ final class PublicApiAllowlist
         'api/voice/bridge/{bridgeToken}/config',
         'api/voice/bridge/{bridgeToken}/session',
         'api/voice/bridge/{bridgeToken}/session/{bridgeSessionId}/end',
+        'api/voice/bridge/{bridgeToken}/session/{bridgeSessionId}/transcript',
     ];
 
     public static function contains(string $uri): bool

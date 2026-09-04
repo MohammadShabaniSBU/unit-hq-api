@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read Contact|null $contact
  * @property-read Site $site
  * @property-read Collection<int, VoiceSessionTurn> $turns
+ * @property-read Collection<int, VoiceTranscriptSegment> $voiceTranscriptSegments
  */
 class VoiceSession extends Model
 {
@@ -90,5 +91,11 @@ class VoiceSession extends Model
     public function turns(): HasMany
     {
         return $this->hasMany(VoiceSessionTurn::class);
+    }
+
+    /** @return HasMany<VoiceTranscriptSegment, $this> */
+    public function voiceTranscriptSegments(): HasMany
+    {
+        return $this->hasMany(VoiceTranscriptSegment::class);
     }
 }

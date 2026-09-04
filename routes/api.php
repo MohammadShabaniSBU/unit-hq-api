@@ -66,6 +66,9 @@ Route::get('voice/bridge/{bridgeToken}/config', Controllers\VoiceBridgeConfigCon
 Route::post('voice/bridge/{bridgeToken}/session', Controllers\VoiceBridgeSessionOpenController::class);
 Route::post('voice/bridge/{bridgeToken}/session/{bridgeSessionId}/end', Controllers\VoiceBridgeSessionEndController::class);
 
+// Vocal Bridge transcript flush — same path token + shared-secret header.
+Route::post('voice/bridge/{bridgeToken}/session/{bridgeSessionId}/transcript', Controllers\VoiceBridgeTranscriptController::class);
+
 // ---------------------------------------------------------------------------
 // AUTHENTICATED — everything else. No route may be added below without being
 // inside this group. RouteAuthCoverageTest enforces it.

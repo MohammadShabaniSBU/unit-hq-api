@@ -38,6 +38,7 @@ final class RoutePermissions
             // PUBLIC  'GET /api/voice/bridge/{bridgeToken}/config'  // VoiceBridgeConfigController@__invoke — path token + shared-secret header
             // PUBLIC  'POST /api/voice/bridge/{bridgeToken}/session'  // VoiceBridgeSessionOpenController@__invoke — path token + shared-secret header
             // PUBLIC  'POST /api/voice/bridge/{bridgeToken}/session/{bridgeSessionId}/end'  // VoiceBridgeSessionEndController@__invoke — path token + shared-secret header
+            // PUBLIC  'POST /api/voice/bridge/{bridgeToken}/session/{bridgeSessionId}/transcript'  // VoiceBridgeTranscriptController@__invoke — path token + shared-secret header
 
             // ===== Facility (57) =====
             'DELETE /api/site-maps/{siteMap}' => Permission::SiteManage, // Facility\SiteMapController@destroy

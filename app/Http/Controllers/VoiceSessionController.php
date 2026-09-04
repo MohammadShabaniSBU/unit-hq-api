@@ -64,6 +64,7 @@ class VoiceSessionController extends Controller
             'contact',
             'site',
             'turns' => fn ($q) => $q->orderBy('id'),
+            'voiceTranscriptSegments' => fn ($q) => $q->orderBy('sequence'),
             'conversation.aiAgent',
             'conversation.contact',
             'conversation.messages',

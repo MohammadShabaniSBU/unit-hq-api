@@ -58,6 +58,14 @@ class VoiceSessionTurn extends Model
         ];
     }
 
+    public static function findByTurnId(VoiceSession $session, string $turnId): ?self
+    {
+        return self::query()
+            ->where('voice_session_id', $session->id)
+            ->where('turn_id', $turnId)
+            ->first();
+    }
+
     /** @return BelongsTo<VoiceSession, $this> */
     public function session(): BelongsTo
     {

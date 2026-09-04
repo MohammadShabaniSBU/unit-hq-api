@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\VoiceSessionTurn;
+use App\Models\VoiceTranscriptSegment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -53,6 +54,17 @@ class VoiceSessionResource extends BaseResource
                     'latency_ms' => $turn->latency_ms,
                     'handoff_reason' => $turn->handoff_reason,
                     'agent_conversation_message_id' => $turn->agent_conversation_message_id,
+                ],
+            )->values()->all()),
+            'transcript_segments' => $this->whenLoaded('voiceTranscriptSegments', fn () => $this->voiceTranscriptSegments->map(
+                fn (VoiceTranscriptSegment $segment): array => [
+                    'id' => $segment->id,
+                    'sequence' => $segment->sequence,
+                    'role' => $segment->role,
+                    'text' => $segment->text,
+                    'source' => $segment->source,
+                    'occurred_at' => $this->datetime($segment->occurred_at),
+                    'voice_session_turn_id' => $segment->voice_session_turn_id,
                 ],
             )->values()->all()),
         ];
