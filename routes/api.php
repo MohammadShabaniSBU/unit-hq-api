@@ -59,6 +59,9 @@ Route::post('invitations/{token}/accept', [Controllers\EmployeeInvitationControl
 // Vocal Bridge AI-agent delegation — path token + shared-secret header.
 Route::post('voice/bridge/{bridgeToken}', Controllers\VoiceBridgeController::class);
 
+// keevaris-voice runtime config — same path token + shared-secret header.
+Route::get('voice/bridge/{bridgeToken}/config', Controllers\VoiceBridgeConfigController::class);
+
 // ---------------------------------------------------------------------------
 // AUTHENTICATED — everything else. No route may be added below without being
 // inside this group. RouteAuthCoverageTest enforces it.

@@ -18,7 +18,7 @@ final class RoutePermissions
     {
         return [
 
-            // ===== Public (16) =====
+            // ===== Public (17) =====
             // PUBLIC  'GET /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC
             // PUBLIC  'GET /api/legal-entities/{legal_entity}/stripe/public-key'  // LegalEntityStripeController@publicKey — Stripe publishable key (not secret)
             // PUBLIC  'GET /api/offers/token/{token}'  // OfferController@showByToken — offers.token crypto link
@@ -35,6 +35,7 @@ final class RoutePermissions
             // PUBLIC  'POST /api/webhooks/{provider}/{webhookUrlToken}'  // Webhooks\DeliveryWebhookController@__invoke — delivery webhook token
             // PUBLIC  'POST /api/webhooks/{provider}/{webhookUrlToken}/inbound'  // Webhooks\DeliveryWebhookController@__invoke — delivery inbound HMAC/token
             // PUBLIC  'POST /api/voice/bridge/{bridgeToken}'  // VoiceBridgeController@__invoke — path token + shared-secret header
+            // PUBLIC  'GET /api/voice/bridge/{bridgeToken}/config'  // VoiceBridgeConfigController@__invoke — path token + shared-secret header
 
             // ===== Facility (57) =====
             'DELETE /api/site-maps/{siteMap}' => Permission::SiteManage, // Facility\SiteMapController@destroy

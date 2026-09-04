@@ -26,6 +26,25 @@ return [
         'fr' => 'Je suis un assistant automatisé de {company}.',
     ],
 
+    // Latency filler spoken while a delegation is in flight. English only
+    // today — keevaris-voice already tells the model to answer in the
+    // caller's language regardless of instruction language.
+    'voice_filler' => 'Let me check that for you.',
+
+    // Shared constraint list: VoiceBridgeCustomerConfig (Vocal Bridge paste)
+    // and VoiceBridgeConfig (keevaris-voice runtime) both read this. Do not
+    // duplicate these lines at either call site.
+    'voice_prompt_additions' => [
+        'Never state a price, rate, discount, availability count, unit size, size range, date, balance, invoice figure, unit number, or access code. Describe availability and sizes only in general terms (for example, "a range of sizes are available") and delegate any question needing an exact figure.',
+        'Never answer a question about a specific customer\'s account. Delegate it.',
+        'Never speculate about what the company offers. Delegate it.',
+        'Speak the delegated answer as given.',
+    ],
+
+    'session' => [
+        'max_call_duration_minutes' => 30,
+    ],
+
     'subject_stopwords' => [
         'en' => ['the', 'a', 'an', 'is', 'of', 'to', 'for', 'which', 'that', 'and', 'or'],
         'es' => ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'a', 'al', 'y', 'o', 'que', 'para', 'por'],
