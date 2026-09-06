@@ -147,6 +147,56 @@ class VoiceBridgeTranscriptTest extends TestCase
     }
 
     #[Test]
+    public function delegated_segment_writes_round_trip_telemetry_onto_the_turn(): void
+    {
+        $opened = $this->postOpen('vb-transcript-1')->assertOk();
+        $this->enqueueSafeReply();
+        $this->postBridge(['session_id' => 'vb-transcript-1', 'turn_id' => 'sess:1:0'])->assertOk();
+
+        $this->postTranscript('vb-transcript-1', [
+            $this->segment(1, 'agent', 'We have units available. Which size are you looking for?', 'delegated', 'sess:1:0', [
+                'round_trip_ms' => 1840,
+                'filler_spoken' => true,
+            ]),
+        ])->assertOk();
+
+        $turn = VoiceSessionTurn::query()->where('turn_id', 'sess:1:0')->firstOrFail();
+        $this->assertSame(1840, $turn->round_trip_ms);
+        $this->assertTrue($turn->filler_spoken);
+
+        Sanctum::actingAs($this->employeeWithPermission(Permission::AiAgentUse));
+
+        $this->getJson('/api/voice-sessions/'.$opened->json('id'))
+            ->assertOk()
+            ->assertJsonPath('data.turns.0.round_trip_ms', 1840)
+            ->assertJsonPath('data.turns.0.filler_spoken', true);
+    }
+
+    #[Test]
+    public function telemetry_fields_do_not_stomp_when_only_one_arrives(): void
+    {
+        $this->postOpen('vb-transcript-1')->assertOk();
+        $this->enqueueSafeReply();
+        $this->postBridge(['session_id' => 'vb-transcript-1', 'turn_id' => 'sess:1:0'])->assertOk();
+
+        $this->postTranscript('vb-transcript-1', [
+            $this->segment(1, 'agent', 'We have units available. Which size are you looking for?', 'delegated', 'sess:1:0', [
+                'filler_spoken' => true,
+            ]),
+        ])->assertOk();
+
+        $this->postTranscript('vb-transcript-1', [
+            $this->segment(1, 'agent', 'We have units available. Which size are you looking for?', 'delegated', 'sess:1:0', [
+                'round_trip_ms' => 900,
+            ]),
+        ])->assertOk();
+
+        $turn = VoiceSessionTurn::query()->where('turn_id', 'sess:1:0')->firstOrFail();
+        $this->assertTrue($turn->filler_spoken);
+        $this->assertSame(900, $turn->round_trip_ms);
+    }
+
+    #[Test]
     public function show_returns_segments_ordered_by_sequence(): void
     {
         $opened = $this->postOpen('vb-transcript-1')->assertOk();
@@ -205,9 +255,10 @@ class VoiceBridgeTranscriptTest extends TestCase
     }
 
     /**
-     * @return array{sequence: int, role: string, text: string, source: string, occurred_at: string, turn_id?: string}
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
      */
-    private function segment(int $sequence, string $role, string $text, string $source, ?string $turnId = null): array
+    private function segment(int $sequence, string $role, string $text, string $source, ?string $turnId = null, array $extra = []): array
     {
         $segment = [
             'sequence' => $sequence,
@@ -221,7 +272,7 @@ class VoiceBridgeTranscriptTest extends TestCase
             $segment['turn_id'] = $turnId;
         }
 
-        return $segment;
+        return array_merge($segment, $extra);
     }
 
     private function bindVoice(Site $site, BindingMode $mode, BindingAudience $audience): void

@@ -22,6 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $destination
  * @property int|null $agent_conversation_message_id
  * @property int|null $latency_ms
+ * @property int|null $round_trip_ms
+ * @property bool $filler_spoken
  * @property bool $redrafted
  * @property bool $budget_exceeded
  * @property string|null $handoff_reason
@@ -44,6 +46,8 @@ class VoiceSessionTurn extends Model
         'destination',
         'agent_conversation_message_id',
         'latency_ms',
+        'round_trip_ms',
+        'filler_spoken',
         'redrafted',
         'budget_exceeded',
         'handoff_reason',
@@ -53,6 +57,7 @@ class VoiceSessionTurn extends Model
     {
         return [
             'transfer' => 'boolean',
+            'filler_spoken' => 'boolean',
             'redrafted' => 'boolean',
             'budget_exceeded' => 'boolean',
         ];

@@ -52,6 +52,8 @@ class VoiceSessionResource extends BaseResource
                     'transfer' => $turn->transfer,
                     'destination' => $turn->destination,
                     'latency_ms' => $turn->latency_ms,
+                    'round_trip_ms' => $turn->round_trip_ms,
+                    'filler_spoken' => $turn->filler_spoken,
                     'handoff_reason' => $turn->handoff_reason,
                     'agent_conversation_message_id' => $turn->agent_conversation_message_id,
                 ],

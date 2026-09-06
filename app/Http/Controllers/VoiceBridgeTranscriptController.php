@@ -28,6 +28,8 @@ class VoiceBridgeTranscriptController extends Controller
             'segments.*.source' => ['required', 'string', 'in:stt,fast_model,delegated'],
             'segments.*.occurred_at' => ['required', 'date'],
             'segments.*.turn_id' => ['nullable', 'string'],
+            'segments.*.round_trip_ms' => ['nullable', 'integer', 'min:0'],
+            'segments.*.filler_spoken' => ['nullable', 'boolean'],
         ]);
 
         $session = VoiceSession::query()
@@ -45,6 +47,19 @@ class VoiceBridgeTranscriptController extends Controller
             $turn = is_string($turnId) && $turnId !== ''
                 ? VoiceSessionTurn::findByTurnId($session, $turnId)
                 : null;
+
+            if ($turn !== null) {
+                $telemetry = [];
+                if (array_key_exists('round_trip_ms', $segment) && $segment['round_trip_ms'] !== null) {
+                    $telemetry['round_trip_ms'] = $segment['round_trip_ms'];
+                }
+                if (array_key_exists('filler_spoken', $segment) && $segment['filler_spoken'] !== null) {
+                    $telemetry['filler_spoken'] = $segment['filler_spoken'];
+                }
+                if ($telemetry !== []) {
+                    $turn->update($telemetry);
+                }
+            }
 
             VoiceTranscriptSegment::query()->firstOrCreate(
                 [

@@ -334,6 +334,8 @@ final class VoiceBridgeTurn
         bool $budgetExceeded = false,
         ?HandoffReason $handoffReason = null,
         ?string $callerUtterance = null,
+        ?int $roundTripMs = null,
+        bool $fillerSpoken = false,
     ): array {
         $result = $this->transfer->resolve($reason, $site);
         if (! $result->transfer) {
@@ -348,6 +350,8 @@ final class VoiceBridgeTurn
                 budgetExceeded: $budgetExceeded,
                 handoffReason: $handoffReason ?? $reason,
                 callerUtterance: $callerUtterance,
+                roundTripMs: $roundTripMs,
+                fillerSpoken: $fillerSpoken,
             );
         }
 
@@ -363,6 +367,8 @@ final class VoiceBridgeTurn
             $budgetExceeded,
             $handoffReason ?? $reason,
             callerUtterance: $callerUtterance,
+            roundTripMs: $roundTripMs,
+            fillerSpoken: $fillerSpoken,
         );
     }
 
@@ -377,6 +383,8 @@ final class VoiceBridgeTurn
         ?int $latencyMs = null,
         bool $redrafted = false,
         ?string $callerUtterance = null,
+        ?int $roundTripMs = null,
+        bool $fillerSpoken = false,
     ): array {
         return $this->persistTransfer(
             $session,
@@ -390,6 +398,8 @@ final class VoiceBridgeTurn
             false,
             HandoffReason::Error,
             callerUtterance: $callerUtterance,
+            roundTripMs: $roundTripMs,
+            fillerSpoken: $fillerSpoken,
         );
     }
 
@@ -408,6 +418,8 @@ final class VoiceBridgeTurn
         bool $budgetExceeded = false,
         ?HandoffReason $handoffReason = null,
         ?string $callerUtterance = null,
+        ?int $roundTripMs = null,
+        bool $fillerSpoken = false,
     ): array {
         try {
             $row = VoiceSessionTurn::query()->create([
@@ -419,6 +431,8 @@ final class VoiceBridgeTurn
                 'destination' => $transfer ? $destination : null,
                 'agent_conversation_message_id' => $messageId,
                 'latency_ms' => $latencyMs,
+                'round_trip_ms' => $roundTripMs,
+                'filler_spoken' => $fillerSpoken,
                 'redrafted' => $redrafted,
                 'budget_exceeded' => $budgetExceeded,
                 'handoff_reason' => $handoffReason?->value,
