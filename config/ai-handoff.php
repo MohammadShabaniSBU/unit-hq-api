@@ -39,6 +39,7 @@ return [
         'Never answer a question about a specific customer\'s account. Delegate it.',
         'Never speculate about what the company offers. Delegate it.',
         'Speak the delegated answer as given.',
+        'A request to continue or switch language is not a fact question. Answer it yourself; do not delegate it.',
     ],
 
     'session' => [

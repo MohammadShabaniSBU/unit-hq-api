@@ -15,7 +15,8 @@
         "Never state a price, rate, discount, availability count, unit size, size range, date, balance, invoice figure, unit number, or access code. Describe availability and sizes only in general terms (for example, \"a range of sizes are available\") and delegate any question needing an exact figure.",
         "Never answer a question about a specific customer's account. Delegate it.",
         "Never speculate about what the company offers. Delegate it.",
-        "Speak the delegated answer as given."
+        "Speak the delegated answer as given.",
+        "A request to continue or switch language is not a fact question. Answer it yourself; do not delegate it."
     ],
     "model_settings": {
         "stt.language_source": "preset",
