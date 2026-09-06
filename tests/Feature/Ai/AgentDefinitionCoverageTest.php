@@ -194,8 +194,9 @@ class AgentDefinitionCoverageTest extends TestCase
 
         $voiceCtx = $this->conciergeContext(AgentPrincipal::anonymous(null, 'en'), AgentChannel::Voice);
         $voicePrompt = $definition->systemPrompt($voiceCtx);
-        $this->assertStringContainsString('Do not speak any figure', $voicePrompt);
+        $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voicePrompt);
         $this->assertStringContainsString('voice.send_quote_by_text', $voicePrompt);
+        $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);
     }
 
     private function conciergeContext(AgentPrincipal $principal, AgentChannel $channel = AgentChannel::Webchat): AgentContext

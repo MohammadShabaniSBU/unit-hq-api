@@ -20,7 +20,6 @@ final class CompositeGuardrailPipeline implements GuardrailPipeline
     public const GUARD_SEQUENCE = [
         'duplicate_draft',
         'grounding',
-        'voice_number',
         'forbidden_claim',
         'disclosure',
         'channel',
@@ -29,12 +28,11 @@ final class CompositeGuardrailPipeline implements GuardrailPipeline
     public function __construct(
         DuplicateDraftGuard $duplicate,
         GroundingGuard $grounding,
-        VoiceNumberGuard $voiceNumber,
         ForbiddenClaimGuard $forbidden,
         DisclosureGuard $disclosure,
         ChannelGuard $channel,
     ) {
-        $this->guards = [$duplicate, $grounding, $voiceNumber, $forbidden, $disclosure, $channel];
+        $this->guards = [$duplicate, $grounding, $forbidden, $disclosure, $channel];
     }
 
     public function check(string $draft, FactBag $facts, AgentContext $ctx): GuardrailVerdict

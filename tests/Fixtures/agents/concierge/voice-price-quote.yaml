@@ -10,6 +10,5 @@ principal:
   site: madrid
 turns:
   - input: "How much is a small unit in Madrid?"
-    expect_tools: [pricing.quote, voice.send_quote_by_text]
-    expect_no_digits: true
+    expect_tools: [pricing.quote]
     expect_no_handoff: true

@@ -17,7 +17,6 @@ class CompositeGuardrailPipelineTest extends TestCase
         $this->assertSame([
             'duplicate_draft',
             'grounding',
-            'voice_number',
             'forbidden_claim',
             'disclosure',
             'channel',

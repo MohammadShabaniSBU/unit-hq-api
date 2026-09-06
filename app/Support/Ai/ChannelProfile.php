@@ -82,7 +82,7 @@ final readonly class ChannelProfile
                 requiresTemplateOutsideWindow: false,
                 expectsSignature: false,
                 targetSentences: 2,
-                promptAddendum: 'Do not speak any figure, price, count, date, size, size range, or balance aloud — describe availability and sizes in general terms (for example, "a range of sizes") and offer to text the exact figures with voice.send_quote_by_text. The opening disclosure sentence is fixed to the site\'s registered language; answer every sentence after it in the language the caller is speaking, even if that differs from the disclosure sentence.',
+                promptAddendum: 'Speak grounded sizes, prices, dates, and counts aloud so the caller can compare units. Keep the spoken reply short and TTS-friendly: quote the tool display strings, use currency words or symbols the way they came back, and do not list every catalogue row. After giving the figures that matter, you may also offer to text the full list with voice.send_quote_by_text. The opening disclosure sentence is fixed to the site\'s registered language; answer every sentence after it in the language the caller is speaking, even if that differs from the disclosure sentence.',
             ),
         };
     }

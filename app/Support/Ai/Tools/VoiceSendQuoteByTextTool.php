@@ -25,8 +25,9 @@ use App\Support\Communications\SuppressionWriter;
 use Throwable;
 
 /**
- * Texts a catalogue quote. Display contains no figure — VoiceNumberGuard
- * is the runtime digit rule; this result must not license money tokens.
+ * Texts a catalogue quote as a follow-up to a spoken answer.
+ * Display contains no figure so this result does not license money tokens
+ * the spoken reply did not already earn from pricing.quote.
  */
 final class VoiceSendQuoteByTextTool implements AgentTool
 {
@@ -37,7 +38,7 @@ final class VoiceSendQuoteByTextTool implements AgentTool
 
     public function description(): string
     {
-        return 'Text the exact catalogue quote to the contact. Never supply a destination. The spoken reply must not contain the figure.';
+        return 'Text the exact catalogue quote to the contact after speaking the figures that matter. Never supply a destination.';
     }
 
     public function schema(): array

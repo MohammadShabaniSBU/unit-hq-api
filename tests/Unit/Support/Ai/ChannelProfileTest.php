@@ -65,8 +65,9 @@ class ChannelProfileTest extends TestCase
         $this->assertFalse($voice->requiresTemplateOutsideWindow);
         $this->assertFalse($voice->expectsSignature);
         $this->assertSame(2, $voice->targetSentences);
-        $this->assertStringContainsString('Do not speak any figure', $voice->promptAddendum);
+        $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voice->promptAddendum);
         $this->assertStringContainsString('voice.send_quote_by_text', $voice->promptAddendum);
+        $this->assertStringNotContainsString('Do not speak any figure', $voice->promptAddendum);
     }
 
     #[Test]
