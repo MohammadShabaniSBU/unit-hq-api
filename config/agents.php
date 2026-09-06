@@ -35,7 +35,7 @@ return [
             'max_redraft_attempts' => 2,
         ],
         'voice' => [
-            'turn_timeout_ms' => 8_000,
+            'turn_timeout_ms' => 15_000,
             'max_redraft_attempts' => 1,
         ],
     ],
