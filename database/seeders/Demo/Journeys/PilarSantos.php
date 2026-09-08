@@ -7,6 +7,7 @@ namespace Database\Seeders\Demo\Journeys;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Support\Communications\Channel;
+use App\Support\Communications\WhatsAppWindow;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
@@ -94,13 +95,9 @@ final class PilarSantos extends Journey
             ->first();
         Assert::assertNotNull($thread, 'Pilar should have a WhatsApp thread');
         Assert::assertNotNull($thread->last_inbound_at);
-
-        $seedEnd = CarbonImmutable::parse(CastExecutor::simEnd())->setTime(12, 0, 0);
-        $hoursSinceInbound = $thread->last_inbound_at->diffInHours($seedEnd);
-        Assert::assertLessThanOrEqual(
-            6,
-            abs($hoursSinceInbound),
-            'WhatsApp window should still be open near seed-end (~3h inbound)',
+        Assert::assertTrue(
+            WhatsAppWindow::isOpen($thread),
+            'Pilar WhatsApp window should be open after seed (last inbound re-anchored)',
         );
 
         Assert::assertGreaterThanOrEqual(

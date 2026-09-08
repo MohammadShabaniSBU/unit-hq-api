@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\CredentialStatus;
+use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Deal;
+use App\Models\SiteSenderIdentity;
+use App\Support\Communications\AccountScope;
+use App\Support\Communications\Channel;
+use App\Support\Communications\Provider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\CreatesTwoSiteRbacFixture;
+use Tests\Support\SeedsInboxThreads;
 use Tests\TestCase;
 
 /**
@@ -19,6 +26,7 @@ class ContactVisibilityTest extends TestCase
 {
     use CreatesTwoSiteRbacFixture;
     use RefreshDatabase;
+    use SeedsInboxThreads;
 
     protected function setUp(): void
     {
@@ -94,5 +102,75 @@ class ContactVisibilityTest extends TestCase
         $this->getJson("/api/contacts/{$siteBOnly->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $siteBOnly->id);
+    }
+
+    #[Test]
+    public function hides_contact_at_other_site_when_thread_uses_shared_company_account(): void
+    {
+        $account = $this->seedSharedCompanyEmailAccount();
+
+        $contactB = Contact::factory()->create(['first_name' => 'OtherSite']);
+        Deal::factory()->create(['contact_id' => $contactB->id, 'site_id' => $this->siteB->id]);
+        $this->makeInboxThread($contactB, [
+            'subject' => 'Offer at site B',
+        ], [
+            'communication_account_id' => $account->id,
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $ids = collect($this->getJson('/api/contacts?per_page=100')->assertOk()->json('data'))
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotContains($contactB->id, $ids);
+    }
+
+    #[Test]
+    public function shows_contact_when_shared_account_thread_site_matches_grant(): void
+    {
+        $account = $this->seedSharedCompanyEmailAccount();
+
+        $contactA = Contact::factory()->create(['first_name' => 'GrantedSite']);
+        Deal::factory()->create(['contact_id' => $contactA->id, 'site_id' => $this->siteA->id]);
+        $this->makeInboxThread($contactA, [
+            'subject' => 'Offer at site A',
+        ], [
+            'communication_account_id' => $account->id,
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $ids = collect($this->getJson('/api/contacts?per_page=100')->assertOk()->json('data'))
+            ->pluck('id')
+            ->all();
+
+        $this->assertContains($contactA->id, $ids);
+    }
+
+    private function seedSharedCompanyEmailAccount(): CommunicationAccount
+    {
+        $account = CommunicationAccount::query()->create([
+            'scope' => AccountScope::Company,
+            'site_id' => null,
+            'channel' => Channel::Email,
+            'provider' => Provider::Brevo,
+            'is_active' => true,
+            'credentials' => ['api_key' => 'test-key'],
+            'status' => CredentialStatus::Connected,
+        ]);
+
+        foreach ([$this->siteA, $this->siteB] as $site) {
+            SiteSenderIdentity::query()->create([
+                'site_id' => $site->id,
+                'channel' => Channel::Email,
+                'account_id' => $account->id,
+                'from_name' => 'Keevaris',
+                'from_email' => 'desk-'.$site->id.'@example.com',
+                'reply_to_email' => 'reply-'.$site->id.'@example.com',
+            ]);
+        }
+
+        return $account;
     }
 }

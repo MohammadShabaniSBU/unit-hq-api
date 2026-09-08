@@ -743,7 +743,7 @@ final class JourneySupport
                 'tax_amount' => '0.00',
                 'amount' => '80.00',
                 'currency' => $contract->currency,
-                'due_date' => now()->subDay()->toDateString(),
+                'due_date' => now()->toDateString(),
                 'description' => 'Demo autopay target',
             ]);
             $chargeIds = [(int) $charge->id];

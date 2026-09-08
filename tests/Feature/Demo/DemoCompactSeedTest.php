@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Demo;
 
+use App\Enums\AutopayAttemptStatus;
+use App\Models\AutopayAttempt;
 use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\Delinquency;
 use App\Models\Employee;
+use App\Models\MessageThread;
 use App\Models\Site;
+use App\Support\Communications\Channel;
+use App\Support\Communications\WhatsAppWindow;
+use App\Support\Delinquency\DelinquencyState;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoPipeline;
 use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoWorld;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -48,13 +57,11 @@ class DemoCompactSeedTest extends TestCase
         $codes = Site::query()->orderBy('code')->pluck('code')->all();
         $this->assertSame(['MAD-01', 'MAD-02'], $codes);
 
-        $this->assertTrue(
-            Contact::query()
-                ->where('first_name', 'Lucía')
-                ->where('last_name', 'Ferrer')
-                ->exists(),
-            'Lucía Ferrer should exist after a compact seed',
-        );
+        $lucia = Contact::query()
+            ->where('first_name', 'Lucía')
+            ->where('last_name', 'Ferrer')
+            ->first();
+        $this->assertNotNull($lucia, 'Lucía Ferrer should exist after a compact seed');
 
         $this->assertTrue(
             Employee::query()->where('email', 'agent-mad@example.com')->exists(),
@@ -71,5 +78,76 @@ class DemoCompactSeedTest extends TestCase
         );
 
         DemoRbacGrants::verifyOrFail();
+
+        $this->assertAgentMadCannotSeeSofia();
+        $this->assertLuciaHasOpenDelinquency($lucia);
+        $this->assertAnaHasNoOpenDelinquency();
+        $this->assertPilarWhatsAppWindowIsOpen();
+    }
+
+    private function assertAgentMadCannotSeeSofia(): void
+    {
+        $agent = Employee::query()->where('email', 'agent-mad@example.com')->firstOrFail();
+        Sanctum::actingAs($agent);
+
+        $emails = collect($this->getJson('/api/contacts?per_page=100')->assertOk()->json('data'))
+            ->pluck('email')
+            ->all();
+
+        $this->assertNotContains(
+            'sofia.marin@demo.keevaris.test',
+            $emails,
+            'MAD-01 leasing agent must not see Sofía Marín (MAD-02)',
+        );
+    }
+
+    private function assertLuciaHasOpenDelinquency(Contact $lucia): void
+    {
+        $contract = Contract::query()->where('contact_id', $lucia->id)->firstOrFail();
+
+        $this->assertTrue(
+            Delinquency::query()->where('contract_id', $contract->id)->open()->exists(),
+            'Lucía should have an open delinquency after compact seed',
+        );
+        $this->assertTrue(
+            bccomp(DelinquencyState::netOverdueAmount($contract->fresh(['charges.allocations'])), '0', 2) > 0,
+            'Lucía should still owe',
+        );
+    }
+
+    private function assertAnaHasNoOpenDelinquency(): void
+    {
+        $ana = Contact::query()->where('email', 'ana.coloma@demo.keevaris.test')->firstOrFail();
+        $contract = Contract::query()->where('contact_id', $ana->id)->firstOrFail();
+
+        $this->assertFalse(
+            Delinquency::query()->where('contract_id', $contract->id)->open()->exists(),
+            'Ana should not have an open delinquency case',
+        );
+        $this->assertGreaterThanOrEqual(
+            2,
+            AutopayAttempt::query()
+                ->where('contract_id', $contract->id)
+                ->where('status', AutopayAttemptStatus::Failed)
+                ->where('decline_code', 'insufficient_funds')
+                ->count(),
+        );
+    }
+
+    private function assertPilarWhatsAppWindowIsOpen(): void
+    {
+        $pilar = Contact::query()->where('email', 'pilar.santos@demo.keevaris.test')->firstOrFail();
+        $thread = MessageThread::query()
+            ->where('contact_id', $pilar->id)
+            ->where('channel', Channel::Whatsapp)
+            ->firstOrFail();
+
+        $this->assertTrue(WhatsAppWindow::isOpen($thread));
+
+        $ops = Employee::query()->where('email', 'ops@example.com')->firstOrFail();
+        Sanctum::actingAs($ops);
+        $this->getJson("/api/inbox/threads/{$thread->id}/compose-context")
+            ->assertOk()
+            ->assertJsonPath('data.whatsapp_window.open', true);
     }
 }

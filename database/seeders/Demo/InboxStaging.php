@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Demo;
 
+use App\Models\Contact;
 use App\Models\Employee;
+use App\Models\Message;
 use App\Models\MessageThread;
 use App\Support\Communications\Channel;
+use App\Support\Communications\MessageDirection;
+use Carbon\CarbonInterface;
 
 /**
  * Seed-end inbox assignment polish. Unread/triage/WA timing come from timed events;
@@ -63,6 +67,7 @@ final class InboxStaging
         }
 
         self::guaranteeOperatorMine($operator);
+        self::reanchorWhatsAppWindows();
 
         $world->remember('inbox.staged', true);
     }
@@ -93,5 +98,53 @@ final class InboxStaging
         foreach ($candidates as $thread) {
             $thread->forceFill(['assigned_employee_id' => $operator->id])->save();
         }
+    }
+
+    /**
+     * Window math is live (`now() < last_inbound_at + 24h`). Sim dates are
+     * historical, so re-anchor the staged open / closing-today threads after
+     * DemoClock clears frozen time.
+     */
+    private static function reanchorWhatsAppWindows(): void
+    {
+        self::reanchorContactWhatsApp('pilar.santos@demo.keevaris.test', now()->subHours(3));
+        self::reanchorContactWhatsApp('carmen.vega@demo.keevaris.test', now()->subHours(21));
+    }
+
+    private static function reanchorContactWhatsApp(string $email, CarbonInterface $inboundAt): void
+    {
+        $contact = Contact::query()->where('email', $email)->first();
+        if ($contact === null) {
+            return;
+        }
+
+        $thread = MessageThread::query()
+            ->where('contact_id', $contact->id)
+            ->where('channel', Channel::Whatsapp)
+            ->latest('last_inbound_at')
+            ->first();
+        if ($thread === null) {
+            return;
+        }
+
+        $thread->forceFill([
+            'last_inbound_at' => $inboundAt,
+            'last_message_at' => $inboundAt,
+        ])->save();
+
+        $lastInbound = Message::query()
+            ->where('message_thread_id', $thread->id)
+            ->where('direction', MessageDirection::Inbound)
+            ->orderByDesc('id')
+            ->first();
+        if ($lastInbound === null) {
+            return;
+        }
+
+        $lastInbound->forceFill([
+            'sent_at' => $inboundAt,
+            'created_at' => $inboundAt,
+            'updated_at' => $inboundAt,
+        ])->save();
     }
 }

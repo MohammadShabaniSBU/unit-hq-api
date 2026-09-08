@@ -6,6 +6,7 @@ namespace Database\Seeders\Demo\Journeys;
 
 use App\Enums\AutopayAttemptStatus;
 use App\Models\AutopayAttempt;
+use App\Models\Delinquency;
 use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
@@ -69,6 +70,12 @@ final class HannahCole extends Journey
             ->where('decline_code', 'insufficient_funds')
             ->count();
         Assert::assertGreaterThanOrEqual(2, $failed);
-    }
 
+        if (CastExecutor::isCompact()) {
+            Assert::assertFalse(
+                Delinquency::query()->where('contract_id', $contract->id)->open()->exists(),
+                'Ana should not have an open delinquency case',
+            );
+        }
+    }
 }

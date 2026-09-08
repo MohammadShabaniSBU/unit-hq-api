@@ -6,6 +6,7 @@ namespace Database\Seeders\Demo\Journeys;
 
 use App\Enums\AccessEventType;
 use App\Enums\ContractStatus;
+use App\Enums\DelinquencyStepAction;
 use App\Enums\HoldType;
 use App\Models\AccessEvent;
 use App\Models\Delinquency;
@@ -53,7 +54,11 @@ final class LuciaFerrer extends Journey
                     $unit,
                     CarbonImmutable::parse(CastExecutor::SIM_START)->toDateString(),
                 );
-                JourneySupport::markSteadyPayer($world, 'lucia');
+                // Compact's 10-day window cannot reach the next monthly period.
+                // Leave the first rent unpaid so delinquency:run opens a case.
+                if (! CastExecutor::isCompact()) {
+                    JourneySupport::markSteadyPayer($world, 'lucia');
+                }
             },
             $missFrom => static function (DemoWorld $world): void {
                 JourneySupport::startMissingPayments($world, 'lucia');
@@ -85,6 +90,23 @@ final class LuciaFerrer extends Journey
             ->first();
         Assert::assertNotNull($case, 'Lucía should have an open delinquency case');
 
+        Assert::assertTrue(
+            bccomp(DelinquencyState::netOverdueAmount($contract), '0', 2) > 0,
+            'Lucía should still owe',
+        );
+
+        if (CastExecutor::isCompact()) {
+            $ladderStarted = $case->steps()
+                ->whereIn('action', [
+                    DelinquencyStepAction::AssessLateFee,
+                    DelinquencyStepAction::RecordNotice,
+                ])
+                ->exists();
+            Assert::assertTrue($ladderStarted, 'Compact Lucía ladder should have a fee and/or notice');
+
+            return;
+        }
+
         $days = DelinquencyState::daysOverdue($contract);
         Assert::assertGreaterThanOrEqual(15, $days, "Lucía days overdue expected ≥15, got {$days}");
         Assert::assertLessThanOrEqual(45, $days, "Lucía days overdue expected ≤45, got {$days}");
@@ -107,11 +129,6 @@ final class LuciaFerrer extends Journey
                 })
                 ->exists(),
             'Lucía should have a denied door event',
-        );
-
-        Assert::assertTrue(
-            bccomp(DelinquencyState::netOverdueAmount($contract), '0', 2) > 0,
-            'Lucía should still owe',
         );
     }
 

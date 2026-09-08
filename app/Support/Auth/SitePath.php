@@ -365,8 +365,9 @@ final class SitePath
     }
 
     /**
-     * Thread site = latest message's SiteSenderIdentity.site_id, else contact's
-     * most recent contract occupancy site (mirrors SubjectSite::messageThreadSite).
+     * Thread site = unique SiteSenderIdentity for the latest message account,
+     * else the contact's business site (mirrors SubjectSite::messageThreadSite).
+     * A company-scoped account shared across sites is not a unique identity.
      *
      * @param  Builder<Model>  $q
      * @param  list<int>  $siteIds
@@ -376,61 +377,13 @@ final class SitePath
     {
         return $q->where(function (Builder $outer) use ($siteIds): void {
             $outer->whereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                $sub->selectRaw('1')
-                    ->from('site_sender_identities')
-                    ->whereIn('site_sender_identities.site_id', $siteIds)
-                    ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account): void {
-                        $account->select('messages.communication_account_id')
-                            ->from('messages')
-                            ->whereColumn('messages.message_thread_id', 'message_threads.id')
-                            ->whereNotNull('messages.communication_account_id')
-                            ->orderByDesc('messages.id')
-                            ->limit(1);
-                    });
+                self::uniqueIdentityForLatestAccount($sub, 'message_threads.id', $siteIds);
             })->orWhere(function (Builder $fallback) use ($siteIds): void {
                 $fallback
                     ->whereNotExists(function (QueryBuilder $sub): void {
-                        $sub->selectRaw('1')
-                            ->from('site_sender_identities')
-                            ->whereNotNull('site_sender_identities.site_id')
-                            ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account): void {
-                                $account->select('messages.communication_account_id')
-                                    ->from('messages')
-                                    ->whereColumn('messages.message_thread_id', 'message_threads.id')
-                                    ->whereNotNull('messages.communication_account_id')
-                                    ->orderByDesc('messages.id')
-                                    ->limit(1);
-                            });
-                    })
-                    ->whereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                        $sub->selectRaw('1')
-                            ->from('contracts')
-                            ->whereColumn('contracts.contact_id', 'message_threads.contact_id')
-                            ->whereRaw(
-                                'contracts.id = (
-                                    SELECT c2.id FROM contracts c2
-                                    WHERE c2.contact_id = message_threads.contact_id
-                                    ORDER BY c2.id DESC
-                                    LIMIT 1
-                                )'
-                            )
-                            ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
-                                $occ->selectRaw('1')
-                                    ->from('unit_occupancies')
-                                    ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
-                                    ->whereColumn('unit_occupancies.contract_id', 'contracts.id')
-                                    ->whereIn('units.site_id', $siteIds)
-                                    ->whereRaw(
-                                        'unit_occupancies.id = (
-                                            SELECT uo2.id FROM unit_occupancies uo2
-                                            WHERE uo2.contract_id = contracts.id
-                                            ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
-                                                     uo2.started_on DESC
-                                            LIMIT 1
-                                        )'
-                                    );
-                            });
+                        self::uniqueIdentityForLatestAccount($sub, 'message_threads.id');
                     });
+                self::applyContactBusinessSiteExists($fallback, 'message_threads.contact_id', $siteIds);
             });
         });
     }
@@ -445,62 +398,117 @@ final class SitePath
             ->whereColumn('message_threads.contact_id', $contactIdColumn)
             ->where(function (QueryBuilder $outer) use ($siteIds): void {
                 $outer->whereExists(function (QueryBuilder $ident) use ($siteIds): void {
-                    $ident->selectRaw('1')
-                        ->from('site_sender_identities')
-                        ->whereIn('site_sender_identities.site_id', $siteIds)
-                        ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account): void {
-                            $account->select('messages.communication_account_id')
-                                ->from('messages')
-                                ->whereColumn('messages.message_thread_id', 'message_threads.id')
-                                ->whereNotNull('messages.communication_account_id')
-                                ->orderByDesc('messages.id')
-                                ->limit(1);
-                        });
+                    self::uniqueIdentityForLatestAccount($ident, 'message_threads.id', $siteIds);
                 })->orWhere(function (QueryBuilder $fallback) use ($siteIds): void {
                     $fallback
                         ->whereNotExists(function (QueryBuilder $ident): void {
-                            $ident->selectRaw('1')
-                                ->from('site_sender_identities')
-                                ->whereNotNull('site_sender_identities.site_id')
-                                ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account): void {
-                                    $account->select('messages.communication_account_id')
-                                        ->from('messages')
-                                        ->whereColumn('messages.message_thread_id', 'message_threads.id')
-                                        ->whereNotNull('messages.communication_account_id')
-                                        ->orderByDesc('messages.id')
-                                        ->limit(1);
-                                });
-                        })
-                        ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
-                            $occ->selectRaw('1')
-                                ->from('contracts')
-                                ->whereColumn('contracts.contact_id', 'message_threads.contact_id')
-                                ->whereRaw(
-                                    'contracts.id = (
-                                        SELECT c2.id FROM contracts c2
-                                        WHERE c2.contact_id = message_threads.contact_id
-                                        ORDER BY c2.id DESC
-                                        LIMIT 1
-                                    )'
-                                )
-                                ->whereExists(function (QueryBuilder $inner) use ($siteIds): void {
-                                    $inner->selectRaw('1')
-                                        ->from('unit_occupancies')
-                                        ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
-                                        ->whereColumn('unit_occupancies.contract_id', 'contracts.id')
-                                        ->whereIn('units.site_id', $siteIds)
-                                        ->whereRaw(
-                                            'unit_occupancies.id = (
-                                                SELECT uo2.id FROM unit_occupancies uo2
-                                                WHERE uo2.contract_id = contracts.id
-                                                ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
-                                                         uo2.started_on DESC
-                                                LIMIT 1
-                                            )'
-                                        );
-                                });
+                            self::uniqueIdentityForLatestAccount($ident, 'message_threads.id');
                         });
+                    self::applyContactBusinessSiteExists($fallback, 'message_threads.contact_id', $siteIds);
                 });
             });
+    }
+
+    /**
+     * Latest message account has exactly one non-null site identity (optionally
+     * required to be a granted site). Shared company accounts fail this check.
+     *
+     * @param  list<int>|null  $siteIds
+     */
+    private static function uniqueIdentityForLatestAccount(
+        QueryBuilder $ident,
+        string $threadIdColumn,
+        ?array $siteIds = null,
+    ): void {
+        $ident->selectRaw('1')
+            ->from('site_sender_identities')
+            ->whereNotNull('site_sender_identities.site_id')
+            ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account) use ($threadIdColumn): void {
+                $account->select('messages.communication_account_id')
+                    ->from('messages')
+                    ->whereColumn('messages.message_thread_id', $threadIdColumn)
+                    ->whereNotNull('messages.communication_account_id')
+                    ->orderByDesc('messages.id')
+                    ->limit(1);
+            })
+            ->whereRaw(
+                '(SELECT COUNT(*) FROM site_sender_identities AS ssi_uniq
+                  WHERE ssi_uniq.account_id = site_sender_identities.account_id
+                    AND ssi_uniq.site_id IS NOT NULL) = 1'
+            );
+
+        if ($siteIds !== null) {
+            $ident->whereIn('site_sender_identities.site_id', $siteIds);
+        }
+    }
+
+    /**
+     * Contact is related to a granted site via deal / reservation / occupancy /
+     * signature hold / contact_sites — used when a comms account is shared.
+     *
+     * @param  Builder<Model>|QueryBuilder  $q
+     * @param  list<int>  $siteIds
+     */
+    private static function applyContactBusinessSiteExists(
+        Builder|QueryBuilder $q,
+        string $contactIdColumn,
+        array $siteIds,
+    ): void {
+        $q->where(function (Builder|QueryBuilder $outer) use ($contactIdColumn, $siteIds): void {
+            $outer
+                ->whereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
+                    $sub->selectRaw('1')
+                        ->from('contact_sites')
+                        ->whereColumn('contact_sites.contact_id', $contactIdColumn)
+                        ->whereIn('contact_sites.site_id', $siteIds);
+                })
+                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
+                    $sub->selectRaw('1')
+                        ->from('deals')
+                        ->whereColumn('deals.contact_id', $contactIdColumn)
+                        ->whereIn('deals.site_id', $siteIds);
+                })
+                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
+                    $sub->selectRaw('1')
+                        ->from('reservations')
+                        ->join('units', 'units.id', '=', 'reservations.unit_id')
+                        ->whereColumn('reservations.contact_id', $contactIdColumn)
+                        ->whereIn('units.site_id', $siteIds);
+                })
+                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
+                    $sub->selectRaw('1')
+                        ->from('contracts')
+                        ->whereColumn('contracts.contact_id', $contactIdColumn)
+                        ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
+                            $occ->selectRaw('1')
+                                ->from('unit_occupancies')
+                                ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
+                                ->whereColumn('unit_occupancies.contract_id', 'contracts.id')
+                                ->whereIn('units.site_id', $siteIds)
+                                ->whereRaw(
+                                    'unit_occupancies.id = (
+                                        SELECT uo2.id FROM unit_occupancies uo2
+                                        WHERE uo2.contract_id = contracts.id
+                                        ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
+                                                 uo2.started_on DESC
+                                        LIMIT 1
+                                    )'
+                                );
+                        });
+                })
+                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
+                    $sub->selectRaw('1')
+                        ->from('contracts')
+                        ->whereColumn('contracts.contact_id', $contactIdColumn)
+                        ->whereExists(function (QueryBuilder $hold) use ($siteIds): void {
+                            $hold->selectRaw('1')
+                                ->from('unit_holds')
+                                ->join('units', 'units.id', '=', 'unit_holds.unit_id')
+                                ->whereColumn('unit_holds.contract_id', 'contracts.id')
+                                ->whereNull('unit_holds.released_at')
+                                ->whereIn('units.site_id', $siteIds);
+                        });
+                });
+        });
     }
 }

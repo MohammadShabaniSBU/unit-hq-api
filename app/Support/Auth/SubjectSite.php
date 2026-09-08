@@ -445,17 +445,68 @@ final class SubjectSite
             ->value('communication_account_id');
 
         if ($accountId !== null) {
-            $identity = SiteSenderIdentity::query()
+            $identities = SiteSenderIdentity::query()
                 ->where('account_id', $accountId)
+                ->whereNotNull('site_id')
                 ->with('site')
-                ->first();
+                ->get();
 
-            if ($identity?->site !== null) {
-                return $identity->site;
+            if ($identities->count() === 1) {
+                $site = $identities->first()?->site;
+                if ($site !== null) {
+                    return $site;
+                }
             }
         }
 
-        return self::contactMostRecentContractSite((int) $thread->contact_id);
+        return self::contactBusinessSite((int) $thread->contact_id);
+    }
+
+    /**
+     * Canonical site for a contact when a comms account is shared across sites.
+     */
+    private static function contactBusinessSite(int $contactId): ?Site
+    {
+        $deal = Deal::query()
+            ->where('contact_id', $contactId)
+            ->whereNotNull('site_id')
+            ->orderByDesc('id')
+            ->first();
+        if ($deal !== null) {
+            return self::dealSite($deal);
+        }
+
+        $reservation = Reservation::query()
+            ->where('contact_id', $contactId)
+            ->orderByDesc('id')
+            ->first();
+        if ($reservation !== null) {
+            $site = self::reservationSite($reservation);
+            if ($site !== null) {
+                return $site;
+            }
+        }
+
+        $contractSite = self::contactMostRecentContractSite($contactId);
+        if ($contractSite !== null) {
+            return $contractSite;
+        }
+
+        $hold = UnitHold::query()
+            ->whereNull('released_at')
+            ->whereHas('contract', static fn ($q) => $q->where('contact_id', $contactId))
+            ->orderByDesc('id')
+            ->first();
+        if ($hold !== null) {
+            return self::unitHoldSite($hold);
+        }
+
+        $pivotSite = Contact::query()->find($contactId)
+            ?->sites()
+            ->orderBy('sites.id')
+            ->first();
+
+        return $pivotSite instanceof Site ? $pivotSite : null;
     }
 
     private static function contactMostRecentContractSite(int $contactId): ?Site
