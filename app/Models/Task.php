@@ -22,23 +22,22 @@ use Illuminate\Support\Str;
  * remind_at is channel-agnostic. The reminder scheduler queries:
  *   WHERE remind_at <= now() AND status NOT IN ('done', 'cancelled')
  *
- * @property int         $id
- * @property string      $taskable_type
- * @property int         $taskable_id
- * @property int|null    $assigned_to
- * @property int         $created_by
- * @property string      $title
+ * @property int $id
+ * @property string $taskable_type
+ * @property int $taskable_id
+ * @property int|null $assigned_to
+ * @property int $created_by
+ * @property string $title
  * @property string|null $description
- * @property string      $priority     low|medium|high|urgent
- * @property string      $status       open|in_progress|done|cancelled
- * @property string|null $type         call|email|follow_up|unit_tour|other
+ * @property string $priority low|medium|high|urgent
+ * @property string $status open|in_progress|done|cancelled
+ * @property string|null $type call|email|follow_up|unit_tour|other
  * @property Carbon|null $due_at
  * @property Carbon|null $remind_at
  * @property Carbon|null $completed_at
- * @property Carbon      $created_at
- * @property Carbon      $updated_at
- *
- * @property-read \Illuminate\Database\Eloquent\Model $taskable
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Model $taskable
  * @property-read Employee|null $assignee
  * @property-read Employee      $creator
  */
@@ -70,9 +69,9 @@ class Task extends Model
     protected function casts(): array
     {
         return [
-            'type'         => TaskType::class,
-            'due_at'       => 'datetime',
-            'remind_at'    => 'datetime',
+            'type' => TaskType::class,
+            'due_at' => 'datetime',
+            'remind_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
     }
@@ -95,16 +94,18 @@ class Task extends Model
                 $q->orWhere('id', $digits);
             }
 
-            $q->orWhere(function (Builder $morph) use ($term) {
-                $morph->where('taskable_type', Contact::class)
-                    ->whereHasMorph('taskable', [Contact::class], function (Builder $contactQuery) use ($term) {
-                        $contactQuery->where(function (Builder $inner) use ($term) {
-                            $inner->where('first_name', 'like', "%{$term}%")
-                                ->orWhere('last_name', 'like', "%{$term}%")
-                                ->orWhere('email', 'like', "%{$term}%")
-                                ->orWhere('company', 'like', "%{$term}%");
-                        });
+            $q->orWhereHasMorph('taskable', [Contact::class], function (Builder $contactQuery) use ($term) {
+                $contactQuery->where(function (Builder $inner) use ($term) {
+                    self::constrainContactNameSearch($inner, $term);
+                });
+            });
+
+            $q->orWhereHasMorph('taskable', [Deal::class], function (Builder $dealQuery) use ($term) {
+                $dealQuery->whereHas('contact', function (Builder $contactQuery) use ($term) {
+                    $contactQuery->where(function (Builder $inner) use ($term) {
+                        self::constrainContactNameSearch($inner, $term);
                     });
+                });
             });
         });
     }
@@ -167,18 +168,17 @@ class Task extends Model
         $type = Str::snake(class_basename($this->taskable_type));
         $label = match (true) {
             $this->taskable instanceof Contact => trim("{$this->taskable->first_name} {$this->taskable->last_name}"),
-            $this->taskable instanceof Deal => 'Deal #' . $this->taskable->id,
-            default => class_basename($this->taskable_type) . ' #' . $this->taskable_id,
+            $this->taskable instanceof Deal => self::dealTaskableLabel($this->taskable),
+            default => class_basename($this->taskable_type).' #'.$this->taskable_id,
         };
 
         return [
             'type' => $type,
             'id' => (int) $this->taskable_id,
-            'label' => $label !== '' ? $label : class_basename($this->taskable_type) . ' #' . $this->taskable_id,
+            'label' => $label !== '' ? $label : class_basename($this->taskable_type).' #'.$this->taskable_id,
         ];
     }
 
-    /** @return MorphTo */
     public function taskable(): MorphTo
     {
         return $this->morphTo();
@@ -194,5 +194,30 @@ class Task extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'created_by');
+    }
+
+    /**
+     * @param  Builder<Contact>  $query
+     */
+    private static function constrainContactNameSearch(Builder $query, string $term): void
+    {
+        $like = "%{$term}%";
+
+        $query->where('first_name', 'like', $like)
+            ->orWhere('last_name', 'like', $like)
+            ->orWhereRaw(
+                "TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?",
+                [$like],
+            )
+            ->orWhere('email', 'like', $like)
+            ->orWhere('company', 'like', $like);
+    }
+
+    private static function dealTaskableLabel(Deal $deal): string
+    {
+        $contact = $deal->contact;
+        $name = trim(($contact?->first_name ?? '').' '.($contact?->last_name ?? ''));
+
+        return $name !== '' ? $name : 'Deal #'.$deal->id;
     }
 }

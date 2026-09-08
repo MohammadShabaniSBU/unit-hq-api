@@ -94,6 +94,11 @@ class InboxListTest extends TestCase
                 'meta' => ['next_cursor'],
             ]);
 
+        $this->getJson('/api/inbox/threads?channel=email&q='.rawurlencode('Alice Miner'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.contact.name', 'Alice Miner');
+
         // Seed 500 threads for the bounded-query assertion.
         $bulkContact = Contact::factory()->create();
         $base = now()->subDays(30);

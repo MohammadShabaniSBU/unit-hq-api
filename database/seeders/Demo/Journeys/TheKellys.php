@@ -8,7 +8,6 @@ use App\Enums\ContractStatus;
 use App\Enums\DepositSettlementOutcome;
 use App\Models\Contract;
 use App\Models\DepositSettlement;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -43,7 +42,7 @@ final class TheKellys extends Journey
                 JourneySupport::openDeal($world, 'kellys', $site);
                 $unitA = JourneySupport::vacantUnit($site, 'SS3');
                 $date = CastExecutor::civilDate($startDay);
-                JourneySupport::walkInSign($world, 'kellys', $unitA, $date);
+                JourneySupport::walkInSign($world, 'kellys', $unitA, $date, deposit: 100.0);
                 $world->remember('kellys.contract_a', JourneySupport::contract($world, 'kellys'));
                 JourneySupport::markSteadyPayer($world, 'kellys');
             },
@@ -53,7 +52,7 @@ final class TheKellys extends Journey
                 $date = CastExecutor::civilDate($secondDay);
                 // Second contract under a sibling handle so helpers don't overwrite.
                 $world->remember('kellys_b.contact', $world->contact('kellys.contact'));
-                JourneySupport::walkInSign($world, 'kellys_b', $unitB, $date);
+                JourneySupport::walkInSign($world, 'kellys_b', $unitB, $date, deposit: 100.0);
                 $world->remember('kellys.contract_b', JourneySupport::contract($world, 'kellys_b'));
                 JourneySupport::markSteadyPayer($world, 'kellys_b');
             },
@@ -104,5 +103,4 @@ final class TheKellys extends Journey
             'Kellys vacated unit should have a deducted deposit settlement',
         );
     }
-
 }

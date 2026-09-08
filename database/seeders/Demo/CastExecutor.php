@@ -154,6 +154,25 @@ final class CastExecutor
     }
 
     /**
+     * Full-world script key that maps onto a compact day index (0 = SIM_START).
+     */
+    public static function fullOffsetForCompactDay(int $compactDay): int
+    {
+        if (! self::$compact) {
+            return $compactDay;
+        }
+
+        $max = self::windowDays();
+        $full = self::fullWindowDays();
+
+        if ($max <= 0) {
+            return $compactDay;
+        }
+
+        return (int) round($compactDay / $max * $full);
+    }
+
+    /**
      * @return list<class-string<Journey>>
      */
     public function journeyClasses(): array

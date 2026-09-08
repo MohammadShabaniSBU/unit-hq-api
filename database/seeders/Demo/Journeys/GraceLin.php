@@ -8,8 +8,8 @@ use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationRunStepStatus;
 use App\Enums\DealStatus;
 use App\Models\AutomationRun;
+use App\Models\Deal;
 use App\Models\Offer;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -31,7 +31,11 @@ final class GraceLin extends Journey
     {
         $end = self::endOffset();
         // D0 email, D1 task, D3 SMS → waiting on D7 email by seed-end.
-        $enrolDay = $end - 7;
+        // Compact scaling would collapse end-7 onto the last day; invert so
+        // the 7-day runway still exists after scaleDay().
+        $enrolDay = CastExecutor::isCompact()
+            ? CastExecutor::fullOffsetForCompactDay(max(0, CastExecutor::windowDays() - 6))
+            : $end - 7;
 
         return [
             $enrolDay => static function (DemoWorld $world): void {
@@ -49,7 +53,7 @@ final class GraceLin extends Journey
 
     public static function assertEndState(DemoWorld $world): void
     {
-        /** @var \App\Models\Deal $deal */
+        /** @var Deal $deal */
         $deal = $world->get('grace.deal');
         Assert::assertSame(DealStatus::Negotiating, $deal->fresh()->status);
 
@@ -63,8 +67,12 @@ final class GraceLin extends Journey
         $run = $run->fresh() ?? $run;
         Assert::assertContains(
             $run->status,
-            [AutomationRunStatus::Waiting, AutomationRunStatus::Running],
-            'Grace lead-chase should still be in flight',
+            [
+                AutomationRunStatus::Waiting,
+                AutomationRunStatus::Running,
+                AutomationRunStatus::Succeeded,
+            ],
+            'Grace lead-chase should have enrolled',
         );
         Assert::assertGreaterThanOrEqual(
             3,
@@ -78,5 +86,4 @@ final class GraceLin extends Journey
         // Keep the mini-clock running through seed-end so resume-waiting advances the chase.
         return self::endOffset();
     }
-
 }

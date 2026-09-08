@@ -40,6 +40,9 @@ final class InboxContentBootstrap
         self::seedCallThreads($world, $operator);
 
         $world->remember('inbox.content_bootstrapped', true);
+
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
     }
 
     private static function operator(): ?Employee

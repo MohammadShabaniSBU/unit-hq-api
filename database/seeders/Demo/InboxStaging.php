@@ -10,6 +10,8 @@ use App\Models\Message;
 use App\Models\MessageThread;
 use App\Support\Communications\Channel;
 use App\Support\Communications\MessageDirection;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
 /**
@@ -107,8 +109,17 @@ final class InboxStaging
      */
     private static function reanchorWhatsAppWindows(): void
     {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+
         self::reanchorContactWhatsApp('pilar.santos@demo.keevaris.test', now()->subHours(3));
         self::reanchorContactWhatsApp('carmen.vega@demo.keevaris.test', now()->subHours(21));
+
+        $instant = CarbonImmutable::parse(CastExecutor::simEnd())
+            ->startOfDay()
+            ->setTime(12, 0);
+        Carbon::setTestNow($instant);
+        CarbonImmutable::setTestNow($instant);
     }
 
     private static function reanchorContactWhatsApp(string $email, CarbonInterface $inboundAt): void

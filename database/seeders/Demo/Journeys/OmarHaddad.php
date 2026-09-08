@@ -28,20 +28,19 @@ final class OmarHaddad extends Journey
         $signDay = $end - 3;
 
         return [
-            $signDay => static function (DemoWorld $world) use ($signDay, $end): void {
+            $signDay => static function (DemoWorld $world) use ($end): void {
                 $site = $world->site('madrid');
                 JourneySupport::createContact($world, 'omar', 'Omar', 'Haddad', [
                     'email' => 'omar.haddad@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'omar', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
-                $start = CastExecutor::civilDate($signDay);
                 $moveIn = CastExecutor::civilDate($end + 10);
                 JourneySupport::walkInSign(
                     $world,
                     'omar',
                     $unit,
-                    $start,
+                    $moveIn,
                     moveInDate: $moveIn,
                 );
             },
@@ -59,5 +58,4 @@ final class OmarHaddad extends Journey
         Assert::assertTrue($moveIn->greaterThan($end));
         Assert::assertSame(10, (int) $end->diffInDays($moveIn));
     }
-
 }

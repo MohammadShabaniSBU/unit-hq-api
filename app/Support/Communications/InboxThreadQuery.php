@@ -93,6 +93,10 @@ final class InboxThreadQuery
                         ->orWhereHas('contact', function (Builder $contact) use ($term): void {
                             $contact->where('first_name', 'like', $term)
                                 ->orWhere('last_name', 'like', $term)
+                                ->orWhereRaw(
+                                    "TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?",
+                                    [$term],
+                                )
                                 ->orWhere('email', 'like', $term)
                                 ->orWhereHas('channels', fn (Builder $ch) => $ch->where('value', 'like', $term));
                         });

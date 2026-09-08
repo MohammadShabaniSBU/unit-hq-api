@@ -12,13 +12,20 @@ use App\Models\Delinquency;
 use App\Models\Employee;
 use App\Models\MessageThread;
 use App\Models\Site;
+use App\Models\Task;
 use App\Support\Communications\Channel;
 use App\Support\Communications\WhatsAppWindow;
 use App\Support\Delinquency\DelinquencyState;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoPipeline;
 use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoWorld;
+use Database\Seeders\Demo\Journeys\BeaTorres;
+use Database\Seeders\Demo\Journeys\GraceLin;
+use Database\Seeders\Demo\Journeys\OmarHaddad;
+use Database\Seeders\Demo\Journeys\TheKellys;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -83,6 +90,15 @@ class DemoCompactSeedTest extends TestCase
         $this->assertLuciaHasOpenDelinquency($lucia);
         $this->assertAnaHasNoOpenDelinquency();
         $this->assertPilarWhatsAppWindowIsOpen();
+
+        $world = $result['world'];
+        OmarHaddad::assertEndState($world);
+        TheKellys::assertEndState($world);
+        GraceLin::assertEndState($world);
+        BeaTorres::assertEndState($world);
+
+        $this->assertBeaTorresEmailSearchFindsThread();
+        $this->assertGraciaLinTaskIsSearchable();
     }
 
     private function assertAgentMadCannotSeeSofia(): void
@@ -136,12 +152,20 @@ class DemoCompactSeedTest extends TestCase
 
     private function assertPilarWhatsAppWindowIsOpen(): void
     {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+
         $pilar = Contact::query()->where('email', 'pilar.santos@demo.keevaris.test')->firstOrFail();
         $thread = MessageThread::query()
             ->where('contact_id', $pilar->id)
             ->where('channel', Channel::Whatsapp)
             ->firstOrFail();
 
+        $thread->refresh();
+        $this->assertTrue(
+            $thread->last_inbound_at->gt(now()->subHours(24)),
+            'Pilar last_inbound_at must be within the live 24h window, not sim-end',
+        );
         $this->assertTrue(WhatsAppWindow::isOpen($thread));
 
         $ops = Employee::query()->where('email', 'ops@example.com')->firstOrFail();
@@ -149,5 +173,26 @@ class DemoCompactSeedTest extends TestCase
         $this->getJson("/api/inbox/threads/{$thread->id}/compose-context")
             ->assertOk()
             ->assertJsonPath('data.whatsapp_window.open', true);
+    }
+
+    private function assertBeaTorresEmailSearchFindsThread(): void
+    {
+        $ops = Employee::query()->where('email', 'ops@example.com')->firstOrFail();
+        Sanctum::actingAs($ops);
+
+        $threads = $this->getJson('/api/inbox/threads?channel=email&q='.rawurlencode('Bea Torres'))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertNotEmpty($threads, 'Bea Torres should have an email thread');
+        $this->assertSame('Bea Torres', $threads[0]['contact']['name'] ?? null);
+    }
+
+    private function assertGraciaLinTaskIsSearchable(): void
+    {
+        $this->assertTrue(
+            Task::query()->search('Gracia Lin')->exists(),
+            'A lead-chase task for Gracia Lin should be findable by full name',
+        );
     }
 }
