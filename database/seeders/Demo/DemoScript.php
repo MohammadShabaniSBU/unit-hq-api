@@ -121,13 +121,13 @@ final class DemoScript
 
     public static function render(): string
     {
-        $asOf = CastExecutor::SIM_END;
+        $asOf = CastExecutor::simEnd();
         $numbers = self::liveNumbers($asOf);
 
         $lines = [
             '# Demo script',
             '',
-            'Seed window: `'.CastExecutor::SIM_START.'` → `'.CastExecutor::SIM_END.'`.',
+            'Seed window: `'.CastExecutor::SIM_START.'` → `'.CastExecutor::simEnd().'`.',
             'Generated from the live database after `php artisan demo:seed`.',
             '',
             '## Cast index',

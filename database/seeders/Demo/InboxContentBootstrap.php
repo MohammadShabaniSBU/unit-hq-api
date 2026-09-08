@@ -25,7 +25,7 @@ final class InboxContentBootstrap
 
     public static function apply(DemoWorld $world): void
     {
-        $instant = CarbonImmutable::parse(CastExecutor::SIM_END)
+        $instant = CarbonImmutable::parse(CastExecutor::simEnd())
             ->startOfDay()
             ->setTime(12, 0);
 

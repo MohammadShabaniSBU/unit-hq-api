@@ -43,9 +43,7 @@ final class PilarSantos extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'pilar', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'pilar', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'pilar');
             },
@@ -71,7 +69,7 @@ final class PilarSantos extends Journey
                 );
             },
             $openWindowDay => static function (DemoWorld $world): void {
-                $instant = CarbonImmutable::parse(CastExecutor::SIM_END)
+                $instant = CarbonImmutable::parse(CastExecutor::simEnd())
                     ->startOfDay()
                     ->setTime(12, 0)
                     ->subHours(3);
@@ -97,7 +95,7 @@ final class PilarSantos extends Journey
         Assert::assertNotNull($thread, 'Pilar should have a WhatsApp thread');
         Assert::assertNotNull($thread->last_inbound_at);
 
-        $seedEnd = CarbonImmutable::parse(CastExecutor::SIM_END)->setTime(12, 0, 0);
+        $seedEnd = CarbonImmutable::parse(CastExecutor::simEnd())->setTime(12, 0, 0);
         $hoursSinceInbound = $thread->last_inbound_at->diffInHours($seedEnd);
         Assert::assertLessThanOrEqual(
             6,
@@ -111,9 +109,4 @@ final class PilarSantos extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

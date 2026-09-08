@@ -35,12 +35,8 @@ final class ViktorPalenik extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'viktor', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
-                $start = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
-                $moveIn = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end + 20)
-                    ->toDateString();
+                $start = CastExecutor::civilDate($startDay);
+                $moveIn = CastExecutor::civilDate($end + 20);
                 JourneySupport::walkInSign(
                     $world,
                     'viktor',
@@ -70,9 +66,4 @@ final class ViktorPalenik extends Journey
         Assert::assertSame(DealStatus::ClosedLost, $deal->fresh()->status);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

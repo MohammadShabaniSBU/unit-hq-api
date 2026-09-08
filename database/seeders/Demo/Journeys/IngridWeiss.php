@@ -36,16 +36,12 @@ final class IngridWeiss extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'ingrid', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'ingrid', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'ingrid');
             },
             $noticeDay => static function (DemoWorld $world) use ($end): void {
-                $moveOut = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end + 7)
-                    ->toDateString();
+                $moveOut = CastExecutor::civilDate($end + 7);
                 JourneySupport::giveNotice($world, 'ingrid', $moveOut);
             },
         ];
@@ -58,7 +54,7 @@ final class IngridWeiss extends Journey
         Assert::assertNotNull($contract->notice_given_on);
         Assert::assertNotNull($contract->scheduled_move_out_on);
 
-        $seedEnd = CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        $seedEnd = CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
         $daysUntil = (int) $seedEnd->diffInDays(
             CarbonImmutable::parse($contract->scheduled_move_out_on)->startOfDay(),
             false,
@@ -67,9 +63,4 @@ final class IngridWeiss extends Journey
         Assert::assertLessThanOrEqual(14, $daysUntil);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

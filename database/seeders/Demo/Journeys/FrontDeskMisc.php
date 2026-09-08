@@ -80,9 +80,7 @@ final class FrontDeskMisc extends Journey
                     'phone' => '+34600111003',
                 ]);
                 JourneySupport::openDeal($world, 'wa_closing', $site);
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays(max(0, $end - 40))
-                    ->toDateString();
+                $date = CastExecutor::civilDate(max(0, $end - 40));
                 $unit = JourneySupport::vacantUnit($site, 'SS4', $date);
                 JourneySupport::walkInSign($world, 'wa_closing', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'wa_closing');
@@ -93,7 +91,7 @@ final class FrontDeskMisc extends Journey
                     'Hola Carmen, le escribimos desde Keevaris.',
                 );
 
-                $closingInstant = CarbonImmutable::parse(CastExecutor::SIM_END)
+                $closingInstant = CarbonImmutable::parse(CastExecutor::simEnd())
                     ->startOfDay()
                     ->setTime(12, 0)
                     ->subHours(21);
@@ -106,8 +104,7 @@ final class FrontDeskMisc extends Journey
                 );
 
                 // Restore noon for the rest of the day's unread staging.
-                $noon = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end - 1)
+                $noon = CarbonImmutable::parse(CastExecutor::civilDate($end - 1))
                     ->setTime(12, 0);
                 Carbon::setTestNow($noon);
                 CarbonImmutable::setTestNow($noon);
@@ -178,9 +175,4 @@ final class FrontDeskMisc extends Journey
         Assert::assertNotNull($closing->last_inbound_at);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

@@ -38,9 +38,7 @@ final class RafaNunez extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'rafa', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'rafa', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'rafa');
             },
@@ -68,9 +66,4 @@ final class RafaNunez extends Journey
         Assert::assertNotNull($request->fresh()->paid_payment_id);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

@@ -46,9 +46,7 @@ final class DerekHoyle extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'derek', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'derek', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'derek');
             },
@@ -68,9 +66,7 @@ final class DerekHoyle extends Journey
                 JourneySupport::writeOff($world, 'derek', 'Non-payment — demo write-off');
             },
             $vacateDay => static function (DemoWorld $world) use ($vacateDay): void {
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($vacateDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($vacateDay);
                 JourneySupport::vacate(
                     $world,
                     'derek',
@@ -104,9 +100,4 @@ final class DerekHoyle extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

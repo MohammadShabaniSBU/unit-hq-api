@@ -35,6 +35,11 @@ final class CastExecutor
 
     public const SIM_END = '2026-07-31';
 
+    /** Inclusive day count for `--compact` (start → start+9). */
+    public const COMPACT_DAYS = 10;
+
+    private static bool $compact = false;
+
     /** @var list<class-string<Journey>> */
     public const CAST = [
         MarcusWebb::class,
@@ -66,6 +71,87 @@ final class CastExecutor
     public function __construct(
         private readonly ?array $journeys = null,
     ) {}
+
+    public static function activateCompact(): void
+    {
+        self::$compact = true;
+    }
+
+    public static function resetWindow(): void
+    {
+        self::$compact = false;
+    }
+
+    public static function isCompact(): bool
+    {
+        return self::$compact;
+    }
+
+    /**
+     * Active simulation end (compact window or the full-world constant).
+     */
+    public static function simEnd(): string
+    {
+        if (! self::$compact) {
+            return self::SIM_END;
+        }
+
+        return CarbonImmutable::parse(self::SIM_START)
+            ->addDays(self::COMPACT_DAYS - 1)
+            ->toDateString();
+    }
+
+    /**
+     * Offset of the last inclusive clock day (9 in compact, 425 in full).
+     */
+    public static function windowDays(): int
+    {
+        return (int) CarbonImmutable::parse(self::SIM_START)
+            ->diffInDays(CarbonImmutable::parse(self::simEnd()));
+    }
+
+    /**
+     * Full-world last-day offset. Journey scripts keep using this so
+     * `--compact` can scale keys instead of collapsing them onto day 0.
+     */
+    public static function fullWindowDays(): int
+    {
+        return (int) CarbonImmutable::parse(self::SIM_START)
+            ->diffInDays(CarbonImmutable::parse(self::SIM_END));
+    }
+
+    /**
+     * Map a full-world day offset onto the active window.
+     */
+    public static function scaleDay(int $day): int
+    {
+        $max = self::windowDays();
+        $full = self::fullWindowDays();
+
+        if (! self::$compact || $max >= $full) {
+            return $day;
+        }
+
+        if ($day <= 0) {
+            return 0;
+        }
+
+        if ($day > $full) {
+            return $max + ($day - $full);
+        }
+
+        return max(1, min($max, (int) round($day / $full * $max)));
+    }
+
+    /**
+     * Civil date for a (full-world) day offset, scaled in compact mode.
+     */
+    public static function civilDate(int $offset): string
+    {
+        return CarbonImmutable::parse(self::SIM_START)
+            ->addDays(self::scaleDay($offset))
+            ->toDateString();
+    }
 
     /**
      * @return list<class-string<Journey>>
@@ -128,7 +214,7 @@ final class CastExecutor
         $index = [];
         foreach ($this->journeyClasses() as $class) {
             foreach ($class::script() as $day => $callable) {
-                $index[(int) $day][] = $callable;
+                $index[self::scaleDay((int) $day)][] = $callable;
             }
         }
         ksort($index);

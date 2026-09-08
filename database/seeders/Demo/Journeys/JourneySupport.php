@@ -105,6 +105,7 @@ use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -1138,7 +1139,15 @@ final class JourneySupport
         $case = Delinquency::query()
             ->where('contract_id', $contract->id)
             ->open()
-            ->firstOrFail();
+            ->first();
+
+        if ($case === null) {
+            if (CastExecutor::isCompact()) {
+                return;
+            }
+
+            throw new RuntimeException("No open delinquency for {$handle} to write off.");
+        }
 
         DB::transaction(function () use ($case, $contract, $reason): void {
             $contract = $contract->fresh(['charges.allocations']) ?? $contract;

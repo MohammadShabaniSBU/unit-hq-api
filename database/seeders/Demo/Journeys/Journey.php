@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Demo\Journeys;
 
+use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 
 /**
@@ -27,5 +28,13 @@ abstract class Journey
         $days = array_keys(static::script());
 
         return $days === [] ? 0 : (int) max($days);
+    }
+
+    /**
+     * Full-world last-day offset. Compact seeds scale these via CastExecutor::scaleDay().
+     */
+    protected static function endOffset(): int
+    {
+        return CastExecutor::fullWindowDays();
     }
 }

@@ -104,13 +104,24 @@ final class DemoWorld
     public function site(string $handle): Site
     {
         $key = str_starts_with($handle, 'site.') ? $handle : 'site.'.$handle;
-        $value = $this->get($key);
 
-        if (! $value instanceof Site) {
+        if ($this->has($key)) {
+            $value = $this->get($key);
+            if ($value instanceof Site) {
+                return $value;
+            }
+
             throw new RuntimeException("Handle '{$key}' is not a Site.");
         }
 
-        return $value;
+        if (CastExecutor::isCompact() && $this->has('site.norte')) {
+            $fallback = $this->get('site.norte');
+            if ($fallback instanceof Site) {
+                return $fallback;
+            }
+        }
+
+        throw new InvalidArgumentException("Unknown demo handle: {$key}");
     }
 
     public function stripe(): StripeInjector

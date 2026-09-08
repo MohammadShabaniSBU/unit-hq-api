@@ -41,9 +41,7 @@ final class AmaraOkafor extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'amara', $site, DealStatus::Qualified);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($signDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($signDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::FreeTime)
                     ->where('name', 'Long-stay promo')
@@ -71,7 +69,7 @@ final class AmaraOkafor extends Journey
             'Amara should be pending or active',
         );
 
-        $onSeedEnd = $contract->itemsOn(CarbonImmutable::parse(CastExecutor::SIM_END))
+        $onSeedEnd = $contract->itemsOn(CarbonImmutable::parse(CastExecutor::simEnd()))
             ->first(fn (ContractItem $i): bool => $i->item_type === 'unit');
         Assert::assertNotNull($onSeedEnd, 'Amara should have a unit version on seed-end');
         Assert::assertNotNull($onSeedEnd->discount_id, 'Amara should carry long-stay discount provenance');
@@ -82,9 +80,4 @@ final class AmaraOkafor extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

@@ -13,6 +13,7 @@ use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Site;
 use App\Models\Unit;
+use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoPipeline;
 use Database\Seeders\Demo\DemoRbacGrants;
 use Database\Seeders\Demo\DemoScript;
@@ -31,6 +32,7 @@ class DemoSeedCommand extends Command
     protected $signature = 'demo:seed
                             {--fresh : migrate:fresh then seed the empty stage before the demo pipeline}
                             {--cast-only : skip crowd generation (debug / cast isolation)}
+                            {--compact : 10-day, 2-site, cast-only world for E2E}
                             {--inbox-only : skip the clock; bootstrap email + call threads on the existing stage DB}';
 
     protected $description = 'Seed the living demo facility (opt-in; refuses on production)';
@@ -48,22 +50,22 @@ class DemoSeedCommand extends Command
         }
 
         $totalStart = hrtime(true);
+        $compact = (bool) $this->option('compact');
+        $withCrowd = ! $this->option('cast-only') && ! $compact;
 
         if ($this->option('fresh')) {
             $this->info('migrate:fresh…');
             Artisan::call('migrate:fresh', ['--force' => true], $this->output);
         }
 
-        $withCrowd = ! $this->option('cast-only');
-        $this->info($withCrowd
-            ? 'Running demo pipeline (cast + crowd)…'
-            : 'Running demo pipeline (cast only)…');
+        $this->info($compact
+            ? 'Running compact demo pipeline (10 days, 2 sites, cast only)…'
+            : ($withCrowd
+                ? 'Running demo pipeline (cast + crowd)…'
+                : 'Running demo pipeline (cast only)…'));
 
         try {
-            $result = DemoPipeline::run($this->laravel, $withCrowd);
-        } finally {
-            DemoWorld::setCurrent(null);
-        }
+            $result = DemoPipeline::run($this->laravel, $withCrowd, $compact);
 
         $totalMs = (hrtime(true) - $totalStart) / 1_000_000;
         $phases = $result['phases'];
@@ -73,6 +75,7 @@ class DemoSeedCommand extends Command
         $this->table(
             ['Phase', 'Duration'],
             [
+                ['mode', $compact ? 'compact (10 days, 2 sites, cast-only)' : 'full'],
                 ['generate crowd', sprintf('%.0f ms', $result['generate_ms'])],
                 ['cast+crowd steps', sprintf('%.0f ms', $phases['cast_crowd'])],
                 ['standing orders', sprintf('%.0f ms', $phases['standing'])],
@@ -137,6 +140,10 @@ class DemoSeedCommand extends Command
         );
 
         return self::SUCCESS;
+        } finally {
+            DemoWorld::setCurrent(null);
+            CastExecutor::resetWindow();
+        }
     }
 
     private function runInboxOnly(): int

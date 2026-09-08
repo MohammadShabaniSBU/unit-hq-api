@@ -42,9 +42,7 @@ final class TheKellys extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'kellys', $site);
                 $unitA = JourneySupport::vacantUnit($site, 'SS3');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'kellys', $unitA, $date);
                 $world->remember('kellys.contract_a', JourneySupport::contract($world, 'kellys'));
                 JourneySupport::markSteadyPayer($world, 'kellys');
@@ -52,9 +50,7 @@ final class TheKellys extends Journey
             $secondDay => static function (DemoWorld $world) use ($secondDay): void {
                 $site = $world->site('madrid');
                 $unitB = JourneySupport::vacantUnit($site, 'SS4');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($secondDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($secondDay);
                 // Second contract under a sibling handle so helpers don't overwrite.
                 $world->remember('kellys_b.contact', $world->contact('kellys.contact'));
                 JourneySupport::walkInSign($world, 'kellys_b', $unitB, $date);
@@ -64,9 +60,7 @@ final class TheKellys extends Journey
             $vacateDay => static function (DemoWorld $world) use ($vacateDay): void {
                 // Vacate contract A (first unit) with deposit deduction.
                 $world->remember('kellys.contract', $world->get('kellys.contract_a'));
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($vacateDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($vacateDay);
                 JourneySupport::startMissingPayments($world, 'kellys');
                 JourneySupport::vacate(
                     $world,
@@ -111,9 +105,4 @@ final class TheKellys extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

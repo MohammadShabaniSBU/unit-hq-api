@@ -35,12 +35,8 @@ final class OmarHaddad extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'omar', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
-                $start = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($signDay)
-                    ->toDateString();
-                $moveIn = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end + 10)
-                    ->toDateString();
+                $start = CastExecutor::civilDate($signDay);
+                $moveIn = CastExecutor::civilDate($end + 10);
                 JourneySupport::walkInSign(
                     $world,
                     'omar',
@@ -59,14 +55,9 @@ final class OmarHaddad extends Journey
         Assert::assertNotNull($contract->signed_at);
 
         $moveIn = CarbonImmutable::parse($contract->move_in_date)->startOfDay();
-        $end = CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        $end = CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
         Assert::assertTrue($moveIn->greaterThan($end));
         Assert::assertSame(10, (int) $end->diffInDays($moveIn));
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

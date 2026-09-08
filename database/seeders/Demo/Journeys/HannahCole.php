@@ -40,9 +40,7 @@ final class HannahCole extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'hannah', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS3');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'hannah', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'hannah');
             },
@@ -73,9 +71,4 @@ final class HannahCole extends Journey
         Assert::assertGreaterThanOrEqual(2, $failed);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

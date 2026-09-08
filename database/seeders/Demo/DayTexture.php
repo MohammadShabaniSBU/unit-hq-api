@@ -71,7 +71,7 @@ final class DayTexture
         }
 
         // Near seed-end, force remaining delivery lattice outcomes so suppressions land.
-        $end = CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        $end = CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
         if ($date->diffInDays($end) <= 3) {
             $this->forceRemainingLattice($world);
         }

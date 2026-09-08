@@ -23,7 +23,7 @@ final class ReservationPendingCompiler
     public static function compile(string $handle, DemoRng $rng): array
     {
         $enrol = CrowdSupport::enrolDay($rng, band: 'end');
-        $expiresAt = CarbonImmutable::parse(CastExecutor::SIM_END)->addDays(7)->endOfDay();
+        $expiresAt = CarbonImmutable::parse(CastExecutor::simEnd())->addDays(7)->endOfDay();
 
         return [
             $enrol => static function (DemoWorld $world) use ($handle, $rng, $expiresAt): void {

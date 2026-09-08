@@ -38,7 +38,7 @@ final class CrowdSupport
 
     public static function simEnd(): CarbonImmutable
     {
-        return CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        return CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
     }
 
     public static function simSpanDays(): int

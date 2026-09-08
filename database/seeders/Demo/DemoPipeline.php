@@ -28,8 +28,13 @@ final class DemoPipeline
      *     crowd_count: int
      * }
      */
-    public static function run(Application $app, bool $withCrowd = true): array
+    public static function run(Application $app, bool $withCrowd = true, bool $compact = false): array
     {
+        if ($compact) {
+            CastExecutor::activateCompact();
+            $withCrowd = false;
+        }
+
         Config::set('queue.default', 'sync');
         self::hushObservability();
         DemoHttpFakes::install();
@@ -48,7 +53,7 @@ final class DemoPipeline
         $world->hydrateFromDatabase();
 
         $from = CarbonImmutable::parse(CastExecutor::SIM_START)->startOfDay();
-        $to = CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        $to = CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
         $cast = new CastExecutor;
 
         $crowd = new CrowdExecutor([]);

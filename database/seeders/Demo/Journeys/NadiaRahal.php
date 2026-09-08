@@ -43,9 +43,7 @@ final class NadiaRahal extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'nadia', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS5');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::Percent)
                     ->where('name', '20% off')
@@ -65,9 +63,7 @@ final class NadiaRahal extends Journey
                 // new_amount is list — bump base_rate (not the discounted contract amount).
                 $list = BillingMath::round2((string) ($item->base_rate ?? $item->price->amount));
                 $new = BillingMath::round2(bcadd($list, '15.00', 2));
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($appliedDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($appliedDay);
                 JourneySupport::scheduleRateChange($world, 'nadia', $new, $date);
             },
             $scheduledDay => static function (DemoWorld $world) use ($end): void {
@@ -75,9 +71,7 @@ final class NadiaRahal extends Journey
                 $item = $contract->items()->where('item_type', 'unit')->whereNull('effective_to')->firstOrFail();
                 $list = BillingMath::round2((string) ($item->base_rate ?? $item->price->amount));
                 $new = BillingMath::round2(bcadd($list, '20.00', 2));
-                $effective = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end + 60)
-                    ->toDateString();
+                $effective = CastExecutor::civilDate($end + 60);
                 JourneySupport::scheduleRateChange($world, 'nadia', $new, $effective);
             },
         ];
@@ -101,7 +95,7 @@ final class NadiaRahal extends Journey
         $future = ContractItem::query()
             ->where('contract_id', $contract->id)
             ->where('change_reason', ContractItemChangeReason::RateChange)
-            ->where('effective_from', '>', CastExecutor::SIM_END)
+            ->where('effective_from', '>', CastExecutor::simEnd())
             ->exists();
         Assert::assertTrue($future, 'Nadia should have a future-dated rate change');
 
@@ -123,9 +117,4 @@ final class NadiaRahal extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

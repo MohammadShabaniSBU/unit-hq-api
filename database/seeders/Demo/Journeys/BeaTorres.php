@@ -40,9 +40,7 @@ final class BeaTorres extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'bea', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'bea', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'bea');
             },
@@ -86,9 +84,4 @@ final class BeaTorres extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

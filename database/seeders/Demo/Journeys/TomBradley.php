@@ -40,9 +40,7 @@ final class TomBradley extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'tom', $site);
                 $unit = JourneySupport::vacantUnit($site, 'SS2');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'tom', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'tom');
             },
@@ -87,9 +85,4 @@ final class TomBradley extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

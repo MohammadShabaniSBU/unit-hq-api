@@ -29,8 +29,6 @@ final class DemoRbacGrants
 
         $byCode = $sites->keyBy('code');
         $madrid = $byCode->get('MAD-01') ?? $sites->firstOrFail();
-        $norte = $byCode->get('MAD-02') ?? $sites->skip(1)->first() ?? $madrid;
-        $sur = $byCode->get('MAD-03') ?? $sites->skip(2)->first() ?? $madrid;
 
         // Owner already created as manager@example.com by StageSeeder.
         $owner = Employee::query()->where('email', 'manager@example.com')->firstOrFail();
@@ -49,8 +47,14 @@ final class DemoRbacGrants
         }
 
         self::ensureEmployee('agent-mad@example.com', 'Ana López', 'leasing_agent', $madrid);
-        self::ensureEmployee('agent-norte@example.com', 'Bea Martín', 'leasing_agent', $norte);
-        self::ensureEmployee('agent-sur@example.com', 'Luis Ortega', 'leasing_agent', $sur);
+        $norte = $byCode->get('MAD-02');
+        if ($norte instanceof Site) {
+            self::ensureEmployee('agent-norte@example.com', 'Bea Martín', 'leasing_agent', $norte);
+        }
+        $sur = $byCode->get('MAD-03');
+        if ($sur instanceof Site) {
+            self::ensureEmployee('agent-sur@example.com', 'Luis Ortega', 'leasing_agent', $sur);
+        }
 
         self::ensureEmployee('accountant@example.com', 'Carmen Contable', 'accountant', null);
         self::ensureEmployee('readonly@example.com', 'Rita Lectura', 'read_only', null);

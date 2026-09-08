@@ -175,6 +175,10 @@ class StageSeeder extends Seeder
             ['handle' => 'oeste', 'name' => 'Madrid Oeste', 'code' => 'MAD-05', 'address' => 'Paseo de Extremadura 154', 'city' => 'Madrid', 'postal_code' => '28011', 'state_region' => 'Madrid', 'location' => ['lat' => 40.4098, 'lng' => -3.7394], 'latitude' => 40.4098, 'longitude' => -3.7394, 'contact_phone' => '+34910001005', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
         ];
 
+        if (CastExecutor::isCompact()) {
+            $siteDefs = array_slice($siteDefs, 0, 2);
+        }
+
         $sites = collect();
         foreach ($siteDefs as $def) {
             $handle = $def['handle'];

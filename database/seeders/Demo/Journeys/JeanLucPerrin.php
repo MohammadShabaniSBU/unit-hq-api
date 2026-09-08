@@ -43,9 +43,7 @@ final class JeanLucPerrin extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'jean_luc', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($startDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'jean_luc', $unit, $date, mode: 'remote');
                 JourneySupport::sendEnvelope($world, 'jean_luc');
             },
@@ -73,9 +71,4 @@ final class JeanLucPerrin extends Journey
         Assert::assertSame(EsignEnvelopeStatus::Declined, $envelope->status);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

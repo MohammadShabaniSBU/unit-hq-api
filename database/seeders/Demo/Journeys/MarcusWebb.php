@@ -63,9 +63,7 @@ final class MarcusWebb extends Journey
 
                 $site = $world->site('madrid');
                 $destination = JourneySupport::vacantUnit($site, 'SS6');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($transferDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($transferDay);
 
                 JourneySupport::transfer(
                     $world,
@@ -107,9 +105,4 @@ final class MarcusWebb extends Journey
         );
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }

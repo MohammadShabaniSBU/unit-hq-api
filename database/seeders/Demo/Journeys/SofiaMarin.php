@@ -37,14 +37,10 @@ final class SofiaMarin extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'sofia', $site, DealStatus::OfferSent);
                 $unit = JourneySupport::vacantUnit($site, 'SS4');
-                $date = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($sendDay)
-                    ->toDateString();
+                $date = CastExecutor::civilDate($sendDay);
                 JourneySupport::walkInSign($world, 'sofia', $unit, $date, mode: 'remote');
 
-                $expiresAt = CarbonImmutable::parse(CastExecutor::SIM_START)
-                    ->addDays($end + 2)
-                    ->endOfDay();
+                $expiresAt = CarbonImmutable::parse(CastExecutor::civilDate($end + 2))->endOfDay();
                 JourneySupport::sendEnvelope($world, 'sofia', $expiresAt);
             },
         ];
@@ -62,7 +58,7 @@ final class SofiaMarin extends Journey
         Assert::assertNotNull($envelope);
         Assert::assertNotNull($envelope->expires_at);
 
-        $seedEnd = CarbonImmutable::parse(CastExecutor::SIM_END)->startOfDay();
+        $seedEnd = CarbonImmutable::parse(CastExecutor::simEnd())->startOfDay();
         $daysLeft = (int) $seedEnd->diffInDays(
             CarbonImmutable::parse($envelope->expires_at)->startOfDay(),
             false,
@@ -71,9 +67,4 @@ final class SofiaMarin extends Journey
         Assert::assertGreaterThanOrEqual(0, $daysLeft);
     }
 
-    private static function endOffset(): int
-    {
-        return (int) CarbonImmutable::parse(CastExecutor::SIM_START)
-            ->diffInDays(CarbonImmutable::parse(CastExecutor::SIM_END));
-    }
 }
