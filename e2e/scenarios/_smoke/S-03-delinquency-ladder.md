@@ -43,4 +43,4 @@ A full presenter seed still builds 15–30 / overlocked / denied door — do not
 
 ## On failure
 
-Screenshot the filtered board (with the amount visible) and the delinquency timeline. Record both balance figures. Do not record a payment or close the case. Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot the filtered board (with the amount visible) and the delinquency timeline. Record both balance figures. Do not record a payment or close the case. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.

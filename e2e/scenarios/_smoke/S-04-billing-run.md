@@ -42,4 +42,4 @@ The 14-month clock already ran scheduled billing. The dry-run preview may be emp
 
 ## On failure
 
-Screenshot the modal (preview or error) and, if navigation happened, the run detail. Do not reverse charges. Reset before the next mutating scenario. Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot the modal (preview or error) and, if navigation happened, the run detail. Do not reverse charges. Reset before the next mutating scenario. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.

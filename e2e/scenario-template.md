@@ -42,8 +42,8 @@ Demo world seeded. Named anchors exist in their documented end state
 ## On failure
 
 Screenshot the failing surface. Record `id`, `route`, `persona`, and the
-step number in `e2e/runs/<date>/results.md`. If it is a product bug,
-append a report to `e2e/runs/<date>/bugs.md`. Do not fix the bug.
+step number in `e2e/runs/<YYYY-MM-DD-HHmmss>/results.md`. If it is a product bug,
+append a report to `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`. Do not fix the bug.
 Do not edit application code. Do not invent a fixture.
 ```
 

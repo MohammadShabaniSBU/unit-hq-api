@@ -41,4 +41,4 @@ Demo world seeded. Stage activation compiled **Default debt process** and **Defa
 
 ## On failure
 
-Screenshot the automations table (badge) and the editor chrome (banner + missing palette). Do not save a draft graph. Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot the automations table (badge) and the editor chrome (banner + missing palette). Do not save a draft graph. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.

@@ -2,7 +2,7 @@
 
 Employees created by `DemoRbacGrants` after the demo stage exists. Password for every account is `LOGIN_PASSWORD` from [`environment.md`](environment.md) (`password` after seed).
 
-After `demo:seed --fresh --compact` the world has two sites. **`sm-mad-03`…`sm-mad-05` and `agent-sur` are full-world only** — they are not created. Smoke uses `readonly`, `agent-mad`, and `ops`.
+After `demo:seed --fresh --compact` the world has two sites. **`sm-mad-03`…`sm-mad-05` and `agent-sur` are full-world only** — they are not created. Smoke uses `readonly`, `agent-mad`, and `ops`. Core also uses `manager`, `accountant`, and `sm-mad-01`.
 
 Scenario frontmatter `persona` is the **key** in the first column. Emails are what you type on `/login`.
 

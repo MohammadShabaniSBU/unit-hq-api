@@ -38,9 +38,15 @@ Most of the cast lives on MAD-01. Exceptions used by smoke: **Sofía Marín** is
 | Clock | 10 days (`2025-06-01` → `2025-06-10`) | ~426 days |
 | Crowd | none | ~793 |
 | Lucía Ferrer | Open case, ladder started (fee / notice). Ageing **8–14**. Overlock and denied door are **not** required. | Open case, **15–30**, overlocked, denied door, still owing |
+| Omar Haddad | Contract **Pending**; move-in 10 days after seed-end (`2025-06-20`) | Same shape on the long clock |
+| Inés Valdés | **Notice given**; scheduled move-out 5–14 days after seed-end | Notice given; move-out “next week” on the long clock |
+| Gracia Lin | Deal **negotiating**; offer **viewed**; lead-chase still in flight | Same; step 3 of 4 on the long clock |
+| Patricia Keller | Two contracts; one vacated with a cleaning-fee deposit deduction | Vacate “last month” on the long clock |
+| Javier Peña | Awaiting signature; envelope **declined** | Same |
+| Sofía Marín | Envelope expiring within ~2 days of seed-end | Envelope expiring within 3 days |
 | `sm-mad-03`…`05`, `agent-sur` | absent | present |
 
-Smoke scenarios assume the compact column.
+Smoke and core scenarios assume the compact column. Do not add a second Lucía-delinquency scenario — S-03 owns that surface.
 
 ## Unit-class labels
 

@@ -42,4 +42,4 @@ Demo world seeded. Reset first — step 8 writes a triage resolution. Pilar Sant
 
 ## On failure
 
-Screenshot Pilar's conversation (if the thread is wrong) or the triage pane (if discard failed). Do not create a contact for the stranger to "make the step work." Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot Pilar's conversation (if the thread is wrong) or the triage pane (if discard failed). Do not create a contact for the stranger to "make the step work." Do not send a reply. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.

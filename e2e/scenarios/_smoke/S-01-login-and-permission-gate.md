@@ -38,4 +38,4 @@ Demo world seeded. `readonly` exists (`readonly@example.com` / `LOGIN_PASSWORD`)
 
 ## On failure
 
-Screenshot `/login` (if sign-in failed) or the page after the `/settings/people` navigation (URL bar + heading). Record the step number in `e2e/runs/<date>/`. Do not create a new employee. Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot `/login` (if sign-in failed) or the page after the `/settings/people` navigation (URL bar + heading). Record the step number in `e2e/runs/<YYYY-MM-DD-HHmmss>/`. Do not create a new employee. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.

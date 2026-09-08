@@ -39,4 +39,4 @@ Demo world seeded. Lucía Ferrer and Marcos Vega are MAD-01 cast. Sofía Marín 
 
 ## On failure
 
-Screenshot the contacts list with the failing search visible. If Lucía is missing, the seed is wrong — stop. Do not create a contact. Do not fix the bug — report it in `e2e/runs/<date>/bugs.md`.
+Screenshot the contacts list with the failing search visible. If Lucía is missing, the seed is wrong — stop. Do not create a contact. Do not fix the bug — report it in `e2e/runs/<YYYY-MM-DD-HHmmss>/bugs.md`.
