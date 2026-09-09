@@ -80,17 +80,7 @@ final class VoiceBridgeTurn
         }
 
         $conversation = $session->conversation;
-        if ($callerUtterance !== null) {
-            $detected = SpokenLocaleDetector::detect($callerUtterance);
-            if ($detected !== null && $detected !== $conversation->locale) {
-                SystemEvent::record('ai.voice.locale_switched', $session, [
-                    'from' => $conversation->locale,
-                    'to' => $detected,
-                ]);
-                $conversation->locale = $detected;
-                $conversation->save();
-            }
-        }
+        $this->applySpokenLocale($session, $conversation, $callerUtterance, $query);
         $principal = $this->principalFrom($conversation);
 
         $existing = $this->storedTurn($session, $turnId);
@@ -280,6 +270,26 @@ final class VoiceBridgeTurn
         $settings = Setting::general();
 
         return ! SiteClock::withinWindow($site, $settings->sendWindowStart, $settings->sendWindowEnd);
+    }
+
+    private function applySpokenLocale(
+        VoiceSession $session,
+        AgentConversation $conversation,
+        ?string $callerUtterance,
+        string $query,
+    ): void {
+        $detected = SpokenLocaleDetector::detect($callerUtterance ?? '')
+            ?? SpokenLocaleDetector::detect($query);
+        if ($detected === null || $detected === $conversation->locale) {
+            return;
+        }
+
+        SystemEvent::record('ai.voice.locale_switched', $session, [
+            'from' => $conversation->locale,
+            'to' => $detected,
+        ]);
+        $conversation->locale = $detected;
+        $conversation->save();
     }
 
     private function principalFrom(AgentConversation $conversation): AgentPrincipal

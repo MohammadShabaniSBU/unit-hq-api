@@ -5,25 +5,21 @@ declare(strict_types=1);
 namespace App\Support\Ai;
 
 /**
- * Heuristic language guess from a caller utterance. Returns null when the
- * text is too short or the scores are too close, so a greeting like "ok"
- * never flips the conversation locale.
+ * Best-effort spoken-language guess from a short utterance. Returns null
+ * on empty, unmarked, or tied input so a mixed or tiny phrase does not
+ * flip agent_conversations.locale.
  */
 final class SpokenLocaleDetector
 {
-    private const MIN_WORDS = 4;
-
-    private const MIN_HITS = 2;
-
-    private const MARGIN = 2;
-
-    /**
-     * @return 'en'|'es'|'fr'|null
-     */
-    public static function detect(string $utterance): ?string
+    public static function detect(string $text): ?string
     {
-        $words = self::words($utterance);
-        if (count($words) < self::MIN_WORDS) {
+        $normalized = self::normalize($text);
+        if ($normalized === '') {
+            return null;
+        }
+
+        $tokens = preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY);
+        if ($tokens === false || $tokens === []) {
             return null;
         }
 
@@ -33,72 +29,49 @@ final class SpokenLocaleDetector
         foreach (['en', 'es', 'fr'] as $locale) {
             $set = [];
             foreach ($markers[$locale] ?? [] as $marker) {
-                $normalized = self::normalize($marker);
-                if ($normalized !== '') {
-                    $set[$normalized] = true;
+                $key = self::normalize((string) $marker);
+                if ($key !== '') {
+                    $set[$key] = true;
                 }
             }
 
-            $hits = 0;
-            foreach ($words as $word) {
-                if (isset($set[$word])) {
-                    $hits++;
+            $score = 0;
+            foreach ($tokens as $token) {
+                if (isset($set[$token]) || isset($set[self::stem($token)])) {
+                    $score++;
                 }
             }
-            $scores[$locale] = $hits;
+            $scores[$locale] = $score;
         }
 
-        arsort($scores);
-        $ranked = array_keys($scores);
-        $winner = $ranked[0];
-        $winnerScore = $scores[$winner];
-        $runnerUp = $scores[$ranked[1] ?? ''] ?? 0;
-
-        if ($winnerScore < self::MIN_HITS) {
-            return null;
-        }
-        if ($winnerScore < $runnerUp + self::MARGIN) {
+        $topScore = max($scores);
+        if ($topScore === 0) {
             return null;
         }
 
-        return $winner;
-    }
+        $winners = array_keys(array_filter($scores, fn (int $score): bool => $score === $topScore));
+        if (count($winners) !== 1) {
+            return null;
+        }
 
-    /**
-     * @return list<string>
-     */
-    private static function words(string $utterance): array
-    {
-        preg_match_all('/[a-z]+/u', self::normalize($utterance), $matches);
-
-        return $matches[0];
+        return $winners[0];
     }
 
     private static function normalize(string $text): string
     {
-        $lower = mb_strtolower(trim($text));
+        $folded = mb_strtolower($text, 'UTF-8');
+        $stripped = preg_replace('/\p{Mn}/u', '', \Normalizer::normalize($folded, \Normalizer::FORM_D) ?? $folded) ?? $folded;
+        $letters = preg_replace("/[^\p{L}\p{N}\s']+/u", ' ', $stripped) ?? $stripped;
 
-        return strtr($lower, [
-            'á' => 'a',
-            'à' => 'a',
-            'é' => 'e',
-            'è' => 'e',
-            'ê' => 'e',
-            'ë' => 'e',
-            'í' => 'i',
-            'ì' => 'i',
-            'î' => 'i',
-            'ï' => 'i',
-            'ó' => 'o',
-            'ò' => 'o',
-            'ô' => 'o',
-            'ö' => 'o',
-            'ú' => 'u',
-            'ù' => 'u',
-            'û' => 'u',
-            'ü' => 'u',
-            'ñ' => 'n',
-            'ç' => 'c',
-        ]);
+        return trim((string) preg_replace('/\s+/u', ' ', $letters));
+    }
+
+    private static function stem(string $token): string
+    {
+        if (strlen($token) > 3 && str_ends_with($token, 's')) {
+            return substr($token, 0, -1);
+        }
+
+        return $token;
     }
 }

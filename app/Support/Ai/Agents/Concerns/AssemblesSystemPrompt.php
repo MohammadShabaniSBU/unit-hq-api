@@ -88,6 +88,7 @@ trait AssemblesSystemPrompt
             : CarbonImmutable::now((string) config('app.timezone', 'UTC'))->startOfDay();
         $locale = $this->localeKey($ctx->conversation->locale ?? $ctx->principal->locale);
         $lines[] = 'Today: '.$today->toDateString().' ('.$today->copy()->locale($locale)->isoFormat('dddd').').';
+        $lines[] = 'Reply in '.$this->replyLanguageName($locale).'. The site default language is only for the opening greeting; do not switch back to it unless the customer is speaking it.';
 
         if ($ctx->channel->channel === AgentChannel::Voice && $this->voiceSessionHasCallerNumber($ctx)) {
             $lines[] = "The caller's phone is already known from caller ID. Do not ask for it. When creating a contact, omit phone — the session number will be attached.";
@@ -114,6 +115,15 @@ trait AssemblesSystemPrompt
         $base = explode('-', $base)[0];
 
         return in_array($base, ['en', 'es', 'fr'], true) ? $base : 'en';
+    }
+
+    private function replyLanguageName(string $locale): string
+    {
+        return match ($locale) {
+            'es' => 'Spanish',
+            'fr' => 'French',
+            default => 'English',
+        };
     }
 
     private function disclosureBlock(AgentContext $ctx): string

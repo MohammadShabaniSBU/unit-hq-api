@@ -11,6 +11,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\AiAgent;
 use App\Models\Contact;
 use App\Models\ContactChannel;
+use App\Models\Country;
 use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
@@ -295,7 +296,7 @@ class VoiceBridgeEndpointTest extends TestCase
     {
         config(['agents.voice.bridge_rate_per_minute' => 1]);
         $this->enqueueSafeReply();
-        $this->enqueueSafeReply();
+        $this->driver->enqueueText('Which size works best for you?');
 
         $this->postBridge(['turn_id' => 'turn-ok'])->assertOk()->assertJsonPath('transfer', false);
         $this->assertSame(1, $this->driver->callCount);
@@ -367,6 +368,41 @@ class VoiceBridgeEndpointTest extends TestCase
             'so if I wanted the ten square meter one, what would that run me',
             VoiceSessionTurn::query()->where('turn_id', 'turn-throw-utterance')->value('caller_utterance'),
         );
+    }
+
+    #[Test]
+    public function english_caller_utterance_switches_an_es_conversation_locale_before_the_turn(): void
+    {
+        $this->bindSiteCountry('ES');
+        $this->enqueueSafeReply();
+
+        $this->postBridge([
+            'query' => 'size and price for 20 boxes',
+            'turn_id' => 'turn-locale-en',
+            'caller_utterance' => 'so if I wanted the ten square meter one, what would that run me',
+        ])->assertOk();
+
+        $this->assertSame('en', AgentConversation::query()->value('locale'));
+        $event = SystemEvent::query()->where('event', 'ai.voice.locale_switched')->first();
+        $this->assertNotNull($event);
+        $this->assertSame('es', $event->payload['from'] ?? null);
+        $this->assertSame('en', $event->payload['to'] ?? null);
+        $this->assertStringContainsString('Reply in English.', $this->lastSystemPrompt());
+    }
+
+    #[Test]
+    public function english_query_switches_locale_when_caller_utterance_is_omitted(): void
+    {
+        $this->bindSiteCountry('ES');
+        $this->enqueueSafeReply();
+
+        $this->postBridge([
+            'query' => 'Mohammed Chalani wants to rent a storage unit. Please assist.',
+            'turn_id' => 'turn-locale-from-query',
+        ])->assertOk();
+
+        $this->assertSame('en', AgentConversation::query()->value('locale'));
+        $this->assertStringContainsString('Reply in English.', $this->lastSystemPrompt());
     }
 
     #[Test]
@@ -450,5 +486,23 @@ class VoiceBridgeEndpointTest extends TestCase
     private function enqueueSafeReply(): void
     {
         $this->driver->enqueueText('We have units available. Which size are you looking for?');
+    }
+
+    private function bindSiteCountry(string $code): void
+    {
+        $country = Country::factory()->create(['code' => $code]);
+        $this->site->forceFill(['country_id' => $country->id])->save();
+    }
+
+    private function lastSystemPrompt(): string
+    {
+        foreach ($this->driver->lastMessages as $message) {
+            $role = is_array($message) ? ($message['role'] ?? null) : null;
+            if ($role === 'system') {
+                return (string) ($message['content'] ?? '');
+            }
+        }
+
+        return '';
     }
 }

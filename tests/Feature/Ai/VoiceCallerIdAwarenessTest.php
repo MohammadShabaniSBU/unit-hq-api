@@ -119,6 +119,7 @@ class VoiceCallerIdAwarenessTest extends TestCase
             'Do not ask the caller to speak an email address. When creating a contact, omit email.',
             $prompt,
         );
+        $this->assertStringContainsString('Reply in English.', $prompt);
         $this->assertStringNotContainsString('+34908121212', $prompt);
         $this->assertStringNotContainsString('34908121212', $prompt);
     }
