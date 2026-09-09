@@ -198,6 +198,7 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertStringContainsString('voice.send_quote_by_text', $voicePrompt);
         $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);
         $this->assertStringNotContainsString('already known from caller ID', $voicePrompt);
+        $this->assertStringNotContainsString('Open with this exact sentence', $voicePrompt);
     }
 
     private function conciergeContext(AgentPrincipal $principal, AgentChannel $channel = AgentChannel::Webchat): AgentContext

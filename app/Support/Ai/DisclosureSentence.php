@@ -6,6 +6,7 @@ namespace App\Support\Ai;
 
 use App\Models\Setting;
 use App\Support\Ai\Enums\AgentAudience;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
 use InvalidArgumentException;
 
@@ -83,6 +84,13 @@ final class DisclosureSentence
     public static function isFirstCustomerTurn(AgentContext $ctx): bool
     {
         if ($ctx->principal->audience !== AgentAudience::Customer) {
+            return false;
+        }
+
+        // Deepgram already spoke ai-handoff.voice_greeting at call start.
+        // The first keevaris.ask is still the first API assistant row; repeating
+        // the line here is a second greeting, not an Art. 50 backstop.
+        if ($ctx->channel->channel === AgentChannel::Voice) {
             return false;
         }
 

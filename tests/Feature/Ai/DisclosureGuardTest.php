@@ -16,7 +16,9 @@ use App\Support\Ai\ChannelProfile;
 use App\Support\Ai\DisclosureSentence;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\ModelDriver;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentMessageRole;
+use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Guards\DisclosureGuard;
@@ -165,6 +167,26 @@ class DisclosureGuardTest extends TestCase
         );
 
         $this->assertTrue($verdict->passed);
+    }
+
+    #[Test]
+    public function voice_first_turn_does_not_prepend_disclosure(): void
+    {
+        $ctx = $this->writeContext(
+            AgentPrincipal::anonymous(null, 'en'),
+            'sales',
+            origin: AgentOrigin::Voice,
+            channel: AgentChannel::Voice,
+        );
+        $phrase = DisclosureSentence::for('en');
+
+        $verdict = app(DisclosureGuard::class)->check('Hello.', new FactBag, $ctx);
+
+        $this->assertTrue($verdict->passed);
+        $this->assertNull($verdict->mutatedDraft);
+        $this->assertArrayNotHasKey('detail', $verdict->events[0]);
+        $this->assertStringNotContainsString($phrase, 'Hello.');
+        $this->assertFalse(DisclosureSentence::isFirstCustomerTurn($ctx));
     }
 
     #[Test]

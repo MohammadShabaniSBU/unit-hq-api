@@ -837,7 +837,9 @@ the guard event records `prompted` / `appended`. On voice the Vocal Bridge
 foreground agent speaks first, so the spoken line is
 `ai-handoff.voice_greeting` in the **site default locale** (`SiteLocale`
 from the site the number is bound to — not inferred from the caller).
-`DisclosureGuard` remains the backstop on the first delegated reply.
+That spoken greeting is the Art. 50 line on voice. `DisclosureGuard` does
+not prepend (and the system prompt does not instruct) the chat disclosure
+on the first delegated reply — Deepgram already said it.
 `voice_greeting` is a separate key from `disclosure` on purpose: voice will
 take a recording clause later, and the spoken line has a different legal
 sign-off owner than chat.
