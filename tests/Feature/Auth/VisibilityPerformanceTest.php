@@ -127,7 +127,7 @@ class VisibilityPerformanceTest extends TestCase
         $queryCount = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        $this->assertSame(9, $response->json('meta.total'));
+        $this->assertSame(8, $response->json('meta.total'));
         $this->assertLessThanOrEqual(
             20,
             $queryCount,

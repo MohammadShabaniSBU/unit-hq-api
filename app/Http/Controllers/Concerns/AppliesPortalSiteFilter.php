@@ -14,7 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Optional portal site-selector filter. Distinct from grant visibility ({@see VisibleToEmployee}).
- * null / omitted site_id = All sites (RBAC only).
+ * null / omitted site_id = All sites (RBAC only). For Contact, a selected site is
+ * related-to-that-site only — unassigned leads stay on All Sites.
  */
 trait AppliesPortalSiteFilter
 {
@@ -45,6 +46,6 @@ trait AppliesPortalSiteFilter
             ]);
         }
 
-        return SitePath::constrain($query, $modelClass, [$siteId]);
+        return SitePath::constrain($query, $modelClass, [$siteId], selectedSiteOnly: true);
     }
 }

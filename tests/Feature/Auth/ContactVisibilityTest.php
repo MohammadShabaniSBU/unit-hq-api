@@ -105,7 +105,7 @@ class ContactVisibilityTest extends TestCase
     }
 
     #[Test]
-    public function portal_site_id_keeps_unassigned_leads_and_site_relations(): void
+    public function portal_site_id_lists_only_contacts_related_to_that_site(): void
     {
         $contactA = Contact::factory()->create(['first_name' => 'Alpha']);
         Deal::factory()->create(['contact_id' => $contactA->id, 'site_id' => $this->siteA->id]);
@@ -122,7 +122,7 @@ class ContactVisibilityTest extends TestCase
             ->all();
 
         $this->assertContains($contactA->id, $ids);
-        $this->assertContains($lead->id, $ids);
+        $this->assertNotContains($lead->id, $ids);
         $this->assertNotContains($contactB->id, $ids);
     }
 

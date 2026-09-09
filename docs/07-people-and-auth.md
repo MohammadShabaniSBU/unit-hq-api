@@ -61,7 +61,7 @@ A **global site selector** scopes the portal context, with two carve-outs:
 1. **Site-level staff** (grants with a non-null `employee_roles.site_id`) see only their assigned site(s).
 2. **Company-level roles** (company-wide grants) get an **"All Sites"** option.
 
-**Exception (D-RBAC-1):** Contact and Deal **detail** views show activity across all sites regardless of the selector — a Contact is not inherently site-scoped as a subject. **Lists** are narrower: site-scoped agents see contacts/deals related to granted sites (`contact_sites`, deal, reservation, contract, or message thread), plus unassigned leads (no `contact_sites` row and no other site relation / null `deals.site_id`). Company-wide grants see the full roster. Row visibility is applied via explicit `visibleTo($employee, $permission)` on the query — never a global scope.
+**Exception (D-RBAC-1):** Contact and Deal **detail** views show activity across all sites regardless of the selector — a Contact is not inherently site-scoped as a subject. **Lists** are narrower: site-scoped agents see contacts/deals related to granted sites (`contact_sites`, deal, reservation, contract, or message thread), plus unassigned leads (no `contact_sites` row and no other site relation / null `deals.site_id`). Company-wide grants see the full roster when no site is selected. The portal `site_id` selector further narrows the **contact** list to contacts related to that site — unassigned leads stay on All Sites (and on a site-scoped agent's list when no site is selected). Row visibility is applied via explicit `visibleTo($employee, $permission)` on the query — never a global scope.
 
 `GET /api/user` returns `roles`, `permissions`, and `company_permissions`.
 
