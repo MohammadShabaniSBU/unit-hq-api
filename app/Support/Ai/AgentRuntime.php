@@ -51,6 +51,7 @@ use App\Support\Ai\Tools\ToolError;
 use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\Ai\Trace\TraceCursor;
+use App\Support\Ai\Trace\TraceSeq;
 use App\Support\RequestId;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -782,25 +783,20 @@ final class AgentRuntime
     private function persistAndEmitGuardrails(?Closure $onEvent, GuardrailVerdict $verdict, TraceCursor $cursor, ?int $messageId = null): void
     {
         foreach ($verdict->events as $event) {
-            $seq = $cursor->allocateSeq();
             $detail = array_diff_key($event, ['guard' => true, 'verdict' => true]);
             $detail = $detail !== [] ? $detail : null;
 
-            $row = AgentGuardrailEvent::query()->create([
-                'agent_conversation_id' => $cursor->conversationId,
-                'agent_conversation_message_id' => $messageId,
-                'turn' => $cursor->turn,
-                'seq' => $seq,
-                'guard' => (string) ($event['guard'] ?? 'unknown'),
-                'verdict' => (string) ($event['verdict'] ?? 'pass'),
-                'detail' => $detail,
-                'model' => $cursor->model,
-                'prompt_version' => $cursor->promptVersion,
-            ]);
+            $row = $this->insertGuardrailEvent(
+                $cursor,
+                (string) ($event['guard'] ?? 'unknown'),
+                (string) ($event['verdict'] ?? 'pass'),
+                $detail,
+                $messageId,
+            );
 
             if ($onEvent !== null) {
                 $onEvent('guardrail', [
-                    ...$cursor->envelope($messageId, $seq, $row->created_at),
+                    ...$cursor->envelope($messageId, $row->seq, $row->created_at),
                     ...$event,
                 ]);
             }
@@ -809,17 +805,53 @@ final class AgentRuntime
 
     private function persistInboundGuardrail(TraceCursor $cursor, HandoffMatch $match): void
     {
-        AgentGuardrailEvent::query()->create([
-            'agent_conversation_id' => $cursor->conversationId,
-            'agent_conversation_message_id' => $cursor->userMessageId,
-            'turn' => $cursor->turn,
-            'seq' => $cursor->allocateSeq(),
-            'guard' => $match->guard,
-            'verdict' => 'handoff',
-            'detail' => $match->detail,
-            'model' => $cursor->model,
-            'prompt_version' => $cursor->promptVersion,
-        ]);
+        $this->insertGuardrailEvent(
+            $cursor,
+            $match->guard,
+            'handoff',
+            $match->detail,
+            $cursor->userMessageId,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $detail
+     */
+    private function insertGuardrailEvent(
+        TraceCursor $cursor,
+        string $guard,
+        string $verdict,
+        ?array $detail,
+        ?int $messageId,
+    ): AgentGuardrailEvent {
+        $attempts = 0;
+
+        while (true) {
+            $seq = $cursor->allocateSeq();
+
+            try {
+                return DB::transaction(function () use ($cursor, $messageId, $seq, $guard, $verdict, $detail): AgentGuardrailEvent {
+                    return AgentGuardrailEvent::query()->create([
+                        'agent_conversation_id' => $cursor->conversationId,
+                        'agent_conversation_message_id' => $messageId,
+                        'turn' => $cursor->turn,
+                        'seq' => $seq,
+                        'guard' => $guard,
+                        'verdict' => $verdict,
+                        'detail' => $detail,
+                        'model' => $cursor->model,
+                        'prompt_version' => $cursor->promptVersion,
+                    ]);
+                });
+            } catch (UniqueConstraintViolationException $e) {
+                $attempts++;
+                if ($attempts >= 8) {
+                    throw $e;
+                }
+
+                $cursor->resync(TraceSeq::max($cursor->conversationId));
+            }
+        }
     }
 
     /**

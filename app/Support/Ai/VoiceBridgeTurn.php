@@ -116,7 +116,18 @@ final class VoiceBridgeTurn
                 return $this->bodyFromTurn($replay);
             }
 
-            throw $e;
+            report($e);
+            SystemEvent::record('ai.voice.turn_failed', $session, [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->persistHandoff(
+                $session,
+                $turnId,
+                site: $site,
+                latencyMs: (int) ((hrtime(true) - $started) / 1_000_000),
+                callerUtterance: $callerUtterance,
+            );
         } catch (Throwable $e) {
             report($e);
             SystemEvent::record('ai.voice.turn_failed', $session, [

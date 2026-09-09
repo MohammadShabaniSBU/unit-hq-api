@@ -42,6 +42,13 @@ final class TraceCursor
         return $this->nextSeq;
     }
 
+    public function resync(int $max): void
+    {
+        if ($max > $this->nextSeq) {
+            $this->nextSeq = $max;
+        }
+    }
+
     /**
      * @return array{
      *     conversation_id: int,

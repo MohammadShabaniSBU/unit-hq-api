@@ -8,6 +8,7 @@ use App\Enums\LogChannel;
 use App\Models\AgentConversation;
 use App\Models\AgentPrincipalPromotion;
 use App\Models\AgentToolInvocation;
+use App\Models\VoiceSession;
 use App\Support\Ai\Enums\AgentAudience;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
@@ -74,6 +75,7 @@ final class PrincipalPromotion
         $conversation->contact_id = $result->resultId;
         $conversation->verification_level = VerificationLevel::ChannelAsserted;
         $conversation->save();
+        self::stampVoiceSessionContact($conversation, $result->resultId);
 
         AgentWriteAttribution::log(
             LogChannel::Ai,
@@ -136,6 +138,17 @@ final class PrincipalPromotion
         self::recordTrace($conversation, $from, VerificationLevel::Verified, 'otp', $invocation);
 
         return $conversation->principal();
+    }
+
+    private static function stampVoiceSessionContact(AgentConversation $conversation, int $contactId): void
+    {
+        if ($conversation->origin !== AgentOrigin::Voice && $conversation->channel !== AgentChannel::Voice) {
+            return;
+        }
+
+        VoiceSession::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->update(['contact_id' => $contactId]);
     }
 
     /**

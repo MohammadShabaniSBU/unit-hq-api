@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Support\Ai\Agents\Concerns;
 
 use App\Models\Site;
+use App\Models\VoiceSession;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\ChannelProfile;
 use App\Support\Ai\DisclosureSentence;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Ai\Eval\CassetteKey;
 use App\Support\Time\SiteClock;
@@ -87,7 +89,20 @@ trait AssemblesSystemPrompt
         $locale = $this->localeKey($ctx->conversation->locale ?? $ctx->principal->locale);
         $lines[] = 'Today: '.$today->toDateString().' ('.$today->copy()->locale($locale)->isoFormat('dddd').').';
 
+        if ($ctx->channel->channel === AgentChannel::Voice && $this->voiceSessionHasCallerNumber($ctx)) {
+            $lines[] = "The caller's phone is already known from caller ID. Do not ask for it. When creating a contact, omit phone — the session number will be attached.";
+        }
+
         return implode(' ', $lines);
+    }
+
+    private function voiceSessionHasCallerNumber(AgentContext $ctx): bool
+    {
+        $caller = VoiceSession::query()
+            ->where('agent_conversation_id', $ctx->conversation->id)
+            ->value('caller_number');
+
+        return is_string($caller) && trim($caller) !== '';
     }
 
     private function localeKey(string $locale): string

@@ -9,8 +9,10 @@ use App\Enums\ContactSource;
 use App\Enums\LogChannel;
 use App\Models\Contact;
 use App\Models\ContactChannel;
+use App\Models\VoiceSession;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\VerificationLevel;
 use App\Support\Communications\Channel;
 use App\Support\Communications\ContactChannelMatcher;
@@ -95,6 +97,11 @@ final class CrmCreateContactTool implements AgentTool
 
         $email = isset($arguments['email']) ? trim((string) $arguments['email']) : '';
         $phone = isset($arguments['phone']) ? trim((string) $arguments['phone']) : '';
+        $phoneFromCallerId = false;
+        if ($phone === '') {
+            $phone = $this->voiceSessionCallerNumber($ctx);
+            $phoneFromCallerId = $phone !== '';
+        }
         $notes = isset($arguments['notes']) ? trim((string) $arguments['notes']) : '';
         $employeeId = AgentWriteAttribution::employeeId($ctx);
 
@@ -163,7 +170,9 @@ final class CrmCreateContactTool implements AgentTool
             return $contact;
         });
 
-        $display = "Created contact {$contact->first_name} {$contact->last_name} (id {$contact->id}).";
+        $display = $phoneFromCallerId
+            ? "Created contact {$contact->first_name} {$contact->last_name} and attached the number this call came from."
+            : "Created contact {$contact->first_name} {$contact->last_name} (id {$contact->id}).";
         if ($notes !== '' && $employeeId === null) {
             $display .= ' '.AgentWriteAttribution::NOTES_NOT_WRITTEN;
         }
@@ -219,5 +228,22 @@ final class CrmCreateContactTool implements AgentTool
         }
 
         return null;
+    }
+
+    private function voiceSessionCallerNumber(?AgentContext $ctx): string
+    {
+        $conversation = $ctx?->conversation;
+        if ($conversation === null) {
+            return '';
+        }
+        if ($ctx->channel->channel !== AgentChannel::Voice && $conversation->channel !== AgentChannel::Voice) {
+            return '';
+        }
+
+        $caller = VoiceSession::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->value('caller_number');
+
+        return is_string($caller) ? trim($caller) : '';
     }
 }
