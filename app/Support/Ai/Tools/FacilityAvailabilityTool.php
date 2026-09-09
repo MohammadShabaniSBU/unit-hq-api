@@ -23,7 +23,7 @@ final class FacilityAvailabilityTool implements AgentTool
 
     public function description(): string
     {
-        return 'Count currently available units by site and unit class. Returns counts and class labels, never unit identifiers. Availability is a snapshot as of now.';
+        return 'Whether a unit class is currently available at a site. Returns available-or-not and class labels, never a free-unit count or unit identifiers. Availability is a snapshot as of now.';
     }
 
     public function schema(): array
@@ -145,16 +145,13 @@ final class FacilityAvailabilityTool implements AgentTool
         $entities = [];
         $seen = [];
         foreach ($groups as $group) {
-            $facts->number($group['count']);
             if ($group['size'] !== null) {
                 $facts->number($group['size']);
                 $sizeBit = " ({$group['size']} m²)";
             } else {
                 $sizeBit = '';
             }
-            $n = $group['count'];
-            $unitWord = $n === 1 ? 'unit' : 'units';
-            $lines[] = "{$n} {$unitWord} available in {$group['label']}{$sizeBit} at {$group['site_name']} as of now.";
+            $lines[] = "{$group['label']}{$sizeBit} is available at {$group['site_name']} as of now.";
 
             $siteKey = 'site:'.$group['site_id'];
             if (! isset($seen[$siteKey])) {

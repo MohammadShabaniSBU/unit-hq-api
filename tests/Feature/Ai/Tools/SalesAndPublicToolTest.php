@@ -75,8 +75,12 @@ class SalesAndPublicToolTest extends TestCase
         $this->assertSame(3, $result->data['classes'][0]['count']);
         $this->assertSame('Small', $result->data['classes'][0]['label']);
         $this->assertSame('Madrid Norte', $result->data['classes'][0]['site_name']);
-        $this->assertStringContainsString('3 units available in Small', $result->display);
+        $this->assertStringContainsString('Small', $result->display);
+        $this->assertStringContainsString('is available at Madrid Norte', $result->display);
         $this->assertStringContainsString('as of now', $result->display);
+        $this->assertStringNotContainsString('3 units', $result->display);
+        $this->assertStringNotContainsString('3 unit', $result->display);
+        $this->assertFalse($result->facts->contains('3'));
         $this->assertStringNotContainsString(Unit::query()->first()->unit_number, $result->display);
         $this->assertSame(SiteClock::today($site)->toDateString(), $result->data['as_of']);
         $this->assertNotEmpty($result->entities);

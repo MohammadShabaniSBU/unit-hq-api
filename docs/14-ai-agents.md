@@ -593,7 +593,8 @@ Other tool notes:
   Display tokens (address, hours, phone) are absorbed into `FactBag` so quoted
   strings are licensed.
 - `facility.availability` goes through `App\Support\Occupancy\Availability`
-  (invariant 5 / 36). Counts and classes, **not** unit identifiers.
+  (invariant 5 / 36). Available-or-not per class, **not** counts or unit
+  identifiers.
 - `facility.size_guide` is a **fit recommendation**, not a FAQ. `kb.faq_lookup`
   answers facts-about-the-site (hours, policy, prohibited items) as a static
   snippet for a curated key. Size guide takes a quantity predicate, resolves a
