@@ -59,6 +59,19 @@ final class MoneyDisplay
         return "{$net} net / {$gross} incl. {$rate}% {$label}, {$period} — {$classLabel} at {$siteName}";
     }
 
+    public static function spokenQuote(
+        TaxBreakdown $breakdown,
+        string $currency,
+        string $locale,
+        string $period,
+        string $classLabel,
+    ): string {
+        $gross = self::format($breakdown->gross, $currency, $locale);
+        $taxLabel = str_starts_with(strtolower($locale), 'es') ? 'con IVA incluido' : 'tax included';
+
+        return "{$classLabel}, {$gross} {$period}, {$taxLabel}.";
+    }
+
     public static function decimalSeparator(string $locale): string
     {
         $base = strtolower(str_replace('_', '-', $locale));

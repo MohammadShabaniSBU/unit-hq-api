@@ -15,6 +15,7 @@ use App\Models\UnitClass;
 use App\Models\VoiceSession;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Communications\MessageSource;
@@ -128,10 +129,30 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         $this->assertSame('+15550008888', Message::query()->value('to_address'));
     }
 
+    #[Test]
+    public function texts_the_written_quote_when_the_channel_is_voice(): void
+    {
+        [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld(AgentChannel::Voice);
+        $this->givePrimaryPhone($contact, '+15551234417');
+
+        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+            'unit_class_id' => $class->id,
+            'site_id' => $site->id,
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame("I've sent the exact quote by text.", $result->display);
+
+        $body = (string) Message::query()->value('body_text');
+        $this->assertStringContainsString('70.00', $body);
+        $this->assertStringContainsString('net /', $body);
+        $this->assertStringContainsString($site->name, $body);
+    }
+
     /**
      * @return array{0: Site, 1: UnitClass, 2: Contact, 3: AgentPrincipal, 4: AgentContext}
      */
-    private function quotedWorld(): array
+    private function quotedWorld(AgentChannel $channel = AgentChannel::Webchat): array
     {
         $this->fakeCommunicationProviders();
         [$site, $class] = $this->pricedClass();
@@ -142,7 +163,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
             'site_id' => $site->id,
         ]);
         $principal = AgentPrincipal::channelAsserted($contact->id, $site->id, 'en');
-        $ctx = $this->writeContext($principal, 'concierge');
+        $ctx = $this->writeContext($principal, 'concierge', channel: $channel);
         $this->licenseModels($ctx, $class, $site);
 
         return [$site, $class, $contact, $principal, $ctx];

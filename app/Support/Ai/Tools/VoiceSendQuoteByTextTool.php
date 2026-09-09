@@ -135,7 +135,7 @@ final class VoiceSendQuoteByTextTool implements AgentTool
             ));
         }
 
-        $quoted = (new PricingQuoteTool)->handle($principal, $arguments, $ctx);
+        $quoted = (new PricingQuoteTool)->handle($principal, $arguments, $ctx, preferWrittenQuote: true);
         if ($quoted->status !== ToolInvocationStatus::Ok) {
             return $quoted;
         }

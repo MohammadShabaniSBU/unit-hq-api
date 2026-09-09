@@ -88,6 +88,7 @@ trait DispatchesAgentTools
         string $agentKey,
         ?Employee $employee = null,
         AgentOrigin $origin = AgentOrigin::Demo,
+        AgentChannel $channel = AgentChannel::Webchat,
     ): AgentContext {
         $employee ??= Employee::factory()->create();
         $agent = AiAgent::factory()->create([
@@ -99,7 +100,7 @@ trait DispatchesAgentTools
             'ai_agent_id' => $agent->id,
             'audience' => $principal->audience,
             'origin' => $origin,
-            'channel' => AgentChannel::Webchat,
+            'channel' => $channel,
             'employee_id' => $principal->audience === AgentAudience::Internal ? $principal->employeeId : null,
             'created_by_employee_id' => $employee->id,
             'contact_id' => $principal->contactId,
@@ -113,7 +114,7 @@ trait DispatchesAgentTools
 
         return new AgentContext(
             $principal,
-            ChannelProfile::for(AgentChannel::Webchat),
+            ChannelProfile::for($channel),
             app(AgentRegistry::class)->get($agentKey),
             $conversation,
             $agent,

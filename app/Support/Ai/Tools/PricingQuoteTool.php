@@ -10,6 +10,7 @@ use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Ai\AgentContext;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\EntityType;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\VerificationLevel;
@@ -80,7 +81,7 @@ final class PricingQuoteTool implements AgentTool
         ];
     }
 
-    public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null): ToolResult
+    public function handle(AgentPrincipal $principal, array $arguments, ?AgentContext $ctx = null, bool $preferWrittenQuote = false): ToolResult
     {
         $classId = (int) $arguments['unit_class_id'];
         $siteId = (int) $arguments['site_id'];
@@ -121,15 +122,18 @@ final class PricingQuoteTool implements AgentTool
         );
         $asOfDate = $asOf->toDateString();
         $label = (string) $class->label;
-        $display = MoneyDisplay::quote(
-            $breakdown,
-            $currency,
-            $principal->locale,
-            $ratePct,
-            $period,
-            $label,
-            $site->name,
-        );
+        $useSpoken = ! $preferWrittenQuote && $ctx?->channel->channel === AgentChannel::Voice;
+        $display = $useSpoken
+            ? MoneyDisplay::spokenQuote($breakdown, $currency, $principal->locale, $period, $label)
+            : MoneyDisplay::quote(
+                $breakdown,
+                $currency,
+                $principal->locale,
+                $ratePct,
+                $period,
+                $label,
+                $site->name,
+            );
 
         $facts = (new FactBag)
             ->money($breakdown->net, $currency)

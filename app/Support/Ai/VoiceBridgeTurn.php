@@ -80,6 +80,17 @@ final class VoiceBridgeTurn
         }
 
         $conversation = $session->conversation;
+        if ($callerUtterance !== null) {
+            $detected = SpokenLocaleDetector::detect($callerUtterance);
+            if ($detected !== null && $detected !== $conversation->locale) {
+                SystemEvent::record('ai.voice.locale_switched', $session, [
+                    'from' => $conversation->locale,
+                    'to' => $detected,
+                ]);
+                $conversation->locale = $detected;
+                $conversation->save();
+            }
+        }
         $principal = $this->principalFrom($conversation);
 
         $existing = $this->storedTurn($session, $turnId);

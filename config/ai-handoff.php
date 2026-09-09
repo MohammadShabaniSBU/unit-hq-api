@@ -56,6 +56,38 @@ return [
         'fr' => ['le', 'la', 'les', 'un', 'une', 'de', 'du', 'des', 'a', 'au', 'et', 'ou', 'que', 'qui', 'pour', 'est'],
     ],
 
+    /*
+    | Distinctive spoken-language markers used by SpokenLocaleDetector to
+    | correct agent_conversations.locale mid-call. Shared function words
+    | (a, de, la) are omitted so a short or mixed utterance stays null.
+    */
+    'spoken_locale_markers' => [
+        'en' => [
+            'how', 'much', 'does', 'what', 'would', 'could', 'please', 'thanks',
+            'thank', 'hello', 'looking', 'need', 'want', 'have', 'available',
+            'price', 'prices', 'unit', 'units', 'small', 'large', 'month',
+            'monthly', 'speak', 'english', 'this', 'that', 'which', 'about',
+            'cost', 'quote', 'book', 'send', 'text', 'can', 'you', 'we', 'do',
+            'the', 'is', 'are',
+        ],
+        'es' => [
+            'cuanto', 'cuesta', 'favor', 'gracias', 'hola', 'busco', 'necesito',
+            'quiero', 'tenemos', 'hay', 'precio', 'precios', 'unidad', 'unidades',
+            'pequeno', 'pequena', 'pequeño', 'pequeña', 'mes', 'mensual',
+            'hablar', 'espanol', 'español', 'esta', 'este', 'cual', 'sobre',
+            'mandar', 'enviar', 'reserva', 'el', 'los', 'las', 'una', 'del',
+            'para', 'por',
+        ],
+        'fr' => [
+            'combien', 'coute', 'coûte', 'merci', 'bonjour', 'cherche', 'besoin',
+            'voudrais', 'avons', 'prix', 'unite', 'unites', 'unité', 'unités',
+            'petit', 'petite', 'mois', 'mensuel', 'parler', 'francais',
+            'français', 'cette', 'quel', 'propos', 'envoyer', 'reservation',
+            'réservation', 'le', 'les', 'une', 'du', 'des', 'pour', 'vous',
+            'plait', 'plaît', 'est', 'je',
+        ],
+    ],
+
     'pending_approval' => [
         'en' => "I've asked a colleague to confirm that — you'll hear back shortly.",
         'es' => 'He pedido a un colega que lo confirme — te responderemos en breve.',

@@ -24,6 +24,7 @@ use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
+use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ForbiddenClaimKey;
 use App\Support\Ai\Enums\HandoffReason;
@@ -125,6 +126,29 @@ class SalesAndPublicToolTest extends TestCase
         $quoteTypes = array_map(fn ($ref) => $ref->type->value, $result->entities);
         $this->assertContains('unit_class', $quoteTypes);
         $this->assertContains('site', $quoteTypes);
+    }
+
+    #[Test]
+    public function quote_on_voice_uses_the_spoken_form(): void
+    {
+        [$site, $class] = $this->pricedClass('70.00', '21.00');
+        $principal = AgentPrincipal::anonymous($site->id, 'en');
+        $ctx = $this->writeContext($principal, 'sales', channel: AgentChannel::Voice);
+        $this->licenseModels($ctx, $class);
+
+        $result = $this->dispatchTool(
+            'sales',
+            'pricing.quote',
+            $principal,
+            ['site_id' => $site->id, 'unit_class_id' => $class->id],
+            $ctx,
+        );
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame('Small, €84.70 per month, tax included.', $result->display);
+        $this->assertStringNotContainsString('net /', $result->display);
+        $this->assertStringNotContainsString($site->name, $result->display);
+        $this->assertTrue($result->facts->contains('84.70'));
     }
 
     #[Test]
