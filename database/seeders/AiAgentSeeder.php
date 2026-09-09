@@ -96,7 +96,7 @@ class AiAgentSeeder extends Seeder
             ],
         );
         $concierge->writePolicies()->updateOrCreate(
-            ['tool_key' => 'voice.send_quote_by_text'],
+            ['tool_key' => 'sales.send_quote'],
             [
                 'mode' => WritePolicyMode::Commit,
                 'max_per_conversation' => 3,

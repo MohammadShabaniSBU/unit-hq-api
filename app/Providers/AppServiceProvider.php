@@ -80,8 +80,8 @@ use App\Support\Ai\Tools\PricingQuoteTool;
 use App\Support\Ai\Tools\SalesCreateOfferTool;
 use App\Support\Ai\Tools\SalesCreateReservationTool;
 use App\Support\Ai\Tools\SalesProposeOfferTool;
+use App\Support\Ai\Tools\SalesSendQuoteTool;
 use App\Support\Ai\Tools\ToolRegistry;
-use App\Support\Ai\Tools\VoiceSendQuoteByTextTool;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
 use App\Support\ESign\ESignProviderRegistry;
@@ -155,7 +155,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new IdentityVerifyCodeTool);
             $registry->register(new KbFaqLookupTool);
             $registry->register(new EscalateTool);
-            $registry->register(new VoiceSendQuoteByTextTool);
+            $registry->register(new SalesSendQuoteTool);
             $registry->register(new ChannelSendTool);
 
             return $registry;

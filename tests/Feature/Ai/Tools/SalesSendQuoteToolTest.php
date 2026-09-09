@@ -18,7 +18,11 @@ use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\AgentChannel;
 use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Communications\Channel;
 use App\Support\Communications\MessageSource;
+use App\Support\Communications\SuppressionReason;
+use App\Support\Communications\SuppressionScope;
+use App\Support\Communications\SuppressionWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\Ai\DispatchesAgentTools;
@@ -26,7 +30,7 @@ use Tests\Support\CreatesCataloguePrices;
 use Tests\Support\SeedsCommunicationAccounts;
 use Tests\TestCase;
 
-class VoiceSendQuoteByTextToolTest extends TestCase
+class SalesSendQuoteToolTest extends TestCase
 {
     use CreatesCataloguePrices;
     use DispatchesAgentTools;
@@ -39,7 +43,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
         $this->givePrimaryPhone($contact, '+15551234417');
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ], $ctx);
@@ -62,7 +66,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
         $this->givePrimaryPhone($contact, '+15551234417');
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
             'destination' => '+15550009999',
@@ -82,7 +86,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         $ctx = $this->writeContext($principal, 'concierge');
         $this->licenseModels($ctx, $class, $site);
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ], $ctx);
@@ -98,7 +102,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
     {
         [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ], $ctx);
@@ -120,7 +124,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
             'site_id' => $site->id,
         ]);
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ], $ctx);
@@ -135,7 +139,7 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld(AgentChannel::Voice);
         $this->givePrimaryPhone($contact, '+15551234417');
 
-        $result = $this->dispatchTool('concierge', 'voice.send_quote_by_text', $principal, [
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
             'unit_class_id' => $class->id,
             'site_id' => $site->id,
         ], $ctx);
@@ -147,6 +151,92 @@ class VoiceSendQuoteByTextToolTest extends TestCase
         $this->assertStringContainsString('70.00', $body);
         $this->assertStringContainsString('net /', $body);
         $this->assertStringContainsString($site->name, $body);
+    }
+
+    #[Test]
+    public function emails_the_written_quote_when_via_is_email(): void
+    {
+        [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
+        $this->seedEmailAccount($site);
+        $this->givePrimaryEmail($contact, 'ada@example.com');
+
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
+            'unit_class_id' => $class->id,
+            'site_id' => $site->id,
+            'via' => 'email',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Ok, $result->status);
+        $this->assertSame("I've sent the exact quote by email.", $result->display);
+        $this->assertSame(0, preg_match('/\d/', $result->display));
+        $this->assertFalse($result->facts->contains('70.00'));
+
+        $message = Message::query()->firstOrFail();
+        $this->assertSame(MessageSource::System, $message->source);
+        $this->assertSame('ada@example.com', $message->to_address);
+        $this->assertStringContainsString('70.00', (string) $message->body_text);
+        $this->assertSame(Channel::Email, $message->thread->channel);
+        $this->assertStringNotContainsString((string) $message->body_text, $result->display);
+    }
+
+    #[Test]
+    public function email_without_an_address_hints_at_text_when_a_phone_exists(): void
+    {
+        [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
+        $this->givePrimaryPhone($contact, '+15551234417');
+
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
+            'unit_class_id' => $class->id,
+            'site_id' => $site->id,
+            'via' => 'email',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::Unavailable, $result->error?->errorCode);
+        $this->assertStringContainsString('text', (string) ($result->error?->recovery['hint'] ?? ''));
+        $this->assertSame(0, Message::query()->count());
+    }
+
+    #[Test]
+    public function suppressed_email_refuses_with_escalate_and_does_not_send(): void
+    {
+        [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
+        $this->seedEmailAccount($site);
+        $this->givePrimaryEmail($contact, 'blocked@example.com');
+        SuppressionWriter::write(
+            Channel::Email,
+            'blocked@example.com',
+            SuppressionScope::All,
+            SuppressionReason::HardBounce,
+        );
+
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
+            'unit_class_id' => $class->id,
+            'site_id' => $site->id,
+            'via' => 'email',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::Unavailable, $result->error?->errorCode);
+        $this->assertSame('agent.escalate', $result->error?->recovery['tool'] ?? null);
+        $this->assertSame(0, Message::query()->count());
+    }
+
+    #[Test]
+    public function via_whatsapp_is_rejected_as_an_invalid_argument(): void
+    {
+        [$site, $class, $contact, $principal, $ctx] = $this->quotedWorld();
+        $this->givePrimaryPhone($contact, '+15551234417');
+
+        $result = $this->dispatchTool('concierge', 'sales.send_quote', $principal, [
+            'unit_class_id' => $class->id,
+            'site_id' => $site->id,
+            'via' => 'whatsapp',
+        ], $ctx);
+
+        $this->assertSame(ToolInvocationStatus::Error, $result->status);
+        $this->assertSame(ToolErrorCode::InvalidArguments, $result->error?->errorCode);
+        $this->assertSame(0, Message::query()->count());
     }
 
     /**

@@ -66,7 +66,7 @@ final class ConciergeAgentDefinition implements AgentDefinition
             'access.status',
             'kb.faq_lookup',
             'agent.escalate',
-            'voice.send_quote_by_text',
+            'sales.send_quote',
         ];
     }
 

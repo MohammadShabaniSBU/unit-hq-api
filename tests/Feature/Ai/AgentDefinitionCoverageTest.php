@@ -127,7 +127,7 @@ class AgentDefinitionCoverageTest extends TestCase
             'access.status',
             'kb.faq_lookup',
             'agent.escalate',
-            'voice.send_quote_by_text',
+            'sales.send_quote',
         ], $definition->toolKeys());
 
         $this->assertSame($definition->toolKeys(), $definition->toolKeys(AgentChannel::Webchat));
@@ -195,7 +195,7 @@ class AgentDefinitionCoverageTest extends TestCase
         $voiceCtx = $this->conciergeContext(AgentPrincipal::anonymous(null, 'en'), AgentChannel::Voice);
         $voicePrompt = $definition->systemPrompt($voiceCtx);
         $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voicePrompt);
-        $this->assertStringContainsString('voice.send_quote_by_text', $voicePrompt);
+        $this->assertStringContainsString('sales.send_quote', $voicePrompt);
         $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);
         $this->assertStringNotContainsString('already known from caller ID', $voicePrompt);
         $this->assertStringNotContainsString('Open with this exact sentence', $voicePrompt);

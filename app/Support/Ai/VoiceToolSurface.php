@@ -27,7 +27,7 @@ final class VoiceToolSurface
             'crm.create_contact',
             'crm.create_deal',
             'agent.escalate',
-            'voice.send_quote_by_text',
+            'sales.send_quote',
         ];
     }
 }

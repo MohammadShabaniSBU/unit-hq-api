@@ -473,7 +473,7 @@ routes (`POST /api/chat/sessions`, …) are S26-07c.
 ## Tool catalogue
 
 The tool surface is the defence; prompt text is defence-in-depth. The live
-definition is `ConciergeAgentDefinition` (22 keys). `ai_agents` rows are
+definition is `ConciergeAgentDefinition` (23 keys). `ai_agents` rows are
 instances (D-AI-6, invariant 58). The Level column is the whole story:
 tenant tools sit on the list and are refused at dispatch gate 3 until the
 principal is `verified` (invariant 71).
@@ -490,6 +490,7 @@ principal is `verified` (invariant 71).
 | `sales.propose_offer` | anonymous | proposal only — persists nothing | ✓ |
 | `sales.create_offer` | anonymous | ✓ (`commit`) | ✓ |
 | `sales.create_reservation` | channel_asserted | ✓ (`propose`) | ✓ |
+| `sales.send_quote` | anonymous | ✓ (`commit`, 3 / conversation, 10 / day) | ✓ |
 | `crm.create_contact` | anonymous | ✓ | ✓ |
 | `crm.create_deal` | anonymous | ✓ | ✓ |
 | `crm.create_task` | anonymous | ✓ | ✓ |
@@ -642,6 +643,13 @@ Other tool notes:
 - `sales.create_offer` calls `OfferCreation`. Seeded policy: `commit`,
   `max_per_conversation = 2`, `max_per_day = 50`. Creates; does not send
   (D-AI-10).
+- `sales.send_quote` sends the written catalogue quote through
+  `QuoteDelivery` (`SmsSender` / `EmailSender`). Destination is resolved
+  server-side from `contact_channels` (and the voice session caller number
+  for SMS). Optional `via` is a preference (`sms` \| `email`), never an
+  address. Display carries no figure. WhatsApp waits on an approved
+  template. Seeded policy: `commit`, `max_per_conversation = 3`,
+  `max_per_day = 10`.
 - `sales.create_reservation` calls `ReservationCreation` with auto-pick;
   `unit_id` and `expires_at` are never model arguments. Seeded policy:
   `propose`, `max_per_conversation = 1`, `max_per_day = 20`. Floor is

@@ -26,6 +26,12 @@ return [
         'fr' => 'Je suis un assistant automatisé de {company}.',
     ],
 
+    'quote_email_subject' => [
+        'en' => 'Your storage quote from {company}',
+        'es' => 'Tu presupuesto de almacenaje de {company}',
+        'fr' => 'Votre devis de stockage de {company}',
+    ],
+
     // Latency filler spoken while a delegation is in flight. English only
     // today — keevaris-voice already tells the model to answer in the
     // caller's language regardless of instruction language.
