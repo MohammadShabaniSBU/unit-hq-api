@@ -198,6 +198,7 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertStringContainsString('sales.send_quote', $voicePrompt);
         $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);
         $this->assertStringNotContainsString('already known from caller ID', $voicePrompt);
+        $this->assertStringContainsString('Do not ask the caller to speak an email address', $voicePrompt);
         $this->assertStringNotContainsString('Open with this exact sentence', $voicePrompt);
     }
 

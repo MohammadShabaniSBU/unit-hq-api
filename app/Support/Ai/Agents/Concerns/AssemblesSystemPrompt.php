@@ -92,6 +92,9 @@ trait AssemblesSystemPrompt
         if ($ctx->channel->channel === AgentChannel::Voice && $this->voiceSessionHasCallerNumber($ctx)) {
             $lines[] = "The caller's phone is already known from caller ID. Do not ask for it. When creating a contact, omit phone — the session number will be attached.";
         }
+        if ($ctx->channel->channel === AgentChannel::Voice) {
+            $lines[] = 'Do not ask the caller to speak an email address. When creating a contact, omit email.';
+        }
 
         return implode(' ', $lines);
     }

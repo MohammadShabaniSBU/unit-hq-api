@@ -46,7 +46,7 @@ final class CrmCreateContactTool implements AgentTool
             'email' => [
                 'type' => 'string',
                 'required' => false,
-                'description' => 'Email address',
+                'description' => 'Email address. Omit on a voice call — do not ask the caller to speak one.',
             ],
             'phone' => [
                 'type' => 'string',

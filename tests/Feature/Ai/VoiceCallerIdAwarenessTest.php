@@ -115,6 +115,10 @@ class VoiceCallerIdAwarenessTest extends TestCase
             "The caller's phone is already known from caller ID. Do not ask for it. When creating a contact, omit phone — the session number will be attached.",
             $prompt,
         );
+        $this->assertStringContainsString(
+            'Do not ask the caller to speak an email address. When creating a contact, omit email.',
+            $prompt,
+        );
         $this->assertStringNotContainsString('+34908121212', $prompt);
         $this->assertStringNotContainsString('34908121212', $prompt);
     }
