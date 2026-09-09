@@ -105,6 +105,28 @@ class ContactVisibilityTest extends TestCase
     }
 
     #[Test]
+    public function portal_site_id_keeps_unassigned_leads_and_site_relations(): void
+    {
+        $contactA = Contact::factory()->create(['first_name' => 'Alpha']);
+        Deal::factory()->create(['contact_id' => $contactA->id, 'site_id' => $this->siteA->id]);
+
+        $contactB = Contact::factory()->create(['first_name' => 'Beta']);
+        Deal::factory()->create(['contact_id' => $contactB->id, 'site_id' => $this->siteB->id]);
+
+        $lead = Contact::factory()->create(['first_name' => 'Unassigned']);
+
+        Sanctum::actingAs($this->owner);
+
+        $ids = collect($this->getJson('/api/contacts?per_page=100&site_id='.$this->siteA->id)->assertOk()->json('data'))
+            ->pluck('id')
+            ->all();
+
+        $this->assertContains($contactA->id, $ids);
+        $this->assertContains($lead->id, $ids);
+        $this->assertNotContains($contactB->id, $ids);
+    }
+
+    #[Test]
     public function hides_contact_at_other_site_when_thread_uses_shared_company_account(): void
     {
         $account = $this->seedSharedCompanyEmailAccount();

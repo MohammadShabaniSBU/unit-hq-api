@@ -100,4 +100,38 @@ class VisibilityPerformanceTest extends TestCase
             "Expected bounded queries for the scoped delinquency board, got {$delinquencyQueryCount}",
         );
     }
+
+    #[Test]
+    public function contacts_list_with_site_id_stays_bounded(): void
+    {
+        for ($i = 0; $i < 8; $i++) {
+            $contact = \App\Models\Contact::factory()->create();
+            \App\Models\Deal::factory()->create([
+                'contact_id' => $contact->id,
+                'site_id' => $this->siteA->id,
+            ]);
+        }
+        for ($i = 0; $i < 4; $i++) {
+            $contact = \App\Models\Contact::factory()->create();
+            \App\Models\Deal::factory()->create([
+                'contact_id' => $contact->id,
+                'site_id' => $this->siteB->id,
+            ]);
+        }
+        \App\Models\Contact::factory()->create();
+
+        Sanctum::actingAs($this->owner);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $response = $this->getJson('/api/contacts?per_page=50&site_id='.$this->siteA->id)->assertOk();
+        $queryCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertSame(9, $response->json('meta.total'));
+        $this->assertLessThanOrEqual(
+            20,
+            $queryCount,
+            "Expected bounded queries for the contacts list with site_id, got {$queryCount}",
+        );
+    }
 }

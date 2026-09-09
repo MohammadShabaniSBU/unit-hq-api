@@ -280,6 +280,9 @@ final class SitePath
     /**
      * D-RBAC-1: related to a granted site, or no site relation at all (unassigned lead).
      *
+     * Site-related branches start from the small site-filtered tables (whereIn)
+     * so the planner does not scan every contact for six correlated EXISTS.
+     *
      * @param  Builder<Model>  $q
      * @param  list<int>  $siteIds
      * @return Builder<Model>
@@ -288,29 +291,25 @@ final class SitePath
     {
         return $q->where(function (Builder $outer) use ($siteIds): void {
             $outer
-                ->whereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                    $sub->selectRaw('1')
+                ->whereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+                    $sub->select('contact_sites.contact_id')
                         ->from('contact_sites')
-                        ->whereColumn('contact_sites.contact_id', 'contacts.id')
                         ->whereIn('contact_sites.site_id', $siteIds);
                 })
-                ->orWhereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                    $sub->selectRaw('1')
+                ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+                    $sub->select('deals.contact_id')
                         ->from('deals')
-                        ->whereColumn('deals.contact_id', 'contacts.id')
                         ->whereIn('deals.site_id', $siteIds);
                 })
-                ->orWhereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                    $sub->selectRaw('1')
+                ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+                    $sub->select('reservations.contact_id')
                         ->from('reservations')
                         ->join('units', 'units.id', '=', 'reservations.unit_id')
-                        ->whereColumn('reservations.contact_id', 'contacts.id')
                         ->whereIn('units.site_id', $siteIds);
                 })
-                ->orWhereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                    $sub->selectRaw('1')
+                ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+                    $sub->select('contracts.contact_id')
                         ->from('contracts')
-                        ->whereColumn('contracts.contact_id', 'contacts.id')
                         ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
                             $occ->selectRaw('1')
                                 ->from('unit_occupancies')
@@ -328,8 +327,8 @@ final class SitePath
                                 );
                         });
                 })
-                ->orWhereExists(function (QueryBuilder $sub) use ($siteIds): void {
-                    self::messageThreadRelatedToSites($sub, 'contacts.id', $siteIds);
+                ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+                    self::messageThreadRelatedToSites($sub, $siteIds);
                 })
                 ->orWhere(function (Builder $unassigned): void {
                     $unassigned
@@ -391,11 +390,10 @@ final class SitePath
     /**
      * @param  list<int>  $siteIds
      */
-    private static function messageThreadRelatedToSites(QueryBuilder $sub, string $contactIdColumn, array $siteIds): void
+    private static function messageThreadRelatedToSites(QueryBuilder $sub, array $siteIds): void
     {
-        $sub->selectRaw('1')
+        $sub->select('message_threads.contact_id')
             ->from('message_threads')
-            ->whereColumn('message_threads.contact_id', $contactIdColumn)
             ->where(function (QueryBuilder $outer) use ($siteIds): void {
                 $outer->whereExists(function (QueryBuilder $ident) use ($siteIds): void {
                     self::uniqueIdentityForLatestAccount($ident, 'message_threads.id', $siteIds);
