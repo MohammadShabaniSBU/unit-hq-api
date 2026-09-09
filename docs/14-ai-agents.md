@@ -760,7 +760,7 @@ by `max_redraft_attempts`, then a handoff.
 | `GroundingGuard` | yes | Single unlicensed date or money token: retry with the redraft budget, then block + handoff. Two or more tokens, or an identifier or percent: block + handoff immediately (invariant 55 — a suppressed draft is never delivered) |
 | `ForbiddenClaimGuard` | yes | Licensable keys (`availability_guarantee`, `capacity_guidance`): retry with a licensed alternative, then block + handoff if the redraft budget is exhausted. Other keys: block + handoff. Two keys are licensable (invariant 63) |
 | `DisclosureGuard` | leak: yes; AI Act line: fill-in | First customer turn is **prompted** to open with the configured sentence; if missing, the line is **prepended**, not blocked |
-| `ChannelGuard` | SMS ceiling: yes; warn band: no; WhatsApp window: advisory | Email missing `Subject:` is filled in, not blocked |
+| `ChannelGuard` | SMS ceiling: yes; warn band: no; WhatsApp window: advisory | Email missing `Subject:` is filled in, not blocked. Voice markdown emphasis (`**5 m²**`) is stripped, not blocked |
 
 ### Deterministic handoff rules (pre-model)
 
@@ -854,6 +854,12 @@ take a recording clause later, and the spoken line has a different legal
 sign-off owner than chat.
 
 ### Channel
+
+Voice only: markdown emphasis (`**bold**`, `*italic*`, `__bold__`,
+backticks) is stripped before the draft is returned to keevaris-voice.
+`strip_tags` does not catch those markers, and Deepgram would otherwise
+speak the asterisks. WhatsApp keeps `*bold*` — that is native formatting
+there, not TTS. Email and internal keep markup.
 
 SMS only: `Gsm7Transliterator` rewrites the body **before** segment counting
 (`²`/`³` → `2`/`3`, `€` → `EUR`, dashes/quotes/ellipsis/NBSP). Characters

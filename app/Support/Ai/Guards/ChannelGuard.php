@@ -37,6 +37,14 @@ final class ChannelGuard implements OutboundGuard
             $detail['html_stripped'] = true;
         }
 
+        if ($channel->channel === AgentChannel::Voice) {
+            $plain = $this->stripSpokenMarkup($body);
+            if ($plain !== $body) {
+                $body = $plain;
+                $detail['markdown_stripped'] = true;
+            }
+        }
+
         $verdict = 'pass';
 
         if ($channel->channel === AgentChannel::Sms) {
@@ -246,6 +254,23 @@ final class ChannelGuard implements OutboundGuard
         }
 
         return implode(' ', $words);
+    }
+
+    /**
+     * Voice drafts are spoken aloud. Markdown emphasis (`**5 m²**`) is not
+     * HTML, so `strip_tags` leaves it — Deepgram then reads the asterisks.
+     */
+    private function stripSpokenMarkup(string $body): string
+    {
+        $plain = $body;
+        $plain = (string) preg_replace('/\*\*(.+?)\*\*/us', '$1', $plain);
+        $plain = (string) preg_replace('/__(.+?)__/us', '$1', $plain);
+        $plain = (string) preg_replace('/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/us', '$1', $plain);
+        $plain = (string) preg_replace('/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/us', '$1', $plain);
+        $plain = (string) preg_replace('/`([^`]+)`/us', '$1', $plain);
+        $plain = str_replace(['**', '__', '*'], '', $plain);
+
+        return $plain;
     }
 
     private function localeKey(string $locale): string

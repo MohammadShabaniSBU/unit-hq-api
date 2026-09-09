@@ -381,6 +381,76 @@ class ChannelGuardTest extends TestCase
     }
 
     #[Test]
+    public function voice_strips_markdown_emphasis_and_keeps_the_figures(): void
+    {
+        $draft = 'Our smallest available units are: **5 m²** at €87.12/month, **8 m²** at €125.84/month, and **10 m²** at €154.88/month.';
+
+        $conversation = $this->conversation(AgentChannel::Voice);
+        $verdict = app(ChannelGuard::class)->check(
+            $draft,
+            new FactBag,
+            new AgentContext(
+                AgentPrincipal::anonymous(null, 'en'),
+                ChannelProfile::for(AgentChannel::Voice),
+                app(AgentRegistry::class)->get('concierge'),
+                $conversation,
+                $conversation->aiAgent,
+            ),
+        );
+
+        $this->assertTrue($verdict->passed);
+        $this->assertSame(
+            'Our smallest available units are: 5 m² at €87.12/month, 8 m² at €125.84/month, and 10 m² at €154.88/month.',
+            $verdict->mutatedDraft ?? $draft,
+        );
+        $this->assertStringNotContainsString('*', $verdict->mutatedDraft ?? $draft);
+        $this->assertTrue($verdict->events[0]['detail']['markdown_stripped'] ?? false);
+    }
+
+    #[Test]
+    public function voice_runtime_returns_plain_spoken_text(): void
+    {
+        $this->driver->enqueueText('Let me **check** that for you.');
+        $events = [];
+
+        $conversation = $this->conversation(AgentChannel::Voice);
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'do you have a small unit',
+            $this->collectGuardrail($events),
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertStringNotContainsString('*', $turn->draft);
+        $this->assertStringContainsString('Let me check that for you.', $turn->draft);
+        $channel = $this->lastChannelEvent($events);
+        $this->assertTrue($channel['detail']['markdown_stripped'] ?? false);
+    }
+
+    #[Test]
+    public function email_keeps_markdown_emphasis(): void
+    {
+        $draft = 'The **5 m²** unit is €87.12 per month.';
+        $conversation = $this->conversation(AgentChannel::Email);
+        $verdict = app(ChannelGuard::class)->check(
+            $draft,
+            new FactBag,
+            new AgentContext(
+                AgentPrincipal::anonymous(null, 'en'),
+                ChannelProfile::for(AgentChannel::Email),
+                app(AgentRegistry::class)->get('support'),
+                $conversation,
+                $conversation->aiAgent,
+            ),
+        );
+
+        $this->assertTrue($verdict->passed);
+        $this->assertNull($verdict->mutatedDraft);
+        $this->assertArrayNotHasKey('markdown_stripped', $verdict->events[0]['detail'] ?? []);
+    }
+
+    #[Test]
     public function html_is_stripped_on_plain_text_channels(): void
     {
         $this->driver->enqueueText('<b>Hi</b> there.');
