@@ -22,6 +22,7 @@ final class DuplicateDraftGuard implements OutboundGuard
             ->reorder()
             ->where('role', AgentMessageRole::Assistant->value)
             ->whereNull('blocked_by')
+            ->whereNull('voice_source')
             ->orderByDesc('sequence')
             ->limit(2)
             ->pluck('content');
@@ -54,8 +55,14 @@ final class DuplicateDraftGuard implements OutboundGuard
             return true;
         }
 
-        $aCut = substr($a, 0, 255);
-        $bCut = substr($b, 0, 255);
+        return $this->windowNear($a, $b, start: true)
+            && $this->windowNear($a, $b, start: false);
+    }
+
+    private function windowNear(string $a, string $b, bool $start): bool
+    {
+        $aCut = $start ? substr($a, 0, 255) : substr($a, -255);
+        $bCut = $start ? substr($b, 0, 255) : substr($b, -255);
         $max = max(strlen($aCut), strlen($bCut));
         if ($max === 0) {
             return false;

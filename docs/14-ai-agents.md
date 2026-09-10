@@ -756,7 +756,7 @@ by `max_redraft_attempts`, then a handoff.
 | `LoopGuard` | yes | Inbound short-circuit |
 | `BudgetGuard` | yes | Inbound short-circuit |
 | `HandoffRules` | yes | Inbound short-circuit |
-| `DuplicateDraftGuard` | yes | Block + handoff |
+| `DuplicateDraftGuard` | yes | Block + handoff. Ignores `voice_source` assistant rows (mirrored front desk). Near-duplicate is an exact folded match, or both the first and last 255 characters within 10% Levenshtein (PHP's cap) — a shared opening with a different tail is not a loop |
 | `GroundingGuard` | yes | Single unlicensed date or money token: retry with the redraft budget, then block + handoff. Two or more tokens, or an identifier or percent: block + handoff immediately (invariant 55 — a suppressed draft is never delivered) |
 | `ForbiddenClaimGuard` | yes | Licensable keys (`availability_guarantee`, `capacity_guidance`): retry with a licensed alternative, then block + handoff if the redraft budget is exhausted. Other keys: block + handoff. Two keys are licensable (invariant 63) |
 | `DisclosureGuard` | leak: yes; AI Act line: fill-in | First customer turn is **prompted** to open with the configured sentence; if missing, the line is **prepended**, not blocked |
