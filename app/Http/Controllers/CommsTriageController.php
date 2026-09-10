@@ -8,18 +8,19 @@ use App\Enums\LogChannel;
 use App\Models\CommsTriage;
 use App\Models\Contact;
 use App\Models\Employee;
+use App\Support\Auth\Permission;
 use App\Support\Communications\Contracts\ReceivesInbound;
 use App\Support\Communications\HtmlSanitizer;
+use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\TriageResolver;
 use App\Support\Credentials\CredentialMasker;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 use RuntimeException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class CommsTriageController extends Controller
 {
@@ -98,6 +99,8 @@ class CommsTriageController extends Controller
             causer: $actor,
         );
 
+        InboxBadgeBroadcast::ping();
+
         return $this->success([
             'triage_id' => $commsTriage->id,
             'message_id' => $message->id,
@@ -140,6 +143,8 @@ class CommsTriageController extends Controller
             causer: $actor,
         );
 
+        InboxBadgeBroadcast::ping();
+
         return $this->success([
             'triage_id' => $commsTriage->id,
             'message_id' => $message->id,
@@ -178,6 +183,8 @@ class CommsTriageController extends Controller
             ],
             causer: $actor,
         );
+
+        InboxBadgeBroadcast::ping();
 
         return $this->success([
             'triage_id' => $commsTriage->id,

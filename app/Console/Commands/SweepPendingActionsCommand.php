@@ -6,7 +6,9 @@ namespace App\Console\Commands;
 
 use App\Models\AgentPendingAction;
 use App\Models\SystemEvent;
+use App\Support\Ai\AgentPendingBadgeBroadcast;
 use App\Support\Ai\Enums\PendingActionStatus;
+use App\Support\Communications\InboxBadgeBroadcast;
 use Illuminate\Console\Command;
 
 class SweepPendingActionsCommand extends Command
@@ -28,6 +30,8 @@ class SweepPendingActionsCommand extends Command
             SystemEvent::record('agents.pending_actions.swept', null, [
                 'expired' => $updated,
             ]);
+            AgentPendingBadgeBroadcast::ping();
+            InboxBadgeBroadcast::ping();
         }
 
         return self::SUCCESS;

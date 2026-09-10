@@ -6,20 +6,22 @@ namespace App\Http\Controllers;
 
 use App\Enums\ContactChannelType;
 use App\Enums\LogChannel;
+use App\Enums\TemplateChannel;
 use App\Models\AgentConversation;
 use App\Models\AgentPendingAction;
 use App\Models\CommsTriage;
 use App\Models\Contact;
-use App\Enums\TemplateChannel;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageThread;
+use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Models\WhatsappTemplate;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\PendingActionStatus;
+use App\Support\Auth\Permission;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\SubjectTokenBag;
@@ -28,11 +30,11 @@ use App\Support\Communications\ActiveCalls;
 use App\Support\Communications\CallDialer;
 use App\Support\Communications\CallRecordingProxy;
 use App\Support\Communications\Channel;
-use App\Support\Communications\PendingWrapups;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\Exceptions\SendRefused;
 use App\Support\Communications\HtmlSanitizer;
+use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\Communications\InboxThreadContext;
 use App\Support\Communications\InboxThreadQuery;
 use App\Support\Communications\Messages\EmailAddress;
@@ -40,6 +42,7 @@ use App\Support\Communications\Messages\EmailAttachment;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\Messages\WhatsAppSessionMessage;
+use App\Support\Communications\PendingWrapups;
 use App\Support\Communications\ProviderResolver;
 use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
@@ -55,11 +58,10 @@ use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Inbox read surface + reply/compose writes (S11-00 / S11-01).
@@ -214,6 +216,7 @@ class InboxController extends Controller
             ->update(['unread_count' => 0]);
 
         $messageThread->refresh();
+        InboxBadgeBroadcast::ping();
 
         return $this->success([
             'id' => $messageThread->id,
@@ -231,6 +234,7 @@ class InboxController extends Controller
             ->update(['unread_count' => 1]);
 
         $messageThread->refresh();
+        InboxBadgeBroadcast::ping();
 
         return $this->success([
             'id' => $messageThread->id,
@@ -253,6 +257,7 @@ class InboxController extends Controller
         $conversation->state = ConversationState::Active;
         $conversation->agent_handback_at = now();
         $conversation->save();
+        InboxBadgeBroadcast::ping();
 
         return $this->success([
             'id' => $conversation->id,
@@ -681,7 +686,7 @@ class InboxController extends Controller
     private function sendEmailReply(
         MessageThread $thread,
         Contact $contact,
-        \App\Models\Site $site,
+        Site $site,
         array $validated,
         SendContext $context,
         RunContext $tokenContext,
@@ -738,7 +743,7 @@ class InboxController extends Controller
     private function sendSmsReply(
         MessageThread $thread,
         Contact $contact,
-        \App\Models\Site $site,
+        Site $site,
         array $validated,
         SendContext $context,
         RunContext $tokenContext,
@@ -780,7 +785,7 @@ class InboxController extends Controller
     private function sendWhatsAppReply(
         MessageThread $thread,
         Contact $contact,
-        \App\Models\Site $site,
+        Site $site,
         array $validated,
         SendContext $context,
         RunContext $tokenContext,
@@ -853,7 +858,7 @@ class InboxController extends Controller
         array $validated,
         RunContext $tokenContext,
         Contact $contact,
-        ?\App\Models\Site $site,
+        ?Site $site,
     ): string {
         if (! empty($validated['template_family_id'])) {
             $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);
@@ -882,7 +887,7 @@ class InboxController extends Controller
         array $validated,
         RunContext $tokenContext,
         Contact $contact,
-        ?\App\Models\Site $site,
+        ?Site $site,
     ): array {
         if (! empty($validated['template_family_id'])) {
             $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);

@@ -8,16 +8,17 @@ use App\Models\CallWrapup;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\MessageThread;
+use App\Support\Auth\Permission;
 use App\Support\Communications\CallRecordingProxy;
 use App\Support\Communications\Channel;
+use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\Communications\ThreadMover;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class MessageController extends Controller
 {
@@ -118,6 +119,8 @@ class MessageController extends Controller
                 'employee_id' => $employee->id,
             ]);
         }
+
+        InboxBadgeBroadcast::ping();
 
         return $this->success($this->mapWrapup($wrapup->fresh() ?? $wrapup), 'Call wrap-up saved.');
     }

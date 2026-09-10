@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\CopilotConversation;
 use App\Models\Employee;
+use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
 
@@ -17,4 +18,12 @@ Broadcast::channel('copilot.{conversationId}', function (Employee $employee, str
 
     return $conversation !== null
         && Gate::forUser($employee)->allows('view', $conversation);
+});
+
+Broadcast::channel('inbox', function (Employee $employee): bool {
+    return Gate::forUser($employee)->allows(Permission::InboxView->value);
+});
+
+Broadcast::channel('agent-pending-actions', function (Employee $employee): bool {
+    return Gate::forUser($employee)->allows(Permission::AgentActionApprove->value);
 });

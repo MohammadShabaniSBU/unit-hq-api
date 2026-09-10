@@ -18,6 +18,7 @@ use App\Support\Ai\Enums\ConversationState;
 use App\Support\Ai\Enums\HandoffReason;
 use App\Support\Ai\Enums\HandoffTriggerSource;
 use App\Support\Ai\Enums\OutsideHoursPolicy;
+use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\Time\SiteClock;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\RateLimiter;
@@ -253,6 +254,7 @@ final class VoiceBridgeTurn
         $conversation->state = ConversationState::AwaitingHuman;
         $conversation->last_turn_at = now();
         $conversation->save();
+        InboxBadgeBroadcast::ping();
 
         SystemEvent::record('ai.voice.outside_hours', $session, [
             'reason' => HandoffReason::OutOfHours->value,

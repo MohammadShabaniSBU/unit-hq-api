@@ -13,6 +13,7 @@ use App\Models\MessageAttachment;
 use App\Support\Communications\Results\InboundAttachment;
 use App\Support\Communications\Results\InboundMessage;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -39,6 +40,7 @@ final class InboundReceiptApplier
         if ($existing !== null) {
             if ($inbound->channel === Channel::Call) {
                 $updated = self::updateCallMessage($existing, $inbound);
+                InboxBadgeBroadcast::ping();
 
                 return ['outcome' => 'updated', 'message' => $updated, 'triage' => null];
             }
@@ -56,6 +58,7 @@ final class InboundReceiptApplier
             // triage so the banner phase advances (ringing → ongoing → ended).
             if ($inbound->channel === Channel::Call && $existingTriage->status === 'pending') {
                 $existingTriage = self::refreshCallTriage($existingTriage, $inbound);
+                InboxBadgeBroadcast::ping();
             }
 
             return ['outcome' => 'triage', 'message' => null, 'triage' => $existingTriage];
@@ -73,6 +76,7 @@ final class InboundReceiptApplier
         if ($contact === null) {
             $triage = self::parkTriage($provider, $accountId, $inbound, $existingTriage);
             self::maybeWriteStopSuppression($inbound, null);
+            InboxBadgeBroadcast::ping();
 
             return ['outcome' => 'triage', 'message' => null, 'triage' => $triage];
         }
@@ -80,6 +84,7 @@ final class InboundReceiptApplier
         $message = self::writeMessage($provider, $accountId, $inbound, $contact, $ambiguous);
 
         self::maybeWriteStopSuppression($inbound, $message->id);
+        InboxBadgeBroadcast::ping();
 
         return ['outcome' => 'message', 'message' => $message, 'triage' => null];
     }
@@ -173,7 +178,7 @@ final class InboundReceiptApplier
             $thread = $resolved['thread'];
             $evidence = $resolved['evidence'];
             $now = $inbound->occurredAt !== null
-                ? \Illuminate\Support\Carbon::parse($inbound->occurredAt->toIso8601String())
+                ? Carbon::parse($inbound->occurredAt->toIso8601String())
                 : now();
 
             $thread->forceFill([
@@ -253,7 +258,7 @@ final class InboundReceiptApplier
     {
         return DB::transaction(function () use ($message, $inbound): Message {
             $now = $inbound->occurredAt !== null
-                ? \Illuminate\Support\Carbon::parse($inbound->occurredAt->toIso8601String())
+                ? Carbon::parse($inbound->occurredAt->toIso8601String())
                 : now();
 
             /** @var array<string, mixed> $existingRef */

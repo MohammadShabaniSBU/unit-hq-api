@@ -116,6 +116,8 @@ final class PendingActionCommit
             return ['row' => $row, 'errors' => null];
         });
 
+        AgentPendingBadgeBroadcast::pingFor($outcome['row']);
+
         if ($outcome['errors'] !== null) {
             throw ValidationException::withMessages($outcome['errors']);
         }
@@ -125,7 +127,7 @@ final class PendingActionCommit
 
     public function reject(AgentPendingAction $pending, Employee $approver, ?string $reason, string $resolution = 'discarded'): AgentPendingAction
     {
-        return DB::transaction(function () use ($pending, $approver, $reason, $resolution): AgentPendingAction {
+        $rejected = DB::transaction(function () use ($pending, $approver, $reason, $resolution): AgentPendingAction {
             /** @var AgentPendingAction $row */
             $row = AgentPendingAction::query()->whereKey($pending->id)->lockForUpdate()->firstOrFail();
 
@@ -145,6 +147,10 @@ final class PendingActionCommit
 
             return $row;
         });
+
+        AgentPendingBadgeBroadcast::pingFor($rejected);
+
+        return $rejected;
     }
 
     private function failureMessage(ToolResult $result): string

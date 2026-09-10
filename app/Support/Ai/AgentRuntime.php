@@ -52,6 +52,7 @@ use App\Support\Ai\Tools\ToolRegistry;
 use App\Support\Ai\Tools\ToolResult;
 use App\Support\Ai\Trace\TraceCursor;
 use App\Support\Ai\Trace\TraceSeq;
+use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\RequestId;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -1253,6 +1254,10 @@ final class AgentRuntime
             : ConversationState::AwaitingHuman;
 
         $this->touchConversation($ctx->conversation, $state);
+
+        if ($state === ConversationState::AwaitingHuman) {
+            InboxBadgeBroadcast::ping();
+        }
 
         return new AgentTurn(
             $draft,

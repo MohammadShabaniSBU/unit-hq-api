@@ -41,7 +41,7 @@ final class PendingActionRecorder
         $defaultExpiry = now()->addMinutes($ttl);
         $expiry = $expiresAt !== null && $expiresAt->lt($defaultExpiry) ? $expiresAt : $defaultExpiry;
 
-        return DB::transaction(function () use ($invocation, $payload, $preview, $siteId, $expiry): AgentPendingAction {
+        $pending = DB::transaction(function () use ($invocation, $payload, $preview, $siteId, $expiry): AgentPendingAction {
             $pending = AgentPendingAction::query()->create([
                 'agent_conversation_id' => $invocation->agent_conversation_id,
                 'agent_tool_invocation_id' => $invocation->id,
@@ -63,5 +63,9 @@ final class PendingActionRecorder
 
             return $pending;
         });
+
+        AgentPendingBadgeBroadcast::pingFor($pending);
+
+        return $pending;
     }
 }
