@@ -14,7 +14,7 @@ return [
 
     'max_turns' => 20,
 
-    'max_tool_calls_per_turn' => 6,
+    'max_tool_calls_per_turn' => 10,
 
     'max_tool_retries' => 2,
 

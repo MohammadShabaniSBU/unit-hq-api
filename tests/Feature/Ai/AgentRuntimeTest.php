@@ -331,13 +331,14 @@ class AgentRuntimeTest extends TestCase
         $conversation = $this->conversation('test');
         $max = (int) config('agents.max_tool_calls_per_turn');
 
-        for ($i = 0; $i < $max + 3; $i++) {
+        for ($i = 0; $i < $max; $i++) {
             $this->driver->enqueueToolCalls([[
                 'name' => 'test.record',
                 'id' => 'c'.$i,
                 'arguments' => [],
             ]]);
         }
+        $this->driver->enqueueText('Here is the answer from the tools.');
 
         $turn = app(AgentRuntime::class)->turn(
             $conversation,
@@ -345,10 +346,112 @@ class AgentRuntimeTest extends TestCase
             'loop please',
         );
 
-        $this->assertSame($max, $this->driver->callCount);
+        $this->assertSame($max + 1, $this->driver->callCount);
+        $this->assertSame([], $this->driver->lastToolKeys);
+        $this->assertCount($max, $turn->invocations);
+        $this->assertNull($turn->handoff);
+        $this->assertStringContainsString('Here is the answer from the tools.', $turn->draft);
+        $this->assertDriverNotWrappedInRuntimeTransaction();
+    }
+
+    #[Test]
+    public function empty_close_after_tool_cap_still_handoffs(): void
+    {
+        $conversation = $this->conversation('test');
+        $max = (int) config('agents.max_tool_calls_per_turn');
+
+        for ($i = 0; $i < $max; $i++) {
+            $this->driver->enqueueToolCalls([[
+                'name' => 'test.record',
+                'id' => 'c'.$i,
+                'arguments' => [],
+            ]]);
+        }
+        $this->driver->enqueueText('');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'loop please',
+        );
+
+        $this->assertSame($max + 1, $this->driver->callCount);
+        $this->assertSame([], $this->driver->lastToolKeys);
         $this->assertCount($max, $turn->invocations);
         $this->assertNotNull($turn->handoff);
         $this->assertSame(HandoffReason::Error, $turn->handoff->reason);
+        $this->assertSame('max_tool_calls_per_turn', $turn->handoff->detail['detail'] ?? null);
+        $this->assertDriverNotWrappedInRuntimeTransaction();
+    }
+
+    #[Test]
+    public function overshooting_batch_gets_a_synthetic_tool_result_per_dropped_call(): void
+    {
+        config(['agents.max_tool_calls_per_turn' => 2]);
+        $conversation = $this->conversation('test');
+
+        $this->driver
+            ->enqueueToolCalls([
+                ['name' => 'test.record', 'id' => 'kept-1', 'arguments' => []],
+                ['name' => 'test.record', 'id' => 'kept-2', 'arguments' => []],
+                ['name' => 'test.record', 'id' => 'dropped-3', 'arguments' => []],
+            ])
+            ->enqueueText('Two records were enough.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'record three things',
+        );
+
+        $this->assertCount(2, $turn->invocations);
+        $this->assertSame(['kept-1', 'kept-2'], array_map(
+            static fn (AgentToolInvocation $row): string => $row->tool_call_id,
+            $turn->invocations,
+        ));
+        $this->assertNull($turn->handoff);
+
+        $toolIds = AgentConversationMessage::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('role', AgentMessageRole::Tool)
+            ->orderBy('sequence')
+            ->pluck('tool_call_id')
+            ->all();
+        $this->assertSame(['kept-1', 'kept-2', 'dropped-3'], $toolIds);
+
+        $dropped = AgentConversationMessage::query()
+            ->where('agent_conversation_id', $conversation->id)
+            ->where('tool_call_id', 'dropped-3')
+            ->first();
+        $this->assertNotNull($dropped);
+        $this->assertStringContainsString('unavailable', (string) $dropped->content);
+        $this->assertSame(0, AgentToolInvocation::query()->where('tool_call_id', 'dropped-3')->count());
+        $this->assertDriverNotWrappedInRuntimeTransaction();
+    }
+
+    #[Test]
+    public function mid_turn_prose_on_a_capped_response_is_not_the_delivered_draft(): void
+    {
+        config(['agents.max_tool_calls_per_turn' => 1]);
+        $conversation = $this->conversation('test');
+
+        $this->driver
+            ->enqueueToolCalls(
+                [['name' => 'test.record', 'id' => 'c1', 'arguments' => []]],
+                'Let me check the size guide, resolve that date, and get site info all at once!',
+            )
+            ->enqueueText('The figure is €84,70 (incl. 21% IVA).');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'what do you have?',
+        );
+
+        $this->assertNull($turn->handoff);
+        $this->assertStringContainsString('The figure is €84,70 (incl. 21% IVA).', $turn->draft);
+        $this->assertStringNotContainsString('Let me check the size guide', $turn->draft);
+        $this->assertSame([], $this->driver->lastToolKeys);
         $this->assertDriverNotWrappedInRuntimeTransaction();
     }
 

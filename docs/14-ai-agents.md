@@ -188,9 +188,16 @@ a different agent (defence in depth, invariant 68).
    idempotent so a guard-redraft can call the driver again on an
    already-trimmed list. Persistence is **not** held open across the driver
    call.
-5. Tool loop (capped by `config('agents.max_tool_calls_per_turn')`). Each call
+5. Tool loop (capped by `config('agents.max_tool_calls_per_turn')`, default 10). Each call
    goes through `ToolDispatcher` (below), persists `agent_tool_invocations`,
-   merges into the turn `FactBag`. **Retry before escalate:** a `ToolError`
+   merges into the turn `FactBag`. Exhausting the cap does **not** hand off:
+   dropped `tool_use` blocks (the slice past the remaining budget) get a
+   synthetic `unavailable` tool message (`detail.skipped = true`, no
+   `agent_tool_invocations` row) so every assistant `tool_call_id` has a
+   matching result, then one tools-disabled model call writes the reply from
+   the results already in hand. Mid-turn prose on the capped response is
+   discarded — it is a preamble, never the delivered draft. Handoff with
+   `detail: max_tool_calls_per_turn` only if that close call comes back empty. **Retry before escalate:** a `ToolError`
    whose `error_code` is in `{invalid_arguments, not_found, site_unresolved,
    unlicensed_argument, price_superseded}` is fed back as `display` plus a
    `Recovery:` line (`recovery.hint` / `recovery.tool`). The runtime tracks

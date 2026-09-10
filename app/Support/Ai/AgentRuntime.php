@@ -200,20 +200,31 @@ final class AgentRuntime
 
                 $remaining = $maxToolCalls - $toolCallCount;
                 if ($remaining <= 0) {
-                    $draft = $response->content;
-                    if (trim($draft) === '') {
-                        return $this->finishWithHandoff(
-                            $ctx,
-                            $facts,
-                            $invocations,
-                            HandoffReason::Error,
-                            HandoffTriggerSource::Rule,
-                            CannedReply::Error,
-                            ['detail' => 'max_tool_calls_per_turn'],
-                            $usageEvents,
-                            cursor: $cursor,
-                        );
+                    $closed = $this->closeTurnWithoutTools(
+                        $agent,
+                        $conversation,
+                        $messages,
+                        $model,
+                        $onEvent,
+                        $usageEvents,
+                        $cursor,
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        $usageTotal,
+                        $lastUsage,
+                        $lastLatencyMs,
+                    );
+                    if ($closed instanceof AgentTurn) {
+                        return $closed;
                     }
+
+                    $draft = $closed['draft'];
+                    $usageTotal = $closed['usageTotal'];
+                    $lastUsage = $closed['lastUsage'];
+                    $lastLatencyMs = $closed['lastLatencyMs'];
+                    $finishReason = $closed['finishReason'];
+                    $draftAlreadyPersisted = false;
 
                     break;
                 }
@@ -454,22 +465,38 @@ final class AgentRuntime
                     );
                 }
 
+                $this->answerDroppedToolCalls(
+                    $conversation,
+                    array_slice($response->toolCalls, $remaining),
+                    $messages,
+                );
+
                 if (count($response->toolCalls) > $remaining || $toolCallCount >= $maxToolCalls) {
-                    $draft = $response->content;
-                    $draftAlreadyPersisted = trim($draft) !== '';
-                    if (trim($draft) === '') {
-                        return $this->finishWithHandoff(
-                            $ctx,
-                            $facts,
-                            $invocations,
-                            HandoffReason::Error,
-                            HandoffTriggerSource::Rule,
-                            CannedReply::Error,
-                            ['detail' => 'max_tool_calls_per_turn'],
-                            $usageEvents,
-                            cursor: $cursor,
-                        );
+                    $closed = $this->closeTurnWithoutTools(
+                        $agent,
+                        $conversation,
+                        $messages,
+                        $model,
+                        $onEvent,
+                        $usageEvents,
+                        $cursor,
+                        $ctx,
+                        $facts,
+                        $invocations,
+                        $usageTotal,
+                        $lastUsage,
+                        $lastLatencyMs,
+                    );
+                    if ($closed instanceof AgentTurn) {
+                        return $closed;
                     }
+
+                    $draft = $closed['draft'];
+                    $usageTotal = $closed['usageTotal'];
+                    $lastUsage = $closed['lastUsage'];
+                    $lastLatencyMs = $closed['lastLatencyMs'];
+                    $finishReason = $closed['finishReason'];
+                    $draftAlreadyPersisted = false;
 
                     break;
                 }
@@ -1073,6 +1100,110 @@ final class AgentRuntime
     private function wrapUntrusted(string $text): string
     {
         return "<untrusted>\n{$text}\n</untrusted>";
+    }
+
+    /**
+     * @param  list<array{name: string, id: string, arguments: array<string, mixed>}>  $dropped
+     * @param  list<array<string, mixed>>  $messages
+     */
+    private function answerDroppedToolCalls(AgentConversation $conversation, array $dropped, array &$messages): void
+    {
+        foreach ($dropped as $call) {
+            $call['arguments'] = ArgumentBag::normalise($call['arguments'] ?? []);
+            $result = ToolResult::fail(new ToolError(
+                ToolErrorCode::Unavailable,
+                'Tool budget for this turn is spent.',
+                ['hint' => 'write the reply from the tool results already returned; do not call another tool'],
+                [],
+                ['skipped' => true, 'detail' => 'max_tool_calls_per_turn'],
+            ));
+            $this->persistToolMessage($conversation, $call, $result);
+            $messages[] = [
+                'role' => 'tool',
+                'content' => $this->wrapUntrusted($result->modelText()),
+                'tool_call_id' => $call['id'],
+                'tool_name' => $call['name'],
+                'arguments' => ArgumentBag::jsonReady($call['arguments']),
+            ];
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $messages
+     * @param  list<AgentToolInvocation>  $invocations
+     * @param  list<AiUsageEvent>  $usageEvents
+     * @return array{draft: string, usageTotal: Usage, lastUsage: Usage, lastLatencyMs: int, finishReason: string}|AgentTurn
+     */
+    private function closeTurnWithoutTools(
+        AiAgent $agent,
+        AgentConversation $conversation,
+        array &$messages,
+        string $model,
+        ?Closure $onEvent,
+        array &$usageEvents,
+        TraceCursor $cursor,
+        AgentContext $ctx,
+        FactBag $facts,
+        array $invocations,
+        Usage $usageTotal,
+        Usage $lastUsage,
+        ?int $lastLatencyMs,
+    ): array|AgentTurn {
+        if ($this->budgetExceeded()) {
+            return $this->finishTurnTimeout(
+                $ctx,
+                $facts,
+                $invocations,
+                $usageEvents,
+                $cursor,
+                '',
+                $lastUsage,
+                $lastLatencyMs,
+            );
+        }
+
+        $messages[] = [
+            'role' => 'user',
+            'content' => 'The tool budget for this turn is spent. Write the reply from the tool results already returned. Do not call any further tools.',
+        ];
+
+        $started = hrtime(true);
+        $response = $this->streamMetered(
+            $agent,
+            $conversation,
+            $messages,
+            [],
+            $model,
+            $onEvent,
+            $usageEvents,
+            $cursor,
+            $ctx,
+        );
+        $latencyMs = (int) ((hrtime(true) - $started) / 1_000_000);
+        $usageTotal = $usageTotal->add($response->usage);
+        $draft = $response->content;
+
+        if (trim($draft) === '') {
+            return $this->finishWithHandoff(
+                $ctx,
+                $facts,
+                $invocations,
+                HandoffReason::Error,
+                HandoffTriggerSource::Rule,
+                CannedReply::Error,
+                ['detail' => 'max_tool_calls_per_turn'],
+                $usageEvents,
+                cursor: $cursor,
+            );
+        }
+
+        return [
+            'draft' => $draft,
+            'usageTotal' => $usageTotal,
+            'lastUsage' => $response->usage,
+            'lastLatencyMs' => $latencyMs,
+            'finishReason' => $response->finishReason,
+        ];
     }
 
     private function persistUserMessage(AgentConversation $conversation, string $input): AgentConversationMessage
