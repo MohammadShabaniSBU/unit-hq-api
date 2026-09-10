@@ -6,6 +6,7 @@ namespace App\Support\Ai\Guards;
 
 use App\Models\Site;
 use App\Support\Ai\Tools\FactBag;
+use App\Support\Time\RelativeDatePhrase;
 
 final class DraftTokenExtractor
 {
@@ -24,6 +25,7 @@ final class DraftTokenExtractor
         $this->collectPercents($text, $tokens);
         $this->collectIsoDates($text, $tokens);
         $this->collectSlashDates($text, $tokens);
+        $this->collectWrittenDates($text, $tokens);
         $this->collectUnitIds($text, $tokens);
         $this->collectBareDecimals($text, $tokens);
         $this->collectIntegers($text, $tokens);
@@ -127,6 +129,57 @@ final class DraftTokenExtractor
             $normalized = $this->normalizeEuropeanDate($raw) ?? $raw;
             $tokens[] = new DraftToken(DraftToken::Date, $raw, $normalized);
         }
+    }
+
+    /**
+     * @param  list<DraftToken>  $tokens
+     */
+    private function collectWrittenDates(string $text, array &$tokens): void
+    {
+        $months = RelativeDatePhrase::monthAlternation();
+        $ordinal = '(?:st|nd|rd|th)?';
+        $patterns = [
+            'day_month' => '/\b(\d{1,2})'.$ordinal.'\s+(?:of\s+)?('.$months.')\s+(\d{4})\b/iu',
+            'month_day' => '/\b('.$months.')\s+(\d{1,2})'.$ordinal.',?\s+(\d{4})\b/iu',
+            'es_de' => '/\b(\d{1,2})\s+de\s+('.$months.')\s+de\s+(\d{4})\b/iu',
+            'fr_le' => '/\ble\s+(\d{1,2})\s+('.$months.')\s+(\d{4})\b/iu',
+        ];
+
+        foreach ($patterns as $kind => $pattern) {
+            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE) === false) {
+                continue;
+            }
+
+            foreach ($matches[0] as $i => [$raw, $offset]) {
+                $iso = $kind === 'month_day'
+                    ? $this->writtenIso((string) $matches[2][$i][0], (string) $matches[1][$i][0], (string) $matches[3][$i][0])
+                    : $this->writtenIso((string) $matches[1][$i][0], (string) $matches[2][$i][0], (string) $matches[3][$i][0]);
+                if ($iso === null) {
+                    continue;
+                }
+                if (! $this->claim((int) $offset, strlen($raw))) {
+                    continue;
+                }
+
+                $tokens[] = new DraftToken(DraftToken::Date, $raw, $iso);
+            }
+        }
+    }
+
+    private function writtenIso(string $day, string $monthName, string $year): ?string
+    {
+        $month = RelativeDatePhrase::monthNumber($monthName);
+        if ($month === null) {
+            return null;
+        }
+
+        $d = (int) $day;
+        $y = (int) $year;
+        if (! checkdate($month, $d, $y)) {
+            return null;
+        }
+
+        return sprintf('%04d-%02d-%02d', $y, $month, $d);
     }
 
     /**

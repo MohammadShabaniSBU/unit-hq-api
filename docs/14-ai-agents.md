@@ -785,14 +785,18 @@ discussing debt in ES/UK touches collections law. It is a hard escalation.
 ### Grounding
 
 Highest-value outbound guard. Extracts currency amounts, civil dates
-(`2026-08-17`, `17/08/2026`), unit-shaped identifiers, and percents from the
+(`2026-08-17`, `17/08/2026`, `14 September 2026`, `14 de septiembre de 2026`,
+`le 14 septembre 2026`), unit-shaped identifiers, and percents from the
 draft; every token must be in the licensed `FactBag` (this turn's tools plus
 earlier unblocked assistant facts, plus numbers the customer themselves
-supplied). Relative-day words (`today` / `tomorrow`, and es/fr equivalents)
-are not dates. Invented `21%` VAT is the exact failure this exists for. A
-single unlicensed date or money amount is a `retry` (drop the value or ask
-the customer) bounded by `max_redraft_attempts`; two or more tokens, or an
-identifier or percent, still block and hand off immediately.
+supplied). Written-month forms normalize to ISO — licensing `2026-09-14`
+permits those spoken strings; licensing today's `as_of` does not permit
+another day, and a bare year is never a date. Relative-day words (`today` /
+`tomorrow`, and es/fr equivalents) are not dates. Invented `21%` VAT is the
+exact failure this exists for. A single unlicensed date or money amount is a
+`retry` (drop the value or ask the customer) bounded by `max_redraft_attempts`;
+two or more tokens, or an identifier or percent, still block and hand off
+immediately.
 
 ### Licensing
 

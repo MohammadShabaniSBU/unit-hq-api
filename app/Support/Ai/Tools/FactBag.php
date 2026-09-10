@@ -7,6 +7,7 @@ namespace App\Support\Ai\Tools;
 use App\Models\Site;
 use App\Support\Ai\Guards\DraftToken;
 use App\Support\Ai\Guards\DraftTokenExtractor;
+use App\Support\Time\RelativeDatePhrase;
 
 /**
  * Tokens a turn is licensed to emit. Grounding (S22-03) diffs the draft against this.
@@ -52,6 +53,9 @@ final class FactBag
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
             $this->addToken(substr($date, 8, 2).'/'.substr($date, 5, 2).'/'.substr($date, 0, 4));
             $this->addToken(substr($date, 8, 2).'-'.substr($date, 5, 2).'-'.substr($date, 0, 4));
+            foreach (RelativeDatePhrase::writtenForms($date) as $form) {
+                $this->addToken($form);
+            }
         }
 
         return $this;

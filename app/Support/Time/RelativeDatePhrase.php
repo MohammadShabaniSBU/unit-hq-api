@@ -114,6 +114,97 @@ final class RelativeDatePhrase
         'fin du mois en cours',
     ];
 
+    /**
+     * @return array<string, int>
+     */
+    public static function months(): array
+    {
+        return self::MONTHS;
+    }
+
+    public static function monthNumber(string $name): ?int
+    {
+        $folded = self::fold($name);
+
+        return self::MONTHS[$folded] ?? null;
+    }
+
+    /**
+     * Longest-first month-name alternation for draft extraction, including
+     * accented French spellings that fold() maps onto MONTHS.
+     */
+    public static function monthAlternation(): string
+    {
+        $names = array_keys(self::MONTHS);
+        foreach (['février', 'août', 'décembre'] as $accented) {
+            $names[] = $accented;
+        }
+        usort($names, static fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+
+        return implode('|', array_map(
+            static fn (string $name): string => preg_quote($name, '/'),
+            $names,
+        ));
+    }
+
+    /**
+     * Spoken civil-date strings for a licensed ISO date. Never the bare year,
+     * month number, or day of month.
+     *
+     * @return list<string>
+     */
+    public static function writtenForms(string $iso): array
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $match) !== 1) {
+            return [];
+        }
+
+        $year = (int) $match[1];
+        $month = (int) $match[2];
+        $day = (int) $match[3];
+        if (! checkdate($month, $day, $year)) {
+            return [];
+        }
+
+        $ordinal = match ($day % 10) {
+            1 => $day % 100 === 11 ? 'th' : 'st',
+            2 => $day % 100 === 12 ? 'th' : 'nd',
+            3 => $day % 100 === 13 ? 'th' : 'rd',
+            default => 'th',
+        };
+
+        $names = [];
+        foreach (self::MONTHS as $name => $number) {
+            if ($number === $month) {
+                $names[] = $name;
+            }
+        }
+        if ($month === 2) {
+            $names[] = 'février';
+        }
+        if ($month === 8) {
+            $names[] = 'août';
+        }
+        if ($month === 12) {
+            $names[] = 'décembre';
+        }
+
+        $yearStr = (string) $year;
+        $dayStr = (string) $day;
+        $forms = [];
+        foreach ($names as $name) {
+            $forms[] = $dayStr.' '.$name.' '.$yearStr;
+            $forms[] = $name.' '.$dayStr.', '.$yearStr;
+            $forms[] = $name.' '.$dayStr.' '.$yearStr;
+            $forms[] = $dayStr.$ordinal.' '.$name.' '.$yearStr;
+            $forms[] = $dayStr.$ordinal.' of '.$name.' '.$yearStr;
+            $forms[] = $dayStr.' de '.$name.' de '.$yearStr;
+            $forms[] = 'le '.$dayStr.' '.$name.' '.$yearStr;
+        }
+
+        return $forms;
+    }
+
     public static function resolve(string $phrase, CarbonImmutable $today): ?CarbonImmutable
     {
         $folded = self::fold($phrase);

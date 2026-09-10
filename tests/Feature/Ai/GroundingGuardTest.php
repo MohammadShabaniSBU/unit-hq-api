@@ -16,6 +16,8 @@ use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Ai\AgentPrincipal;
 use App\Support\Ai\Enums\ToolInvocationStatus;
+use App\Support\Ai\Guards\DraftToken;
+use App\Support\Ai\Guards\DraftTokenExtractor;
 use App\Support\Ai\Guards\GroundingGuard;
 use App\Support\Ai\Tools\FactBag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -323,6 +325,105 @@ class GroundingGuardTest extends TestCase
         $this->assertNotSame('', $url);
 
         $pass = app(GroundingGuard::class)->check("Here is your offer: {$url}", $result->facts, $ctx);
+        $this->assertTrue($pass->passed);
+    }
+
+    #[Test]
+    public function spoken_date_is_a_date_token_and_unlicensed_is_retried(): void
+    {
+        $tokens = (new DraftTokenExtractor)->extract('Move in on 14 September 2026.');
+        $this->assertCount(1, $tokens);
+        $this->assertSame(DraftToken::Date, $tokens[0]->type);
+        $this->assertSame('2026-09-14', $tokens[0]->normalized);
+
+        $verdict = app(GroundingGuard::class)->check(
+            'Move in on 14 September 2026.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertSame('grounding', $verdict->blockedBy);
+        $this->assertNotNull($verdict->retry);
+        $this->assertSame('14 September 2026', $verdict->detail['token'] ?? null);
+    }
+
+    #[Test]
+    public function spoken_date_passes_when_that_iso_is_licensed(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'Move in on 14 September 2026.',
+            (new FactBag)->date('2026-09-14'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertTrue($verdict->passed);
+    }
+
+    #[Test]
+    public function as_of_date_does_not_license_a_different_spoken_day(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'Move in on 14 September 2026.',
+            (new FactBag)->date('2026-09-10'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertSame('grounding', $verdict->blockedBy);
+        $this->assertNotNull($verdict->retry);
+    }
+
+    #[Test]
+    public function licensed_iso_does_not_license_a_bare_year(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'The year is 2026.',
+            (new FactBag)->date('2026-09-14'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertSame('grounding', $verdict->blockedBy);
+        $this->assertNull($verdict->retry);
+        $this->assertSame('2026', $verdict->detail['token'] ?? null);
+    }
+
+    #[Test]
+    public function spanish_written_date_is_grounded_against_iso(): void
+    {
+        $fail = app(GroundingGuard::class)->check(
+            'La entrada es el 14 de septiembre de 2026.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'es'), 'sales'),
+        );
+        $this->assertFalse($fail->passed);
+        $this->assertNotNull($fail->retry);
+
+        $pass = app(GroundingGuard::class)->check(
+            'La entrada es el 14 de septiembre de 2026.',
+            (new FactBag)->date('2026-09-14'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'es'), 'sales'),
+        );
+        $this->assertTrue($pass->passed);
+    }
+
+    #[Test]
+    public function french_written_date_is_grounded_against_iso(): void
+    {
+        $fail = app(GroundingGuard::class)->check(
+            'L\'emménagement est le 14 septembre 2026.',
+            new FactBag,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'fr'), 'sales'),
+        );
+        $this->assertFalse($fail->passed);
+        $this->assertNotNull($fail->retry);
+
+        $pass = app(GroundingGuard::class)->check(
+            'L\'emménagement est le 14 septembre 2026.',
+            (new FactBag)->date('2026-09-14'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'fr'), 'sales'),
+        );
         $this->assertTrue($pass->passed);
     }
 }

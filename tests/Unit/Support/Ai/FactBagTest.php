@@ -51,4 +51,19 @@ class FactBagTest extends TestCase
         $this->assertTrue($bag->contains('A-114'));
         $this->assertTrue($bag->contains('2026-09-01'));
     }
+
+    #[Test]
+    public function date_licenses_written_forms_but_not_the_bare_year(): void
+    {
+        $bag = (new FactBag)->date('2026-09-14');
+
+        $this->assertTrue($bag->contains('2026-09-14'));
+        $this->assertTrue($bag->contains('14/09/2026'));
+        $this->assertTrue($bag->contains('14 September 2026'));
+        $this->assertTrue($bag->contains('14 de septiembre de 2026'));
+        $this->assertTrue($bag->contains('le 14 septembre 2026'));
+        $this->assertFalse($bag->contains('2026'));
+        $this->assertFalse($bag->contains('14'));
+        $this->assertFalse($bag->contains('9'));
+    }
 }
