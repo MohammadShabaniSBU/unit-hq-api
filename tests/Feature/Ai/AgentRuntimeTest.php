@@ -422,6 +422,73 @@ class AgentRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function mirrored_front_desk_rows_do_not_count_toward_turn_cap(): void
+    {
+        $conversation = $this->conversation('support');
+        $max = (int) config('agents.max_turns');
+
+        for ($i = 0; $i < $max; $i++) {
+            AgentConversationMessage::query()->create([
+                'agent_conversation_id' => $conversation->id,
+                'sequence' => $i + 1,
+                'role' => AgentMessageRole::Assistant,
+                'content' => '[front desk] prior',
+                'voice_source' => 'fast_model',
+            ]);
+        }
+
+        $this->driver->enqueueText('We have units available.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'one more',
+        );
+
+        $this->assertGreaterThan(0, $this->driver->callCount);
+        $this->assertNotSame(HandoffReason::TurnLimit, $turn->handoff?->reason);
+    }
+
+    #[Test]
+    public function mirrored_front_desk_rows_do_not_count_as_consecutive_assistants(): void
+    {
+        $conversation = $this->conversation('support');
+
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => 1,
+            'role' => AgentMessageRole::User,
+            'content' => 'hello',
+            'voice_source' => 'stt',
+        ]);
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => 2,
+            'role' => AgentMessageRole::Assistant,
+            'content' => '[front desk] Of course.',
+            'voice_source' => 'fast_model',
+        ]);
+        AgentConversationMessage::query()->create([
+            'agent_conversation_id' => $conversation->id,
+            'sequence' => 3,
+            'role' => AgentMessageRole::Assistant,
+            'content' => '[front desk] How can I help?',
+            'voice_source' => 'fast_model',
+        ]);
+
+        $this->driver->enqueueText('We have units available.');
+
+        $turn = app(AgentRuntime::class)->turn(
+            $conversation,
+            $conversation->principal(),
+            'sizes?',
+        );
+
+        $this->assertGreaterThan(0, $this->driver->callCount);
+        $this->assertNotSame(HandoffReason::RepeatedFailure, $turn->handoff?->reason);
+    }
+
+    #[Test]
     public function token_budget_handoffs_budget_exceeded(): void
     {
         $conversation = $this->conversation('support');

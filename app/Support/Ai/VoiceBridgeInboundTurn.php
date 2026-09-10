@@ -12,6 +12,9 @@ use App\Support\Ai\Enums\VoiceBridgeProtocol;
  */
 final readonly class VoiceBridgeInboundTurn
 {
+    /**
+     * @param  list<array{sequence: int, role: string, text: string, source: string, occurred_at?: string|null}>  $contextSegments
+     */
     public function __construct(
         public VoiceBridgeProtocol $protocol,
         public ?string $query,
@@ -20,5 +23,6 @@ final readonly class VoiceBridgeInboundTurn
         public ?string $callerNumber,
         public ?string $callerUtterance,
         public string|int|null $jsonRpcId,
+        public array $contextSegments = [],
     ) {}
 }

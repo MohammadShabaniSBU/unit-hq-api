@@ -29,6 +29,7 @@ class VoiceBridgeWireFormatTest extends TestCase
         $this->assertSame('session-camel', $inbound->sessionId);
         $this->assertSame('+34911000001', $inbound->callerNumber);
         $this->assertNull($inbound->jsonRpcId);
+        $this->assertSame([], $inbound->contextSegments);
     }
 
     #[Test]
@@ -62,6 +63,7 @@ class VoiceBridgeWireFormatTest extends TestCase
         $this->assertSame('+34911000001', $inbound->callerNumber);
         $this->assertNull($inbound->callerUtterance);
         $this->assertSame('req-1', $inbound->jsonRpcId);
+        $this->assertSame([], $inbound->contextSegments);
     }
 
     #[Test]
@@ -139,6 +141,50 @@ class VoiceBridgeWireFormatTest extends TestCase
             'so if I wanted the ten square meter one, what would that run me',
             $camel->callerUtterance,
         );
+    }
+
+    #[Test]
+    public function http_extracts_context_segments_and_drops_invalid_rows(): void
+    {
+        $inbound = VoiceBridgeWireFormat::parse(Request::create('/bridge', 'POST', [
+            'query' => 'Do you have a small unit?',
+            'turn_id' => 'turn-1',
+            'session_id' => 'session-1',
+            'context_segments' => [
+                [
+                    'sequence' => 1,
+                    'role' => 'agent',
+                    'text' => 'Soy un asistente automatizado de Keevaris Madrid.',
+                    'source' => 'fast_model',
+                    'occurred_at' => '2026-09-10T10:00:00Z',
+                ],
+                [
+                    'sequence' => 2,
+                    'role' => 'caller',
+                    'text' => 'Could you please speak more English?',
+                    'source' => 'stt',
+                ],
+                [
+                    'sequence' => 3,
+                    'role' => 'agent',
+                    'text' => 'We have units available.',
+                    'source' => 'delegated',
+                ],
+                [
+                    'sequence' => 0,
+                    'role' => 'caller',
+                    'text' => 'ignored',
+                    'source' => 'stt',
+                ],
+            ],
+        ]));
+
+        $this->assertCount(2, $inbound->contextSegments);
+        $this->assertSame(1, $inbound->contextSegments[0]['sequence']);
+        $this->assertSame('agent', $inbound->contextSegments[0]['role']);
+        $this->assertSame('fast_model', $inbound->contextSegments[0]['source']);
+        $this->assertSame(2, $inbound->contextSegments[1]['sequence']);
+        $this->assertSame('caller', $inbound->contextSegments[1]['role']);
     }
 
     #[Test]

@@ -83,6 +83,7 @@ final class VoiceBridgeWireFormat
             self::string($request->input('caller_number')) ?? self::string($request->input('from')),
             self::string($request->input('caller_utterance')) ?? self::string($request->input('callerUtterance')),
             null,
+            self::contextSegments($request->input('context_segments') ?? $request->input('contextSegments')),
         );
     }
 
@@ -189,6 +190,58 @@ final class VoiceBridgeWireFormat
         }
 
         return null;
+    }
+
+    /**
+     * @return list<array{sequence: int, role: string, text: string, source: string, occurred_at?: string|null}>
+     */
+    private static function contextSegments(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $segments = [];
+        foreach ($value as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $sequence = $row['sequence'] ?? null;
+            if (is_string($sequence) && is_numeric($sequence)) {
+                $sequence = (int) $sequence;
+            }
+            if (! is_int($sequence) || $sequence < 1) {
+                continue;
+            }
+
+            $role = self::string($row['role'] ?? null);
+            $text = self::string($row['text'] ?? null);
+            $source = self::string($row['source'] ?? null);
+            if (
+                $role === null
+                || $text === null
+                || ! in_array($role, ['caller', 'agent'], true)
+                || ! in_array($source, ['stt', 'fast_model'], true)
+            ) {
+                continue;
+            }
+
+            $occurredAt = self::string($row['occurred_at'] ?? $row['occurredAt'] ?? null);
+            $segment = [
+                'sequence' => $sequence,
+                'role' => $role,
+                'text' => $text,
+                'source' => $source,
+            ];
+            if ($occurredAt !== null) {
+                $segment['occurred_at'] = $occurredAt;
+            }
+
+            $segments[] = $segment;
+        }
+
+        return $segments;
     }
 
     private static function string(mixed $value): ?string

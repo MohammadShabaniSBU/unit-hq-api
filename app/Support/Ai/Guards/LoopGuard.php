@@ -20,6 +20,7 @@ final class LoopGuard
         $maxTurns = (int) ($agent->settings['max_turns'] ?? $definition->maxTurns());
         $assistantCount = $conversation->messages()
             ->where('role', AgentMessageRole::Assistant->value)
+            ->whereNull('voice_source')
             ->count();
 
         if ($assistantCount >= $maxTurns) {
@@ -69,6 +70,9 @@ final class LoopGuard
         $trailing = 0;
         foreach ($conversation->messages()->get()->reverse() as $message) {
             if ($message->role === AgentMessageRole::Tool) {
+                continue;
+            }
+            if ($message->voice_source !== null && $message->role === AgentMessageRole::Assistant) {
                 continue;
             }
             if ($message->role === AgentMessageRole::Assistant) {

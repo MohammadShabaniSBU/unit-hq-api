@@ -36,6 +36,7 @@ final class VoiceBridgeTurn
         private readonly AgentRuntime $runtime,
         private readonly VoiceTransfer $transfer,
         private readonly VoiceSessionOpener $opener,
+        private readonly VoiceTranscriptMirror $mirror,
     ) {}
 
     /**
@@ -80,13 +81,15 @@ final class VoiceBridgeTurn
         }
 
         $conversation = $session->conversation;
-        $this->applySpokenLocale($session, $conversation, $callerUtterance, $query);
-        $principal = $this->principalFrom($conversation);
 
         $existing = $this->storedTurn($session, $turnId);
         if ($existing !== null) {
             return $this->bodyFromTurn($existing);
         }
+
+        $mirroredCallerTexts = $this->mirror->apply($session, $conversation, $inbound->contextSegments);
+        $this->applySpokenLocale($session, $conversation, $callerUtterance, $query, $mirroredCallerTexts);
+        $principal = $this->principalFrom($conversation);
 
         if (
             $site !== null
@@ -272,13 +275,24 @@ final class VoiceBridgeTurn
         return ! SiteClock::withinWindow($site, $settings->sendWindowStart, $settings->sendWindowEnd);
     }
 
+    /**
+     * @param  list<string>  $mirroredCallerTexts
+     */
     private function applySpokenLocale(
         VoiceSession $session,
         AgentConversation $conversation,
         ?string $callerUtterance,
         string $query,
+        array $mirroredCallerTexts = [],
     ): void {
-        $detected = SpokenLocaleDetector::detect($callerUtterance ?? '')
+        $detected = null;
+        foreach ($mirroredCallerTexts as $text) {
+            $detected = SpokenLocaleDetector::detect($text);
+            if ($detected !== null) {
+                break;
+            }
+        }
+        $detected ??= SpokenLocaleDetector::detect($callerUtterance ?? '')
             ?? SpokenLocaleDetector::detect($query);
         if ($detected === null || $detected === $conversation->locale) {
             return;

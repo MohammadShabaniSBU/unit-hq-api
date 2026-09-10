@@ -197,6 +197,8 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voicePrompt);
         $this->assertStringContainsString('Do not use markdown, asterisks, or bullet markers', $voicePrompt);
         $this->assertStringContainsString('sales.send_quote', $voicePrompt);
+        $this->assertStringContainsString('never open with a welcome, a brand tagline, or a self-introduction', $voicePrompt);
+        $this->assertStringContainsString('[front desk]', $voicePrompt);
         $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);
         $this->assertStringNotContainsString('already known from caller ID', $voicePrompt);
         $this->assertStringContainsString('Do not ask the caller to speak an email address', $voicePrompt);

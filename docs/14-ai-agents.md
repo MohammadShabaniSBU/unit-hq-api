@@ -861,6 +861,19 @@ backticks) is stripped before the draft is returned to keevaris-voice.
 speak the asterisks. WhatsApp keeps `*bold*` — that is native formatting
 there, not TTS. Email and internal keep markup.
 
+keevaris-voice piggybacks unsent caller / front-desk turns on each
+delegation as `context_segments`. `VoiceTranscriptMirror` appends those
+rows onto `agent_conversation_messages` before `AgentRuntime::turn`:
+caller → `role=user`, `voice_source=stt`; front desk → `role=assistant`,
+`voice_source=fast_model`, content prefixed `[front desk] `, `fact_keys`
+left null so `GroundingGuard` never licenses a figure the fast model
+invented. `voice_sessions.mirrored_transcript_sequence` is the watermark
+— a repeated batch inserts nothing twice. `LoopGuard` excludes
+`voice_source` assistant rows from `max_turns` and from the consecutive-
+assistant count; they are context, not billed turns. The voice
+`ChannelProfile` addendum tells the model the call is already under way
+(never re-greet) and to treat `[front desk]` turns as unverified.
+
 SMS only: `Gsm7Transliterator` rewrites the body **before** segment counting
 (`²`/`³` → `2`/`3`, `€` → `EUR`, dashes/quotes/ellipsis/NBSP). Characters
 already in GSM-7 (Spanish accented vowels, `ñ`, `¿`, `¡`, `º`/`ª`) pass

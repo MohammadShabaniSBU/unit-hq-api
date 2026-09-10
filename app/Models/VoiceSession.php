@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $started_at
  * @property Carbon|null $ended_at
  * @property string|null $end_reason
+ * @property int|null $mirrored_transcript_sequence
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read AgentConversation $conversation
@@ -53,6 +54,7 @@ class VoiceSession extends Model
         'started_at',
         'ended_at',
         'end_reason',
+        'mirrored_transcript_sequence',
     ];
 
     protected function casts(): array
@@ -60,6 +62,7 @@ class VoiceSession extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'mirrored_transcript_sequence' => 'integer',
         ];
     }
 

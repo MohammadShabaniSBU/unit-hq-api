@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $blocked_by
  * @property string|null $subject
  * @property array<int, string>|null $fact_keys
+ * @property string|null $voice_source
  * @property string|null $principal_verification
  * @property int|null $emitted_message_id
  * @property int|null $subject_message_id
@@ -54,6 +55,7 @@ class AgentConversationMessage extends Model
         'blocked_by',
         'subject',
         'fact_keys',
+        'voice_source',
         'principal_verification',
         'emitted_message_id',
         'subject_message_id',

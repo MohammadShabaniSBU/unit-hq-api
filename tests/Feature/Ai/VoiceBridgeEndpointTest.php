@@ -406,6 +406,83 @@ class VoiceBridgeEndpointTest extends TestCase
     }
 
     #[Test]
+    public function mirrored_caller_segment_switches_an_es_conversation_locale(): void
+    {
+        $this->bindSiteCountry('ES');
+        $this->enqueueSafeReply();
+
+        $this->postBridge([
+            'query' => '20',
+            'turn_id' => 'turn-mirrored-locale',
+            'context_segments' => [
+                [
+                    'sequence' => 2,
+                    'role' => 'caller',
+                    'text' => 'Could you please speak more English?',
+                    'source' => 'stt',
+                    'occurred_at' => '2026-09-10T10:00:00Z',
+                ],
+            ],
+        ])->assertOk();
+
+        $this->assertSame('en', AgentConversation::query()->value('locale'));
+        $event = SystemEvent::query()->where('event', 'ai.voice.locale_switched')->first();
+        $this->assertNotNull($event);
+        $this->assertSame('es', $event->payload['from'] ?? null);
+        $this->assertSame('en', $event->payload['to'] ?? null);
+        $this->assertStringContainsString('Reply in English.', $this->lastSystemPrompt());
+        $this->assertSame(
+            'Could you please speak more English?',
+            AgentConversationMessage::query()->where('voice_source', 'stt')->value('content'),
+        );
+    }
+
+    #[Test]
+    public function replayed_turn_id_does_not_mirror_context_segments_twice(): void
+    {
+        $this->enqueueSafeReply();
+        $segments = [
+            [
+                'sequence' => 1,
+                'role' => 'agent',
+                'text' => 'Soy un asistente automatizado de Keevaris Madrid.',
+                'source' => 'fast_model',
+                'occurred_at' => '2026-09-10T10:00:00Z',
+            ],
+            [
+                'sequence' => 2,
+                'role' => 'caller',
+                'text' => 'Could you please speak more English?',
+                'source' => 'stt',
+                'occurred_at' => '2026-09-10T10:00:01Z',
+            ],
+        ];
+
+        $this->postBridge([
+            'turn_id' => 'turn-mirror-once',
+            'context_segments' => $segments,
+        ])->assertOk();
+
+        $this->assertSame(2, AgentConversationMessage::query()->whereNotNull('voice_source')->count());
+        $this->assertEquals(2, VoiceSession::query()->value('mirrored_transcript_sequence'));
+        $frontDesk = AgentConversationMessage::query()->where('voice_source', 'fast_model')->first();
+        $this->assertNotNull($frontDesk);
+        $this->assertSame(
+            '[front desk] Soy un asistente automatizado de Keevaris Madrid.',
+            $frontDesk->content,
+        );
+        $this->assertNull($frontDesk->fact_keys);
+
+        $this->postBridge([
+            'turn_id' => 'turn-mirror-once',
+            'context_segments' => $segments,
+        ])->assertOk();
+
+        $this->assertSame(2, AgentConversationMessage::query()->whereNotNull('voice_source')->count());
+        $this->assertEquals(2, VoiceSession::query()->value('mirrored_transcript_sequence'));
+    }
+
+    #[Test]
     public function omitted_caller_utterance_stays_null_on_the_persisted_turn(): void
     {
         $this->enqueueSafeReply();

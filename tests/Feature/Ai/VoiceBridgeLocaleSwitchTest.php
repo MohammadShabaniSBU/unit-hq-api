@@ -69,7 +69,7 @@ class VoiceBridgeLocaleSwitchTest extends TestCase
     }
 
     #[Test]
-    public function first_delegated_english_utterance_switches_locale_and_disclosure(): void
+    public function first_delegated_english_utterance_switches_locale_without_a_second_disclosure(): void
     {
         $this->driver->enqueueText('The small unit is available.');
 
@@ -80,11 +80,9 @@ class VoiceBridgeLocaleSwitchTest extends TestCase
 
         $conversation = AgentConversation::query()->firstOrFail();
         $this->assertSame('en', $conversation->locale);
-
-        $english = DisclosureSentence::for('en');
-        $spanish = DisclosureSentence::for('es');
-        $this->assertStringContainsString($english, (string) $response->json('text'));
-        $this->assertStringNotContainsString($spanish, (string) $response->json('text'));
+        $this->assertSame('The small unit is available.', $response->json('text'));
+        $this->assertStringNotContainsString(DisclosureSentence::for('en'), (string) $response->json('text'));
+        $this->assertStringNotContainsString(DisclosureSentence::for('es'), (string) $response->json('text'));
 
         $event = SystemEvent::query()->where('event', 'ai.voice.locale_switched')->first();
         $this->assertNotNull($event);
@@ -104,7 +102,8 @@ class VoiceBridgeLocaleSwitchTest extends TestCase
 
         $conversation = AgentConversation::query()->firstOrFail();
         $this->assertSame('es', $conversation->locale);
-        $this->assertStringContainsString(DisclosureSentence::for('es'), (string) $response->json('text'));
+        $this->assertSame('Hay unidades disponibles.', $response->json('text'));
+        $this->assertStringNotContainsString(DisclosureSentence::for('es'), (string) $response->json('text'));
         $this->assertSame(0, SystemEvent::query()->where('event', 'ai.voice.locale_switched')->count());
     }
 
