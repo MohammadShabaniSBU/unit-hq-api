@@ -25,6 +25,7 @@ return [
         'quiero desalojar',
         'quiero irme el mes que viene',
         'quiero dar de baja',
+        'quiero dar preaviso',
     ],
     'payment_dispute' => [
         'ya he pagado',
@@ -44,5 +45,7 @@ return [
         'Hola, que tamanos tienen',
         'Quiero un presupuesto para 10 metros',
         'Gracias, pasare manana',
+        'Cual es el plazo de preaviso?',
+        'Confirma la tarifa mensual y el plazo de preaviso.',
     ],
 ];

@@ -29,6 +29,7 @@ return [
         'I need to vacate',
         'I want to terminate the agreement',
         'I want to give notice',
+        'I want to put in my notice',
     ],
     'payment_dispute' => [
         'I already paid',
@@ -50,5 +51,7 @@ return [
         "I'd like a quote for a 10 square metre unit",
         "Thanks, I'll come by tomorrow",
         'Is the gate managerial or automatic?',
+        'What is the notice period?',
+        'Please confirm the monthly rate and the minimum term and notice period.',
     ],
 ];

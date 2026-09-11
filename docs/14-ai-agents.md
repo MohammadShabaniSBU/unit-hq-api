@@ -781,7 +781,7 @@ negatives are expensive.
 | `legal_or_complaint` | `legal_or_complaint` | lien, auction, solicitor / lawyer / abogado, ombudsman, court, chargeback, erasure / GDPR, death / estate, damage or insurance claim |
 | `delinquency` | `delinquency` | open delinquency case on the principal, **or** arrears / overlock / cut lock / "why can't I get in" |
 | `price_negotiation` | `price_negotiation` | discount / cheaper / match / negotiate beyond the catalogue |
-| `move_out_commitment` | `unsupported_intent` | notice, vacate, move out, terminate — collect intent, never commit a date |
+| `move_out_commitment` | `unsupported_intent` | give notice / vacate / move out / terminate — collect intent, never commit a date. Bare "notice" / "preaviso" / "préavis" stay off the list so a notice-period FAQ does not escalate |
 | `payment_dispute` | `unsupported_intent` | "I already paid", "charged twice", refund |
 | `customer_requested` | `customer_requested` | human / agent / manager / "real person" |
 | `third_party` | `legal_or_complaint` | asking about another tenant |
