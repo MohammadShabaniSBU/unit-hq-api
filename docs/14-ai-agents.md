@@ -480,7 +480,7 @@ routes (`POST /api/chat/sessions`, …) are S26-07c.
 ## Tool catalogue
 
 The tool surface is the defence; prompt text is defence-in-depth. The live
-definition is `ConciergeAgentDefinition` (23 keys). `ai_agents` rows are
+definition is `ConciergeAgentDefinition` (24 keys). `ai_agents` rows are
 instances (D-AI-6, invariant 58). The Level column is the whole story:
 tenant tools sit on the list and are refused at dispatch gate 3 until the
 principal is `verified` (invariant 71).
@@ -499,6 +499,7 @@ principal is `verified` (invariant 71).
 | `sales.create_reservation` | channel_asserted | ✓ (`propose`) | ✓ |
 | `sales.send_quote` | anonymous | ✓ (`commit`, 3 / conversation, 10 / day) | ✓ |
 | `crm.create_contact` | anonymous | ✓ | ✓ |
+| `crm.update_contact` | anonymous | ✓ | ✓ |
 | `crm.create_deal` | anonymous | ✓ | ✓ |
 | `crm.create_task` | anonymous | ✓ | ✓ |
 | `crm.create_note` | verified | ✓ | |
@@ -630,7 +631,16 @@ Other tool notes:
   for the exact date. No entities, so no `Refs:` line.
 - `crm.create_contact` sets `contacts.source = ai_agent` and deduplicates on
   `contact_channels`. An `ok` result in an anonymous customer conversation
-  promotes the principal to `channel_asserted` (D-AI-18).
+  promotes the principal to `channel_asserted` (D-AI-18). A second call in
+  the same conversation is `invalid_arguments`.
+- `crm.update_contact` writes `first_name` / `last_name` on the conversation's
+  contact. No `contact_id` argument. Missing contact recovers with
+  `crm.create_contact`. Email and phone stay untouched. Does not promote.
+- Voice (`VoiceToolSurface`) includes `sales.propose_offer`,
+  `sales.create_offer`, and `crm.update_contact` in addition to the
+  milestone-one reads and lead writes. `sales.create_reservation` stays off
+  voice. After `sales.create_offer`, the spoken reply must not read the
+  public preview link.
 - `identity.request_code` sends a 6-digit code to a `contact_channels` row
   already on the contact. Optional argument is channel *type* only. Display
   names a masked destination. Seeded policy: `commit`,

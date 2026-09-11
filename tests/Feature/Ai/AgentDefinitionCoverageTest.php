@@ -116,6 +116,7 @@ class AgentDefinitionCoverageTest extends TestCase
             'sales.create_offer',
             'sales.create_reservation',
             'crm.create_contact',
+            'crm.update_contact',
             'crm.create_deal',
             'crm.create_task',
             'identity.request_code',
@@ -138,6 +139,9 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertNotContains('voice.transfer', $definition->toolKeys(AgentChannel::Voice));
         $this->assertNotContains('voice.transfer', VoiceToolSurface::keys());
         $this->assertFalse(app(ToolRegistry::class)->has('voice.transfer'));
+        $this->assertContains('crm.update_contact', VoiceToolSurface::keys());
+        $this->assertContains('sales.propose_offer', VoiceToolSurface::keys());
+        $this->assertContains('sales.create_offer', VoiceToolSurface::keys());
     }
 
     #[Test]
@@ -156,6 +160,19 @@ class AgentDefinitionCoverageTest extends TestCase
 
             $web = $this->dispatchTool('concierge', $tool, $principal, [], $webchat);
             $this->assertNotSame(ToolDeniedReason::NotAllowedForAgent, $web->deniedReason, $tool);
+        }
+    }
+
+    #[Test]
+    public function name_and_offer_tools_are_allowed_on_voice(): void
+    {
+        $contact = Contact::factory()->create();
+        $principal = AgentPrincipal::channelAsserted($contact->id, null, 'en');
+        $voice = $this->conciergeContext($principal, AgentChannel::Voice);
+
+        foreach (['crm.update_contact', 'sales.propose_offer', 'sales.create_offer'] as $tool) {
+            $result = $this->dispatchTool('concierge', $tool, $principal, [], $voice);
+            $this->assertNotSame(ToolDeniedReason::NotAllowedForAgent, $result->deniedReason, $tool);
         }
     }
 
@@ -197,6 +214,8 @@ class AgentDefinitionCoverageTest extends TestCase
         $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voicePrompt);
         $this->assertStringContainsString('Do not use markdown, asterisks, or bullet markers', $voicePrompt);
         $this->assertStringContainsString('sales.send_quote', $voicePrompt);
+        $this->assertStringContainsString('never read the public link aloud', $voicePrompt);
+        $this->assertStringContainsString('crm.update_contact', $anonymous);
         $this->assertStringContainsString('never open with a welcome, a brand tagline, or a self-introduction', $voicePrompt);
         $this->assertStringContainsString('[front desk]', $voicePrompt);
         $this->assertStringNotContainsString('Do not speak any figure', $voicePrompt);

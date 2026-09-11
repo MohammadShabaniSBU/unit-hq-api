@@ -169,6 +169,7 @@ final class RegistryFixtures
                 'unit_class_id' => $this->class->id,
             ], [$this->deal, $this->class]),
             'crm.create_contact' => $this->sales($anon, ['first_name' => 'Luis']),
+            'crm.update_contact' => $this->concierge($asserted, ['last_name' => 'Ruiz']),
             'crm.create_deal' => $this->sales($anon, ['contact_id' => $this->contact->id], [$this->contact]),
             'crm.create_task' => $this->sales($anon, [
                 'title' => 'Follow up',
@@ -196,6 +197,10 @@ final class RegistryFixtures
                 'reason' => AgentHandoffReason::CustomerRequested->value,
                 'summary' => 'Customer asked for a person.',
             ]),
+            'sales.send_quote' => $this->concierge($asserted, [
+                'unit_class_id' => $this->class->id,
+                'site_id' => $this->site->id,
+            ], [$this->class, $this->site]),
             default => throw new \InvalidArgumentException("No fixture for tool [{$toolKey}]."),
         };
     }

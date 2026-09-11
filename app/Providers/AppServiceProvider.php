@@ -65,6 +65,7 @@ use App\Support\Ai\Tools\ChannelSendTool;
 use App\Support\Ai\Tools\ContractSummaryTool;
 use App\Support\Ai\Tools\CrmCreateContactTool;
 use App\Support\Ai\Tools\CrmCreateDealTool;
+use App\Support\Ai\Tools\CrmUpdateContactTool;
 use App\Support\Ai\Tools\CrmCreateNoteTool;
 use App\Support\Ai\Tools\CrmCreateTaskTool;
 use App\Support\Ai\Tools\EscalateTool;
@@ -143,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register(new SalesCreateOfferTool);
             $registry->register(new SalesCreateReservationTool);
             $registry->register(new CrmCreateContactTool);
+            $registry->register(new CrmUpdateContactTool);
             $registry->register(new CrmCreateDealTool);
             $registry->register(new CrmCreateTaskTool);
             $registry->register(new CrmCreateNoteTool);

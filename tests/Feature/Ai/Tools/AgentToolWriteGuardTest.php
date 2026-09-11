@@ -29,7 +29,7 @@ class AgentToolWriteGuardTest extends TestCase
 
         foreach (app(ToolRegistry::class)->all() as $key => $tool) {
             $agent = match (true) {
-                str_starts_with($key, 'identity.') => 'concierge',
+                str_starts_with($key, 'identity.') || $key === 'crm.update_contact' => 'concierge',
                 in_array($key, [
                     'contract.summary',
                     'billing.balance',
@@ -87,6 +87,7 @@ class AgentToolWriteGuardTest extends TestCase
             'pricing.quote', 'sales.propose_offer' => ['unit_class_id' => 1, 'site_id' => 1],
             'pricing.discounts', 'facility.site_info' => ['site_id' => 1],
             'crm.create_contact' => ['first_name' => 'Ada'],
+            'crm.update_contact' => ['last_name' => 'Hopper'],
             'crm.create_deal' => ['contact_id' => 1],
             'crm.create_task' => [
                 'title' => 'Call back',
