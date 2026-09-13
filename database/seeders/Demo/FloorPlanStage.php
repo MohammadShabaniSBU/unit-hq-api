@@ -12,7 +12,6 @@ use App\Support\Facility\SiteMapIdMatcher;
 use App\Support\Facility\SvgSanitizer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Generates demo-world floor plans from seeded units.
@@ -36,7 +35,7 @@ final class FloorPlanStage
         'site_code' => 'MAD-05',
         'floor_name' => 'Planta 3',
         'uncovered_units' => 3,
-        'orphan_shapes' => ['MAD-05-XX-01', 'MAD-05-XX-02'],
+        'orphan_shapes' => ['XX1', 'XX2'],
     ];
 
     /** @var array<int, array{floor_name: string, sort_order: int, entry: bool}> */
@@ -97,7 +96,7 @@ final class FloorPlanStage
                 ->where('site_id', $site->id)
                 ->get(['id', 'unit_number', 'actual_width', 'actual_depth'])
                 ->sortBy(fn (Unit $u): array => [
-                    (int) Str::afterLast($u->unit_number, '-'),
+                    (int) preg_replace('/\D+/', '', $u->unit_number),
                     $u->unit_number,
                 ])
                 ->values();

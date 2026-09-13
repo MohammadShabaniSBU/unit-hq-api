@@ -81,6 +81,22 @@ class StageSeeder extends Seeder
         'AL4' => '218.00',
     ];
 
+    /** @var array<string, string> */
+    private const UNIT_NUMBER_PREFIXES = [
+        'SS1' => 'G',
+        'SS2' => 'H',
+        'SS3' => 'J',
+        'SS4' => 'K',
+        'SS5' => 'L',
+        'SS6' => 'M',
+        'SS7' => 'N',
+        'SS8' => 'P',
+        'AL1' => 'AL',
+        'AL2' => 'AM',
+        'AL3' => 'AN',
+        'AL4' => 'AP',
+    ];
+
     public function run(): void
     {
         if (Site::query()->where('code', 'MAD-01')->exists()) {
@@ -335,7 +351,7 @@ class StageSeeder extends Seeder
                     Unit::query()->create([
                         'site_id' => $site->id,
                         'unit_class_id' => $unitClass->id,
-                        'unit_number' => sprintf('%s-%s-%02d', $site->code, $unitClass->code, $n),
+                        'unit_number' => self::demoUnitNumber($unitClass->code, $n),
                         'actual_width' => fake()->randomFloat(2, 1.5, 5.0),
                         'actual_depth' => fake()->randomFloat(2, 2.0, 6.0),
                         'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
@@ -360,6 +376,16 @@ class StageSeeder extends Seeder
         (new AgentInboxDraftSeeder)->run();
 
         $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
+    }
+
+    private static function demoUnitNumber(string $classCode, int $n): string
+    {
+        $prefix = self::UNIT_NUMBER_PREFIXES[$classCode] ?? null;
+        if ($prefix === null) {
+            throw new \RuntimeException("No demo unit-number prefix for class {$classCode}.");
+        }
+
+        return $prefix.$n;
     }
 
     private function activateDemoPlaybooks(): void

@@ -82,6 +82,31 @@ class DemoFloorPlanTest extends TestCase
         }
     }
 
+    public function test_unit_numbers_are_short_and_unique_per_site(): void
+    {
+        $sites = Site::query()->orderBy('code')->get();
+        $this->assertCount(5, $sites);
+
+        foreach ($sites as $site) {
+            $numbers = Unit::query()
+                ->where('site_id', $site->id)
+                ->pluck('unit_number');
+
+            $this->assertCount(120, $numbers);
+            $this->assertCount(120, $numbers->unique());
+
+            foreach ($numbers as $number) {
+                $this->assertMatchesRegularExpression(
+                    '/^[A-Za-z][A-Za-z0-9]{1,4}$/',
+                    $number,
+                    "{$site->code} unit {$number} must be letter-first and 2–5 chars"
+                );
+                $this->assertGreaterThanOrEqual(2, strlen($number));
+                $this->assertLessThanOrEqual(5, strlen($number));
+            }
+        }
+    }
+
     public function test_every_intact_map_has_no_orphan_shapes(): void
     {
         $maps = SiteMap::query()->with('site')->get();
@@ -145,7 +170,7 @@ class DemoFloorPlanTest extends TestCase
         $result = SiteMapIdMatcher::match($site, $map->svg_map);
 
         $this->assertSame(
-            ['MAD-05-XX-01', 'MAD-05-XX-02'],
+            ['XX1', 'XX2'],
             $result['orphan_shapes']
         );
 
