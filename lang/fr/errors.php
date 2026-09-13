@@ -178,5 +178,21 @@ return [
         'token_unavailable' => 'Le service vocal n’a pas pu émettre de jeton de session. Réessayez sous peu.',
         'session_already_ended' => 'Cette session vocale est déjà terminée.',
     ],
+    'units' => [
+        'csv_import_failed' => 'Le CSV des unités n’a pas pu être importé.',
+        'csv_missing_header' => 'Le fichier CSV est vide.',
+        'csv_invalid_header' => 'L’en-tête CSV doit être site_code,unit_class_code,unit_number,actual_width,actual_depth,actual_height,note,enabled.',
+        'csv_column_count' => 'Cette ligne n’a pas le nombre de colonnes attendu.',
+        'csv_site_code_required' => 'site_code est obligatoire.',
+        'csv_unknown_site' => 'site_code inconnu :code.',
+        'csv_site_forbidden' => 'Vous ne pouvez pas gérer les unités du site :code.',
+        'csv_unit_class_code_required' => 'unit_class_code est obligatoire.',
+        'csv_unknown_unit_class' => 'unit_class_code inconnu :code.',
+        'csv_unit_number_required' => 'unit_number est obligatoire.',
+        'csv_unit_number_too_long' => 'unit_number ne peut pas dépasser 255 caractères.',
+        'csv_invalid_decimal' => ':field doit être un nombre supérieur ou égal à zéro.',
+        'csv_invalid_enabled' => 'enabled doit être true, false, 1 ou 0.',
+        'csv_duplicate_unit' => 'site_code et unit_number en double dans ce fichier.',
+    ],
 ];
 

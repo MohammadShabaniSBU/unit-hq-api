@@ -192,5 +192,21 @@ return [
         'token_unavailable' => 'El servicio de voz no pudo emitir un token de sesión. Inténtelo de nuevo en breve.',
         'session_already_ended' => 'Esta sesión de voz ya ha terminado.',
     ],
+    'units' => [
+        'csv_import_failed' => 'No se pudo importar el CSV de unidades.',
+        'csv_missing_header' => 'El archivo CSV está vacío.',
+        'csv_invalid_header' => 'La cabecera del CSV debe ser site_code,unit_class_code,unit_number,actual_width,actual_depth,actual_height,note,enabled.',
+        'csv_column_count' => 'Esta fila no tiene el número esperado de columnas.',
+        'csv_site_code_required' => 'site_code es obligatorio.',
+        'csv_unknown_site' => 'site_code desconocido :code.',
+        'csv_site_forbidden' => 'No puede gestionar unidades en el sitio :code.',
+        'csv_unit_class_code_required' => 'unit_class_code es obligatorio.',
+        'csv_unknown_unit_class' => 'unit_class_code desconocido :code.',
+        'csv_unit_number_required' => 'unit_number es obligatorio.',
+        'csv_unit_number_too_long' => 'unit_number no puede superar 255 caracteres.',
+        'csv_invalid_decimal' => ':field debe ser un número mayor o igual que cero.',
+        'csv_invalid_enabled' => 'enabled debe ser true, false, 1 o 0.',
+        'csv_duplicate_unit' => 'site_code y unit_number duplicados en este archivo.',
+    ],
 ];
 

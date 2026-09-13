@@ -251,6 +251,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('sites/options', [Facility\SiteController::class, 'options']);
     Route::get('unit-classes/options', [Facility\UnitClassController::class, 'options']);
     Route::get('units/options', [Facility\UnitController::class, 'options']);
+    Route::get('units/export', [Facility\UnitController::class, 'export']);
+    Route::post('units/import', [Facility\UnitController::class, 'import']);
     Route::get('insurances/options', [Controllers\InsuranceController::class, 'options']);
     Route::get('insurance-rate-matrix', [Facility\InsurancePriceMatrixController::class, 'index']);
     Route::post('insurances/{insurance}/rates', [Facility\InsuranceRateController::class, 'store']);
@@ -333,12 +335,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('site-maps/{siteMap}', [Facility\SiteMapController::class, 'destroy']);
     Route::get('units/filters/schema', [Facility\UnitController::class, 'filterSchema']);
     Route::post('units/search', [Facility\UnitController::class, 'search']);
-    Route::apiResource('units', Facility\UnitController::class);
-    Route::get('units/{unit}/holds', [Facility\UnitHoldController::class, 'index']);
-    Route::post('units/{unit}/holds', [Facility\UnitHoldController::class, 'store']);
-    Route::delete('units/{unit}/holds/{hold}', [Facility\UnitHoldController::class, 'destroy']);
-    Route::get('units/{unit}/occupancies', [Facility\UnitOccupancyController::class, 'index']);
-    Route::get('units/{unit}/access-events', [Controllers\AccessEventController::class, 'forUnit']);
+    Route::apiResource('units', Facility\UnitController::class)->whereNumber('unit');
+    Route::get('units/{unit}/holds', [Facility\UnitHoldController::class, 'index'])->whereNumber('unit');
+    Route::post('units/{unit}/holds', [Facility\UnitHoldController::class, 'store'])->whereNumber('unit');
+    Route::delete('units/{unit}/holds/{hold}', [Facility\UnitHoldController::class, 'destroy'])->whereNumber('unit');
+    Route::get('units/{unit}/occupancies', [Facility\UnitOccupancyController::class, 'index'])->whereNumber('unit');
+    Route::get('units/{unit}/access-events', [Controllers\AccessEventController::class, 'forUnit'])->whereNumber('unit');
 
     Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
     Route::get('contacts/filters/schema', [Controllers\ContactController::class, 'filterSchema']);

@@ -12,12 +12,14 @@ use App\Models\Unit;
 use App\Models\UnitClassRate;
 use App\Support\Auth\Permission;
 use App\Support\Billing\OverdueContracts;
+use App\Support\Facility\UnitCsv;
 use App\Support\Occupancy\Availability;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
@@ -198,6 +200,60 @@ class UnitController extends Controller
                 $contractId !== null && isset($overdueIds[$contractId]),
             );
         }
+    }
+
+    public function export(Request $request): Response
+    {
+        Gate::authorize(Permission::UnitView->value);
+
+        /** @var \App\Models\Employee $employee */
+        $employee = $request->user();
+
+        $validated = $request->validate([
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+        ]);
+
+        $query = Unit::query()
+            ->visibleTo($employee, Permission::UnitView)
+            ->with(['site', 'unitClass']);
+
+        if (! empty($validated['site_id'])) {
+            $query->where('site_id', $validated['site_id']);
+        }
+
+        return response(UnitCsv::export($query->get()), 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="units.csv"',
+        ]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        Gate::authorize(Permission::UnitManage->value);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:5120'],
+        ]);
+
+        $contents = (string) $request->file('file')?->getContent();
+        $result = UnitCsv::import($contents, $request->user());
+
+        if ($result->failed()) {
+            return response()->json([
+                'message' => __('errors.units.csv_import_failed'),
+                'data' => [
+                    'errors' => $result->errors,
+                ],
+            ], 422);
+        }
+
+        return $this->success(
+            [
+                'created' => $result->created,
+                'updated' => $result->updated,
+            ],
+            'Units imported successfully.',
+        );
     }
 
     public function store(Request $request): JsonResponse

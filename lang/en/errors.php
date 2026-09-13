@@ -192,5 +192,21 @@ return [
         'token_unavailable' => 'The voice service could not issue a session token. Try again shortly.',
         'session_already_ended' => 'This voice session has already ended.',
     ],
+    'units' => [
+        'csv_import_failed' => 'The unit CSV could not be imported.',
+        'csv_missing_header' => 'The CSV file is empty.',
+        'csv_invalid_header' => 'The CSV header must be site_code,unit_class_code,unit_number,actual_width,actual_depth,actual_height,note,enabled.',
+        'csv_column_count' => 'This row does not have the expected number of columns.',
+        'csv_site_code_required' => 'site_code is required.',
+        'csv_unknown_site' => 'Unknown site_code :code.',
+        'csv_site_forbidden' => 'You cannot manage units at site :code.',
+        'csv_unit_class_code_required' => 'unit_class_code is required.',
+        'csv_unknown_unit_class' => 'Unknown unit_class_code :code.',
+        'csv_unit_number_required' => 'unit_number is required.',
+        'csv_unit_number_too_long' => 'unit_number may not be longer than 255 characters.',
+        'csv_invalid_decimal' => ':field must be a non-negative number.',
+        'csv_invalid_enabled' => 'enabled must be true, false, 1, or 0.',
+        'csv_duplicate_unit' => 'Duplicate site_code and unit_number in this file.',
+    ],
 ];
 

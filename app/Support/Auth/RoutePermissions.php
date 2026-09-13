@@ -70,6 +70,7 @@ final class RoutePermissions
             'GET /api/unit-classes/{unitClass}/prices' => Permission::CatalogueManage, // Facility\UnitClassPriceController@index
             'GET /api/unit-classes/{unit_class}' => Permission::CatalogueManage, // Facility\UnitClassController@show
             'GET /api/units' => Permission::UnitView, // Facility\UnitController@index
+            'GET /api/units/export' => Permission::UnitView, // Facility\UnitController@export
             'GET /api/units/filters/schema' => Permission::UnitView, // Facility\UnitController@filterSchema
             'GET /api/units/options' => Permission::UnitView, // Facility\UnitController@options
             'GET /api/units/{unit}' => Permission::UnitView, // Facility\UnitController@show
@@ -102,6 +103,7 @@ final class RoutePermissions
             'POST /api/unit-classes' => Permission::CatalogueManage, // Facility\UnitClassController@store
             'POST /api/unit-classes/{unitClass}/prices' => Permission::CatalogueManage, // Facility\UnitClassPriceController@store
             'POST /api/units' => Permission::UnitManage, // Facility\UnitController@store
+            'POST /api/units/import' => Permission::UnitManage, // Facility\UnitController@import
             'POST /api/units/search' => Permission::UnitView, // Facility\UnitController@search
             'POST /api/units/{unit}/holds' => Permission::UnitHoldManage, // Facility\UnitHoldController@store
             'PUT /api/insurances/{insurance}' => Permission::CatalogueManage, // Facility\InsurancePlanController@update
