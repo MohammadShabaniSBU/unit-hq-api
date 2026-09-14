@@ -28,6 +28,7 @@ use App\Models\VoiceSession;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * SQL site-path constraints mirroring {@see SubjectSite}, for list visibility.
@@ -341,53 +342,61 @@ final class SitePath
     }
 
     /**
-     * Site-related branches start from the small site-filtered tables (whereIn)
-     * so the planner does not scan every contact for correlated EXISTS.
+     * Site-related branches start from the small site-filtered tables (UNION)
+     * so the planner materializes related contact ids instead of OR-ing
+     * five whereIn subqueries against every contact.
      *
      * @param  list<int>  $siteIds
      */
     private static function applyContactRelatedToSites(Builder $outer, array $siteIds): void
     {
-        $outer
-            ->whereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
-                $sub->select('contact_sites.contact_id')
-                    ->from('contact_sites')
-                    ->whereIn('contact_sites.site_id', $siteIds);
-            })
-            ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
-                $sub->select('deals.contact_id')
-                    ->from('deals')
-                    ->whereIn('deals.site_id', $siteIds);
-            })
-            ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
-                $sub->select('reservations.contact_id')
-                    ->from('reservations')
-                    ->join('units', 'units.id', '=', 'reservations.unit_id')
-                    ->whereIn('units.site_id', $siteIds);
-            })
-            ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
-                $sub->select('contracts.contact_id')
-                    ->from('contracts')
-                    ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
-                        $occ->selectRaw('1')
-                            ->from('unit_occupancies')
-                            ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
-                            ->whereColumn('unit_occupancies.contract_id', 'contracts.id')
-                            ->whereIn('units.site_id', $siteIds)
-                            ->whereRaw(
-                                'unit_occupancies.id = (
-                                    SELECT uo2.id FROM unit_occupancies uo2
-                                    WHERE uo2.contract_id = contracts.id
-                                    ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
-                                             uo2.started_on DESC
-                                    LIMIT 1
-                                )'
-                            );
-                    });
-            })
-            ->orWhereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
-                self::messageThreadRelatedToSites($sub, $siteIds);
-            });
+        $outer->whereIn('contacts.id', function (QueryBuilder $sub) use ($siteIds): void {
+            $sub->select('related_contacts.contact_id')
+                ->fromSub(self::contactIdsRelatedToSites($siteIds), 'related_contacts');
+        });
+    }
+
+    /**
+     * @param  list<int>  $siteIds
+     */
+    private static function contactIdsRelatedToSites(array $siteIds): QueryBuilder
+    {
+        $fromSites = DB::table('contact_sites')
+            ->select('contact_sites.contact_id')
+            ->whereIn('contact_sites.site_id', $siteIds);
+
+        $fromDeals = DB::table('deals')
+            ->select('deals.contact_id')
+            ->whereIn('deals.site_id', $siteIds);
+
+        $fromReservations = DB::table('reservations')
+            ->select('reservations.contact_id')
+            ->join('units', 'units.id', '=', 'reservations.unit_id')
+            ->whereIn('units.site_id', $siteIds);
+
+        $fromOccupancies = DB::table('unit_occupancies')
+            ->select('contracts.contact_id')
+            ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
+            ->join('contracts', 'contracts.id', '=', 'unit_occupancies.contract_id')
+            ->whereIn('units.site_id', $siteIds)
+            ->whereRaw(
+                'unit_occupancies.id = (
+                    SELECT uo2.id FROM unit_occupancies uo2
+                    WHERE uo2.contract_id = contracts.id
+                    ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
+                             uo2.started_on DESC
+                    LIMIT 1
+                )'
+            );
+
+        $fromThreads = DB::query();
+        self::messageThreadRelatedToSites($fromThreads, $siteIds);
+
+        return $fromSites
+            ->union($fromDeals)
+            ->union($fromReservations)
+            ->union($fromOccupancies)
+            ->union($fromThreads);
     }
 
     /**

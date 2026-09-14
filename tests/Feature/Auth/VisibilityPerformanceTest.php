@@ -124,14 +124,21 @@ class VisibilityPerformanceTest extends TestCase
         DB::flushQueryLog();
         DB::enableQueryLog();
         $response = $this->getJson('/api/contacts?per_page=50&site_id='.$this->siteA->id)->assertOk();
-        $queryCount = count(DB::getQueryLog());
+        $queries = DB::getQueryLog();
         DB::disableQueryLog();
 
         $this->assertSame(8, $response->json('meta.total'));
         $this->assertLessThanOrEqual(
             20,
-            $queryCount,
-            "Expected bounded queries for the contacts list with site_id, got {$queryCount}",
+            count($queries),
+            'Expected bounded queries for the contacts list with site_id, got '.count($queries),
+        );
+
+        $sql = collect($queries)->pluck('query')->implode(' ');
+        $this->assertStringContainsString(
+            'union',
+            strtolower($sql),
+            'Site-filtered contacts list must UNION related contact ids, not OR five whereIn subqueries.',
         );
     }
 }

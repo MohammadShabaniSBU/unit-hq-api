@@ -60,6 +60,26 @@ class ContactController extends Controller
         );
     }
 
+    public function statusCounts(Request $request): JsonResponse
+    {
+        Gate::authorize(Permission::ContactView->value);
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        $query = Contact::query()->visibleTo($employee, Permission::ContactView);
+        $this->applyPortalSiteFilter($query, $request, Contact::class, Permission::ContactView);
+
+        $search = $request->filled('search')
+            ? $request->string('search')->trim()->value()
+            : null;
+
+        return $this->success(
+            Contact::statusCounts($search !== '' ? $search : null, $query),
+            'Contact status counts retrieved successfully.',
+        );
+    }
+
     public function filterSchema(): JsonResponse
     {
         Gate::authorize(Permission::ContactView->value);

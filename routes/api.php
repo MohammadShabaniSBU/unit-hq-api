@@ -344,6 +344,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('contacts/options', [Controllers\ContactController::class, 'options']);
     Route::get('contacts/filters/schema', [Controllers\ContactController::class, 'filterSchema']);
+    Route::get('contacts/status-counts', [Controllers\ContactController::class, 'statusCounts']);
     Route::post('contacts/search', [Controllers\ContactController::class, 'search']);
     Route::get('contacts/board', [Controllers\ContactBoardController::class, 'index']);
     Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardController::class, 'column']);

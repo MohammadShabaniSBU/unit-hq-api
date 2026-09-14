@@ -124,6 +124,7 @@ final class RoutePermissions
             'GET /api/contacts/board/columns/{status}' => Permission::ContactView, // ContactBoardController@column
             'GET /api/contacts/filters/schema' => Permission::ContactView, // ContactController@filterSchema
             'GET /api/contacts/options' => Permission::ContactView, // ContactController@options
+            'GET /api/contacts/status-counts' => Permission::ContactView, // ContactController@statusCounts
             'GET /api/contacts/{contact}' => Permission::ContactView, // ContactController@show
             'GET /api/contacts/{contact}/ai-summary' => Permission::AiSummaryView, // AiSummaryController@show
             'GET /api/contacts/{contact}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
