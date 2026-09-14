@@ -4,7 +4,7 @@
 
 - **Laravel 13**, PHP 8.3
 - **Auth:** Sanctum
-- **DB:** SQLite locally, PostgreSQL in deployment. Single database (mono-tenant).
+- **DB:** SQLite locally, PostgreSQL in deployment. Single database (mono-tenant). The app's pgsql connection sets `jit = off` on connect — this is a small OLTP schema where JIT compilation is measured overhead, never a win.
 - **Architecture:** business logic lives in **controllers + models** — there is deliberately **no `app/Services/` layer**. Multi-step operations use explicit DB transactions. Shared billing math / orchestration: `App\Support\Billing\` (`BillingMath`, `ContractBilling`).
 - **API response shape** via `ApiResponsable`: `{ message, data }`, paginated responses include `{ meta }`.
 - **Tests:** PHPUnit with SQLite in-memory.

@@ -93,6 +93,7 @@ use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -274,6 +275,12 @@ class AppServiceProvider extends ServiceProvider
 
             if (is_string($requestId) && $requestId !== '') {
                 RequestId::set($requestId);
+            }
+        });
+
+        Event::listen(ConnectionEstablished::class, function (ConnectionEstablished $event): void {
+            if ($event->connection->getDriverName() === 'pgsql') {
+                $event->connection->statement('SET jit = off');
             }
         });
 

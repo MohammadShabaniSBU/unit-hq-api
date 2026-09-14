@@ -417,8 +417,8 @@ final class SitePath
                 $fallback
                     ->whereNotExists(function (QueryBuilder $sub): void {
                         self::uniqueIdentityForLatestAccount($sub, 'message_threads.id');
-                    });
-                self::applyContactBusinessSiteExists($fallback, 'message_threads.contact_id', $siteIds);
+                    })
+                    ->whereIn('message_threads.contact_id', self::contactBusinessSiteIds($siteIds));
             });
         });
     }
@@ -437,8 +437,8 @@ final class SitePath
                     $fallback
                         ->whereNotExists(function (QueryBuilder $ident): void {
                             self::uniqueIdentityForLatestAccount($ident, 'message_threads.id');
-                        });
-                    self::applyContactBusinessSiteExists($fallback, 'message_threads.contact_id', $siteIds);
+                        })
+                        ->whereIn('message_threads.contact_id', self::contactBusinessSiteIds($siteIds));
                 });
             });
     }
@@ -455,94 +455,81 @@ final class SitePath
         ?array $siteIds = null,
     ): void {
         $ident->selectRaw('1')
-            ->from('site_sender_identities')
-            ->whereNotNull('site_sender_identities.site_id')
-            ->whereIn('site_sender_identities.account_id', function (QueryBuilder $account) use ($threadIdColumn): void {
+            ->fromSub(self::singleSiteIdentityAccounts(), 'unique_site_identity')
+            ->whereIn('unique_site_identity.account_id', function (QueryBuilder $account) use ($threadIdColumn): void {
                 $account->select('messages.communication_account_id')
                     ->from('messages')
                     ->whereColumn('messages.message_thread_id', $threadIdColumn)
                     ->whereNotNull('messages.communication_account_id')
                     ->orderByDesc('messages.id')
                     ->limit(1);
-            })
-            ->whereRaw(
-                '(SELECT COUNT(*) FROM site_sender_identities AS ssi_uniq
-                  WHERE ssi_uniq.account_id = site_sender_identities.account_id
-                    AND ssi_uniq.site_id IS NOT NULL) = 1'
-            );
+            });
 
         if ($siteIds !== null) {
-            $ident->whereIn('site_sender_identities.site_id', $siteIds);
+            $ident->whereIn('unique_site_identity.site_id', $siteIds);
         }
     }
 
     /**
-     * Contact is related to a granted site via deal / reservation / occupancy /
+     * Accounts that have exactly one non-null site identity. A company-scoped
+     * account shared across sites is excluded.
+     */
+    private static function singleSiteIdentityAccounts(): QueryBuilder
+    {
+        return DB::table('site_sender_identities')
+            ->selectRaw('account_id, MIN(site_id) AS site_id')
+            ->whereNotNull('site_id')
+            ->groupBy('account_id')
+            ->havingRaw('COUNT(*) = 1');
+    }
+
+    /**
+     * Contact ids related to a granted site via deal / reservation / occupancy /
      * signature hold / contact_sites — used when a comms account is shared.
      *
-     * @param  Builder<Model>|QueryBuilder  $q
      * @param  list<int>  $siteIds
      */
-    private static function applyContactBusinessSiteExists(
-        Builder|QueryBuilder $q,
-        string $contactIdColumn,
-        array $siteIds,
-    ): void {
-        $q->where(function (Builder|QueryBuilder $outer) use ($contactIdColumn, $siteIds): void {
-            $outer
-                ->whereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
-                    $sub->selectRaw('1')
-                        ->from('contact_sites')
-                        ->whereColumn('contact_sites.contact_id', $contactIdColumn)
-                        ->whereIn('contact_sites.site_id', $siteIds);
-                })
-                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
-                    $sub->selectRaw('1')
-                        ->from('deals')
-                        ->whereColumn('deals.contact_id', $contactIdColumn)
-                        ->whereIn('deals.site_id', $siteIds);
-                })
-                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
-                    $sub->selectRaw('1')
-                        ->from('reservations')
-                        ->join('units', 'units.id', '=', 'reservations.unit_id')
-                        ->whereColumn('reservations.contact_id', $contactIdColumn)
-                        ->whereIn('units.site_id', $siteIds);
-                })
-                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
-                    $sub->selectRaw('1')
-                        ->from('contracts')
-                        ->whereColumn('contracts.contact_id', $contactIdColumn)
-                        ->whereExists(function (QueryBuilder $occ) use ($siteIds): void {
-                            $occ->selectRaw('1')
-                                ->from('unit_occupancies')
-                                ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
-                                ->whereColumn('unit_occupancies.contract_id', 'contracts.id')
-                                ->whereIn('units.site_id', $siteIds)
-                                ->whereRaw(
-                                    'unit_occupancies.id = (
-                                        SELECT uo2.id FROM unit_occupancies uo2
-                                        WHERE uo2.contract_id = contracts.id
-                                        ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
-                                                 uo2.started_on DESC
-                                        LIMIT 1
-                                    )'
-                                );
-                        });
-                })
-                ->orWhereExists(function (QueryBuilder $sub) use ($contactIdColumn, $siteIds): void {
-                    $sub->selectRaw('1')
-                        ->from('contracts')
-                        ->whereColumn('contracts.contact_id', $contactIdColumn)
-                        ->whereExists(function (QueryBuilder $hold) use ($siteIds): void {
-                            $hold->selectRaw('1')
-                                ->from('unit_holds')
-                                ->join('units', 'units.id', '=', 'unit_holds.unit_id')
-                                ->whereColumn('unit_holds.contract_id', 'contracts.id')
-                                ->whereNull('unit_holds.released_at')
-                                ->whereIn('units.site_id', $siteIds);
-                        });
-                });
-        });
+    private static function contactBusinessSiteIds(array $siteIds): QueryBuilder
+    {
+        $fromSites = DB::table('contact_sites')
+            ->select('contact_sites.contact_id')
+            ->whereIn('contact_sites.site_id', $siteIds);
+
+        $fromDeals = DB::table('deals')
+            ->select('deals.contact_id')
+            ->whereIn('deals.site_id', $siteIds);
+
+        $fromReservations = DB::table('reservations')
+            ->select('reservations.contact_id')
+            ->join('units', 'units.id', '=', 'reservations.unit_id')
+            ->whereIn('units.site_id', $siteIds);
+
+        $fromOccupancies = DB::table('unit_occupancies')
+            ->select('contracts.contact_id')
+            ->join('units', 'units.id', '=', 'unit_occupancies.unit_id')
+            ->join('contracts', 'contracts.id', '=', 'unit_occupancies.contract_id')
+            ->whereIn('units.site_id', $siteIds)
+            ->whereRaw(
+                'unit_occupancies.id = (
+                    SELECT uo2.id FROM unit_occupancies uo2
+                    WHERE uo2.contract_id = contracts.id
+                    ORDER BY CASE WHEN uo2.ended_on IS NULL THEN 0 ELSE 1 END,
+                             uo2.started_on DESC
+                    LIMIT 1
+                )'
+            );
+
+        $fromHolds = DB::table('unit_holds')
+            ->select('contracts.contact_id')
+            ->join('units', 'units.id', '=', 'unit_holds.unit_id')
+            ->join('contracts', 'contracts.id', '=', 'unit_holds.contract_id')
+            ->whereNull('unit_holds.released_at')
+            ->whereIn('units.site_id', $siteIds);
+
+        return $fromSites
+            ->union($fromDeals)
+            ->union($fromReservations)
+            ->union($fromOccupancies)
+            ->union($fromHolds);
     }
 }
