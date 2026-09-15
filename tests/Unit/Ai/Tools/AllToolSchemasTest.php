@@ -13,6 +13,7 @@ use App\Ai\Tools\CreateOffer;
 use App\Ai\Tools\CreateReservation;
 use App\Ai\Tools\CreateTask;
 use App\Ai\Tools\FetchObjects;
+use App\Ai\Tools\ResolveCalendar;
 use App\Ai\Tools\SetCustomProperty;
 use App\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +47,7 @@ class AllToolSchemasTest extends TestCase
             CreateReservation::class,
             CreateTask::class,
             FetchObjects::class,
+            ResolveCalendar::class,
             SetCustomProperty::class,
         ];
     }

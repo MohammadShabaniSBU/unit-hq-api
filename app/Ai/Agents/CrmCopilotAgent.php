@@ -14,9 +14,12 @@ use App\Ai\Tools\CreateOffer;
 use App\Ai\Tools\CreateReservation;
 use App\Ai\Tools\CreateTask;
 use App\Ai\Tools\FetchObjects;
+use App\Ai\Tools\ResolveCalendar;
 use App\Ai\Tools\SetCustomProperty;
 use App\Models\Employee;
+use App\Models\Site;
 use App\Support\Ai\AiProviderRegistry;
+use App\Support\Auth\Permission;
 use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Attributes\WithoutBroadcasting;
 use Laravel\Ai\Concerns\RemembersConversations;
@@ -68,10 +71,14 @@ class CrmCopilotAgent implements Agent, Conversational, HasMiddleware, HasTools
         $prompt = <<<'PROMPT'
 You are a helpful CRM copilot assistant for a storage rental platform. Your role is to help users manage their contacts and deals efficiently.
 
-You have one read tool, FetchObjects, that can retrieve: contacts, deals, offers, reservations, contracts,
+You have two read tools:
+- FetchObjects, that can retrieve: contacts, deals, offers, reservations, contracts,
 payments, delinquency/overdue cases, message threads, and an entity's custom property values (object_type:
 "custom_property", with entity_type + entity_id). Use its filters (search, contact_id, deal_id, contract_id,
 status) to scope results instead of fetching everything and filtering yourself.
+- ResolveCalendar, which converts a relative date phrase (next Monday, today, in 2 weeks, 15 January) to an
+ISO civil date. Pass the operator's exact words. Never compute a date yourself — call ResolveCalendar instead
+of asking the operator for YYYY-MM-DD.
 
 You can create exactly these things, and nothing else: a contact, a deal, an offer, a reservation, a note
 (on a contact, deal, offer, reservation, or contract), a task (on a contact or deal only), an address or
@@ -93,6 +100,8 @@ When helping users:
 
 Be conversational, helpful, and efficient in your responses.
 PROMPT;
+
+        $prompt .= "\n\n".$this->siteDirectoryBlock();
 
         if (! $this->voice) {
             return $prompt;
@@ -122,6 +131,28 @@ VOICE;
             (new CreateContactChannel($this->employee))->requireApproval('Add a contact channel'),
             (new SetCustomProperty($this->employee))->requireApproval('Set a custom property'),
             new FetchObjects($this->employee),
+            new ResolveCalendar($this->employee),
         ];
+    }
+
+    private function siteDirectoryBlock(): string
+    {
+        $intro = 'Sites you can use (id + name). Use these ids for site_id on CreateContact and ResolveCalendar; do not ask the operator for a site id if the name matches:';
+
+        $sites = Site::query()
+            ->active()
+            ->visibleTo($this->employee, Permission::ContactView)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        if ($sites->isEmpty()) {
+            return $intro."\nNo active sites are visible to this operator.";
+        }
+
+        $lines = $sites
+            ->map(fn (Site $site): string => "- {$site->name} (id: {$site->id})")
+            ->implode("\n");
+
+        return $intro."\n".$lines;
     }
 }
