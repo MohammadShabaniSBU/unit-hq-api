@@ -47,6 +47,7 @@ use App\Support\Ai\Agents\AgentRegistry;
 use App\Support\Ai\Agents\ConciergeAgentDefinition;
 use App\Support\Ai\Agents\SalesAgentDefinition;
 use App\Support\Ai\Agents\SupportAgentDefinition;
+use App\Support\Ai\CopilotConversationStore;
 use App\Support\Ai\Drivers\CassetteDriver;
 use App\Support\Ai\Drivers\FakeModelDriver;
 use App\Support\Ai\Drivers\LaravelAiDriver;
@@ -65,9 +66,9 @@ use App\Support\Ai\Tools\ChannelSendTool;
 use App\Support\Ai\Tools\ContractSummaryTool;
 use App\Support\Ai\Tools\CrmCreateContactTool;
 use App\Support\Ai\Tools\CrmCreateDealTool;
-use App\Support\Ai\Tools\CrmUpdateContactTool;
 use App\Support\Ai\Tools\CrmCreateNoteTool;
 use App\Support\Ai\Tools\CrmCreateTaskTool;
+use App\Support\Ai\Tools\CrmUpdateContactTool;
 use App\Support\Ai\Tools\EscalateTool;
 use App\Support\Ai\Tools\FacilityAvailabilityTool;
 use App\Support\Ai\Tools\FacilityFindSitesTool;
@@ -89,6 +90,7 @@ use App\Support\ESign\ESignProviderRegistry;
 use App\Support\Facility\Geocoder;
 use App\Support\Facility\NominatimGeocoder;
 use App\Support\Facility\NullGeocoder;
+use App\Support\Http\BufferFailedHttpResponse;
 use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -98,11 +100,13 @@ use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\AgentStreamed;
@@ -179,6 +183,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(HandoffEvaluator::class, HandoffRules::class);
         $this->app->singleton(GuardrailPipeline::class, CompositeGuardrailPipeline::class);
         $this->app->singleton(ArgumentProvenance::class);
+        $this->app->singleton(ConversationStore::class, fn (): CopilotConversationStore => new CopilotConversationStore(
+            config('ai.conversations.connection'),
+        ));
 
         $this->app->singleton(ModelDriver::class, function ($app): ModelDriver {
             return match ((string) config('agents.driver')) {
@@ -296,5 +303,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(AgentStreamed::class, [RecordAgentUsage::class, 'handle']);
         Event::listen(ToolInvoked::class, [IncrementAiUsageToolCalls::class, 'handle']);
         Event::listen(AgentFailedOver::class, [RecordAgentFailoverUsage::class, 'handle']);
+
+        Http::globalResponseMiddleware(new BufferFailedHttpResponse);
     }
 }
