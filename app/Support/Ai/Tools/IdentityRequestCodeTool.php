@@ -21,6 +21,7 @@ use App\Support\Communications\Exceptions\ProviderRequestFailed;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\Results\SendResult;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\Senders\SmsSender;
@@ -97,12 +98,6 @@ final class IdentityRequestCodeTool implements AgentTool
             return $this->escalate('No on-file channel can receive a verification code.');
         }
 
-        // Fail closed on the destination, not the site. A suppressed
-        // all-scope address cannot receive a code — do not send, do not issue.
-        if (VerificationDestination::isSuppressed($channel)) {
-            return $this->escalate('This address cannot receive a verification code.');
-        }
-
         $site = ComposerIdentity::resolveSite($contact);
         if ($site === null) {
             return $this->escalate('No on-file channel can receive a verification code.');
@@ -119,11 +114,17 @@ final class IdentityRequestCodeTool implements AgentTool
         }
 
         try {
-            $this->deliver($issued['row'], $issued['code'], $channel, $contact, $site);
+            $result = $this->deliver($issued['row'], $issued['code'], $channel, $contact, $site);
         } catch (ChannelNotConfigured|ProviderRequestFailed|Throwable) {
             VerificationChallenge::close($issued['row']);
 
             return $this->escalate('A verification code cannot be sent right now.');
+        }
+
+        if ($result->wasSuppressed()) {
+            VerificationChallenge::close($issued['row']);
+
+            return $this->escalate('This address cannot receive a verification code.');
         }
 
         $masked = MaskedDestination::mask($channel);
@@ -145,7 +146,7 @@ final class IdentityRequestCodeTool implements AgentTool
         ContactChannel $channel,
         Contact $contact,
         Site $site,
-    ): void {
+    ): SendResult {
         $minutes = (int) config('agents.verification.ttl_minutes', 10);
         $body = "Your verification code is {$code}. It expires in {$minutes} minutes.";
         $context = SendContext::system([
@@ -153,7 +154,7 @@ final class IdentityRequestCodeTool implements AgentTool
         ]);
 
         if (VerificationDestination::deliveryChannel($channel) === Channel::Email) {
-            app(EmailSender::class)->send(
+            return app(EmailSender::class)->send(
                 new EmailMessage(
                     to: [new EmailAddress($channel->value)],
                     subject: 'Your verification code',
@@ -164,11 +165,9 @@ final class IdentityRequestCodeTool implements AgentTool
                 $contact,
                 $context,
             );
-
-            return;
         }
 
-        app(SmsSender::class)->send(
+        return app(SmsSender::class)->send(
             new SmsMessage(to: $channel->value, body: $body),
             $site,
             $contact,

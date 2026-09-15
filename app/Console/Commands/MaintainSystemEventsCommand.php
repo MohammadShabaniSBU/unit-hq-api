@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Support\SystemEventPartitions;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -41,28 +42,9 @@ class MaintainSystemEventsCommand extends Command
         $months = [now()->startOfMonth(), now()->startOfMonth()->addMonth()];
 
         foreach ($months as $from) {
-            $to = $from->copy()->addMonth();
-            $name = 'system_events_'.$from->format('Y_m');
-
-            $exists = DB::selectOne(
-                'SELECT 1 FROM pg_class WHERE relname = ?',
-                [$name],
-            );
-
-            if ($exists !== null) {
-                continue;
+            if (SystemEventPartitions::ensureMonth($from)) {
+                $this->info('Created partition system_events_'.$from->format('Y_m').'.');
             }
-
-            DB::statement(sprintf(
-                "CREATE TABLE %s PARTITION OF system_events FOR VALUES FROM ('%s') TO ('%s')",
-                $name,
-                $from->toDateString(),
-                $to->toDateString(),
-            ));
-            DB::statement("CREATE INDEX {$name}_request_id_idx ON {$name} (request_id)");
-            DB::statement("CREATE INDEX {$name}_event_created_at_idx ON {$name} (event, created_at)");
-            DB::statement("CREATE INDEX {$name}_subject_created_at_idx ON {$name} (subject_type, subject_id, created_at)");
-            $this->info("Created partition {$name}.");
         }
     }
 

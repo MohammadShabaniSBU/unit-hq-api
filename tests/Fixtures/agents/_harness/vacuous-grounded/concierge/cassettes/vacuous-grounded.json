@@ -2,8 +2,8 @@
     "agent": "concierge",
     "fixture": "concierge/vacuous-grounded",
     "turn_index": 0,
-    "prompt_hash": "d1774aba224d007d18c5a69f796dad011a7a4bb6be85796b130f81ffc18d95a2",
-    "schema_hash": "0180900d660cfb29f6a136410e0ec0bd95010269b593bc92f7a4932c84f50845",
+    "prompt_hash": "7353ce7a8659173b53baddb464436cce38a47128b41baa8104cc08f05909dc4d",
+    "schema_hash": "fc47318f9c0289238e371584e967e7a67fb2b6d7a594f2b5b56e5114f79d3076",
     "responses": [
         {
             "content": "The figure is €12.00 due 2099-01-01.",

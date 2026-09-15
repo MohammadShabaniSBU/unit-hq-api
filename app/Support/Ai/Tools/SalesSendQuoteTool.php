@@ -18,9 +18,7 @@ use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\Exceptions\ChannelNotConfigured;
 use App\Support\Communications\Exceptions\ProviderRequestFailed;
-use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
-use App\Support\Communications\SuppressionWriter;
 use Throwable;
 
 /**
@@ -122,10 +120,6 @@ final class SalesSendQuoteTool implements AgentTool
         }
 
         [$channel, $to] = $route;
-
-        if (SuppressionWriter::blocks($channel, $to, SendClass::Transactional) !== null) {
-            return $this->suppressed($channel);
-        }
 
         $site = ComposerIdentity::resolveSite($contact);
         if ($site === null) {

@@ -9,8 +9,6 @@ use App\Models\Contact;
 use App\Models\ContactChannel;
 use App\Support\Automation\SubjectChain;
 use App\Support\Communications\Channel;
-use App\Support\Communications\SendClass;
-use App\Support\Communications\SuppressionWriter;
 
 /**
  * Destination is resolved from contact_channels rows that already belong to
@@ -60,14 +58,5 @@ final class VerificationDestination
     public static function preferenceOf(ContactChannel $channel): string
     {
         return $channel->type === ContactChannelType::Email ? 'email' : 'sms';
-    }
-
-    public static function isSuppressed(ContactChannel $channel): bool
-    {
-        return SuppressionWriter::blocks(
-            self::deliveryChannel($channel),
-            $channel->value,
-            SendClass::Transactional,
-        ) !== null;
     }
 }

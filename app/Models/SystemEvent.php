@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Support\Auth\Actor;
 use App\Support\RequestId;
+use App\Support\SystemEventPartitions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -56,19 +57,25 @@ class SystemEvent extends Model
     {
         $write = function () use ($event, $subject, $payload): void {
             try {
-                $actor = Actor::current();
-                $causer = $actor instanceof Employee ? $actor : null;
+                // Nested transaction → savepoint so a failed insert (missing
+                // partition, unique, …) does not abort an outer DB transaction.
+                DB::transaction(function () use ($event, $subject, $payload): void {
+                    SystemEventPartitions::ensureMonth(now());
 
-                static::query()->create([
-                    'event' => $event,
-                    'request_id' => RequestId::get(),
-                    'subject_type' => $subject?->getMorphClass(),
-                    'subject_id' => $subject?->getKey(),
-                    'causer_type' => $causer?->getMorphClass(),
-                    'causer_id' => $causer?->getKey(),
-                    'payload' => $payload === [] ? null : $payload,
-                    'created_at' => now(),
-                ]);
+                    $actor = Actor::current();
+                    $causer = $actor instanceof Employee ? $actor : null;
+
+                    static::query()->create([
+                        'event' => $event,
+                        'request_id' => RequestId::get(),
+                        'subject_type' => $subject?->getMorphClass(),
+                        'subject_id' => $subject?->getKey(),
+                        'causer_type' => $causer?->getMorphClass(),
+                        'causer_id' => $causer?->getKey(),
+                        'payload' => $payload === [] ? null : $payload,
+                        'created_at' => now(),
+                    ]);
+                });
             } catch (Throwable $e) {
                 report($e);
             }

@@ -14,7 +14,7 @@ class AgentChannelLimitsTest extends TestCase
     #[Test]
     public function voice_overrides_timeout_and_redraft_sms_keeps_defaults(): void
     {
-        $this->assertSame(8_000, AgentChannelLimits::turnTimeoutMs(AgentChannel::Voice));
+        $this->assertSame(20_000, AgentChannelLimits::turnTimeoutMs(AgentChannel::Voice));
         $this->assertSame(1, AgentChannelLimits::maxRedraftAttempts(AgentChannel::Voice));
         $this->assertSame(60_000, AgentChannelLimits::turnTimeoutMs(AgentChannel::Sms));
         $this->assertSame(2, AgentChannelLimits::maxRedraftAttempts(AgentChannel::Sms));

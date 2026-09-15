@@ -20,6 +20,7 @@ use App\Support\Ai\Enums\ToolErrorCode;
 use App\Support\Ai\Enums\ToolInvocationStatus;
 use App\Support\Communications\Channel;
 use App\Support\Communications\MessageSource;
+use App\Support\Communications\MessageStatus;
 use App\Support\Communications\SuppressionReason;
 use App\Support\Communications\SuppressionScope;
 use App\Support\Communications\SuppressionWriter;
@@ -219,7 +220,8 @@ class SalesSendQuoteToolTest extends TestCase
         $this->assertSame(ToolInvocationStatus::Error, $result->status);
         $this->assertSame(ToolErrorCode::Unavailable, $result->error?->errorCode);
         $this->assertSame('agent.escalate', $result->error?->recovery['tool'] ?? null);
-        $this->assertSame(0, Message::query()->count());
+        $this->assertSame(1, Message::query()->count());
+        $this->assertSame(MessageStatus::Failed, Message::query()->first()?->status);
     }
 
     #[Test]
