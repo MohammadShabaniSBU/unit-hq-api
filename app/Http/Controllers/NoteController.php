@@ -59,7 +59,7 @@ class NoteController extends Controller
 
         RecordsActivity::log(LogChannel::Crm, 'note.created', $notable, [
             'note_id' => $note->id,
-            'content' => Str::limit($note->content, 160),
+            'content' => Str::limit(strip_tags($note->content), 160),
         ], $employee);
 
         return $this->created(

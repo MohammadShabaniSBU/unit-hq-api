@@ -78,7 +78,7 @@ class CreateNote implements Tool, Approvable
 
         RecordsActivity::log(LogChannel::Crm, 'note.created', $notable, [
             'note_id' => $note->id,
-            'content' => Str::limit($note->content, 160),
+            'content' => Str::limit(strip_tags($note->content), 160),
         ], $this->employee);
 
         return json_encode([
