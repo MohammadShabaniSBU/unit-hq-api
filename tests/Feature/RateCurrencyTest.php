@@ -58,8 +58,8 @@ class RateCurrencyTest extends TestCase
         Employee::factory()->manager()->create();
 
         $site = Site::factory()->create([
-            'country_id' => Country::factory()->create(['code' => 'GB'])->id,
-            'currency' => 'GBP',
+            'country_id' => Country::factory()->create(['code' => 'ES'])->id,
+            'currency' => 'EUR',
         ]);
         $unitClass = UnitClass::factory()->create();
 
@@ -69,6 +69,6 @@ class RateCurrencyTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $this->assertSame('GBP', $response->json('data.currency'));
+        $this->assertSame('EUR', $response->json('data.currency'));
     }
 }

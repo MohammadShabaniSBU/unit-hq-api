@@ -37,6 +37,7 @@ Before writing code, consult the doc that matches the task:
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
 - Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.
+- Never branch on a literal country code (`'ES'`, `'FR'`, `'GB'`, …) outside `App\Support\Country\`. Read country-dependent behaviour from `CountryProfiles::current()` (D9 / invariant 73).
 - Embed tokens are minted server-side only; dynamic params are always locked.
 - Customer-facing agents never write to the ledger, mutate contracts, grant
   access, or confirm payment. No money, date, or unit identifier in agent output

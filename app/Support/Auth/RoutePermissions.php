@@ -254,6 +254,8 @@ final class RoutePermissions
             'PATCH /api/settings/billing' => Permission::BillingSettingsManage, // Facility\SettingController@updateBilling
             'PATCH /api/tax-rates/{taxRate}' => Permission::TaxRateManage, // TaxRateController@update
             'POST /api/billing-runs' => Permission::BillingRunExecute, // BillingRunController@store
+            'POST /api/billing-runs/retry-failed' => Permission::BillingRunExecute, // BillingRunController@retryFailed
+            'POST /api/contracts/{contract}/billing/retry' => Permission::BillingRunExecute, // ContractController@retryBilling
             'POST /api/contacts/{contact}/payment-methods/setup' => Permission::PaymentRecord, // ContactPaymentMethodController@setup
             'POST /api/contracts/{contract}/autopay/retry' => Permission::PaymentRecord, // ContractAutopayController@retry
             'POST /api/contracts/{contract}/invoices' => Permission::InvoiceIssue, // InvoiceController@storeForContract
@@ -504,6 +506,7 @@ final class RoutePermissions
             'GET /api/employees/{employee}/roles' => Permission::RbacManage, // EmployeeController@roles
             'GET /api/permissions' => Permission::RbacManage, // RbacController@permissions — role editor
             'GET /api/roles' => Permission::RbacManage, // RbacController@roles — role editor
+            'GET /api/deployment' => Exempt::reference('deployment country profile'), // DeploymentController@show
             'GET /api/user' => Exempt::self('own identity'), // EmployeeAuthController@me
             'PATCH /api/employees/{employee}' => Permission::RbacManage, // EmployeeController@update
             'PATCH /api/roles/{role}' => Permission::RbacManage, // RbacController@update

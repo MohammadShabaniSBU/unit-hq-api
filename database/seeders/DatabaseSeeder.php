@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\CredentialStatus;
-use App\Enums\DelinquencyPolicyAction;
 use App\Enums\FiscalRegime;
 use App\Enums\TaxIdType;
 use App\Models\Contact;
@@ -19,12 +18,15 @@ use App\Models\LegalEntity;
 use App\Models\PaymentProviderAccount;
 use App\Models\Price;
 use App\Models\Site;
-use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Models\User;
 use App\Support\Billing\CurrencyGuard;
+use App\Support\Country\CountryProfiles;
+use App\Support\Country\EsProfile;
+use App\Support\Country\FrProfile;
+use App\Support\Country\GbProfile;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -54,9 +56,8 @@ class DatabaseSeeder extends Seeder
 
         $manager = Employee::query()->withCompanyRole('owner')->firstOrFail();
 
-        $spain = Country::query()->where('code', 'ES')->firstOrFail();
-        $uk = Country::query()->where('code', 'GB')->firstOrFail();
-        $france = Country::query()->where('code', 'FR')->firstOrFail();
+        $profile = CountryProfiles::current();
+        $deploymentCountry = Country::query()->where('code', $profile->code())->firstOrFail();
 
         // One placeholder entity (migration may already have inserted it on upgrade).
         // Address mirrors Madrid Centro — the first ES site.
@@ -67,7 +68,7 @@ class DatabaseSeeder extends Seeder
                 'trading_name' => null,
                 'tax_id_type' => TaxIdType::Nif,
                 'vat_number' => null,
-                'country_code' => 'ES',
+                'country_code' => $profile->code(),
                 'address_line1' => 'Calle Placeholder 1',
                 'address_line2' => null,
                 'city' => 'Madrid',
@@ -97,74 +98,46 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $esPolicy = $this->seedDelinquencyPolicy('ES standard', [
-            ['offset_days' => 5, 'action' => DelinquencyPolicyAction::AssessLateFee, 'params' => [
-                'type' => 'percent', 'percent' => '10.00', 'cap_per_case' => '50.00',
-            ]],
-            ['offset_days' => 8, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'overdue',
-            ]],
-            ['offset_days' => 8, 'action' => DelinquencyPolicyAction::RevokeAccess, 'params' => []],
-            ['offset_days' => 12, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
-            ['offset_days' => 20, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'final_demand',
-            ]],
-            ['offset_days' => 20, 'action' => DelinquencyPolicyAction::CreateTask, 'params' => [
-                'title_key' => 'delinquency.task.final_demand', 'urgent' => true,
-            ]],
-        ]);
+        $this->call(DelinquencyPolicySeeder::class);
+        $policy = DelinquencyPolicy::query()
+            ->where('jurisdiction', $profile->code())
+            ->whereNull('archived_at')
+            ->first();
 
-        $ukPolicy = $this->seedDelinquencyPolicy('UK standard', [
-            ['offset_days' => 7, 'action' => DelinquencyPolicyAction::AssessLateFee, 'params' => [
-                'type' => 'flat', 'amount' => '10.00',
-            ]],
-            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'overdue',
-            ]],
-            ['offset_days' => 10, 'action' => DelinquencyPolicyAction::RevokeAccess, 'params' => []],
-            ['offset_days' => 14, 'action' => DelinquencyPolicyAction::PlaceOverlock, 'params' => []],
-            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::RecordNotice, 'params' => [
-                'notice_type' => 'final_demand',
-            ]],
-            ['offset_days' => 21, 'action' => DelinquencyPolicyAction::CreateTask, 'params' => [
-                'title_key' => 'delinquency.task.final_demand', 'urgent' => true,
-            ]],
-        ]);
+        $timezone = $profile->allowedTimezones()[0];
+        $currency = $profile->currency();
+        $siteDefs = match ($profile->code()) {
+            EsProfile::CODE => [
+                ['name' => 'Madrid Centro', 'code' => 'MAD-01'],
+                ['name' => 'Barcelona Port', 'code' => 'BCN-01'],
+                ['name' => 'Valencia Norte', 'code' => 'VLC-01'],
+            ],
+            GbProfile::CODE => [
+                ['name' => 'London East', 'code' => 'LON-01'],
+            ],
+            FrProfile::CODE => [
+                ['name' => 'Paris Sud', 'code' => 'PAR-01'],
+            ],
+            default => [
+                ['name' => 'Main site', 'code' => 'SITE-01'],
+            ],
+        };
 
-        // Sites 1–3 EUR/ES/Madrid; 4 GBP/GB/London; 5 EUR/FR/Paris (Paris unassigned = delinquency disabled)
-        $siteDefs = [
-            ['name' => 'Madrid Centro', 'code' => 'MAD-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['name' => 'Barcelona Port', 'code' => 'BCN-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['name' => 'Valencia Norte', 'code' => 'VLC-01', 'country_id' => $spain->id, 'timezone' => 'Europe/Madrid', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $esPolicy->id],
-            ['name' => 'London East', 'code' => 'LON-01', 'country_id' => $uk->id, 'timezone' => 'Europe/London', 'currency' => 'GBP', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => $ukPolicy->id],
-            ['name' => 'Paris Sud', 'code' => 'PAR-01', 'country_id' => $france->id, 'timezone' => 'Europe/Paris', 'currency' => 'EUR', 'legal_entity_id' => $legalEntity->id, 'delinquency_policy_id' => null],
-        ];
+        $siteDefs = array_map(fn (array $def): array => [
+            ...$def,
+            'country_id' => $deploymentCountry->id,
+            'timezone' => $timezone,
+            'currency' => $currency,
+            'legal_entity_id' => $legalEntity->id,
+            'delinquency_policy_id' => $policy?->id,
+        ], $siteDefs);
 
         $sites = collect();
         foreach ($siteDefs as $def) {
             $sites->push(Site::factory()->create($def));
         }
 
-        // Per-country VAT — no NULL-jurisdiction fallback (mis-countried sites fail loudly).
-        $vatFrom = now()->subYear()->toDateString();
-        foreach (
-            [
-                ['jurisdiction' => 'ES', 'rate' => '21.00', 'is_default' => true],
-                ['jurisdiction' => 'FR', 'rate' => '20.00', 'is_default' => false],
-                ['jurisdiction' => 'GB', 'rate' => '20.00', 'is_default' => false],
-            ] as $vat
-        ) {
-            TaxRate::query()->create([
-                'name' => 'VAT ('.$vat['jurisdiction'].')',
-                'code' => 'vat',
-                'rate' => $vat['rate'],
-                'jurisdiction' => $vat['jurisdiction'],
-                'is_default' => $vat['is_default'],
-                'effective_from' => $vatFrom,
-                'effective_to' => null,
-                'created_by' => $manager->id,
-            ]);
-        }
+        (new CountryTaxSeeder)->run($manager);
 
         (new DiscountCatalogueSeeder)->run($manager);
         $this->call(SizeGuideSeeder::class);
@@ -297,26 +270,4 @@ class DatabaseSeeder extends Seeder
         $this->command?->info("RNG seed: {$rngSeed}");
     }
 
-    /**
-     * @param  list<array{offset_days: int, action: DelinquencyPolicyAction, params: array<string, mixed>}>  $steps
-     */
-    private function seedDelinquencyPolicy(string $name, array $steps): DelinquencyPolicy
-    {
-        $policy = DelinquencyPolicy::query()->create([
-            'name' => $name,
-            'auto_release_overlock' => true,
-            'auto_restore_access' => true,
-        ]);
-
-        foreach (array_values($steps) as $sort => $step) {
-            $policy->steps()->create([
-                'offset_days' => $step['offset_days'],
-                'action' => $step['action'],
-                'params' => $step['params'],
-                'sort' => $sort,
-            ]);
-        }
-
-        return $policy;
-    }
 }

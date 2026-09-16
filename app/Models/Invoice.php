@@ -39,9 +39,6 @@ use Illuminate\Support\Carbon;
  * @property string            $net_total
  * @property string            $tax_total
  * @property string            $gross_total
- * @property string|null       $verifactu_hash
- * @property string|null       $verifactu_prev_hash
- * @property Carbon|null       $verifactu_submitted_at
  * @property int|null          $created_by
  * @property Carbon            $created_at
  * @property Carbon            $updated_at
@@ -83,9 +80,6 @@ class Invoice extends Model
         'net_total',
         'tax_total',
         'gross_total',
-        'verifactu_hash',
-        'verifactu_prev_hash',
-        'verifactu_submitted_at',
         'created_by',
     ];
 
@@ -100,7 +94,6 @@ class Invoice extends Model
             'net_total' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'gross_total' => 'decimal:2',
-            'verifactu_submitted_at' => 'datetime',
             'number' => 'integer',
         ];
     }

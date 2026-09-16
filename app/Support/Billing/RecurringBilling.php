@@ -9,7 +9,9 @@ use App\Enums\ContractStatus;
 use App\Models\Charge;
 use App\Models\Contract;
 use App\Support\Billing\Exceptions\BillingRunFailure;
+use App\Models\Unit;
 use App\Support\Fiscal\InvoiceIssuer;
+use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -183,7 +185,7 @@ final class RecurringBilling
                 'tax_amount' => $breakdown->tax,
                 'amount' => $breakdown->gross,
                 'currency' => SupportedCurrencies::normalize((string) $price->currency),
-                'due_date' => $window['start']->toDateString(),
+                'due_date' => self::dueDate($contract, $window['start']),
                 'description' => self::chargeDescriptionForItem((string) $item->item_type),
             ]);
 
@@ -257,5 +259,18 @@ final class RecurringBilling
         }
 
         return $e->getMessage() !== '' ? $e->getMessage() : null;
+    }
+
+    private static function dueDate(Contract $contract, CarbonImmutable $windowStart): string
+    {
+        $start = $windowStart->toDateString();
+        $contract->loadMissing(['unitItem.item.site']);
+        $item = $contract->unitItem?->item;
+        $site = $item instanceof Unit ? $item->site : null;
+        $issuance = $site !== null
+            ? SiteClock::today($site)->toDateString()
+            : $start;
+
+        return $start >= $issuance ? $start : $issuance;
     }
 }

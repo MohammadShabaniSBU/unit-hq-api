@@ -87,7 +87,8 @@
     default `d/m/y`) never changes storage or API JSON (still `Y-m-d` / datetime). Human-facing
     dates use `App\Support\Time\DateFormat` (API) or the panel `useOrgDateFormat()` helper.
 33. **`tax_rates.jurisdiction` is `NULL` (applies anywhere) or ISO 3166-1 alpha-2 with an
-    optional ISO 3166-2 subdivision** (`ES`, `ES-CN`, `FR`). Validated on write.
+    optional ISO 3166-2 subdivision.** Validated on write (D2). Values are further limited
+    to the deployment country and its `tax_subdivisions` (D9 / invariant 73).
 35. **One contract, one currency.** `contracts.currency` is resolved from the contract's items
     at signing and is immutable thereafter. Every `charge`, `payment`, and `allocation`
     attached to that contract carries or matches it. `balance = Σ charges − Σ payments` is
@@ -398,8 +399,17 @@
     already belonged to the contact. The destination is resolved server-side and
     is never an argument. Caller ID, a self-stated address matching an existing
     contact, and a prior verified conversation for the same contact all stop at
-    `channel_asserted`. `origin = demo` writes `verified` directly and is
+    `channel_asserted`.     `origin = demo` writes `verified` directly and is
     excluded from every metric (invariant 59).
+73. **Every site, legal entity, and tax-rate jurisdiction belongs to the
+    deployment country.** The country is declared by `KEEVARIS_COUNTRY`
+    (ISO 3166-1 alpha-2) and resolved from `CountryProfiles::current()`.
+    Country-dependent behaviour is read from the profile in code; operators
+    cannot edit it. Code never branches on a literal country code outside
+    `App\Support\Country\`. Once the first site or legal entity exists the
+    country is locked. `sites.country_id` stays (D2) and is constant;
+    `sites.timezone` and `SiteClock` stay authoritative for civil dates (D8);
+    `prices.currency` stays the only authority for denomination (D1).
 
 ## Code conventions
 

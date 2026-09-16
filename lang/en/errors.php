@@ -4,6 +4,20 @@ declare(strict_types=1);
 
 return [
     'forbidden' => 'You do not have permission to perform this action.',
+    'deployment' => [
+        'site_country_mismatch' => 'Site country must match the deployment country.',
+        'site_timezone_not_allowed' => 'Site timezone is not in the deployment country allowlist.',
+        'legal_entity_country_mismatch' => 'Legal entity country must match the deployment country.',
+        'invalid_tax_id' => 'The tax ID is invalid for this deployment (:hint).',
+        'tax_jurisdiction_outside_country' => 'Tax jurisdiction must be empty, the deployment country, or one of its subdivisions.',
+        'default_currency_outside_country' => 'Default currency must match the deployment country currency.',
+        'site_currency_outside_country' => 'Site currency must be empty or match the deployment country currency.',
+        'price_currency_outside_country' => 'Price currency does not match the deployment country. Pass allow_currency_mismatch to override.',
+        'delinquency_policy_outside_country' => 'Delinquency policy jurisdiction must match the deployment country.',
+        'payment_rail_not_available' => 'This payment rail is not available in the deployment country.',
+        'no_failed_items' => 'No failed billing items to retry.',
+        'no_failed_billing' => 'This contract has no failed billing to retry.',
+    ],
     'currency' => [
         'mixed_contract_items' => 'Contract items must all share the same currency.',
         'ledger_mismatch' => 'Ledger row currency must match the contract currency.',

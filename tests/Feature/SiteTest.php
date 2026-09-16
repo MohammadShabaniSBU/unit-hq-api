@@ -22,34 +22,47 @@ class SiteTest extends TestCase
         $this->authenticateAsEmployee();
     }
 
-    public function test_country_id_required_on_create(): void
+    public function test_country_id_defaults_to_deployment_country(): void
     {
-        $response = $this->postJson('/api/sites', [
-            'name' => 'No Country Storage',
-            'timezone' => 'Europe/Madrid',
-            'legal_entity_id' => LegalEntity::factory()->create()->id,
-        ]);
-
-        $response->assertStatus(422)->assertJsonValidationErrors(['country_id']);
-    }
-
-    public function test_country_id_accepted_on_create(): void
-    {
-        $country = Country::factory()->create(['code' => 'ES']);
+        $country = Country::factory()->create(['code' => 'ES', 'name' => 'Spain']);
         $entity = LegalEntity::factory()->create();
 
         $response = $this->postJson('/api/sites', [
-            'name' => 'Madrid Storage',
+            'name' => 'No Country Storage',
             'timezone' => 'Europe/Madrid',
-            'country_id' => $country->id,
             'legal_entity_id' => $entity->id,
         ]);
 
         $response->assertCreated();
         $this->assertDatabaseHas('sites', [
-            'name' => 'Madrid Storage',
+            'name' => 'No Country Storage',
             'country_id' => $country->id,
-            'legal_entity_id' => $entity->id,
         ]);
+    }
+
+    public function test_foreign_country_rejected(): void
+    {
+        Country::factory()->create(['code' => 'ES', 'name' => 'Spain']);
+        $gb = Country::factory()->create(['code' => 'GB', 'name' => 'United Kingdom']);
+        $entity = LegalEntity::factory()->create();
+
+        $this->postJson('/api/sites', [
+            'name' => 'London Storage',
+            'timezone' => 'Europe/Madrid',
+            'country_id' => $gb->id,
+            'legal_entity_id' => $entity->id,
+        ])->assertStatus(422)->assertJsonValidationErrors(['country_id']);
+    }
+
+    public function test_timezone_must_be_allowed(): void
+    {
+        Country::factory()->create(['code' => 'ES', 'name' => 'Spain']);
+        $entity = LegalEntity::factory()->create();
+
+        $this->postJson('/api/sites', [
+            'name' => 'Canary Storage',
+            'timezone' => 'Atlantic/Canary',
+            'legal_entity_id' => $entity->id,
+        ])->assertStatus(422)->assertJsonValidationErrors(['timezone']);
     }
 }

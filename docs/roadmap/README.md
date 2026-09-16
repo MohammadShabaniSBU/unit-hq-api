@@ -17,8 +17,10 @@ All 24 sprints (S01–S24) have shipped and are tested, covering:
   to a signed contract, plus a full contract lifecycle (vacate, transfer, scheduled re-rate)
   with correct ledger effects (`ContractTransfer`, `VacatesContracts`/`TransfersContracts`,
   `ContractRateChangeController`)
-- **Recurring billing** — an idempotent `billing:run` (`BillingRunCommand`), scheduled hourly,
-  bills every active contract past its first period with no manual step
+- **Recurring billing** — an idempotent `billing:run` (`BillingRunCommand`), scheduled
+  once a day at the deployment country's `billing_run_at`, bills every active
+  contract past its first period; failed contracts retry on the next nightly run
+  or via a manual retry endpoint
 - **Fiscal invoicing** — numbered, immutable, rectifiable invoices issued per legal entity,
   fully shipped (Spain-ready except for Verifactu, see below)
 - **Card payments & autopay** — a Stripe integration scoped per legal entity (`StripeCustomer`,
@@ -63,8 +65,8 @@ remaining gaps.
 | Fact | Consequence |
 |---|---|
 | First deploy is **Spain** | Verifactu compliance is a launch blocker, not a backlog item |
-| Clients also in **France, UK** | Multi-currency, multi-VAT, `fr` locale, Factur-X-shaped export later |
-| **Mono-tenant**, one install per operator | No tenancy work; but config must be data, not env constants |
+| Clients also in **France, UK** | Separate deployments, each one country (`KEEVARIS_COUNTRY`). Multi-currency and `fr` locale exist; country-dependent behaviour is a `CountryProfile` in code, never operator settings (D9) |
+| **Mono-tenant**, one install per operator | No tenancy work. One deployment, one company, one country. |
 | **Solo maintainer + Cursor** | Sprints are one week, tasks are single-session sized |
 | **Tenant portal: out of scope** | Contacts still do not log in. Revisit after S21. |
 | **E-sign: third-party, multi-vendor** | Adapter interface; Signable is adapter #1 |

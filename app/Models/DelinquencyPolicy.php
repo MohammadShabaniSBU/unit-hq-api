@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int         $id
  * @property string      $name
+ * @property string|null $jurisdiction
  * @property bool        $auto_release_overlock
  * @property bool        $auto_restore_access
  * @property Carbon|null $archived_at
@@ -36,6 +37,7 @@ class DelinquencyPolicy extends Model
 
     protected $fillable = [
         'name',
+        'jurisdiction',
         'auto_release_overlock',
         'auto_restore_access',
         'archived_at',

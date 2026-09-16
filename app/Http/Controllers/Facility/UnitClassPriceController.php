@@ -13,6 +13,7 @@ use App\Models\Site;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
 use App\Support\Billing\CurrencyGuard;
+use App\Support\Country\CountryGuard;
 use App\Support\Billing\SupportedCurrencies;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
@@ -79,11 +80,15 @@ class UnitClassPriceController extends Controller
             ]);
         }
 
+        $allowMismatch = (bool) ($validated['allow_currency_mismatch'] ?? false);
+
         CurrencyGuard::assertRateJunction(
             $site->currency,
             $currency,
-            (bool) ($validated['allow_currency_mismatch'] ?? false),
+            $allowMismatch,
         );
+
+        CountryGuard::assertPriceCurrency($currency, $allowMismatch, $request->user());
 
         $createdBy = $request->user()?->id ?? Employee::query()->value('id');
 

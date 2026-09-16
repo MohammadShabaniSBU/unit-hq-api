@@ -54,17 +54,21 @@ final class BillingRunEngine
      *     est_amount: string
      * }>
      */
+    /**
+     * @param  Array<int, int>|null  $onlyContractIds
+     */
     public function run(
         BillingRunTrigger $trigger = BillingRunTrigger::Manual,
         ?int $contractId = null,
         bool $dryRun = false,
         ?int $createdBy = null,
+        ?array $onlyContractIds = null,
     ): BillingRun|array {
         $horizonDays = max(0, Setting::billing()->billingHorizonDays);
         $catchUpCap = max(1, (int) config('billing.catch_up_cap', 12));
         $horizonDate = CarbonImmutable::today()->addDays($horizonDays)->startOfDay();
 
-        $eligibleIds = $this->eligibleContractIds($horizonDate, $contractId);
+        $eligibleIds = $onlyContractIds ?? $this->eligibleContractIds($horizonDate, $contractId);
 
         if ($dryRun) {
             return $this->dryRunPreview($eligibleIds, $horizonDays, $catchUpCap);

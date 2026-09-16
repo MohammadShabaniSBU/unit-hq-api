@@ -30,5 +30,6 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AGENTS_DRIVER" value="fake"/>
+        <env name="KEEVARIS_COUNTRY" value="ES"/>
     </php>
 </phpunit>

@@ -2,6 +2,8 @@
 
 namespace App\Settings;
 
+use App\Support\Country\CountryProfiles;
+
 readonly class BillingSettings implements SettingsPayload
 {
     public function __construct(
@@ -21,7 +23,7 @@ readonly class BillingSettings implements SettingsPayload
     public static function default(): static
     {
         return new self(
-            defaultCurrency: '',
+            defaultCurrency: self::profileCurrency(),
             defaultBillingInterval: 'month',
             defaultBillingIntervalCount: 1,
             billingAnchorModel: 'anniversary',
@@ -114,5 +116,14 @@ readonly class BillingSettings implements SettingsPayload
             'monthly' => ['month', 1],
             default => ['month', 1],
         };
+    }
+
+    private static function profileCurrency(): string
+    {
+        try {
+            return CountryProfiles::current()->currency();
+        } catch (\Throwable) {
+            return '';
+        }
     }
 }

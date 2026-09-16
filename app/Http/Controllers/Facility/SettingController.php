@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Support\Auth\Permission;
 use App\Support\Billing\SupportedCurrencies;
+use App\Support\Country\CountryGuard;
 use App\Support\Time\DateFormat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,6 +92,10 @@ class SettingController extends Controller
             'transfer_billing'               => ['sometimes', 'required', 'string', Rule::in(['prorate_immediately', 'next_period'])],
             'billing_horizon_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
         ]);
+
+        if (isset($validated['default_currency'])) {
+            CountryGuard::assertDefaultCurrency($validated['default_currency']);
+        }
 
         $anchorModel = $validated['billing_anchor_model'] ?? Setting::billing()->billingAnchorModel;
         $interval = $validated['default_billing_interval'] ?? Setting::billing()->defaultBillingInterval;

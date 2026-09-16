@@ -12,7 +12,9 @@ use App\Models\Contract;
 use App\Models\Country;
 use App\Models\Employee;
 use App\Models\Invoice;
+use App\Models\InvoiceFiscalRecord;
 use App\Models\LegalEntity;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Site;
 use App\Models\Unit;
 use App\Models\UnitClass;
@@ -58,6 +60,10 @@ class InvoiceIssueTest extends TestCase
         $this->assertNotNull($invoice);
         $this->assertSame(InvoiceKind::Simplified, $invoice->kind);
         $this->assertSame('issued', $invoice->status->value);
+        $this->assertFalse(Schema::hasColumn('invoices', 'verifactu_hash'));
+        $this->assertFalse(Schema::hasColumn('invoices', 'verifactu_prev_hash'));
+        $this->assertFalse(Schema::hasColumn('invoices', 'verifactu_submitted_at'));
+        $this->assertTrue(InvoiceFiscalRecord::query()->where('invoice_id', $invoice->id)->exists());
 
         $lines = $invoice->lines;
         $this->assertCount(1, $lines);

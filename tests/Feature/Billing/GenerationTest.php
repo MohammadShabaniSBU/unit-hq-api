@@ -118,7 +118,7 @@ class GenerationTest extends TestCase
         $charges = Charge::query()
             ->where('contract_id', $contract->id)
             ->where('charge_type', ChargeType::Rent)
-            ->where('due_date', '2026-07-15')
+            ->where('period_start', '2026-07-15')
             ->get();
         $this->assertCount(1, $charges);
 
@@ -129,7 +129,7 @@ class GenerationTest extends TestCase
         $this->assertSame($expected->gross, (string) $charge->amount);
         $this->assertSame('2026-07-15', $charge->period_start?->toDateString());
         $this->assertSame('2026-08-15', $charge->period_end?->toDateString());
-        $this->assertSame('2026-07-15', $charge->due_date?->toDateString());
+        $this->assertSame('2026-08-15', $charge->due_date?->toDateString());
         $this->assertNotNull($charge->invoice_id);
 
         $invoice = Invoice::query()->findOrFail($charge->invoice_id);
@@ -343,6 +343,34 @@ class GenerationTest extends TestCase
             );
             $this->assertSame($cursorAfterRun, $plan['billed_through']);
         }
+    }
+
+    public function test_late_period_due_date_is_issuance_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-18 12:00:00', 'Europe/Madrid'));
+
+        $contract = $this->makeContract(
+            billedThrough: '2026-07-15',
+            amount: '100.00',
+        );
+
+        $run = (new BillingRunEngine)->run(
+            BillingRunTrigger::Retry,
+            contractId: $contract->id,
+            createdBy: $this->employee->id,
+        );
+
+        $this->assertSame(1, $run->contracts_billed);
+        $this->assertSame(BillingRunTrigger::Retry, $run->trigger);
+
+        $charge = Charge::query()
+            ->where('contract_id', $contract->id)
+            ->where('charge_type', ChargeType::Rent)
+            ->where('period_start', '2026-07-15')
+            ->firstOrFail();
+
+        $this->assertSame('2026-08-18', $charge->due_date?->toDateString());
+        $this->assertSame(0, \App\Models\Delinquency::query()->where('contract_id', $contract->id)->count());
     }
 
     public function test_fiscal_blocker_atomic_retryable(): void

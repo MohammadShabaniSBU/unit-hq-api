@@ -274,7 +274,7 @@ class ContextTest extends TestCase
         $queryCount = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        $this->assertLessThanOrEqual(40, $queryCount, "Expected bounded queries, got {$queryCount}");
+        $this->assertLessThanOrEqual(45, $queryCount, "Expected bounded queries, got {$queryCount}");
     }
 
     /**

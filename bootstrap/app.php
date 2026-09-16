@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\RejectCountryMismatch;
+use App\Support\Country\CountryProfiles;
 use App\Support\Auth\DenialContext;
 use App\Support\Auth\PermissionDeniedException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -25,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(AssignRequestId::class);
+        $middleware->appendToGroup('api', [RejectCountryMismatch::class]);
 
         // API-only: never call route('login') — that named route does not exist and
         // throws RouteNotFoundException while building AuthenticationException.
@@ -33,37 +36,51 @@ return Application::configure(basePath: dirname(__DIR__))
             : '/');
     })
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('system-events:maintain')->daily();
-        $schedule->command('activitylog:prune-tiers')->daily();
-        $schedule->command('ai-usage:prune')->daily();
-        $schedule->command('ai-usage:sweep')->everyFifteenMinutes();
-        $schedule->command('automations:run-scheduled')->everyMinute();
-        $schedule->command('automations:resume-waiting')->everyMinute();
-        // External reporting date spine; early daily, site-agnostic.
-        $schedule->command('analytics:refresh')->daily();
-        // Re-check embedded insight definitions against live provider state.
-        $schedule->command('insights:validate')->daily();
-        $schedule->command('agents:check-model-prices')->daily();
+        $skipMismatch = static fn (): bool => CountryProfiles::isLockedMismatch();
+
+        $schedule->command('system-events:maintain')->daily()->skip($skipMismatch);
+        $schedule->command('activitylog:prune-tiers')->daily()->skip($skipMismatch);
+        $schedule->command('ai-usage:prune')->daily()->skip($skipMismatch);
+        $schedule->command('ai-usage:sweep')->everyFifteenMinutes()->skip($skipMismatch);
+        $schedule->command('automations:run-scheduled')->everyMinute()->skip($skipMismatch);
+        $schedule->command('automations:resume-waiting')->everyMinute()->skip($skipMismatch);
+        $schedule->command('analytics:refresh')->daily()->skip($skipMismatch);
+        $schedule->command('insights:validate')->daily()->skip($skipMismatch);
+        $schedule->command('agents:check-model-prices')->daily()->skip($skipMismatch);
 
         // Activation must run at least as often as billing, and is registered
-        // first so same-tick hourly runs activate move-ins before billing
-        // evaluates eligibility (a reverse order loses a day of rent).
-        $schedule->command('contracts:activate')->hourly();
-        $schedule->command('billing:run --trigger=scheduled')->hourly();
-        // Sweep catches contracts enabled after the morning run (S06-04).
-        $schedule->command('autopay:collect --trigger=sweep')->hourly();
-        // Idempotent ladder; daily is enough, hourly is safe if wanted.
-        $schedule->command('delinquency:run')->daily();
-        $schedule->command('comms:sweep-orphan-attachments')->daily();
-        $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute();
-        $schedule->command('agents:sweep-pending-actions')->everyTenMinutes();
-        // Authoritative WA template approval sync (webhooks are latency only).
-        $schedule->command('whatsapp:sync-templates')->hourly();
-        // E-sign: retry artifact download before completing; belt for provider expiry.
-        $schedule->command('esign:sweep-completion-pending')->hourly();
-        $schedule->command('esign:sweep-expired')->daily();
-        // Authoritative access convergence (nudges are latency only).
-        $schedule->command('access:sync')->hourly();
+        // first so same-tick runs activate move-ins before billing evaluates
+        // eligibility (a reverse order loses a day of rent). Hourly plus
+        // immediately before the daily billing run.
+        $schedule->command('contracts:activate')->hourly()->skip($skipMismatch);
+
+        $billingAt = '00:30';
+        $billingTz = 'UTC';
+        try {
+            $profile = CountryProfiles::current();
+            $billingAt = $profile->billingRunAt();
+            $billingTz = $profile->schedulerTimezone();
+        } catch (\Throwable) {
+            // Schedule still registers; skip() below no-ops a broken profile.
+        }
+
+        $schedule->command('contracts:activate')
+            ->dailyAt($billingAt)
+            ->timezone($billingTz)
+            ->skip($skipMismatch);
+        $schedule->command('billing:run --trigger=scheduled')
+            ->dailyAt($billingAt)
+            ->timezone($billingTz)
+            ->skip($skipMismatch);
+        $schedule->command('autopay:collect --trigger=sweep')->hourly()->skip($skipMismatch);
+        $schedule->command('delinquency:run')->daily()->skip($skipMismatch);
+        $schedule->command('comms:sweep-orphan-attachments')->daily()->skip($skipMismatch);
+        $schedule->command('comms:sweep-uncorrelated-call-intents')->everyMinute()->skip($skipMismatch);
+        $schedule->command('agents:sweep-pending-actions')->everyTenMinutes()->skip($skipMismatch);
+        $schedule->command('whatsapp:sync-templates')->hourly()->skip($skipMismatch);
+        $schedule->command('esign:sweep-completion-pending')->hourly()->skip($skipMismatch);
+        $schedule->command('esign:sweep-expired')->daily()->skip($skipMismatch);
+        $schedule->command('access:sync')->hourly()->skip($skipMismatch);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

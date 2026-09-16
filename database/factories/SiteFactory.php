@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Country;
 use App\Models\LegalEntity;
 use App\Models\Site;
+use App\Support\Country\CountryProfiles;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -36,10 +37,12 @@ class SiteFactory extends Factory
             'city' => fake()->city(),
             'postal_code' => fake()->postcode(),
             'state_region' => fake()->state(),
-            'country_id' => Country::query()->inRandomOrder()->value('id')
-                ?? Country::factory(),
-            'timezone' => 'Europe/Madrid',
-            'currency' => 'EUR',
+            'country_id' => Country::query()
+                ->where('code', CountryProfiles::current()->code())
+                ->value('id')
+                ?? Country::factory(['code' => CountryProfiles::current()->code(), 'name' => CountryProfiles::current()->code()]),
+            'timezone' => CountryProfiles::current()->allowedTimezones()[0],
+            'currency' => CountryProfiles::current()->currency(),
             'legal_entity_id' => LegalEntity::factory(),
             'archived_at' => null,
         ];

@@ -76,6 +76,7 @@ Route::post('voice/bridge/{bridgeToken}/session/{bridgeSessionId}/transcript', C
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [Controllers\EmployeeAuthController::class, 'logout']);
     Route::get('user', [Controllers\EmployeeAuthController::class, 'me']);
+    Route::get('deployment', [Controllers\DeploymentController::class, 'show']);
     Route::patch('user', [Controllers\EmployeeAuthController::class, 'updateProfile']);
     Route::post('user/password', [Controllers\EmployeeAuthController::class, 'updatePassword']);
     Route::get('permissions', [Controllers\RbacController::class, 'permissions']);
@@ -211,6 +212,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('billing-runs', [Controllers\BillingRunController::class, 'index']);
     Route::get('billing-runs/{billingRun}', [Controllers\BillingRunController::class, 'show']);
     Route::post('billing-runs', [Controllers\BillingRunController::class, 'store']);
+    Route::post('billing-runs/retry-failed', [Controllers\BillingRunController::class, 'retryFailed']);
     Route::get('billing/overdue', [Controllers\BillingOverdueController::class, 'index']);
 
     Route::get('reports/{name}', [Controllers\ReportController::class, 'show']);
@@ -467,6 +469,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('contracts/{contract}/autopay', [Controllers\ContractAutopayController::class, 'update']);
     Route::post('contracts/{contract}/autopay/retry', [Controllers\ContractAutopayController::class, 'retry']);
     Route::get('contracts/{contract}/next-bill', [Controllers\ContractController::class, 'nextBill']);
+    Route::post('contracts/{contract}/billing/retry', [Controllers\ContractController::class, 'retryBilling']);
     Route::get('contracts/{contract}/documents', [Controllers\ContractDocumentController::class, 'index']);
     Route::post('contracts/{contract}/documents', [Controllers\ContractDocumentController::class, 'store']);
     Route::get('contracts/{contract}/documents/preview', [Controllers\ContractDocumentController::class, 'preview']);

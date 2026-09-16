@@ -69,11 +69,11 @@ class LegalEntityTest extends TestCase
 
     public function test_tax_id_unique_among_active(): void
     {
-        $first = LegalEntity::factory()->create(['tax_id' => 'B12345678']);
+        $first = LegalEntity::factory()->create(['tax_id' => 'B12345674']);
 
         $this->postJson('/api/legal-entities', [
             ...$this->validEntityPayload(),
-            'tax_id' => 'B12345678',
+            'tax_id' => 'B12345674',
         ])->assertStatus(422)->assertJsonValidationErrors(['tax_id']);
 
         // Archive first (no active sites) so the same tax_id can be reused.
@@ -81,7 +81,7 @@ class LegalEntityTest extends TestCase
 
         $this->postJson('/api/legal-entities', [
             ...$this->validEntityPayload(),
-            'tax_id' => 'B12345678',
+            'tax_id' => 'B12345674',
         ])->assertCreated();
     }
 
@@ -110,7 +110,7 @@ class LegalEntityTest extends TestCase
     {
         return [
             'legal_name' => 'Test Storage SL',
-            'tax_id' => 'B99887766',
+            'tax_id' => 'B12345674',
             'tax_id_type' => TaxIdType::Nif->value,
             'country_code' => 'ES',
             'address_line1' => 'Calle Test 1',

@@ -29,6 +29,8 @@ use App\Models\Contract;
 use App\Models\ContractNotice;
 use App\Models\Deal;
 use App\Models\Delinquency;
+use App\Models\LegalEntity;
+use App\Models\Site;
 use App\Models\Employee;
 use App\Models\Insurance;
 use App\Models\InsuranceRate;
@@ -84,6 +86,8 @@ use App\Support\Ai\Tools\SalesCreateReservationTool;
 use App\Support\Ai\Tools\SalesProposeOfferTool;
 use App\Support\Ai\Tools\SalesSendQuoteTool;
 use App\Support\Ai\Tools\ToolRegistry;
+use App\Support\Country\CountryProfiles;
+use App\Support\Country\UnknownCountryException;
 use App\Support\Communications\ProviderRegistry;
 use App\Support\Communications\ProviderResolver;
 use App\Support\ESign\ESignProviderRegistry;
@@ -93,6 +97,7 @@ use App\Support\Facility\NullGeocoder;
 use App\Support\Http\BufferFailedHttpResponse;
 use App\Support\Insights\AnalyticsProviderRegistry;
 use App\Support\RequestId;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Events\ConnectionEstablished;
@@ -305,5 +310,41 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(AgentFailedOver::class, [RecordAgentFailoverUsage::class, 'handle']);
 
         Http::globalResponseMiddleware(new BufferFailedHttpResponse);
+
+        if ($this->shouldAssertDeploymentCountry()) {
+            CountryProfiles::assertConfigured();
+            CountryProfiles::syncIdentity();
+        }
+
+        Site::created(static fn () => CountryProfiles::lock());
+        LegalEntity::created(static fn () => CountryProfiles::lock());
+
+        Event::listen(DiagnosingHealth::class, function (): void {
+            if (CountryProfiles::isLockedMismatch()) {
+                throw new UnknownCountryException(
+                    'KEEVARIS_COUNTRY does not match the locked deployment country. Run deployment:audit-country.',
+                );
+            }
+        });
+    }
+
+    private function shouldAssertDeploymentCountry(): bool
+    {
+        if ($this->app->runningUnitTests()) {
+            return true;
+        }
+
+        if (! $this->app->runningInConsole()) {
+            return true;
+        }
+
+        $command = $_SERVER['argv'][1] ?? '';
+        foreach (['migrate', 'db:wipe', 'package:discover', 'config:cache', 'config:clear', 'key:generate'] as $skip) {
+            if ($command === $skip || str_starts_with($command, $skip.':')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

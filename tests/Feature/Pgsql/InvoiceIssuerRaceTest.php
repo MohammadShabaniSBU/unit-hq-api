@@ -174,6 +174,7 @@ PHP);
             // This test disables per-test transactions — scrub committed rows so
             // later suites (e.g. SeederIntegrity) see a clean database.
             $invoiceIds = Invoice::query()->whereIn('contract_id', $contractIds)->pluck('id');
+            DB::table('invoice_fiscal_records')->whereIn('invoice_id', $invoiceIds)->delete();
             DB::table('invoice_lines')->whereIn('invoice_id', $invoiceIds)->delete();
             DB::table('charges')->whereIn('contract_id', $contractIds)->update(['invoice_id' => null]);
             Invoice::query()->whereIn('id', $invoiceIds)->delete();

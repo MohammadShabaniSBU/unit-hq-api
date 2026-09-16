@@ -157,13 +157,11 @@ class SeederIntegrityTest extends TestCase
         $currencies = $sites->pluck('currency')->unique()->filter()->values();
         $timezones = $sites->pluck('timezone')->unique()->filter()->values();
 
-        $this->assertGreaterThanOrEqual(2, $currencies->count());
-        $this->assertGreaterThanOrEqual(2, $timezones->count());
-        $this->assertTrue($currencies->contains('EUR'));
-        $this->assertTrue($currencies->contains('GBP'));
+        $profile = \App\Support\Country\CountryProfiles::current();
+        $this->assertSame([$profile->currency()], $currencies->all());
+        $this->assertEqualsCanonicalizing($profile->allowedTimezones(), $timezones->all());
 
         $contractCurrencies = Contract::query()->pluck('currency')->unique()->values();
-        $this->assertTrue($contractCurrencies->contains('EUR'));
-        $this->assertTrue($contractCurrencies->contains('GBP'));
+        $this->assertTrue($contractCurrencies->contains($profile->currency()));
     }
 }

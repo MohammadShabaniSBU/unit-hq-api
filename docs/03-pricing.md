@@ -39,7 +39,7 @@ Effective-dated and immutable, **mirroring prices**.
 | `name` | Display name |
 | `code` | Stable identity across versions (e.g. `vat`, `ipt`) |
 | `rate` | `NUMERIC(5,2)` percent |
-| `jurisdiction` | `NULL` (applies anywhere) or ISO 3166-1 alpha-2 with optional ISO 3166-2 subdivision (`ES`, `ES-CN`, `FR`). Validated on write (D2 / invariant 33). |
+| `jurisdiction` | `NULL` (applies anywhere), the deployment country code, or a code listed in the profile's `tax_subdivisions` (D2 vocabulary + D9 / invariant 73). A foreign country or unlisted subdivision is refused (`tax_jurisdiction_outside_country`). |
 | `is_default` | At most one `true` (partial unique index on Postgres) |
 | `effective_from` / `effective_to` | Version window; `effective_to NULL` = current |
 

@@ -21,8 +21,16 @@ class ScheduleTest extends TestCase
 
         $this->assertNotEmpty($events, 'Expected scheduled events to be registered');
 
-        $activateIndex = $events->search(
+        $activateHourlyIndex = $events->search(
             fn (Event $event): bool => str_contains((string) $event->command, 'contracts:activate')
+                && $event->expression === '0 * * * *'
+        );
+        $activateDailyIndex = $events->search(
+            fn (Event $event): bool => str_contains((string) $event->command, 'contracts:activate')
+                && $event->expression === '30 0 * * *'
+        );
+        $billingEvents = $events->filter(
+            fn (Event $event): bool => str_contains((string) $event->command, 'billing:run')
         );
         $billingIndex = $events->search(
             fn (Event $event): bool => str_contains((string) $event->command, 'billing:run')
@@ -39,14 +47,16 @@ class ScheduleTest extends TestCase
             fn (Event $event): bool => str_contains((string) $event->command, 'access:sync')
         );
 
-        $this->assertNotFalse($activateIndex, 'contracts:activate must be scheduled');
+        $this->assertNotFalse($activateHourlyIndex, 'contracts:activate must stay hourly');
+        $this->assertNotFalse($activateDailyIndex, 'contracts:activate must also run immediately before the daily billing run');
+        $this->assertCount(1, $billingEvents, 'Exactly one billing:run job must be scheduled');
         $this->assertNotFalse($billingIndex, 'billing:run --trigger=scheduled must be scheduled');
         $this->assertNotFalse($autopayIndex, 'autopay:collect --trigger=sweep must be scheduled');
         $this->assertNotFalse($delinquencyIndex, 'delinquency:run must be scheduled');
         $this->assertNotFalse($accessSyncIndex, 'access:sync must be scheduled');
 
         /** @var Event $activate */
-        $activate = $events[$activateIndex];
+        $activate = $events[$activateHourlyIndex];
         /** @var Event $billing */
         $billing = $events[$billingIndex];
         /** @var Event $autopay */
@@ -56,9 +66,8 @@ class ScheduleTest extends TestCase
         /** @var Event $accessSync */
         $accessSync = $events[$accessSyncIndex];
 
-        // Hourly cron — activation before billing; autopay sweep after billing.
         $this->assertSame('0 * * * *', $activate->expression);
-        $this->assertSame('0 * * * *', $billing->expression);
+        $this->assertSame('30 0 * * *', $billing->expression);
         $this->assertSame('0 * * * *', $autopay->expression);
         // Daily — after bill/collect in registration order; idempotent so frequency is safe.
         $this->assertSame('0 0 * * *', $delinquency->expression);
@@ -66,8 +75,8 @@ class ScheduleTest extends TestCase
 
         $this->assertLessThan(
             $billingIndex,
-            $activateIndex,
-            'contracts:activate must be registered before billing:run so same-tick runs activate first',
+            $activateDailyIndex,
+            'daily contracts:activate must be registered immediately before billing:run',
         );
         $this->assertLessThan(
             $autopayIndex,

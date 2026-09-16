@@ -259,11 +259,26 @@ charge + invoice generation is `RecurringBilling::generatePeriod`.
 `>= move_in_date` (`ContractTransition::assert` + core activity `contract.activated`).
 Per-contract failure isolation; cancelled-pending never activates.
 
-**Scheduler** (`bootstrap/app.php`): both commands run hourly; activation is registered
-**before** billing so same-tick runs activate move-ins before eligibility is evaluated.
-Manual trigger: authenticated `POST /api/billing-runs` `{ dry_run?: bool }` with
-`trigger=manual` and `created_by` = the employee; requires
-`Permission::BillingRunExecute`.
+**Scheduler** (`bootstrap/app.php`): `billing:run --trigger=scheduled` runs **once a
+day** at the profile's `billing_run_at` in `scheduler_timezone`
+(`CountryProfiles::current()`, D9). Eligibility still resolves each contract's
+date via `SiteClock`. `contracts:activate` stays hourly, and also runs immediately
+before the daily billing run so same-tick runs activate move-ins before
+eligibility is evaluated. There is no timed retry job: a failed contract is
+retried by the next nightly run (its cursor never advanced) or by an employee
+via the retry endpoints below. Manual trigger: authenticated
+`POST /api/billing-runs` `{ dry_run?: bool }` with `trigger=manual` and
+`created_by` = the employee; requires `Permission::BillingRunExecute`.
+
+**Manual retry:** `POST /api/billing-runs/retry-failed` re-attempts every contract
+whose latest `billing_run_items` outcome is `failed` (optional `{ run_id }`
+limits it to that run). `POST /api/contracts/{contract}/billing/retry` does the
+same for one contract. Both create a normal `billing_runs` row with
+`trigger=retry` and `created_by` = the employee, go through `BillingRunEngine`
+unchanged, and require `Permission::BillingRunExecute`. Empty retries return 422
+(`no_failed_items` / `no_failed_billing`) and write no run row. A short cache
+lock prevents parallel retries; the per-contract cursor lock (invariant 37)
+prevents double billing.
 
 **Panel read APIs (S05-04):** authenticated `GET /api/billing-runs` (paginated list with
 per-currency billed totals), `GET /api/billing-runs/{id}` (detail + items; optional
@@ -283,10 +298,16 @@ period end. Periods straddling the stop line bill in full (vacate settlement cre
 tail).
 
 **Per period:** `itemsOn(window.start)` → full price amount + item tax snapshot → charges
-(`rent` / `insurance`, `due_date = window.start`) → `InvoiceIssuer::issue`. Currency
-mismatch → `failed/currency_mismatch`; fiscal refusal → `failed/fiscal_blocker` (period
-rolls back, retries next run). Idempotency is the cursor lock only (invariant 37 — one
-writer: forward to a billed period end under the row lock).
+(`rent` / `insurance`, `due_date = max(window.start, site-today at issuance)`) →
+`InvoiceIssuer::issue`. A period billed after its start (after a fix and retry, or
+after an outage) must not be overdue before the tenant received the invoice. The
+billing window, amounts, and `billed_through` are unchanged; only the due date
+moves. Normal nightly runs are unaffected because issuance day equals
+`window.start`. First-period charges written at contract create / convert keep
+`due_date = move_in`. Currency mismatch → `failed/currency_mismatch`; fiscal
+refusal → `failed/fiscal_blocker` (period rolls back, retries next run or via
+manual retry). Idempotency is the cursor lock only (invariant 37 — one writer:
+forward to a billed period end under the row lock).
 
 ## Out of scope (current billing slice)
 

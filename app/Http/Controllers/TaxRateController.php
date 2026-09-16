@@ -9,6 +9,7 @@ use App\Http\Resources\TaxRateResource;
 use App\Models\Employee;
 use App\Models\TaxRate;
 use App\Support\Billing\JurisdictionCode;
+use App\Support\Country\CountryGuard;
 use App\Support\RecordsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,6 +81,8 @@ class TaxRateController extends Controller
             'effective_from' => ['nullable', 'date'],
         ]);
 
+        CountryGuard::assertTaxJurisdiction($validated['jurisdiction'] ?? null);
+
         $createdBy = $this->resolveCreatedBy($request);
         $isDefault = (bool) ($validated['is_default'] ?? false);
 
@@ -130,6 +133,10 @@ class TaxRateController extends Controller
             'jurisdiction'   => ['sometimes', 'nullable', 'string', new JurisdictionCode],
             'effective_from' => ['nullable', 'date'],
         ]);
+
+        if (array_key_exists('jurisdiction', $validated)) {
+            CountryGuard::assertTaxJurisdiction($validated['jurisdiction']);
+        }
 
         $createdBy = $this->resolveCreatedBy($request);
         $effectiveFrom = $validated['effective_from'] ?? Carbon::today()->toDateString();

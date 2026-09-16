@@ -14,6 +14,7 @@ services:
       DB_PASSWORD: secret
       COMPOSER_HOME: /tmp/composer
       KEEVARIS_PANEL_PATH: /panel
+      KEEVARIS_COUNTRY: ES
     volumes:
       - .:/app
       - ../unit-hq-panel:/panel:ro

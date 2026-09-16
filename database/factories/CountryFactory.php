@@ -16,8 +16,38 @@ class CountryFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => fake()->unique()->countryCode(),
+            'code' => $this->unusedCountryCode(),
             'name' => fake()->country(),
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Country $country): void {
+            $code = strtoupper((string) $country->code);
+            $existing = Country::query()->where('code', $code)->first();
+
+            if ($existing === null) {
+                $country->code = $code;
+
+                return;
+            }
+
+            $country->setRawAttributes($existing->getAttributes(), true);
+            $country->exists = true;
+            $country->syncOriginal();
+        });
+    }
+
+    private function unusedCountryCode(): string
+    {
+        for ($i = 0; $i < 80; $i++) {
+            $code = strtoupper((string) fake()->unique()->countryCode());
+            if (! Country::query()->where('code', $code)->exists()) {
+                return $code;
+            }
+        }
+
+        return strtoupper((string) fake()->unique()->bothify('??'));
     }
 }

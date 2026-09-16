@@ -247,7 +247,7 @@ class SalesAndPublicToolTest extends TestCase
     }
 
     #[Test]
-    public function discounts_locale_ladder_picks_principal_then_english(): void
+    public function discounts_locale_ladder_picks_principal_then_site_locale(): void
     {
         $site = Site::factory()->create(['name' => 'Madrid Centro']);
         Discount::factory()->percent('10.00')->agentOfferable([
@@ -273,7 +273,7 @@ class SalesAndPublicToolTest extends TestCase
             ['site_id' => $site->id],
         );
         $this->assertSame(
-            'Commit to 4 weeks or more and your first 2 weeks are free.',
+            'Comprométete a 4 semanas o más y las 2 primeras semanas son gratis.',
             $frenchFallsBack->data['discounts'][0]['display'],
         );
     }

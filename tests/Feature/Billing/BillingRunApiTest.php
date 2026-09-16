@@ -106,6 +106,7 @@ class BillingRunApiTest extends TestCase
         $list->assertJsonPath('data.0.contracts_skipped', 1);
         $list->assertJsonPath('data.0.contracts_failed', 1);
         $list->assertJsonPath('meta.total', 1);
+        $list->assertJsonPath('meta.failed_contracts', 1);
 
         $totals = $list->json('data.0.totals_by_currency');
         $this->assertIsArray($totals);
@@ -150,6 +151,41 @@ class BillingRunApiTest extends TestCase
         $emptyShow->assertJsonPath('data.contracts_considered', 0);
         $this->assertSame([], $emptyShow->json('data.items'));
         $this->assertSame([], $emptyShow->json('data.totals_by_currency'));
+    }
+
+    public function test_retry_failed_creates_retry_run(): void
+    {
+        $this->seedRunWithOutcomes();
+        Sanctum::actingAs($this->employee);
+
+        $response = $this->postJson('/api/billing-runs/retry-failed');
+        $response->assertCreated();
+        $response->assertJsonPath('data.trigger', 'retry');
+        $response->assertJsonPath('data.created_by.id', $this->employee->id);
+    }
+
+    public function test_retry_failed_with_no_failures_writes_nothing(): void
+    {
+        Sanctum::actingAs($this->employee);
+        $before = BillingRun::query()->count();
+
+        $this->postJson('/api/billing-runs/retry-failed')->assertStatus(422);
+
+        $this->assertSame($before, BillingRun::query()->count());
+    }
+
+    public function test_contract_retry_requires_last_failed_run(): void
+    {
+        Sanctum::actingAs($this->employee);
+
+        $this->postJson("/api/contracts/{$this->contract->id}/billing/retry")
+            ->assertStatus(422);
+
+        $this->seedRunWithOutcomes();
+
+        $response = $this->postJson("/api/contracts/{$this->contract->id}/billing/retry");
+        $response->assertCreated();
+        $response->assertJsonPath('data.trigger', 'retry');
     }
 
     private function seedRunWithOutcomes(): BillingRun

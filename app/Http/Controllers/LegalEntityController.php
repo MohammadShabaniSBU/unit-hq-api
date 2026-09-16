@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Support\Auth\Permission;
+use App\Support\Country\CountryGuard;
 use Illuminate\Support\Facades\Gate;
 
 class LegalEntityController extends Controller
@@ -177,13 +178,13 @@ class LegalEntityController extends Controller
             ->whereNull('archived_at')
             ->ignore($ignoreId);
 
-        return $request->validate([
+        $validated = $request->validate([
             'legal_name' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:255'],
             'trading_name' => ['nullable', 'string', 'max:255'],
             'tax_id' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:64', $taxIdUnique],
             'tax_id_type' => [$creating ? 'required' : 'sometimes', 'required', Rule::enum(TaxIdType::class)],
             'vat_number' => ['nullable', 'string', 'max:64'],
-            'country_code' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'size:2'],
+            'country_code' => ['sometimes', 'nullable', 'string', 'size:2'],
             'address_line1' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:255'],
             'address_line2' => ['nullable', 'string', 'max:255'],
             'city' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:128'],
@@ -191,6 +192,33 @@ class LegalEntityController extends Controller
             'fiscal_regime' => [$creating ? 'nullable' : 'sometimes', Rule::enum(FiscalRegime::class)],
             'sepa_creditor_id' => ['nullable', 'string', 'max:64'],
         ]);
+
+        if ($entity !== null && $entity->hasIssuedInvoices()) {
+            $taxChanging = array_key_exists('tax_id', $validated) && $validated['tax_id'] !== $entity->tax_id;
+            $countryChanging = array_key_exists('country_code', $validated)
+                && strtoupper((string) $validated['country_code']) !== strtoupper((string) $entity->country_code);
+
+            if ($taxChanging || $countryChanging) {
+                throw ValidationException::withMessages([
+                    'tax_id' => [__('errors.legal_entities.identity_frozen')],
+                    'country_code' => [__('errors.legal_entities.identity_frozen')],
+                ]);
+            }
+        }
+
+        $validated['country_code'] = CountryGuard::assertLegalEntityCountry(
+            $validated['country_code'] ?? null,
+        );
+
+        if ($creating && isset($validated['tax_id'])) {
+            CountryGuard::assertLegalEntityTaxId($validated['tax_id']);
+        }
+
+        if (! empty($validated['sepa_creditor_id'])) {
+            CountryGuard::assertPaymentRail('sepa_dd');
+        }
+
+        return $validated;
     }
 
     private function rejectFiscalRegime(string $regime): never

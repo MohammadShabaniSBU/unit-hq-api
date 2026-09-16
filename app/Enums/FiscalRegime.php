@@ -11,4 +11,5 @@ enum FiscalRegime: string
     case NoVerificable = 'no_verificable';
     case Ticketbai = 'ticketbai';
     case Sii = 'sii';
+    case FrEinvoicing = 'fr_einvoicing';
 }

@@ -17,6 +17,7 @@ use App\Models\LegalEntity;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\Unit;
+use App\Support\Fiscal\Regime\FiscalRegimes;
 use App\Support\Communications\SiteLocale;
 use App\Support\RecordsActivity;
 use App\Support\Time\DateFormat;
@@ -116,6 +117,8 @@ final class InvoiceIssuer
             'gross_total' => $grossTotal,
             'created_by' => $createdBy,
         ]);
+
+        FiscalRegimes::current()->record($invoice);
 
         $lineNet = '0.00';
         $lineTax = '0.00';
@@ -282,6 +285,8 @@ final class InvoiceIssuer
             'gross_total' => $grossTotal,
             'created_by' => $createdBy,
         ]);
+
+        FiscalRegimes::current()->record($invoice);
 
         $lineNet = '0.00';
         $lineTax = '0.00';

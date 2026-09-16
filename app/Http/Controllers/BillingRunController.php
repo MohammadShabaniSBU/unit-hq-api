@@ -11,6 +11,9 @@ use App\Models\BillingRun;
 use App\Models\Employee;
 use App\Models\Unit;
 use App\Support\Billing\BillingRunEngine;
+use App\Support\Billing\FailedBillingRetry;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +38,11 @@ class BillingRunController extends Controller
             ->paginate($this->perPage())
             ->through(fn (BillingRun $run) => BillingRunResource::make($run));
 
-        return $this->paginated($paginator, 'Billing runs retrieved successfully.');
+        $response = $this->paginated($paginator, 'Billing runs retrieved successfully.');
+        $payload = $response->getData(true);
+        $payload['meta']['failed_contracts'] = count(FailedBillingRetry::contractIds());
+
+        return response()->json($payload, $response->status());
     }
 
     public function show(Request $request, BillingRun $billingRun): JsonResponse
@@ -109,6 +116,53 @@ class BillingRunController extends Controller
         return $this->created(
             BillingRunResource::make($result),
             'Billing run completed successfully.',
+        );
+    }
+
+    public function retryFailed(Request $request): JsonResponse
+    {
+        Gate::authorize(Permission::BillingRunExecute->value);
+
+        $validated = $request->validate([
+            'run_id' => ['sometimes', 'nullable', 'integer', 'exists:billing_runs,id'],
+        ]);
+
+        $ids = FailedBillingRetry::contractIds(
+            isset($validated['run_id']) ? (int) $validated['run_id'] : null,
+        );
+
+        if ($ids === []) {
+            throw ValidationException::withMessages([
+                'run_id' => [__('errors.deployment.no_failed_items')],
+            ]);
+        }
+
+        /** @var Employee $employee */
+        $employee = $request->user();
+
+        $lock = Cache::lock('billing-retry', 30);
+        if (! $lock->get()) {
+            throw ValidationException::withMessages([
+                'run_id' => [__('errors.deployment.no_failed_items')],
+            ]);
+        }
+
+        try {
+            $result = (new BillingRunEngine)->run(
+                trigger: BillingRunTrigger::Retry,
+                createdBy: $employee->id,
+                onlyContractIds: $ids,
+            );
+        } finally {
+            $lock->release();
+        }
+
+        /** @var BillingRun $result */
+        $result->load(['createdBy', 'items']);
+
+        return $this->created(
+            BillingRunResource::make($result),
+            'Billing retry completed successfully.',
         );
     }
 }

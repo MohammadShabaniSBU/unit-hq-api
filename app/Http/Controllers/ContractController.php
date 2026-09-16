@@ -21,9 +21,14 @@ use App\Models\Site;
 use App\Models\Unit;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
+use App\Enums\BillingRunTrigger;
+use App\Http\Resources\BillingRunResource;
+use App\Models\BillingRun;
 use App\Support\Billing\BillingMath;
+use App\Support\Billing\BillingRunEngine;
 use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\RecurringBilling;
+use Illuminate\Support\Facades\Cache;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Contracts\ContractSigning;
 use App\Support\Discounts\AttachesDiscount;
@@ -482,6 +487,45 @@ class ContractController extends Controller
         return $this->success(
             RecurringBilling::nextBillEstimate($contract),
             'Next bill estimate retrieved successfully.',
+        );
+    }
+
+    public function retryBilling(Contract $contract): JsonResponse
+    {
+        Gate::authorize(Permission::BillingRunExecute->value, $contract);
+
+        if ($contract->lastFailedBillingRun() === null) {
+            throw ValidationException::withMessages([
+                'contract' => [__('errors.deployment.no_failed_billing')],
+            ]);
+        }
+
+        /** @var Employee $employee */
+        $employee = request()->user();
+
+        $lock = Cache::lock('billing-retry', 30);
+        if (! $lock->get()) {
+            throw ValidationException::withMessages([
+                'contract' => [__('errors.deployment.no_failed_billing')],
+            ]);
+        }
+
+        try {
+            $result = (new BillingRunEngine)->run(
+                trigger: BillingRunTrigger::Retry,
+                createdBy: $employee->id,
+                onlyContractIds: [$contract->id],
+            );
+        } finally {
+            $lock->release();
+        }
+
+        /** @var BillingRun $result */
+        $result->load(['createdBy', 'items']);
+
+        return $this->created(
+            BillingRunResource::make($result),
+            'Billing retry completed successfully.',
         );
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
 use App\Support\Billing\SupportedCurrencies;
+use App\Support\Country\CountryGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -162,7 +163,7 @@ class SiteController extends Controller
             ]);
         }
 
-        return $request->validate([
+        $validated = $request->validate([
             'name' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:255', Rule::unique('sites', 'code')->ignore($ignoreId)],
             'address' => ['nullable', 'string'],
@@ -175,7 +176,7 @@ class SiteController extends Controller
             'city' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:255'],
             'state_region' => ['nullable', 'string', 'max:255'],
-            'country_id' => [$creating ? 'required' : 'sometimes', 'required', 'integer', Rule::exists('countries', 'id')],
+            'country_id' => ['sometimes', 'nullable', 'integer', Rule::exists('countries', 'id')],
             'timezone' => $timezoneRule,
             'currency' => SupportedCurrencies::rules(required: false),
             'legal_entity_id' => [
@@ -191,6 +192,27 @@ class SiteController extends Controller
                 Rule::exists('delinquency_policies', 'id')->whereNull('archived_at'),
             ],
         ]);
+
+        $validated['country_id'] = CountryGuard::assertSiteCountryId(
+            isset($validated['country_id']) ? (int) $validated['country_id'] : null,
+        );
+
+        if (isset($validated['timezone'])) {
+            CountryGuard::assertSiteTimezone($validated['timezone']);
+        }
+
+        if (array_key_exists('currency', $validated)) {
+            CountryGuard::assertSiteCurrency($validated['currency']);
+        }
+
+        if (! empty($validated['delinquency_policy_id'])) {
+            $policy = \App\Models\DelinquencyPolicy::query()->find($validated['delinquency_policy_id']);
+            if ($policy !== null && \Illuminate\Support\Facades\Schema::hasColumn('delinquency_policies', 'jurisdiction')) {
+                CountryGuard::assertDelinquencyJurisdiction($policy->jurisdiction);
+            }
+        }
+
+        return $validated;
     }
 
     /**
