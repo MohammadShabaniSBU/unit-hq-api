@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Automation\Harness;
 
-use App\Enums\AutopayAttemptStatus;
 use App\Enums\AutomationCancelCause;
 use App\Enums\AutomationRunStatus;
 use App\Enums\AutomationRunStepStatus;
+use App\Enums\AutopayAttemptStatus;
 use App\Enums\ChargeType;
 use App\Enums\ContractStatus;
 use App\Enums\DelinquencyCureTrigger;
 use App\Enums\DelinquencyPolicyAction;
 use App\Enums\DelinquencyStepTrigger;
+use App\Enums\TemplateChannel;
+use App\Enums\TemplatePurpose;
+use App\Jobs\MatchAutomationTriggers;
+use App\Models\AutomationRun;
 use App\Models\AutopayAttempt;
+use App\Models\Charge;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractItem;
@@ -22,17 +27,15 @@ use App\Models\Country;
 use App\Models\DelinquencyPolicy;
 use App\Models\DelinquencyPolicyStep;
 use App\Models\DelinquencyStep;
-use App\Enums\TemplateChannel;
-use App\Enums\TemplatePurpose;
 use App\Models\Employee;
-use App\Models\TemplateFamily;
-use App\Support\Communications\LegacyEmailBlocksHtml;
 use App\Models\Interaction;
 use App\Models\PaymentMethod;
 use App\Models\Site;
 use App\Models\Task;
+use App\Models\TemplateFamily;
 use App\Models\Unit;
 use App\Models\UnitClass;
+use App\Support\Communications\LegacyEmailBlocksHtml;
 use App\Support\Delinquency\DelinquencyLifecycle;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,6 +107,23 @@ class HarnessLibraryTest extends TestCase
             ->assertSkipped(['no_path']);
 
         $this->assertSame('YesPath', $contact->fresh()->last_name);
+    }
+
+    public function test_branch_multi_arm(): void
+    {
+        $contact = Contact::factory()->create([
+            'first_name' => 'VipUser',
+            'last_name' => 'Contact',
+            'email' => 'multi-arm-'.uniqid().'@example.com',
+        ]);
+
+        AutomationHarness::load('branch_multi_arm')
+            ->trigger('object_created', $contact)
+            ->assertRunStatus(AutomationRunStatus::Succeeded)
+            ->assertStepStatus('vip_path', AutomationRunStepStatus::Succeeded)
+            ->assertSkipped(['named_path', 'default_path']);
+
+        $this->assertSame('VipPath', $contact->fresh()->last_name);
     }
 
     public function test_nested_branch_3deep(): void
@@ -348,7 +368,7 @@ class HarnessLibraryTest extends TestCase
         $firstRunId = $harness->run()->id;
 
         // Re-dispatch matcher while first enrolment is still active — no second run.
-        (new \App\Jobs\MatchAutomationTriggers(
+        (new MatchAutomationTriggers(
             'created',
             (string) $contact->getMorphClass(),
             $contact->getKey(),
@@ -360,7 +380,7 @@ class HarnessLibraryTest extends TestCase
 
         $this->assertSame(
             1,
-            \App\Models\AutomationRun::query()
+            AutomationRun::query()
                 ->where('automation_id', $harness->automation()->id)
                 ->where('subject_id', $contact->id)
                 ->count(),
@@ -531,7 +551,7 @@ class HarnessLibraryTest extends TestCase
             'effective_to' => null,
         ]);
 
-        \App\Models\Charge::factory()->create([
+        Charge::factory()->create([
             'contract_id' => $contract->id,
             'charge_type' => ChargeType::Rent,
             'amount' => '100.00',

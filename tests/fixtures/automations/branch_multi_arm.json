@@ -1,0 +1,136 @@
+{
+  "name": "branch_multi_arm",
+  "status": "active",
+  "nodes": [
+    {
+      "node_key": "trigger",
+      "kind": "trigger",
+      "type": "trigger.object_created",
+      "label": "Contact created",
+      "position_x": 0,
+      "position_y": 0,
+      "config": { "objectType": "contact" }
+    },
+    {
+      "node_key": "branch",
+      "kind": "condition",
+      "type": "logic.branch",
+      "label": "Route by first name",
+      "position_x": 200,
+      "position_y": 0,
+      "config": {
+        "arms": [
+          {
+            "id": "vip",
+            "label": "VIP",
+            "filters": {
+              "logic": "and",
+              "conditions": [
+                { "field": "first_name", "operator": "equals", "value": "VipUser" }
+              ]
+            }
+          },
+          {
+            "id": "named",
+            "label": "Named",
+            "filters": {
+              "logic": "and",
+              "conditions": [
+                { "field": "first_name", "operator": "equals", "value": "NamedUser" }
+              ]
+            }
+          },
+          {
+            "id": "default",
+            "label": "Otherwise",
+            "filters": {
+              "logic": "and",
+              "conditions": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "vip_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "VIP path",
+      "position_x": 400,
+      "position_y": -120,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "VipPath" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "named_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Named path",
+      "position_x": 400,
+      "position_y": 0,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "NamedPath" }
+          }
+        ]
+      }
+    },
+    {
+      "node_key": "default_path",
+      "kind": "action",
+      "type": "action.update_object",
+      "label": "Default path",
+      "position_x": 400,
+      "position_y": 120,
+      "config": {
+        "objectType": "contact",
+        "targetRecord": { "mode": "trigger_subject" },
+        "updates": [
+          {
+            "property": "last_name",
+            "value": { "kind": "static", "value": "DefaultPath" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "trigger",
+      "target_node_id": "branch",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "vip_path",
+      "source_handle": "vip",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "named_path",
+      "source_handle": "named",
+      "condition": { "type": "always" }
+    },
+    {
+      "source_node_id": "branch",
+      "target_node_id": "default_path",
+      "source_handle": "default",
+      "condition": { "type": "always" }
+    }
+  ],
+  "_harness": {}
+}

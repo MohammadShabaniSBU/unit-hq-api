@@ -61,6 +61,51 @@ final class TriggerConfigValidator
                 }
             }
         }
+
+        $triggerObjectType = self::triggerObjectType($nodes);
+
+        foreach ($nodes as $node) {
+            $type = (string) ($node['type'] ?? '');
+            if ($type !== AutomationNodeType::Branch->value) {
+                continue;
+            }
+
+            $config = is_array($node['config'] ?? null) ? $node['config'] : [];
+            $nodeKey = (string) ($node['node_key'] ?? $node['id'] ?? '');
+            $arms = $config['arms'] ?? null;
+
+            if (is_array($arms) && $arms !== []) {
+                $seen = [];
+                foreach ($arms as $arm) {
+                    if (! is_array($arm)) {
+                        continue;
+                    }
+
+                    $armId = (string) ($arm['id'] ?? '');
+                    if ($armId === '') {
+                        throw ValidationException::withMessages([
+                            'nodes' => "Node {$nodeKey}: branch arm requires an id.",
+                        ]);
+                    }
+                    if (isset($seen[$armId])) {
+                        throw ValidationException::withMessages([
+                            'nodes' => "Node {$nodeKey}: duplicate branch arm id [{$armId}].",
+                        ]);
+                    }
+                    $seen[$armId] = true;
+
+                    if ($triggerObjectType !== '' && TriggerableFields::supports($triggerObjectType)) {
+                        self::assertFilterFields($arm['filters'] ?? null, $triggerObjectType, $nodeKey);
+                    }
+                }
+
+                continue;
+            }
+
+            if ($triggerObjectType !== '' && TriggerableFields::supports($triggerObjectType)) {
+                self::assertFilterFields($config['filters'] ?? $config['condition'] ?? null, $triggerObjectType, $nodeKey);
+            }
+        }
     }
 
     public static function assertAutomation(Automation $automation): void
@@ -72,6 +117,28 @@ final class TriggerConfigValidator
         ])->all();
 
         self::assertValid($nodes);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     */
+    private static function triggerObjectType(array $nodes): string
+    {
+        foreach ($nodes as $node) {
+            $type = (string) ($node['type'] ?? '');
+            if (! in_array($type, [
+                AutomationNodeType::ObjectCreated->value,
+                AutomationNodeType::ObjectUpdated->value,
+            ], true)) {
+                continue;
+            }
+
+            $config = is_array($node['config'] ?? null) ? $node['config'] : [];
+
+            return (string) ($config['objectType'] ?? $config['object_type'] ?? '');
+        }
+
+        return '';
     }
 
     /**
