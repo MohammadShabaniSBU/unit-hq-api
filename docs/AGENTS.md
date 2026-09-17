@@ -33,7 +33,7 @@ Before writing code, consult the doc that matches the task:
 - Payment confirmation is rail-specific (Stripe webhook / SEPA at settlement / manual with causer) — never optimistic from the client (invariant 11).
 - Payment credentials and fiscal regime scope to `legal_entities`, never to sites, and `legal_entity_id` never scopes a query (invariant 34).
 - Entity is `Contract` in code, not Lease.
-- Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card.
+- Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card. Managed in Settings → Data model → Objects → {entity} → Properties / Layout.
 - No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
 - Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
 - Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.

@@ -212,7 +212,7 @@ pattern (crypto-random, never the PK). Full model — Stripe, SEPA bank-file, Ve
 invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authoritative).
 
 Credentials live on `payment_provider_accounts` scoped to `legal_entity_id`
-(Settings → Payments / entity detail). Inbound webhooks route by opaque
+(Settings → Workspace → Legal entities (entity detail)). Inbound webhooks route by opaque
 `account_token` (`POST /api/webhooks/stripe/{account_token}`); idempotency on
 `stripe_webhook_events` is per account. Credential handling rules
 (create/rotate/remove logging, masking, blank-unchanged) stay shared with

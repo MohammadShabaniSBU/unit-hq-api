@@ -3,7 +3,7 @@
 Insights is a **registry**, not a fixed set of Nuxt pages. Reports come from two
 sources — native app pages and dashboards/questions embedded from an analytics
 provider — and both are rows in the same table, reorderable and hideable from
-Settings → Insights.
+Settings → Insights → Reports.
 
 Metabase is the default provider; the adapter interfaces exist so a customer who
 already runs Superset, Looker Studio, or Power BI can point Insights at their

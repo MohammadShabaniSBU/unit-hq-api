@@ -5,7 +5,7 @@ Three logging tiers on two tables:
 | Tier | Name | Storage | Audience | Retention | Configurable |
 |---|---|---|---|---|---|
 | 1 | Trace log | `system_events` | Developers | 60–90 days (partition drop) | No |
-| 2 | Optional business channels | `activity_log` (`log_name` ≠ `core`) | Operators | Default 12 months (3–60) | Yes — Settings → Activity log |
+| 2 | Optional business channels | `activity_log` (`log_name` ≠ `core`) | Operators | Default 12 months (3–60) | Yes — Settings → Privacy & compliance → Activity log |
 | 3 | Core audit events | `activity_log` (`log_name = core`) | Operators / compliance | Indefinite | No — always on |
 
 ## Architecture rules

@@ -37,8 +37,8 @@
 - **Leasing** — contacts, tasks, deals, offers (+ public offer preview with localized discount promo lines), unit map, reservations, contracts (billing card: discount chip / schedule / remove), move-outs; walk-in + convert pick a catalogue discount; contact/deal detail overview shows an operator-triggered AI summary card; **agent approvals** (`/leasing/agent-approvals`) queue for propose-mode writes
 - **Facility** — units, unit classes, rates, discounts, insurance plans, access control
 - **Billing** — invoices, payments, overdue, ledger, liens & auctions
-- **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights
-- **Settings** — general, billing settings, payments (legal-entity `payment_provider_accounts`), communications (company provider keys), **Insights** (analytics connections + report builder), late fees & liens, tax rates, leasing (`default_esign_expiration_days` among defaults), **AI agents** (`/settings/ai-agents`, write policies), **Integrations → E-signature** (provider accounts + webhook), custom attributes, object customization, **facility (sites + discounts catalogue)**, activity log
+- **Insights** — registry-driven nav (`insight_reports`): native reports and embedded analytics (Metabase / iframe); order and visibility from Settings → Insights → Reports
+- **Settings** — capability-grouped: Workspace (general, legal entities, connected apps), Team & access, Facilities (sites, access control), Rentals (offers & reservations, discounts, size guide, e-signature), Billing & collections (defaults, tax rates, delinquency policies), Communication (email, SMS, WhatsApp, calls), AI (providers, usage, agent permissions, agent channels), Insights (report sources, reports), Data model (objects → properties / layout), Privacy & compliance (activity log)
 - **Copilot** — AI conversations (sidebar), separate from Inbox
 - **Demo** — `/demo/chat`: agent console (agent / channel / persona /
   verification pickers, channel-skinned conversation, tool-and-guardrail trace).

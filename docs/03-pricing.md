@@ -69,7 +69,7 @@ Item `amount` / charge `net_amount` is **net**.
 `tax = round(net × rate/100, 2)`; `gross = net + tax`.  
 See `05-billing-ledger.md` for charge generation.
 
-### API (panel Settings → Tax rates)
+### API (panel Settings → Billing & collections → Tax rates)
 
 - `GET /api/tax-rates` — current versions (`effective_to IS NULL`); `?code=` returns history for that code
 - `GET /api/tax-rates/options` — `{ value, label, code }` for selects
@@ -77,7 +77,7 @@ See `05-billing-ledger.md` for charge generation.
 - `PATCH /api/tax-rates/{id}` — new version
 - `POST /api/tax-rates/{id}/default` — set default
 
-### API (panel Settings → Facility → Discounts)
+### API (panel Settings → Rentals → Discounts)
 
 - `GET /api/discounts/options` — `{ value, label }` for selects
 - `GET /api/discounts` — list
@@ -100,7 +100,7 @@ See `05-billing-ledger.md` for charge generation.
 
 Admin-defined catalogue rows operators *pick* — never free-typed at a counter.
 Archive-only (`archived_at`); archived rows vanish from pickers but stay resolvable
-for provenance. Settings → Facility → Discounts. Decisions: **D-DISC** in
+for provenance. Settings → Rentals → Discounts. Decisions: **D-DISC** in
 `10-open-decisions.md`; invariant 41 in `09`.
 
 | Kind | `params` | Notes |
