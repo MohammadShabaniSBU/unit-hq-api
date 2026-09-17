@@ -47,6 +47,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call(CountrySeeder::class);
         $this->call(DefaultAttributeLayoutSeeder::class);
+        $this->call(DefaultContactAttributeDefinitionsSeeder::class);
+        $this->call(DefaultDealAttributeDefinitionsSeeder::class);
         $this->call(InsightReportSeeder::class);
         $this->call(RbacSystemRoleSeeder::class);
         $this->call(AiAgentSeeder::class);

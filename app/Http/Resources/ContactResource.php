@@ -27,6 +27,7 @@ class ContactResource extends BaseResource
             'billing_postal_code'  => $this->billing_postal_code,
             'billing_country_code' => $this->billing_country_code,
             'locale'               => $this->locale,
+            'source'               => $this->source?->value,
             'fiscal_complete'      => $this->fiscalComplete(),
             'status'               => $this->status,
             'contact_status'       => $this->contact_status,

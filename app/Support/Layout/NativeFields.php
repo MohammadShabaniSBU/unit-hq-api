@@ -145,6 +145,14 @@ final class NativeFields
             new NativeField('last_name', 'Last name', 'text', required: true),
             new NativeField('email', 'Email', 'email'),
             new NativeField('status', 'Status', 'select', optionsSource: 'contact_statuses'),
+            new NativeField('company', 'Company', 'text'),
+            new NativeField('locale', 'Locale', 'select', optionsSource: 'locales'),
+            new NativeField('source', 'Source', 'select', editable: false, optionsSource: 'contact_sources'),
+            new NativeField('contact_status', 'Contact status', 'select', optionsSource: 'contact_record_statuses'),
+            new NativeField('last_contacted_at', 'Last contacted at', 'date', editable: false),
+            new NativeField('billing_name', 'Billing name', 'text'),
+            new NativeField('tax_id', 'Tax ID', 'text'),
+            new NativeField('tax_id_type', 'Tax ID type', 'select', optionsSource: 'tax_id_types'),
         ];
     }
 
