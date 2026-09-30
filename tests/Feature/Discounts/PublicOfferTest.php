@@ -92,4 +92,55 @@ class PublicOfferTest extends TestCase
         $this->assertSame(4, $option['discount_resolution']['resolved_tier']['free_weeks']);
         $this->assertSame(8, $option['discount_resolution']['commitment_weeks']);
     }
+
+    public function test_token_response_exposes_deposit_and_site_contact(): void
+    {
+        Setting::setBilling(Setting::billing()->with(defaultDepositAmount: '150.00'));
+
+        $employee = Employee::factory()->manager()->create();
+        $country = Country::factory()->create(['code' => 'ES']);
+        $entity = LegalEntity::factory()->create();
+        $site = Site::factory()->create([
+            'country_id' => $country->id,
+            'legal_entity_id' => $entity->id,
+            'currency' => 'EUR',
+            'contact_phone' => '+34 900 000 000',
+            'contact_email' => 'hola@example.test',
+        ]);
+        $unitClass = UnitClass::factory()->create();
+        [$rate, $price] = $this->createUnitClassCataloguePrice(
+            $unitClass->id,
+            $site->id,
+            $employee->id,
+            ['amount' => '99.00', 'currency' => 'EUR'],
+        );
+        $unitClass->update(['current_price_id' => $price->id]);
+
+        $contact = Contact::factory()->create(['locale' => 'en']);
+        $deal = Deal::factory()->create([
+            'contact_id' => $contact->id,
+            'site_id' => $site->id,
+        ]);
+        $offer = Offer::factory()->create([
+            'contact_id' => $contact->id,
+            'deal_id' => $deal->id,
+            'token' => 'pub-token-deposit-01',
+            'status' => 'sent',
+        ]);
+        OfferOption::query()->create([
+            'offer_id' => $offer->id,
+            'unit_class_rate_id' => $rate->id,
+            'label' => 'Option',
+            'description' => null,
+            'display_order' => 0,
+            'selected_at' => null,
+        ]);
+
+        $response = $this->getJson('/api/offers/token/pub-token-deposit-01')
+            ->assertOk();
+
+        $this->assertSame('150.00', $response->json('data.deposit_amount'));
+        $this->assertSame('+34 900 000 000', $response->json('data.options.0.unit_class_rate.site.contact_phone'));
+        $this->assertSame('hola@example.test', $response->json('data.options.0.unit_class_rate.site.contact_email'));
+    }
 }

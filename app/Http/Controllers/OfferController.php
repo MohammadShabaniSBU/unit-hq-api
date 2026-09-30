@@ -10,6 +10,7 @@ use App\Http\Resources\OfferResource;
 use App\Models\Employee;
 use App\Models\Offer;
 use App\Models\OfferOption;
+use App\Models\Setting;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
 use App\Support\Discounts\DiscountSurface;
@@ -157,8 +158,12 @@ class OfferController extends Controller
 
         $offer->options->each(fn (OfferOption $option) => $option->setRelation('offer', $offer));
 
+        // Public-only figure: the current default deposit (an estimate — contracts snapshot it at signing).
         return $this->success(
-            OfferResource::make($offer),
+            [
+                ...OfferResource::make($offer)->resolve(),
+                'deposit_amount' => Setting::billing()->defaultDepositAmount,
+            ],
             'Offer retrieved successfully.'
         );
     }
