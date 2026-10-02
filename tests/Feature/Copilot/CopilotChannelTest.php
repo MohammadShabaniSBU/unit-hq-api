@@ -81,4 +81,30 @@ class CopilotChannelTest extends TestCase
             'channel_name' => 'private-copilot.'.$conversation->id,
         ])->assertForbidden();
     }
+
+    #[Test]
+    public function participant_may_subscribe_to_title_channel(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1234.5678',
+            'channel_name' => 'private-copilot-titles.'.$employee->id,
+        ])->assertOk();
+    }
+
+    #[Test]
+    public function other_employee_may_not_subscribe_to_title_channel(): void
+    {
+        $owner = Employee::factory()->manager()->create();
+        $other = Employee::factory()->manager()->create();
+
+        Sanctum::actingAs($other);
+
+        $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1234.5678',
+            'channel_name' => 'private-copilot-titles.'.$owner->id,
+        ])->assertForbidden();
+    }
 }

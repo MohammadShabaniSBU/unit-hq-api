@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Ai;
 
 use App\Ai\Agents\CrmCopilotAgent;
+use App\Jobs\GenerateCopilotConversationTitle;
 use App\Models\CopilotConversation;
 use App\Models\Employee;
 use App\Support\RequestId;
@@ -48,6 +49,14 @@ final class CopilotDispatcher
             $validated['message'],
             $validated['source'] ?? 'text',
         );
+
+        if ($conversation->title === CopilotConversation::UNTITLED) {
+            GenerateCopilotConversationTitle::dispatch(
+                $conversation->id,
+                (int) $employee->id,
+                $validated['message'],
+            );
+        }
 
         Cache::put($cacheKey, $payload, self::IDEMPOTENCY_TTL_SECONDS);
 

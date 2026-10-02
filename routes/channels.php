@@ -20,6 +20,10 @@ Broadcast::channel('copilot.{conversationId}', function (Employee $employee, str
         && Gate::forUser($employee)->allows('view', $conversation);
 });
 
+Broadcast::channel('copilot-titles.{employeeId}', function (Employee $employee, int $employeeId): bool {
+    return (int) $employee->id === $employeeId;
+});
+
 Broadcast::channel('inbox', function (Employee $employee): bool {
     return Gate::forUser($employee)->allows(Permission::InboxView->value);
 });

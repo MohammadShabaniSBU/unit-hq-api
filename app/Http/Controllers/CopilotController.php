@@ -47,7 +47,7 @@ class CopilotController extends Controller
             'id' => (string) Str::uuid7(),
             'participant_type' => 'employee',
             'participant_id' => $employee->id,
-            'title' => $validated['title'] ?? 'New conversation',
+            'title' => $validated['title'] ?? CopilotConversation::UNTITLED,
             'site_scope_snapshot' => $employee->siteIdsFor(Permission::ContactView),
         ]);
 
@@ -95,12 +95,6 @@ class CopilotController extends Controller
             'client_message_id' => ['required', 'uuid'],
             'source' => ['sometimes', 'string', 'in:text,voice'],
         ]);
-
-        if ($conversation->title === 'New conversation') {
-            $conversation->forceFill([
-                'title' => Str::limit($validated['message'], 50, '...'),
-            ])->save();
-        }
 
         return $this->accepted(
             CopilotDispatcher::dispatchTurn($conversation, $employee, $validated),

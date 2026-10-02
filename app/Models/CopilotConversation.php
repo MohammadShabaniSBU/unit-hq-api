@@ -15,6 +15,8 @@ class CopilotConversation extends Conversation
 {
     use SoftDeletes;
 
+    public const UNTITLED = 'New conversation';
+
     /**
      * @return array<string, string>
      */

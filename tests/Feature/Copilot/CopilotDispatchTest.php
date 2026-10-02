@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Copilot;
 
 use App\Ai\Agents\CrmCopilotAgent;
+use App\Jobs\GenerateCopilotConversationTitle;
 use App\Models\CopilotConversation;
 use App\Models\Employee;
 use Database\Seeders\RbacSystemRoleSeeder;
@@ -92,6 +93,69 @@ class CopilotDispatchTest extends TestCase
 
         Queue::assertPushedOn('ai', BroadcastAgent::class);
         Queue::assertPushed(BroadcastAgent::class, 1);
+        Queue::assertNotPushed(GenerateCopilotConversationTitle::class);
+    }
+
+    #[Test]
+    public function first_message_queues_title_job_once_and_leaves_placeholder(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => CopilotConversation::UNTITLED,
+            'site_scope_snapshot' => null,
+        ]);
+
+        Queue::fake();
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", [
+            'message' => 'Show me my recent contacts please',
+            'client_message_id' => (string) Str::uuid(),
+        ])->assertAccepted();
+
+        $this->assertSame(CopilotConversation::UNTITLED, $conversation->fresh()->title);
+
+        Queue::assertPushedOn('ai', GenerateCopilotConversationTitle::class);
+        Queue::assertPushed(GenerateCopilotConversationTitle::class, 1);
+        Queue::assertPushedOn('ai', BroadcastAgent::class);
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", [
+            'message' => 'And the open deals',
+            'client_message_id' => (string) Str::uuid(),
+        ])->assertAccepted();
+
+        Queue::assertPushed(GenerateCopilotConversationTitle::class, 1);
+    }
+
+    #[Test]
+    public function duplicate_first_message_queues_title_job_once(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $conversation = CopilotConversation::query()->create([
+            'id' => (string) Str::uuid7(),
+            'participant_type' => 'employee',
+            'participant_id' => $employee->id,
+            'title' => CopilotConversation::UNTITLED,
+            'site_scope_snapshot' => null,
+        ]);
+
+        Queue::fake();
+
+        $payload = [
+            'message' => 'Show me my recent contacts',
+            'client_message_id' => (string) Str::uuid(),
+        ];
+
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", $payload)->assertAccepted();
+        $this->postJson("/api/copilot/conversations/{$conversation->id}/messages", $payload)->assertAccepted();
+
+        Queue::assertPushed(GenerateCopilotConversationTitle::class, 1);
     }
 
     #[Test]
