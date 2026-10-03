@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UnitController extends Controller
 {
@@ -39,9 +40,12 @@ class UnitController extends Controller
             'for_map'      => ['nullable', 'boolean'],
             'available'    => ['nullable', 'boolean'],
             'available_on' => ['nullable', 'date'],
+            'as_of'        => ['nullable', 'date_format:Y-m-d', 'prohibits:available_on'],
             'state'        => ['nullable', Rule::enum(UnitState::class)],
             'state_group'  => ['nullable', 'in:out_of_service'],
         ]);
+
+        $mapAsOf = $this->resolveMapAsOf($request, $validated);
 
         $query = Unit::query()
             ->visibleTo($employee, Permission::UnitView)
@@ -70,7 +74,7 @@ class UnitController extends Controller
 
         if ($request->boolean('for_map') && ! empty($validated['site_id'])) {
             $units = $query->get();
-            Availability::hydrateState($units, $hydrateOn);
+            Availability::hydrateState($units, $mapAsOf ?? $hydrateOn);
             $this->hydrateMapOverdue($units);
 
             return $this->success(
@@ -129,6 +133,36 @@ class UnitController extends Controller
                 Availability::hydrateState(collect($units));
             },
         );
+    }
+
+    /**
+     * Civil date for map hydration. Null keeps each site's today.
+     * Valid only with for_map and site_id, and never before that site's today.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveMapAsOf(Request $request, array $validated): ?CarbonImmutable
+    {
+        if (empty($validated['as_of'])) {
+            return null;
+        }
+
+        if (! $request->boolean('for_map') || empty($validated['site_id'])) {
+            throw ValidationException::withMessages([
+                'as_of' => [__('errors.occupancy.as_of_requires_map')],
+            ]);
+        }
+
+        $site = Site::query()->findOrFail($validated['site_id']);
+        $asOf = (string) $validated['as_of'];
+
+        if ($asOf < SiteClock::today($site)->toDateString()) {
+            throw ValidationException::withMessages([
+                'as_of' => [__('errors.occupancy.as_of_before_today')],
+            ]);
+        }
+
+        return CarbonImmutable::parse($asOf)->startOfDay();
     }
 
     /**

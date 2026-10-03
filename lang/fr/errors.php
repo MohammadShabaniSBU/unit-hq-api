@@ -12,6 +12,8 @@ return [
     ],
     'occupancy' => [
         'unit_occupied' => 'Cette unité est déjà occupée pour les dates sélectionnées.',
+        'as_of_requires_map' => 'La date n’est valable que pour le plan d’un site.',
+        'as_of_before_today' => 'La date ne peut pas être antérieure à aujourd’hui.',
     ],
     'holds' => [
         'unit_held' => 'Cette unité est déjà bloquée pour les dates sélectionnées.',
@@ -195,4 +197,3 @@ return [
         'csv_duplicate_unit' => 'site_code et unit_number en double dans ce fichier.',
     ],
 ];
-

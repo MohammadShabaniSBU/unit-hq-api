@@ -12,6 +12,8 @@ return [
     ],
     'occupancy' => [
         'unit_occupied' => 'Esta unidad ya está ocupada en las fechas seleccionadas.',
+        'as_of_requires_map' => 'La fecha solo es válida en el mapa de unidades de un sitio.',
+        'as_of_before_today' => 'La fecha no puede ser anterior a hoy.',
     ],
     'holds' => [
         'unit_held' => 'Esta unidad ya tiene una retención en las fechas seleccionadas.',
@@ -209,4 +211,3 @@ return [
         'csv_duplicate_unit' => 'site_code y unit_number duplicados en este archivo.',
     ],
 ];
-

@@ -26,6 +26,8 @@ return [
     ],
     'occupancy' => [
         'unit_occupied' => 'This unit is already occupied for the selected dates.',
+        'as_of_requires_map' => 'The as of date is only valid for a site unit map.',
+        'as_of_before_today' => 'The as of date cannot be before today.',
     ],
     'holds' => [
         'unit_held' => 'This unit is already held for the selected dates.',
@@ -223,4 +225,3 @@ return [
         'csv_duplicate_unit' => 'Duplicate site_code and unit_number in this file.',
     ],
 ];
-

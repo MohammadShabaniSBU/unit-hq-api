@@ -16,13 +16,13 @@ use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Tests\Support\AuthenticatesAsEmployee;
+use Tests\TestCase;
 
 class UnitStateFilterTest extends TestCase
 {
-    use RefreshDatabase;
     use AuthenticatesAsEmployee;
+    use RefreshDatabase;
 
     private Site $site;
 
@@ -119,6 +119,75 @@ class UnitStateFilterTest extends TestCase
         $this->assertSame('damaged', $row['state']);
         $this->assertSame('damaged', $row['current_hold']['hold_type']);
         $this->assertSame('2026-08-01', $row['current_hold']['ends_on']);
+    }
+
+    public function test_for_map_as_of_shows_future_occupancy_without_dropping_units(): void
+    {
+        $future = $this->unit('F-1');
+        $this->unit('F-2');
+
+        UnitOccupancy::query()->create([
+            'unit_id' => $future->id,
+            'contract_id' => $this->contract()->id,
+            'started_on' => '2026-07-16',
+            'ended_on' => null,
+        ]);
+
+        $today = $this->getJson("/api/units?site_id={$this->site->id}&for_map=1");
+        $today->assertOk();
+        $todayRow = collect($today->json('data'))->firstWhere('unit_number', 'F-1');
+        $this->assertNotNull($todayRow);
+        $this->assertSame('available', $todayRow['state']);
+
+        $tomorrow = $this->getJson("/api/units?site_id={$this->site->id}&for_map=1&as_of=2026-07-16");
+        $tomorrow->assertOk();
+        $rows = collect($tomorrow->json('data'));
+        $open = $rows->firstWhere('unit_number', 'F-2');
+        $occupied = $rows->firstWhere('unit_number', 'F-1');
+        $this->assertNotNull($open);
+        $this->assertSame('available', $open['state']);
+        $this->assertNotNull($occupied);
+        $this->assertSame('occupied', $occupied['state']);
+        $this->assertSame('2026-07-16', $occupied['current_occupancy']['started_on']);
+    }
+
+    public function test_for_map_as_of_shows_future_reservation_hold(): void
+    {
+        $unit = $this->unit('R-1');
+        UnitHold::query()->create([
+            'unit_id' => $unit->id,
+            'hold_type' => HoldType::Reservation,
+            'starts_on' => '2026-07-16',
+            'ends_on' => '2026-07-20',
+        ]);
+
+        $today = $this->getJson("/api/units?site_id={$this->site->id}&for_map=1");
+        $today->assertOk();
+        $todayRow = collect($today->json('data'))->firstWhere('unit_number', 'R-1');
+        $this->assertNotNull($todayRow);
+        $this->assertSame('available', $todayRow['state']);
+
+        $tomorrow = $this->getJson("/api/units?site_id={$this->site->id}&for_map=1&as_of=2026-07-16");
+        $tomorrow->assertOk();
+        $row = collect($tomorrow->json('data'))->firstWhere('unit_number', 'R-1');
+        $this->assertNotNull($row);
+        $this->assertSame('reserved', $row['state']);
+        $this->assertSame('reservation', $row['current_hold']['hold_type']);
+    }
+
+    public function test_for_map_as_of_rejects_past_dates_and_non_map_use(): void
+    {
+        $this->getJson("/api/units?site_id={$this->site->id}&for_map=1&as_of=2026-07-14")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['as_of']);
+
+        $this->getJson('/api/units?as_of=2026-07-16')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['as_of']);
+
+        $this->getJson("/api/units?site_id={$this->site->id}&as_of=2026-07-16")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['as_of']);
     }
 
     private function unit(string $number): Unit
