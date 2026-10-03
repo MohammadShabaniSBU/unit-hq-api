@@ -106,6 +106,13 @@ class DefaultContactAttributeDefinitionsSeeder extends Seeder
                 'group_name' => 'Retention',
                 'display_order' => 7,
             ],
+            [
+                'key' => 'date_of_birth',
+                'label' => 'Birthday',
+                'type' => AttributeType::Date,
+                'group_name' => 'Personal',
+                'display_order' => 8,
+            ],
         ];
     }
 

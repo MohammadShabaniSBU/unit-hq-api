@@ -12,6 +12,7 @@ use App\Enums\EsignEnvelopeStatus;
 use App\Enums\MoveOutSettlement;
 use App\Enums\ProrationMethod;
 use App\Enums\TransferBilling;
+use App\Models\Concerns\HasAutomationTriggers;
 use App\Models\Concerns\HasNotes;
 use App\Support\Auth\Concerns\VisibleToEmployee;
 use Illuminate\Database\Eloquent\Builder;
@@ -95,7 +96,7 @@ use Illuminate\Support\Carbon;
  */
 class Contract extends Model
 {
-    use HasFactory, HasNotes, VisibleToEmployee;
+    use HasAutomationTriggers, HasFactory, HasNotes, VisibleToEmployee;
 
     protected $fillable = [
         'contact_id',

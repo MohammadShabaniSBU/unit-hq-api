@@ -43,6 +43,7 @@ use App\Support\Facility\AssertsCatalogueMonotonicity;
 use App\Support\Playbooks\PlaybookCompiler;
 use Carbon\CarbonImmutable;
 use Database\Seeders\AgentInboxDraftSeeder;
+use Database\Seeders\CelebrationAutomationsSeeder;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
@@ -348,6 +349,7 @@ class StageSeeder extends Seeder
         $this->call(DebtPlaybookSeeder::class);
         $this->call(LeadChasePlaybookSeeder::class);
         $this->call(ContractDocumentTemplateSeeder::class);
+        $this->call(CelebrationAutomationsSeeder::class);
 
         $this->seedFakeProviders($sites);
         $this->activateDemoPlaybooks();

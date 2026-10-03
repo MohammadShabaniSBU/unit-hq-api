@@ -266,6 +266,7 @@ class DatabaseSeeder extends Seeder
         $this->call(BillingSeeder::class);
         $this->call(DebtPlaybookSeeder::class);
         $this->call(ContractDocumentTemplateSeeder::class);
+        $this->call(CelebrationAutomationsSeeder::class);
         $this->call(MessageStoreSeeder::class);
         $this->call(AgentInboxDraftSeeder::class);
 

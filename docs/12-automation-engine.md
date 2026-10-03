@@ -53,7 +53,11 @@ for test-harness coverage gates — every registered type must have a handler).
    lifecycles (`automationTriggerLifecycles()`, default all three), carrying a
    frozen attribute snapshot (`automationTriggerAttributes()`) and dirty diff.
    Causer is captured at dispatch time via `Actor::current()` (queue workers
-   have no request auth).
+   have no request auth). Models that boot the trait: Contact, Deal, Contract,
+   Delinquency, AutopayAttempt, and Payment (`created` only — payments are
+   append-only). A contract row is inserted with `signed_at` null. Signing is
+   the later `signed_at` update (`trigger.object_updated`, property
+   `signed_at`), not create.
 2. `MatchAutomationTriggers` (queued job) looks up candidate automation ids
    from `AutomationWatchCache` (keyed by subject type + trigger type, so most
    writes short-circuit with zero query cost), then calls
