@@ -396,7 +396,7 @@ final class OccupancyMetrics
      * @param  list<Unit>  $units
      * @return array<string, array{amount: string, currency: string}>
      */
-    private static function catalogueAmountsBySiteClass(array $units): array
+    public static function catalogueAmountsBySiteClass(array $units): array
     {
         $pairs = [];
         foreach ($units as $unit) {

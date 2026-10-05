@@ -27,6 +27,9 @@ class ReportController extends Controller
         'collections',
         'deposit-liability',
         'daily-close',
+        'revenue',
+        'rate-management',
+        'delinquency-trend',
     ];
 
     public function show(Request $request, string $name): JsonResponse|Response

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Reports;
 
+use App\Support\Reports\Charts\ChartSpec;
 use InvalidArgumentException;
 
 /**
@@ -20,17 +21,38 @@ final readonly class ReportResult
      * @param  list<ReportColumn>  $columns
      * @param  list<array<string, mixed>>  $rows
      * @param  array<string, mixed>  $meta
+     * @param  list<ChartSpec>  $charts
      */
     public function __construct(
         public array $columns,
         public array $rows,
         public array $meta = [],
+        public array $charts = [],
     ) {
         foreach ($this->columns as $column) {
             if (! $column instanceof ReportColumn) {
                 throw new InvalidArgumentException('ReportResult columns must be ReportColumn instances.');
             }
         }
+
+        $keys = [];
+        foreach ($this->charts as $chart) {
+            if (! $chart instanceof ChartSpec) {
+                throw new InvalidArgumentException('ReportResult charts must be ChartSpec instances.');
+            }
+            if (isset($keys[$chart->key])) {
+                throw new InvalidArgumentException("Duplicate chart key [{$chart->key}].");
+            }
+            $keys[$chart->key] = true;
+        }
+    }
+
+    /**
+     * @param  list<ChartSpec>  $charts
+     */
+    public function withCharts(array $charts): self
+    {
+        return new self($this->columns, $this->rows, $this->meta, $charts);
     }
 
     /**
@@ -63,7 +85,8 @@ final readonly class ReportResult
      * @return array{
      *     columns: list<array{key: string, label: string, type: string, currency: string|null}>,
      *     rows: list<array<string, mixed>>,
-     *     meta: array<string, mixed>
+     *     meta: array<string, mixed>,
+     *     charts: list<array<string, mixed>>
      * }
      */
     public function toArray(): array
@@ -75,6 +98,10 @@ final readonly class ReportResult
             ),
             'rows' => $this->rows,
             'meta' => $this->meta,
+            'charts' => array_map(
+                static fn (ChartSpec $chart): array => $chart->toArray(),
+                $this->charts,
+            ),
         ];
     }
 }

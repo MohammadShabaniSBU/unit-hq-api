@@ -17,11 +17,11 @@ Date windows use the house boundary convention: `started_on <= D < ended_on`
 (exclusive ends). As-of dates are site-local civil dates via `SiteClock` (D8).
 
 **Permission split** — `rent-roll`, `ageing`, `collections`,
-`deposit-liability`, and `daily-close` require the stricter
-`Permission::ReportFinancialView`; every other native report (occupancy,
-movement, funnel, dashboard, demo) only requires the baseline
-`Permission::ReportView`. Enforced in `ReportController::show`
-(`FINANCIAL_REPORTS` list).
+`deposit-liability`, `daily-close`, `revenue`, `rate-management`, and
+`delinquency-trend` require the stricter `Permission::ReportFinancialView`;
+every other native report (occupancy, movement, funnel, dashboard, demo,
+`length-of-stay`) only requires the baseline `Permission::ReportView`.
+Enforced in `ReportController::show` (`FINANCIAL_REPORTS` list).
 
 ---
 
@@ -242,6 +242,111 @@ Payments for a civil day, grouped **method × employee-causer × site**.
 The cash-method subtotal is the drawer number operators reconcile against.
 
 ---
+
+## Revenue / Ingresos
+
+Period report. The window is the month spine ending at `to` (default as-of),
+oldest first, 12 months unless `from` says otherwise, capped at 24.
+
+A charge counts when `charge_type` is `rent`, `insurance`, `late_fee`,
+`lien_fee`, `other`, or `adjustment`, and the month of
+`COALESCE(period_start, due_date)` falls in the window. `deposit`,
+`write_off`, and `refund` are never revenue. Reversal pairs are excluded
+(the original and the reversing row). The measure is `net_amount`, falling
+back to `amount`. Streams: rent, insurance, fees (`late_fee` + `lien_fee`),
+other (`other` + `adjustment`).
+
+RevPAM is rent net divided by the sum of class `size` of enabled units in
+scope, grouped by site currency. The denominator is current rentable m². It
+is not reconstructed for each past month.
+
+Money is never summed across currencies. Each currency gets its own stacked
+column (streams), area (RevPAM), and donut (period mix).
+
+| Term | ES | Meaning |
+|---|---|---|
+| Revenue | Ingresos | Net of the four streams above. |
+| RevPAM | RevPAM | Rent net ÷ current rentable m². |
+| Ancillary | Accesorios | Total − rent. |
+
+## Rate management / Gestión de tarifas
+
+As-of report. It answers whether an existing customer is due a rate increase.
+
+Enabled units in scope. An occupancy is open at the as-of date when
+`started_on <= as-of` and `ended_on` is null or later than as-of. Contracts
+in `awaiting_signature` or `cancelled` are excluded. The in-place rent is the
+unit contract line effective on the as-of date. Street rate is the current
+catalogue price for that site and class. A tenant is skipped when the
+in-place currency differs from the street currency.
+
+Variance is `(in-place − street) / street × 100`. Rent age is the whole
+months from the current unit-line `effective_from` to the as-of date (move-in,
+rate change, transfer, or correction). Below street means in-place < street.
+The monthly gap is street − in-place when below. ECRI-eligible means below
+street and rent age of at least 12 months.
+
+The ECRI monthly opportunity is the sum of those gaps. It is a ceiling. It
+ignores churn.
+
+Variance bands (lower bound inclusive): below −20%, −20% to −10%, −10% to 0%,
+0% to 10%, above 10%. Rent-age bands: 0–5, 6–11, 12–17, 18–23, 24+ months.
+
+| Term | ES | Meaning |
+|---|---|---|
+| Street rate | Tarifa de calle | Current catalogue price. |
+| In-place rent | Renta en vigor | Unit-line price effective on the as-of date. |
+| ECRI | Subida a cliente existente | Eligible when below street for at least 12 months. |
+
+## Length of stay / Duración de estancia
+
+A tenancy is a contract, not an occupancy row. Transfers are not exits.
+
+Occupancies with `started_on <= as-of` are grouped by contract. Start is the
+earliest `started_on`. If any occupancy is still open, the tenancy is open.
+Otherwise the end is the latest `ended_on`, and the exit reason is that
+occupancy's `ended_reason`. Active on date D means start ≤ D and (no end, or
+end > D). `cancelled` and `awaiting_signature` contracts are excluded.
+
+Tenure bands, in months: under 3, 3–5, 6–11, 12–23, 24–35, 36+.
+
+Leavers ended inside `[from, to]`. Default `from` is `to` minus 12 months.
+Only `vacated` (voluntary) and `non_payment` (involuntary) count, matching
+Movement. `operator_terminated` and `transferred_out` are not move-outs.
+
+The cohort heatmap is the last 12 move-in months, newest first. Columns are
+M0–M12. A cell is the share of that cohort still active on the last day of
+(cohort month + k). The cell is empty when that day is after the as-of date
+or the cohort is empty.
+
+| Term | ES | Meaning |
+|---|---|---|
+| Tenancy | Estancia | One contract, across transfers. |
+| Leaver | Salida | Vacated or non-payment in the period. |
+| Cohort retention | Retención por cohorte | Share still active at each later month-end. |
+
+## Delinquency trend / Evolución de morosidad
+
+Point-in-time overdue balance at each month-end, rebuilt from the ledger.
+This is not Ageing, which is current-state only.
+
+Checkpoints are the last 12 months up to `min(to, as-of)`. A past month uses
+its last day. The current month uses the as-of date.
+
+Charges in the delinquency trigger types, with `amount > 0` and `due_date`
+before the last checkpoint, excluding reversal pairs and charges already
+fully allocated before the first checkpoint. Open amount at checkpoint E is
+`amount` minus allocations whose `created_at` is at or before the end of day
+E, in UTC, not site-local time. A positive open amount with `due_date < E`
+falls in an ageing bucket. A contract is delinquent when any open charge is
+more than 30 days overdue. The denominator is distinct contracts with an
+occupancy active at E.
+
+| Term | ES | Meaning |
+|---|---|---|
+| Overdue | Vencido | Open amount past due at that checkpoint. |
+| Delinquent | En morosidad | More than 30 days overdue. |
+| Antigüedad | Antigüedad | Same ageing buckets as the Ageing report. |
 
 ## Cross-cutting rules
 

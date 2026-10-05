@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Reports;
 
+use App\Support\Reports\Charts\CategoryKind;
+use App\Support\Reports\Charts\ChartFormat;
+use App\Support\Reports\Charts\ChartSeries;
+use App\Support\Reports\Charts\ChartSpec;
+use App\Support\Reports\Charts\ChartType;
+use App\Support\Reports\Charts\MonthSpine;
+
 /**
  * Three occupancy definitions (unit / area / economic) with site×class
  * breakdown and a bounded monthly trend series.
@@ -93,7 +100,81 @@ final class OccupancyReport extends AbstractReport
                     'Definitions: docs/report-definitions.md — Occupancy / Ocupación.',
                 ],
             ],
+            charts: self::charts($series, $rows),
         );
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $series
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<ChartSpec>
+     */
+    private static function charts(array $series, array $rows): array
+    {
+        $categories = [];
+        $unit = [];
+        $area = [];
+        $economic = [];
+        foreach ($series as $point) {
+            $categories[] = MonthSpine::of((string) $point['month_end']);
+            $unit[] = $point['unit_rate'];
+            $area[] = $point['area_rate'];
+            $economic[] = $point['economic_rate'];
+        }
+
+        $charts = [
+            new ChartSpec(
+                key: 'occupancy_trend',
+                type: ChartType::Line,
+                titleKey: 'insights.charts.occupancy_trend.title',
+                descriptionKey: 'insights.charts.occupancy_trend.description',
+                categories: $categories,
+                categoryKind: CategoryKind::Month,
+                series: [
+                    ChartSeries::keyed('insights.charts.series.unit_rate', $unit),
+                    ChartSeries::keyed('insights.charts.series.area_rate', $area),
+                    ChartSeries::keyed('insights.charts.series.economic_rate', $economic),
+                ],
+                format: ChartFormat::Percent,
+                targets: [
+                    ['y' => 90, 'label_key' => 'insights.charts.targets.occupancy_goal'],
+                ],
+            ),
+        ];
+
+        /** @var array<string, array<string, float|null>> $bySite */
+        $bySite = [];
+        $classCodes = [];
+        foreach ($rows as $row) {
+            $site = (string) $row['site'];
+            $class = (string) $row['class'];
+            $bySite[$site][$class] = $row['unit_rate'];
+            $classCodes[$class] = true;
+        }
+
+        if ($bySite !== []) {
+            $classes = array_keys($classCodes);
+            sort($classes);
+            $heatmap = [];
+            foreach ($bySite as $site => $rates) {
+                $data = [];
+                foreach ($classes as $class) {
+                    $data[] = $rates[$class] ?? null;
+                }
+                $heatmap[] = ChartSeries::named($site, $data);
+            }
+            $charts[] = new ChartSpec(
+                key: 'occupancy_heatmap',
+                type: ChartType::Heatmap,
+                titleKey: 'insights.charts.occupancy_heatmap.title',
+                descriptionKey: 'insights.charts.occupancy_heatmap.description',
+                categories: $classes,
+                categoryKind: CategoryKind::Text,
+                series: $heatmap,
+                format: ChartFormat::Percent,
+            );
+        }
+
+        return $charts;
+    }
 }

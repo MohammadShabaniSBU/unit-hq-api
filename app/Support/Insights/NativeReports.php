@@ -68,6 +68,26 @@ final class NativeReports
             'icon' => 'i-lucide-table',
             'section' => 'operations',
         ],
+        'revenue' => [
+            'label_key' => 'insights.reports.revenue.label',
+            'icon' => 'i-lucide-trending-up',
+            'section' => 'revenue',
+        ],
+        'rate-management' => [
+            'label_key' => 'insights.reports.rate_management.label',
+            'icon' => 'i-lucide-gauge',
+            'section' => 'revenue',
+        ],
+        'length-of-stay' => [
+            'label_key' => 'insights.reports.length_of_stay.label',
+            'icon' => 'i-lucide-hourglass',
+            'section' => 'customers',
+        ],
+        'delinquency-trend' => [
+            'label_key' => 'insights.reports.delinquency_trend.label',
+            'icon' => 'i-lucide-chart-area',
+            'section' => 'operations',
+        ],
     ];
 
     /**

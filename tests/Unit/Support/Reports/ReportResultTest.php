@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Reports;
 
+use App\Support\Reports\Charts\CategoryKind;
+use App\Support\Reports\Charts\ChartFormat;
+use App\Support\Reports\Charts\ChartSeries;
+use App\Support\Reports\Charts\ChartSpec;
+use App\Support\Reports\Charts\ChartType;
 use App\Support\Reports\ReportColumn;
 use App\Support\Reports\ReportColumnType;
 use App\Support\Reports\ReportResult;
@@ -49,5 +54,43 @@ class ReportResultTest extends TestCase
         );
         $this->assertSame('EUR', $result->toArray()['columns'][0]['currency']);
         $this->assertSame(['notes' => ['hello']], $result->toArray()['meta']);
+        $this->assertSame([], $result->toArray()['charts']);
+    }
+
+    public function test_charts_key_and_duplicate_key_throws(): void
+    {
+        $chart = $this->chart('revpam:EUR');
+        $result = (new ReportResult(
+            columns: [ReportColumn::int('n', 'N')],
+            rows: [],
+        ))->withCharts([$chart]);
+
+        $this->assertSame('revpam:EUR', $result->toArray()['charts'][0]['key']);
+
+        try {
+            new ReportResult(
+                columns: [],
+                rows: [],
+                charts: [$chart, $this->chart('revpam:EUR')],
+            );
+            $this->fail('Expected duplicate chart key to throw.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('Duplicate chart key', $e->getMessage());
+        }
+    }
+
+    private function chart(string $key): ChartSpec
+    {
+        return new ChartSpec(
+            key: $key,
+            type: ChartType::Area,
+            titleKey: 'insights.charts.revpam.title',
+            descriptionKey: null,
+            categories: ['2026-01'],
+            categoryKind: CategoryKind::Month,
+            series: [ChartSeries::keyed('insights.charts.series.revpam', [12.5])],
+            format: ChartFormat::Money,
+            currency: 'EUR',
+        );
     }
 }

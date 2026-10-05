@@ -26,6 +26,10 @@ final class ReportRegistry
         'movement' => MovementReport::class,
         'funnel' => FunnelReport::class,
         'dashboard' => DashboardReport::class,
+        'revenue' => RevenueReport::class,
+        'rate-management' => RateManagementReport::class,
+        'length-of-stay' => LengthOfStayReport::class,
+        'delinquency-trend' => DelinquencyTrendReport::class,
     ];
 
     /**

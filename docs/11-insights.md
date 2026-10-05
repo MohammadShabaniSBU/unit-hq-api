@@ -15,9 +15,10 @@ create / rotate / remove.
 **How to add a report**
 
 1. **Native** — add an entry to `App\Support\Insights\NativeReports`, ship the
-   panel component keyed by `native_key`, re-run the seeder
-   (`php artisan insights:check` catches mismatches). Do not invent a new
-   hard-coded Insights route.
+   panel component keyed by `native_key`, then insert the missing registry row
+   with `php artisan insights:sync` (`php artisan insights:check` catches
+   mismatches). Do not invent a new hard-coded Insights route. The sync command
+   inserts only; it never updates an existing row, including an archived one.
 2. **Embedded** — Settings → Insights → Reports → create against a connected
    analytics account; bind params; save. The nav picks it up from
    `GET /api/insights`.
@@ -26,10 +27,12 @@ Native formula vocabulary lives in `report-definitions.md`. Column-level
 `analytics.*` catalogues live in `analytics-schema.md`.
 
 Financial-category native reports (`rent-roll`, `ageing`, `collections`,
-`deposit-liability`, `daily-close`) are gated behind the stricter
+`deposit-liability`, `daily-close`, `revenue`, `rate-management`,
+`delinquency-trend`) are gated behind the stricter
 `Permission::ReportFinancialView` rather than the baseline
 `Permission::ReportView` that every other native report requires — enforced in
-`ReportController::show`. See `report-definitions.md` for the full list.
+`ReportController::show`. `length-of-stay` stays on `ReportView`. See
+`report-definitions.md` for the full list.
 
 ---
 
