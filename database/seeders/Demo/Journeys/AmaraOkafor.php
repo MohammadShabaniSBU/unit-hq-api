@@ -40,7 +40,7 @@ final class AmaraOkafor extends Journey
                     'email' => 'amara.okafor@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'amara', $site, DealStatus::Qualified);
-                $unit = JourneySupport::vacantUnit($site, 'SS5');
+                $unit = JourneySupport::vacantUnit($site, 'SS9');
                 $date = CastExecutor::civilDate($signDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::FreeTime)
@@ -79,5 +79,4 @@ final class AmaraOkafor extends Journey
             'Amara should still be inside the free (€0) window at seed-end',
         );
     }
-
 }

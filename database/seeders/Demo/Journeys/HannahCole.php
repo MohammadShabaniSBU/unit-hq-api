@@ -7,7 +7,6 @@ namespace Database\Seeders\Demo\Journeys;
 use App\Enums\AutopayAttemptStatus;
 use App\Models\AutopayAttempt;
 use App\Models\Delinquency;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -40,7 +39,7 @@ final class HannahCole extends Journey
                     'email' => 'ana.coloma@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'hannah', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS3');
+                $unit = JourneySupport::vacantUnit($site, 'SS7');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'hannah', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'hannah');

@@ -6,7 +6,6 @@ namespace Database\Seeders\Demo\Journeys;
 
 use App\Models\CallWrapup;
 use App\Models\Delinquency;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -39,7 +38,7 @@ final class TomBradley extends Journey
                     'email' => 'tomas.blanco@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'tom', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS2');
+                $unit = JourneySupport::vacantUnit($site, 'SS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'tom', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'tom');
@@ -84,5 +83,4 @@ final class TomBradley extends Journey
             'Tom should have cured delinquency history',
         );
     }
-
 }

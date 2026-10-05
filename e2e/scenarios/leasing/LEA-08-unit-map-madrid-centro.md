@@ -14,7 +14,7 @@ invariants: []
 
 ## Preconditions
 
-Compact demo world. Marcos Vega (MAD-01) has an active contract (transferred SS4 → SS6 in the full world; on compact he is still an occupied MAD-01 unit).
+Compact demo world. Marcos Vega (MAD-01) has an active contract (transferred SS8 → SS10 in the full world; on compact he is still an occupied MAD-01 unit). Planta baja is the 168-box plan; his unit is on an upper floor.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Compact demo world. Marcos Vega (MAD-01) has an active contract (transferred SS4
 ## Known traps
 
 - Type **Marcos Vega**, not `MarcusWebb`.
-- Unit-class **labels** are Spanish (`Trastero 10 m²`), not `SS6`.
+- Unit-class **labels** are Spanish (`Trastero 10 m²`), not `SS10`.
 
 ## On failure
 

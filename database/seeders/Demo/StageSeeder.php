@@ -68,18 +68,30 @@ class StageSeeder extends Seeder
 
     /** @var array<string, string> */
     private const CATALOGUE_NET = [
-        'SS1' => '72.00',
-        'SS2' => '82.00',
-        'SS3' => '92.00',
-        'SS4' => '104.00',
-        'SS5' => '116.00',
-        'SS6' => '128.00',
-        'SS7' => '140.00',
-        'SS8' => '152.00',
-        'AL1' => '138.00',
-        'AL2' => '168.00',
-        'AL3' => '192.00',
-        'AL4' => '218.00',
+        'SS1.5' => '36.00',
+        'SS2' => '44.00',
+        'SS2.5' => '52.00',
+        'SS3' => '60.00',
+        'SS5' => '72.00',
+        'SS6' => '82.00',
+        'SS7' => '92.00',
+        'SS8' => '104.00',
+        'SS9' => '116.00',
+        'SS10' => '128.00',
+        'SS11' => '140.00',
+        'SS12' => '152.00',
+        'AL10' => '138.00',
+        'AL12' => '168.00',
+        'AL14' => '192.00',
+        'AL16' => '218.00',
+    ];
+
+    /** @var list<array{code: string, label: string, size: float}> */
+    private const SMALL_CLASSES = [
+        ['code' => 'SS1.5', 'label' => 'Trastero 1.5 m²', 'size' => 1.50],
+        ['code' => 'SS2', 'label' => 'Trastero 2 m²', 'size' => 2.00],
+        ['code' => 'SS2.5', 'label' => 'Trastero 2.5 m²', 'size' => 2.50],
+        ['code' => 'SS3', 'label' => 'Trastero 3 m²', 'size' => 3.00],
     ];
 
     public function run(): void
@@ -219,18 +231,18 @@ class StageSeeder extends Seeder
         $unitClasses = collect();
         foreach (
             [
-                ['code' => 'SS1', 'label' => 'Trastero 5 m²', 'size' => 5.00],
-                ['code' => 'SS2', 'label' => 'Trastero 6 m²', 'size' => 6.00],
-                ['code' => 'SS3', 'label' => 'Trastero 7 m²', 'size' => 7.00],
-                ['code' => 'SS4', 'label' => 'Trastero 8 m²', 'size' => 8.00],
-                ['code' => 'SS5', 'label' => 'Trastero 9 m²', 'size' => 9.00],
-                ['code' => 'SS6', 'label' => 'Trastero 10 m²', 'size' => 10.00],
-                ['code' => 'SS7', 'label' => 'Trastero 11 m²', 'size' => 11.00],
-                ['code' => 'SS8', 'label' => 'Trastero 12 m²', 'size' => 12.00],
-                ['code' => 'AL1', 'label' => 'Trastero 10 m² XL', 'size' => 10.00],
-                ['code' => 'AL2', 'label' => 'Trastero 12 m² XL', 'size' => 12.00],
-                ['code' => 'AL3', 'label' => 'Trastero 14 m² XL', 'size' => 14.00],
-                ['code' => 'AL4', 'label' => 'Trastero 16 m² XL', 'size' => 16.00],
+                ['code' => 'SS5', 'label' => 'Trastero 5 m²', 'size' => 5.00],
+                ['code' => 'SS6', 'label' => 'Trastero 6 m²', 'size' => 6.00],
+                ['code' => 'SS7', 'label' => 'Trastero 7 m²', 'size' => 7.00],
+                ['code' => 'SS8', 'label' => 'Trastero 8 m²', 'size' => 8.00],
+                ['code' => 'SS9', 'label' => 'Trastero 9 m²', 'size' => 9.00],
+                ['code' => 'SS10', 'label' => 'Trastero 10 m²', 'size' => 10.00],
+                ['code' => 'SS11', 'label' => 'Trastero 11 m²', 'size' => 11.00],
+                ['code' => 'SS12', 'label' => 'Trastero 12 m²', 'size' => 12.00],
+                ['code' => 'AL10', 'label' => 'Trastero 10 m² XL', 'size' => 10.00],
+                ['code' => 'AL12', 'label' => 'Trastero 12 m² XL', 'size' => 12.00],
+                ['code' => 'AL14', 'label' => 'Trastero 14 m² XL', 'size' => 14.00],
+                ['code' => 'AL16', 'label' => 'Trastero 16 m² XL', 'size' => 16.00],
             ] as $classDef
         ) {
             $unitClasses->push(UnitClass::factory()->create([
@@ -242,6 +254,148 @@ class StageSeeder extends Seeder
         }
 
         $seededHistorical = false;
+        $this->seedCataloguePrices($unitClasses, $sites, $manager, $seededHistorical);
+
+        AssertsCatalogueMonotonicity::assert();
+
+        foreach (
+            [
+                ['name' => 'Básico', 'coverage' => 3000, 'amount' => 3],
+                ['name' => 'Premium', 'coverage' => 5000, 'amount' => 5],
+            ] as $insuranceData
+        ) {
+            $insurance = Insurance::query()->create([
+                'name' => $insuranceData['name'],
+                'coverage' => $insuranceData['coverage'],
+                'currency' => 'EUR',
+                'tax_rate_code' => 'exempt',
+            ]);
+
+            foreach ($sites as $site) {
+                $rate = InsuranceRate::query()->create([
+                    'insurance_id' => $insurance->id,
+                    'site_id' => $site->id,
+                ]);
+
+                $price = Price::query()->create([
+                    'priceable_type' => 'insurance_rate',
+                    'priceable_id' => $rate->id,
+                    'scope' => Price::SCOPE_CATALOGUE,
+                    'amount' => $insuranceData['amount'],
+                    'currency' => $site->currency,
+                    'effective_from' => now()->subMonths(6)->toDateString(),
+                    'effective_to' => null,
+                    'created_by' => $manager->id,
+                ]);
+
+                CurrencyGuard::assertRateJunction($site->currency, $price->currency);
+            }
+        }
+
+        // 120 larger units/site. Crowd + cast rent only these classes, so the
+        // RNG stream stays put. Cast still prefers SS6–SS10 at MAD-01;
+        // vacantUnit falls back if a class is full.
+        foreach ($unitClasses as $unitClass) {
+            foreach ($sites as $site) {
+                foreach (range(1, 10) as $n) {
+                    // Direct create — UnitFactory::definition() still runs unique()
+                    // even when unit_number is overridden, which exhausted A-###.
+                    Unit::query()->create([
+                        'site_id' => $site->id,
+                        'unit_class_id' => $unitClass->id,
+                        'unit_number' => DemoUnitNumber::format($unitClass->code, $n),
+                        'actual_width' => fake()->randomFloat(2, 1.5, 5.0),
+                        'actual_depth' => fake()->randomFloat(2, 2.0, 6.0),
+                        'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
+                        'enabled' => true,
+                    ]);
+                }
+            }
+        }
+
+        // Box-plan units. Direct creates only — a factory call here would
+        // consume the RNG stream the cast depends on.
+        $smallClasses = collect();
+        foreach (self::SMALL_CLASSES as $classDef) {
+            $smallClasses->push(UnitClass::query()->create([
+                'code' => $classDef['code'],
+                'label' => $classDef['label'],
+                'size' => $classDef['size'],
+                'tax_rate_code' => 'vat',
+            ]));
+        }
+        $this->seedCataloguePrices($smallClasses, $sites, $manager, $seededHistorical);
+        AssertsCatalogueMonotonicity::assert();
+
+        $smallClassIds = $smallClasses->keyBy('code');
+        foreach ($sites as $site) {
+            foreach (BoxPlan::units() as $box) {
+                $unitClass = $smallClassIds->get($box['class_code']);
+                if ($unitClass === null) {
+                    throw new \RuntimeException("Box plan class {$box['class_code']} was not seeded.");
+                }
+
+                Unit::query()->create([
+                    'site_id' => $site->id,
+                    'unit_class_id' => $unitClass->id,
+                    'unit_number' => $box['unit_number'],
+                    'actual_width' => $box['width_m'],
+                    'actual_depth' => $box['depth_m'],
+                    'actual_height' => 2.5,
+                    'enabled' => true,
+                ]);
+            }
+        }
+
+        $this->call(DebtPlaybookSeeder::class);
+        $this->call(LeadChasePlaybookSeeder::class);
+        $this->call(ContractDocumentTemplateSeeder::class);
+        $this->call(CelebrationAutomationsSeeder::class);
+
+        $this->seedFakeProviders($sites);
+        $this->activateDemoPlaybooks();
+
+        DemoRbacGrants::assign($sites);
+
+        // Floor plans: deterministic only — must not consume the RNG stream.
+        FloorPlanStage::seed($sites);
+
+        (new AgentInboxDraftSeeder)->run();
+
+        $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
+    }
+
+    private function activateDemoPlaybooks(): void
+    {
+        foreach ([PlaybookKind::DebtProcess, PlaybookKind::LeadChase] as $kind) {
+            $playbook = Playbook::query()
+                ->where('kind', $kind)
+                ->where('is_active', false)
+                ->orderBy('id')
+                ->first();
+
+            if ($playbook === null) {
+                $playbook = Playbook::query()
+                    ->where('kind', $kind)
+                    ->orderBy('id')
+                    ->first();
+            }
+
+            if ($playbook === null) {
+                continue;
+            }
+
+            $playbook->forceFill(['is_active' => true])->save();
+            PlaybookCompiler::compile($playbook->fresh(['steps']) ?? $playbook);
+        }
+    }
+
+    /**
+     * @param  Collection<int, UnitClass>  $unitClasses
+     * @param  Collection<int, Site>  $sites
+     */
+    private function seedCataloguePrices(Collection $unitClasses, Collection $sites, Employee $manager, bool &$seededHistorical): void
+    {
         foreach ($unitClasses as $unitClass) {
             $cataloguePrice = null;
             $amount = self::CATALOGUE_NET[$unitClass->code] ?? null;
@@ -288,104 +442,6 @@ class StageSeeder extends Seeder
             }
 
             $unitClass->update(['current_price_id' => $cataloguePrice->id]);
-        }
-
-        AssertsCatalogueMonotonicity::assert();
-
-        foreach (
-            [
-                ['name' => 'Básico', 'coverage' => 3000, 'amount' => 3],
-                ['name' => 'Premium', 'coverage' => 5000, 'amount' => 5],
-            ] as $insuranceData
-        ) {
-            $insurance = Insurance::query()->create([
-                'name' => $insuranceData['name'],
-                'coverage' => $insuranceData['coverage'],
-                'currency' => 'EUR',
-                'tax_rate_code' => 'exempt',
-            ]);
-
-            foreach ($sites as $site) {
-                $rate = InsuranceRate::query()->create([
-                    'insurance_id' => $insurance->id,
-                    'site_id' => $site->id,
-                ]);
-
-                $price = Price::query()->create([
-                    'priceable_type' => 'insurance_rate',
-                    'priceable_id' => $rate->id,
-                    'scope' => Price::SCOPE_CATALOGUE,
-                    'amount' => $insuranceData['amount'],
-                    'currency' => $site->currency,
-                    'effective_from' => now()->subMonths(6)->toDateString(),
-                    'effective_to' => null,
-                    'created_by' => $manager->id,
-                ]);
-
-                CurrencyGuard::assertRateJunction($site->currency, $price->currency);
-            }
-        }
-
-        // ~120 units/site × 5 Madrid sites. Crowd + cast target ~80% occupancy.
-        // Cast still prefers SS2–SS6 at MAD-01; vacantUnit falls back if a class is full.
-        foreach ($unitClasses as $unitClass) {
-            foreach ($sites as $site) {
-                foreach (range(1, 10) as $n) {
-                    // Direct create — UnitFactory::definition() still runs unique()
-                    // even when unit_number is overridden, which exhausted A-###.
-                    Unit::query()->create([
-                        'site_id' => $site->id,
-                        'unit_class_id' => $unitClass->id,
-                        'unit_number' => DemoUnitNumber::format($unitClass->code, $n),
-                        'actual_width' => fake()->randomFloat(2, 1.5, 5.0),
-                        'actual_depth' => fake()->randomFloat(2, 2.0, 6.0),
-                        'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
-                        'enabled' => true,
-                    ]);
-                }
-            }
-        }
-
-        $this->call(DebtPlaybookSeeder::class);
-        $this->call(LeadChasePlaybookSeeder::class);
-        $this->call(ContractDocumentTemplateSeeder::class);
-        $this->call(CelebrationAutomationsSeeder::class);
-
-        $this->seedFakeProviders($sites);
-        $this->activateDemoPlaybooks();
-
-        DemoRbacGrants::assign($sites);
-
-        // Floor plans: deterministic only — must not consume the RNG stream.
-        FloorPlanStage::seed($sites);
-
-        (new AgentInboxDraftSeeder)->run();
-
-        $this->command?->info("Demo stage seeded (DEMO_SEED={$rngSeed}).");
-    }
-
-    private function activateDemoPlaybooks(): void
-    {
-        foreach ([PlaybookKind::DebtProcess, PlaybookKind::LeadChase] as $kind) {
-            $playbook = Playbook::query()
-                ->where('kind', $kind)
-                ->where('is_active', false)
-                ->orderBy('id')
-                ->first();
-
-            if ($playbook === null) {
-                $playbook = Playbook::query()
-                    ->where('kind', $kind)
-                    ->orderBy('id')
-                    ->first();
-            }
-
-            if ($playbook === null) {
-                continue;
-            }
-
-            $playbook->forceFill(['is_active' => true])->save();
-            PlaybookCompiler::compile($playbook->fresh(['steps']) ?? $playbook);
         }
     }
 

@@ -44,7 +44,7 @@ final class GraceLin extends Journey
                     'email' => 'gracia.lin@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'grace', $site, DealStatus::Negotiating);
-                JourneySupport::createOffer($world, 'grace', $site, 'SS6', 'sent');
+                JourneySupport::createOffer($world, 'grace', $site, 'SS10', 'sent');
                 JourneySupport::markOfferViewed($world, 'grace');
                 JourneySupport::enrolLeadChase($world, 'grace');
             },

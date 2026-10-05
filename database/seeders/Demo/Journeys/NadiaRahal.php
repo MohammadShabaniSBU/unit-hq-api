@@ -10,7 +10,6 @@ use App\Models\ContractItem;
 use App\Models\ContractNotice;
 use App\Models\Discount;
 use App\Support\Billing\BillingMath;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -42,7 +41,7 @@ final class NadiaRahal extends Journey
                     'email' => 'nadia.rahal@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'nadia', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS5');
+                $unit = JourneySupport::vacantUnit($site, 'SS9');
                 $date = CastExecutor::civilDate($startDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::Percent)
@@ -116,5 +115,4 @@ final class NadiaRahal extends Journey
             'Nadia open version should be 80% of current list',
         );
     }
-
 }

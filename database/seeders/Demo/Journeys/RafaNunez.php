@@ -6,7 +6,6 @@ namespace Database\Seeders\Demo\Journeys;
 
 use App\Enums\PaymentRequestStatus;
 use App\Models\PaymentRequest;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -37,7 +36,7 @@ final class RafaNunez extends Journey
                     'email' => 'rafa.nunez@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'rafa', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS2');
+                $unit = JourneySupport::vacantUnit($site, 'SS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'rafa', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'rafa');
@@ -65,5 +64,4 @@ final class RafaNunez extends Journey
         Assert::assertSame(PaymentRequestStatus::Paid, $request->fresh()->status);
         Assert::assertNotNull($request->fresh()->paid_payment_id);
     }
-
 }

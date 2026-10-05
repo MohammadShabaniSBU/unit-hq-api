@@ -9,7 +9,6 @@ use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
 use App\Models\Charge;
 use App\Models\Delinquency;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -45,7 +44,7 @@ final class DerekHoyle extends Journey
                     'billing_postal_code' => '28008',
                 ]);
                 JourneySupport::openDeal($world, 'derek', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS3');
+                $unit = JourneySupport::vacantUnit($site, 'SS7');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'derek', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'derek');
@@ -99,5 +98,4 @@ final class DerekHoyle extends Journey
             'Derek case should be cured via write-off',
         );
     }
-
 }

@@ -34,7 +34,7 @@ final class OmarHaddad extends Journey
                     'email' => 'omar.haddad@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'omar', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS4');
+                $unit = JourneySupport::vacantUnit($site, 'SS8');
                 $moveIn = CastExecutor::civilDate($end + 10);
                 JourneySupport::walkInSign(
                     $world,

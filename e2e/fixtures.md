@@ -15,7 +15,7 @@ Search the UI by **display name**, not by PHP class name.
 
 - Class names (`MarcusWebb`, `TheKellys`) never appear on screen.
 - Accented letters are part of the stored name. Type `Lucía Ferrer`, `Sofía Marín`, `Tomás Blanco`, `Inés Valdés`, `Víctor Palencia`, `Javier Peña`, `Rafa Núñez`. An ASCII fallback is a false miss.
-- Unit-class **codes** are `SS1`–`SS8` and `AL1`–`AL4`. The UI shows Spanish **labels** (`Trastero 8 m²` for `SS4`). Search by label.
+- Unit-class **codes** follow the size: `SS1.5`, `SS2`, `SS2.5`, `SS3` for the ground-floor boxes, then `SS5`–`SS12` and `AL10`, `AL12`, `AL14`, `AL16`. The UI shows Spanish **labels** (`Trastero 8 m²` for `SS8`). Search by label.
 - The Keller story is marketed as "Los Keller"; the contact row is **Patricia Keller** (`company` = `Los Keller`).
 
 ## Sites
@@ -52,18 +52,24 @@ Smoke and core scenarios assume the compact column. Do not add a second Lucía-d
 
 | Code | Label |
 |---|---|
-| SS1 | Trastero 5 m² |
-| SS2 | Trastero 6 m² |
-| SS3 | Trastero 7 m² |
-| SS4 | Trastero 8 m² |
-| SS5 | Trastero 9 m² |
-| SS6 | Trastero 10 m² |
-| SS7 | Trastero 11 m² |
-| SS8 | Trastero 12 m² |
-| AL1 | Trastero 10 m² XL |
-| AL2 | Trastero 12 m² XL |
-| AL3 | Trastero 14 m² XL |
-| AL4 | Trastero 16 m² XL |
+| SS1.5 | Trastero 1.5 m² |
+| SS2 | Trastero 2 m² |
+| SS2.5 | Trastero 2.5 m² |
+| SS3 | Trastero 3 m² |
+| SS5 | Trastero 5 m² |
+| SS6 | Trastero 6 m² |
+| SS7 | Trastero 7 m² |
+| SS8 | Trastero 8 m² |
+| SS9 | Trastero 9 m² |
+| SS10 | Trastero 10 m² |
+| SS11 | Trastero 11 m² |
+| SS12 | Trastero 12 m² |
+| AL10 | Trastero 10 m² XL |
+| AL12 | Trastero 12 m² XL |
+| AL14 | Trastero 14 m² XL |
+| AL16 | Trastero 16 m² XL |
+
+Planta baja on every site is the 168-box plan (`A1`–`A46`, `B1`–`B74`, `C1`–`C32`, `D1`–`D16`). The 5–16 m² classes are on Planta 1–3.
 
 ## Cast
 
@@ -71,7 +77,7 @@ Display names and emails come from the journey classes, not from the class ident
 
 | Handle | Class | Display name | Email | Site | End state |
 |---|---|---|---|---|---|
-| `marcus` | `MarcusWebb` | Marcos Vega | marcos.vega@demo.keevaris.test | MAD-01 | Active contract, transferred SS4 → SS6, SMS thread asking to enlarge (`ampliar`) |
+| `marcus` | `MarcusWebb` | Marcos Vega | marcos.vega@demo.keevaris.test | MAD-01 | Active contract, transferred SS8 → SS10, SMS thread asking to enlarge (`ampliar`) |
 | `lucia` | `LuciaFerrer` | Lucía Ferrer | lucia.ferrer@demo.keevaris.test | MAD-01 | Open delinquency, 15–30 day bucket, overlocked, denied door event, still owing |
 | `tom` | `TomBradley` | Tomás Blanco | tomas.blanco@demo.keevaris.test | MAD-01 | Cured delinquency; promise-kept (`payment_promised` then paid) |
 | `amara` | `AmaraOkafor` | Amara Okafor | amara.okafor@demo.keevaris.test | MAD-01 | Active; still inside the long-stay €0 window |

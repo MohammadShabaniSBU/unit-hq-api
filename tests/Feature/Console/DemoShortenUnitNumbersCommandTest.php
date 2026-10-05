@@ -47,12 +47,12 @@ class DemoShortenUnitNumbersCommandTest extends TestCase
         $this->assertStringContainsString('id="J7"', $map->svg_map);
         $this->assertStringContainsString('data-unit-number="J7"', $map->svg_map);
         $this->assertStringContainsString('>J7</text>', $map->svg_map);
-        $this->assertStringNotContainsString('MAD-01-SS3-01', $map->svg_map);
-        $this->assertStringNotContainsString('MAD-01-SS3-07', $map->svg_map);
+        $this->assertStringNotContainsString('MAD-01-SS7-01', $map->svg_map);
+        $this->assertStringNotContainsString('MAD-01-SS7-07', $map->svg_map);
 
         $this->assertSame('J1', $map->scene['items'][0]['unit_number'] ?? null);
         $this->assertStringContainsString('J1', (string) ($map->scene['backgroundSvg'] ?? ''));
-        $this->assertStringNotContainsString('MAD-01-SS3-01', (string) ($map->scene['backgroundSvg'] ?? ''));
+        $this->assertStringNotContainsString('MAD-01-SS7-01', (string) ($map->scene['backgroundSvg'] ?? ''));
     }
 
     #[Test]
@@ -92,10 +92,10 @@ class DemoShortenUnitNumbersCommandTest extends TestCase
             ->expectsOutputToContain('Dry run');
 
         $this->assertSame(
-            ['MAD-01-SS3-01', 'MAD-01-SS3-07'],
+            ['MAD-01-SS7-01', 'MAD-01-SS7-07'],
             Unit::query()->orderBy('id')->pluck('unit_number')->all()
         );
-        $this->assertStringContainsString('MAD-01-SS3-01', (string) SiteMap::query()->value('svg_map'));
+        $this->assertStringContainsString('MAD-01-SS7-01', (string) SiteMap::query()->value('svg_map'));
     }
 
     #[Test]
@@ -121,28 +121,28 @@ class DemoShortenUnitNumbersCommandTest extends TestCase
             'currency' => 'EUR',
         ]);
         $class = UnitClass::factory()->create([
-            'code' => 'SS3',
+            'code' => 'SS7',
             'label' => 'Trastero 7 m²',
         ]);
 
         Unit::factory()->create([
             'site_id' => $site->id,
             'unit_class_id' => $class->id,
-            'unit_number' => 'MAD-01-SS3-01',
+            'unit_number' => 'MAD-01-SS7-01',
         ]);
         Unit::factory()->create([
             'site_id' => $site->id,
             'unit_class_id' => $class->id,
-            'unit_number' => 'MAD-01-SS3-07',
+            'unit_number' => 'MAD-01-SS7-07',
         ]);
 
         $svg = <<<'SVG'
 <svg xmlns="http://www.w3.org/2000/svg">
-  <g class="storage-unit" id="MAD-01-SS3-01" data-unit-number="MAD-01-SS3-01">
-    <text class="unit-label">MAD-01-SS3-01</text>
+  <g class="storage-unit" id="MAD-01-SS7-01" data-unit-number="MAD-01-SS7-01">
+    <text class="unit-label">MAD-01-SS7-01</text>
   </g>
-  <g class="storage-unit" id="MAD-01-SS3-07" data-unit-number="MAD-01-SS3-07">
-    <text class="unit-label">MAD-01-SS3-07</text>
+  <g class="storage-unit" id="MAD-01-SS7-07" data-unit-number="MAD-01-SS7-07">
+    <text class="unit-label">MAD-01-SS7-07</text>
   </g>
 </svg>
 SVG;
@@ -155,7 +155,7 @@ SVG;
             'scene' => [
                 'version' => 1,
                 'viewBox' => ['width' => 100.0, 'height' => 100.0],
-                'backgroundSvg' => '<text>MAD-01-SS3-01</text>',
+                'backgroundSvg' => '<text>MAD-01-SS7-01</text>',
                 'items' => [
                     [
                         'id' => 'u1',
@@ -164,7 +164,7 @@ SVG;
                         'y' => 10.0,
                         'width' => 20.0,
                         'height' => 20.0,
-                        'unit_number' => 'MAD-01-SS3-01',
+                        'unit_number' => 'MAD-01-SS7-01',
                     ],
                 ],
             ],

@@ -18,8 +18,8 @@ use PHPUnit\Framework\Assert;
 /**
  * Marcos Vega — the mockup conversation made real.
  *
- * An 8 m² (SS4) tenant in Madrid for most of the simulation. Near seed-end he
- * texts asking for something bigger; we transfer him to SS6 and bump the rate
+ * An 8 m² (SS8) tenant in Madrid for most of the simulation. Near seed-end he
+ * texts asking for something bigger; we transfer him to SS10 and bump the rate
  * by €40. End state: active, transferred, SMS thread with the size question.
  */
 final class MarcusWebb extends Journey
@@ -40,7 +40,7 @@ final class MarcusWebb extends Journey
                     'email' => 'marcos.vega@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'marcus', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS4');
+                $unit = JourneySupport::vacantUnit($site, 'SS8');
                 JourneySupport::walkInSign(
                     $world,
                     'marcus',
@@ -62,7 +62,7 @@ final class MarcusWebb extends Journey
                 );
 
                 $site = $world->site('madrid');
-                $destination = JourneySupport::vacantUnit($site, 'SS6');
+                $destination = JourneySupport::vacantUnit($site, 'SS10');
                 $date = CastExecutor::civilDate($transferDay);
 
                 JourneySupport::transfer(
@@ -104,5 +104,4 @@ final class MarcusWebb extends Journey
             'Marcus SMS size question should exist',
         );
     }
-
 }

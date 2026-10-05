@@ -27,8 +27,8 @@ final class CrowdSupport
 
     /** @var list<string> */
     public const UNIT_CLASSES = [
-        'SS1', 'SS2', 'SS3', 'SS4', 'SS5', 'SS6', 'SS7', 'SS8',
-        'AL1', 'AL2', 'AL3', 'AL4',
+        'SS5', 'SS6', 'SS7', 'SS8', 'SS9', 'SS10', 'SS11', 'SS12',
+        'AL10', 'AL12', 'AL14', 'AL16',
     ];
 
     public static function simStart(): CarbonImmutable

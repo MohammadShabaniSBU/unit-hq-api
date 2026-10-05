@@ -7,7 +7,6 @@ namespace Database\Seeders\Demo\Journeys;
 use App\Models\ChannelSuppression;
 use App\Models\Message;
 use App\Support\Communications\Channel;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -39,7 +38,7 @@ final class BeaTorres extends Journey
                     'email' => 'bea.torres@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'bea', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS2');
+                $unit = JourneySupport::vacantUnit($site, 'SS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'bea', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'bea');
@@ -83,5 +82,4 @@ final class BeaTorres extends Journey
             'Bea should have an SMS fallback thread',
         );
     }
-
 }

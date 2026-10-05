@@ -36,7 +36,7 @@ final class SofiaMarin extends Journey
                     'email' => 'sofia.marin@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'sofia', $site, DealStatus::OfferSent);
-                $unit = JourneySupport::vacantUnit($site, 'SS4');
+                $unit = JourneySupport::vacantUnit($site, 'SS8');
                 $date = CastExecutor::civilDate($sendDay);
                 JourneySupport::walkInSign($world, 'sofia', $unit, $date, mode: 'remote');
 
@@ -66,5 +66,4 @@ final class SofiaMarin extends Journey
         Assert::assertLessThanOrEqual(3, $daysLeft);
         Assert::assertGreaterThanOrEqual(0, $daysLeft);
     }
-
 }

@@ -47,7 +47,7 @@ final class LuciaFerrer extends Journey
                     'email' => 'lucia.ferrer@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'lucia', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS3');
+                $unit = JourneySupport::vacantUnit($site, 'SS7');
                 JourneySupport::walkInSign(
                     $world,
                     'lucia',
@@ -131,5 +131,4 @@ final class LuciaFerrer extends Journey
             'Lucía should have a denied door event',
         );
     }
-
 }

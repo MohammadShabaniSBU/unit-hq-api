@@ -8,7 +8,6 @@ use App\Enums\ContractStatus;
 use App\Enums\DealStatus;
 use App\Enums\EsignEnvelopeStatus;
 use App\Models\EsignEnvelope;
-use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\CastExecutor;
 use Database\Seeders\Demo\DemoWorld;
 use PHPUnit\Framework\Assert;
@@ -42,7 +41,7 @@ final class JeanLucPerrin extends Journey
                     'billing_postal_code' => '28001',
                 ]);
                 JourneySupport::openDeal($world, 'jean_luc', $site, DealStatus::OfferSent);
-                $unit = JourneySupport::vacantUnit($site, 'SS4');
+                $unit = JourneySupport::vacantUnit($site, 'SS8');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'jean_luc', $unit, $date, mode: 'remote');
                 JourneySupport::sendEnvelope($world, 'jean_luc');
@@ -70,5 +69,4 @@ final class JeanLucPerrin extends Journey
         Assert::assertNotNull($envelope);
         Assert::assertSame(EsignEnvelopeStatus::Declined, $envelope->status);
     }
-
 }

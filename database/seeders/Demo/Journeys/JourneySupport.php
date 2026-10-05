@@ -75,7 +75,6 @@ use App\Support\Billing\CurrencyGuard;
 use App\Support\Billing\ResolvesContractItemPrice;
 use App\Support\Billing\TransferSettlement;
 use App\Support\Billing\VacateSettlement;
-use App\Support\Discounts\AttachesDiscount;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Exceptions\SendRefused;
 use App\Support\Communications\Messages\EmailAddress;
@@ -94,6 +93,7 @@ use App\Support\Delinquency\DelinquencyEngine;
 use App\Support\Delinquency\DelinquencyLifecycle;
 use App\Support\Delinquency\DelinquencyState;
 use App\Support\Delinquency\Overlock;
+use App\Support\Discounts\AttachesDiscount;
 use App\Support\ESign\EnvelopeOrchestrator;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Fiscal\TaxId;
@@ -211,7 +211,7 @@ final class JourneySupport
 
     public static function vacantUnit(
         Site $site,
-        string $unitClassCode = 'SS4',
+        string $unitClassCode = 'SS8',
         CarbonInterface|string|null $from = null,
         CarbonInterface|string|null $to = null,
     ): Unit {
@@ -592,7 +592,7 @@ final class JourneySupport
                 if ($c->due_date === null) {
                     return $lagDays === 0;
                 }
-                $due = $c->due_date instanceof \Carbon\CarbonInterface
+                $due = $c->due_date instanceof CarbonInterface
                     ? $c->due_date->toDateString()
                     : (string) $c->due_date;
 
@@ -1471,7 +1471,7 @@ final class JourneySupport
         DemoWorld $world,
         string $handle,
         Site $site,
-        string $unitClassCode = 'SS4',
+        string $unitClassCode = 'SS8',
         string $status = 'sent',
         ?int $discountId = null,
         ?Unit $unit = null,

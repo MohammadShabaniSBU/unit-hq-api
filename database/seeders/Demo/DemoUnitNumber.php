@@ -12,20 +12,30 @@ use RuntimeException;
  */
 final class DemoUnitNumber
 {
+    /**
+     * Highest index StageSeeder writes (SS2 / B74 on the box plan).
+     * Legacy `{SITE}-{CLASS}-{NN}` numbers only ever ran 01–10.
+     */
+    private const MAX_INDEX = 74;
+
     /** @var array<string, string> */
     private const PREFIXES = [
-        'SS1' => 'G',
-        'SS2' => 'H',
-        'SS3' => 'J',
-        'SS4' => 'K',
-        'SS5' => 'L',
-        'SS6' => 'M',
-        'SS7' => 'N',
-        'SS8' => 'P',
-        'AL1' => 'AL',
-        'AL2' => 'AM',
-        'AL3' => 'AN',
-        'AL4' => 'AP',
+        'SS1.5' => 'A',
+        'SS2' => 'B',
+        'SS2.5' => 'C',
+        'SS3' => 'D',
+        'SS5' => 'G',
+        'SS6' => 'H',
+        'SS7' => 'J',
+        'SS8' => 'K',
+        'SS9' => 'L',
+        'SS10' => 'M',
+        'SS11' => 'N',
+        'SS12' => 'P',
+        'AL10' => 'AL',
+        'AL12' => 'AM',
+        'AL14' => 'AN',
+        'AL16' => 'AP',
     ];
 
     public static function format(string $classCode, int $n): string
@@ -50,7 +60,7 @@ final class DemoUnitNumber
 
     public static function isCurrentFormat(string $classCode, string $unitNumber): bool
     {
-        foreach (range(1, 10) as $n) {
+        foreach (range(1, self::MAX_INDEX) as $n) {
             $candidate = self::tryFormat($classCode, $n);
             if ($candidate !== null && $candidate === $unitNumber) {
                 return true;

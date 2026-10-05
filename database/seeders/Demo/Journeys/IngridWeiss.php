@@ -35,7 +35,7 @@ final class IngridWeiss extends Journey
                     'email' => 'ines.valdes@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'ingrid', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS5');
+                $unit = JourneySupport::vacantUnit($site, 'SS9');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'ingrid', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'ingrid');
@@ -62,5 +62,4 @@ final class IngridWeiss extends Journey
         Assert::assertGreaterThanOrEqual(5, $daysUntil);
         Assert::assertLessThanOrEqual(14, $daysUntil);
     }
-
 }

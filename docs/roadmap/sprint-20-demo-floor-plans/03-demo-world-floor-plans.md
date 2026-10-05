@@ -1,5 +1,7 @@
 # S20-03 — Demo world floor plans
 
+> Later change: Planta baja on every site is the 168-box plan (`database/seeders/Demo/maps/box-plan.svg`), not a generated chunk. Class codes now match size. `SS1.5`, `SS2`, `SS2.5` and `SS3` are the box classes (letters A–D, 168 units per site). The previous `SS1`–`SS8` classes are `SS5`–`SS12` and `AL1`–`AL4` are `AL10`, `AL12`, `AL14`, `AL16`; their unit-number letters (G–P, AL–AP) are unchanged and those 120 units fill Planta 1–3. Lockers on the drawing are not units. The crowd still rents only the larger classes.
+
 ## Context
 
 `demo:seed --fresh` builds 5 Madrid sites, 12 unit classes and 600 units, then never writes a

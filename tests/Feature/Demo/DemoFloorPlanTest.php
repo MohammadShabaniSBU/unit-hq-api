@@ -9,6 +9,7 @@ use App\Models\SiteMap;
 use App\Models\Unit;
 use App\Support\Facility\SiteMapIdMatcher;
 use App\Support\Facility\SvgSanitizer;
+use Database\Seeders\Demo\BoxPlan;
 use Database\Seeders\Demo\FloorPlanStage;
 use Database\Seeders\Demo\StageSeeder;
 use Illuminate\Contracts\Console\Kernel;
@@ -20,7 +21,7 @@ use Tests\TestCase;
 /**
  * S20-03: demo stage floor plans.
  *
- * StageSeeder runs once for the class (transactions disabled) so the 600-unit
+ * StageSeeder runs once for the class (transactions disabled) so the 1440-unit
  * stage is not rebuilt per method. Schema is wiped in tearDownAfterClass so
  * later RefreshDatabase suites start clean.
  */
@@ -92,8 +93,8 @@ class DemoFloorPlanTest extends TestCase
                 ->where('site_id', $site->id)
                 ->pluck('unit_number');
 
-            $this->assertCount(120, $numbers);
-            $this->assertCount(120, $numbers->unique());
+            $this->assertCount(288, $numbers);
+            $this->assertCount(288, $numbers->unique());
 
             foreach ($numbers as $number) {
                 $this->assertMatchesRegularExpression(
@@ -155,8 +156,75 @@ class DemoFloorPlanTest extends TestCase
             sort($union);
 
             $this->assertSame($unitNumbers, $union, "{$code} units must be fully covered");
-            $this->assertCount(120, $union);
+            $this->assertCount(288, $union);
         }
+    }
+
+    public function test_ground_floor_is_the_box_plan(): void
+    {
+        $expected = BoxPlan::unitNumbers();
+        sort($expected);
+        $this->assertCount(168, $expected);
+
+        foreach (Site::query()->orderBy('code')->get() as $site) {
+            $map = SiteMap::query()
+                ->where('site_id', $site->id)
+                ->where('floor_name', 'Planta baja')
+                ->firstOrFail();
+
+            $result = SiteMapIdMatcher::match($site, $map->svg_map);
+            $matched = $result['matched'];
+            sort($matched);
+
+            $this->assertSame([], $result['orphan_shapes'], "{$site->code} ground floor");
+            $this->assertSame($expected, $matched, "{$site->code} ground floor");
+        }
+    }
+
+    public function test_upper_floors_hold_the_larger_units(): void
+    {
+        $boxNumbers = array_flip(BoxPlan::unitNumbers());
+
+        foreach (Site::query()->where('code', '!=', 'MAD-05')->orderBy('code')->get() as $site) {
+            $upper = [];
+
+            foreach (['Planta 1', 'Planta 2', 'Planta 3'] as $floor) {
+                $map = SiteMap::query()
+                    ->where('site_id', $site->id)
+                    ->where('floor_name', $floor)
+                    ->firstOrFail();
+                $result = SiteMapIdMatcher::match($site, $map->svg_map);
+
+                $this->assertSame([], $result['orphan_shapes'], "{$site->code} / {$floor}");
+                $this->assertCount(40, $result['matched'], "{$site->code} / {$floor}");
+
+                foreach ($result['matched'] as $number) {
+                    $this->assertArrayNotHasKey($number, $boxNumbers);
+                    $upper[$number] = true;
+                }
+            }
+
+            $this->assertCount(120, $upper, "{$site->code} upper floors");
+        }
+    }
+
+    public function test_larger_classes_keep_short_unit_numbers(): void
+    {
+        $numbers = Unit::query()
+            ->where('site_id', Site::query()->where('code', 'MAD-01')->value('id'))
+            ->pluck('unit_number')
+            ->all();
+
+        foreach (['G1', 'G10', 'H1', 'J7', 'K10', 'L1', 'M10', 'N1', 'P10', 'AL1', 'AL10', 'AM1', 'AN1', 'AP10'] as $number) {
+            $this->assertContains($number, $numbers);
+        }
+
+        foreach (['A1', 'A46', 'B1', 'B74', 'C1', 'C32', 'D1', 'D16'] as $number) {
+            $this->assertContains($number, $numbers);
+        }
+
+        $this->assertNotContains('G11', $numbers);
+        $this->assertNotContains('A47', $numbers);
     }
 
     public function test_imperfect_map_reports_expected_buckets(): void

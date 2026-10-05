@@ -81,7 +81,7 @@ final class FrontDeskMisc extends Journey
                 ]);
                 JourneySupport::openDeal($world, 'wa_closing', $site);
                 $date = CastExecutor::civilDate(max(0, $end - 40));
-                $unit = JourneySupport::vacantUnit($site, 'SS4', $date);
+                $unit = JourneySupport::vacantUnit($site, 'SS8', $date);
                 JourneySupport::walkInSign($world, 'wa_closing', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'wa_closing');
 
@@ -174,5 +174,4 @@ final class FrontDeskMisc extends Journey
         Assert::assertNotNull($closing);
         Assert::assertNotNull($closing->last_inbound_at);
     }
-
 }

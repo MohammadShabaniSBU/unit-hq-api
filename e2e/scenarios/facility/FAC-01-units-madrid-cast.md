@@ -14,7 +14,7 @@ invariants: []
 
 ## Preconditions
 
-Compact demo world. Marcos Vega and Lucía Ferrer occupy MAD-01 units. Class codes (`SS3`, `SS6`) must not appear as the only class text — the UI shows Spanish labels (`Trastero 7 m²`, `Trastero 10 m²`).
+Compact demo world. Marcos Vega and Lucía Ferrer occupy MAD-01 units. Class codes (`SS7`, `SS10`) must not appear as the only class text — the UI shows Spanish labels (`Trastero 7 m²`, `Trastero 10 m²`).
 
 ## Steps
 
@@ -26,12 +26,12 @@ Compact demo world. Marcos Vega and Lucía Ferrer occupy MAD-01 units. Class cod
 ## Expected
 
 - At least one named cast unit (Marcos or Lucía) is listed for MAD-01.
-- The class column uses a Spanish label from `fixtures.md` (e.g. **Trastero 10 m²**), not a bare `SS6` / `SS3` code as the only text.
+- The class column uses a Spanish label from `fixtures.md` (e.g. **Trastero 10 m²**), not a bare `SS10` / `SS7` code as the only text.
 - Do not create, archive, or edit a unit.
 
 ## Known traps
 
-- Type **Marcos Vega** / **Lucía Ferrer**. Codes `SS1`–`SS8` are not what the occupant sees.
+- Type **Marcos Vega** / **Lucía Ferrer**. Class codes are not what the occupant sees.
 - Compact has no MAD-03…05.
 
 ## On failure

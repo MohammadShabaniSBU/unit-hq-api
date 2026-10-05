@@ -51,8 +51,10 @@ final class FloorPlanStage
      */
     public static function seed(iterable $sites): void
     {
+        $groundSvg = SvgSanitizer::sanitize(BoxPlan::svg());
+
         foreach ($sites as $site) {
-            self::seedSite($site);
+            self::seedSite($site, $groundSvg);
         }
     }
 
@@ -89,26 +91,41 @@ final class FloorPlanStage
         return $rows;
     }
 
-    private static function seedSite(Site $site): void
+    private static function seedSite(Site $site, string $groundSvg): void
     {
-        DB::transaction(function () use ($site): void {
+        DB::transaction(function () use ($site, $groundSvg): void {
+            $ground = self::FLOORS[0];
+            SiteMap::query()->updateOrCreate(
+                [
+                    'site_id' => $site->id,
+                    'floor_name' => $ground['floor_name'],
+                ],
+                [
+                    'svg_map' => $groundSvg,
+                    'sort_order' => $ground['sort_order'],
+                ]
+            );
+
+            $boxNumbers = array_flip(BoxPlan::unitNumbers());
+            $upperFloors = array_values(array_slice(self::FLOORS, 1));
             $units = Unit::query()
                 ->where('site_id', $site->id)
                 ->get(['id', 'unit_number', 'actual_width', 'actual_depth'])
-                ->sortBy(fn (Unit $u): array => [
-                    (int) preg_replace('/\D+/', '', $u->unit_number),
-                    $u->unit_number,
+                ->filter(fn (Unit $unit): bool => ! isset($boxNumbers[$unit->unit_number]))
+                ->sortBy(fn (Unit $unit): array => [
+                    (int) preg_replace('/\D+/', '', $unit->unit_number),
+                    $unit->unit_number,
                 ])
                 ->values();
 
-            $chunks = $units->chunk(max(1, (int) ceil($units->count() / count(self::FLOORS))))->values();
+            $chunks = $units->chunk(max(1, (int) ceil($units->count() / count($upperFloors))))->values();
 
-            foreach (self::FLOORS as $index => $floor) {
+            foreach ($upperFloors as $index => $floor) {
                 /** @var Collection<int, Unit> $chunk */
                 $chunk = $chunks->get($index) ?? collect();
 
                 $unitPayload = self::toGeneratorUnits($chunk);
-                $options = ['entry' => $floor['entry']];
+                $options = ['entry' => false];
 
                 if (
                     $site->code === self::IMPERFECT_MAP['site_code']
