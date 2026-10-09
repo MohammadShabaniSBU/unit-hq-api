@@ -225,6 +225,14 @@ return [
         'pending_source' => 'Pending consent is only recorded from a signup form.',
         'text_missing' => 'The consent text does not exist.',
     ],
+    'subscription_lists' => [
+        'key_immutable' => 'The subscription list key cannot change.',
+        'system_archive' => 'System subscription lists cannot be archived.',
+        'system_fields' => 'System subscription lists keep their kind, channels, and site.',
+        'csv_missing_header' => 'The CSV file is empty.',
+        'csv_invalid_header' => 'The CSV header must be email,phone,name,consent_date,original_source.',
+        'csv_too_many_rows' => 'The CSV has too many rows.',
+    ],
     'voice' => [
         'not_configured' => 'Copilot voice is not configured. Set VOCAL_BRIDGE_API_KEY on the server.',
         'token_unavailable' => 'The voice service could not issue a session token. Try again shortly.',

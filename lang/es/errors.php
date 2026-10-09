@@ -211,6 +211,14 @@ return [
         'pending_source' => 'El consentimiento pendiente solo se registra desde un formulario de alta.',
         'text_missing' => 'El texto de consentimiento no existe.',
     ],
+    'subscription_lists' => [
+        'key_immutable' => 'La clave de la lista de suscripción no puede cambiar.',
+        'system_archive' => 'Las listas de suscripción del sistema no se pueden archivar.',
+        'system_fields' => 'Las listas de suscripción del sistema conservan su tipo, canales y centro.',
+        'csv_missing_header' => 'El archivo CSV está vacío.',
+        'csv_invalid_header' => 'La cabecera del CSV debe ser email,phone,name,consent_date,original_source.',
+        'csv_too_many_rows' => 'El CSV tiene demasiadas filas.',
+    ],
     'voice' => [
         'not_configured' => 'La voz del copiloto no está configurada. Defina VOCAL_BRIDGE_API_KEY en el servidor.',
         'token_unavailable' => 'El servicio de voz no pudo emitir un token de sesión. Inténtelo de nuevo en breve.',

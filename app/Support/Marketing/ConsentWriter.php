@@ -17,6 +17,7 @@ use App\Support\Communications\ContactChannelMatcher;
 use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -247,6 +248,8 @@ final class ConsentWriter
             'causer_id' => $causer?->getKey(),
             'occurred_at' => $occurredAt ?? now(),
         ]);
+
+        Cache::forget(SubscriptionList::memberCountCacheKey($list->id));
 
         if ($logActivity && $action !== ConsentAction::Pending) {
             $description = $action === ConsentAction::Granted

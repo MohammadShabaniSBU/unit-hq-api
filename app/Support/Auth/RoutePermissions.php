@@ -170,6 +170,12 @@ final class RoutePermissions
             'PATCH /api/tasks/{task}' => Permission::ContactManage, // TaskController@update
             'PATCH /api/tasks/{task}/status' => Permission::ContactManage, // TaskController@updateStatus
             'POST /api/consent-texts' => Permission::ConsentManage, // ConsentTextController@store
+            'GET /api/subscription-lists' => Permission::MarketingView, // SubscriptionListController@index
+            'GET /api/subscription-lists/{subscriptionList}/members' => Permission::MarketingView, // SubscriptionListController@members
+            'POST /api/subscription-lists' => Permission::MarketingManage, // SubscriptionListController@store
+            'POST /api/subscription-lists/{subscriptionList}/archive' => Permission::MarketingManage, // SubscriptionListController@archive
+            'POST /api/subscription-lists/{subscriptionList}/import' => Permission::MarketingManage, // SubscriptionListController@import
+            'PUT /api/subscription-lists/{subscriptionList}' => Permission::MarketingManage, // SubscriptionListController@update
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
             'POST /api/contacts/{contact}/consents' => Permission::ConsentManage, // ContactConsentController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search

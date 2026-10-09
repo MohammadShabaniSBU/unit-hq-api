@@ -199,6 +199,14 @@ return [
         'pending_source' => 'Le consentement en attente n’est enregistré que depuis un formulaire d’inscription.',
         'text_missing' => 'Le texte de consentement n’existe pas.',
     ],
+    'subscription_lists' => [
+        'key_immutable' => 'La clé de la liste d’abonnement ne peut pas changer.',
+        'system_archive' => 'Les listes d’abonnement système ne peuvent pas être archivées.',
+        'system_fields' => 'Les listes d’abonnement système conservent leur type, leurs canaux et leur site.',
+        'csv_missing_header' => 'Le fichier CSV est vide.',
+        'csv_invalid_header' => 'L’en-tête du CSV doit être email,phone,name,consent_date,original_source.',
+        'csv_too_many_rows' => 'Le CSV contient trop de lignes.',
+    ],
     'voice' => [
         'not_configured' => 'La voix du copilote n’est pas configurée. Définissez VOCAL_BRIDGE_API_KEY sur le serveur.',
         'token_unavailable' => 'Le service vocal n’a pas pu émettre de jeton de session. Réessayez sous peu.',

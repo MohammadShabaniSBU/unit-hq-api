@@ -53,6 +53,7 @@ use Database\Seeders\InsightReportSeeder;
 use Database\Seeders\LeadChasePlaybookSeeder;
 use Database\Seeders\SiteServiceAreaSeeder;
 use Database\Seeders\SizeGuideSeeder;
+use Database\Seeders\SubscriptionListSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -96,6 +97,8 @@ class StageSeeder extends Seeder
 
     public function run(): void
     {
+        $this->call(SubscriptionListSeeder::class);
+
         if (Site::query()->where('code', 'MAD-01')->exists()) {
             $this->command?->info('Demo stage already present — skipping.');
 

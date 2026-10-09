@@ -54,6 +54,8 @@ enum Permission: string
     case CallPlace = 'call.place';
     case TemplateManage = 'template.manage';
     case ConsentManage = 'consent.manage';
+    case MarketingView = 'marketing.view';
+    case MarketingManage = 'marketing.manage';
 
     // Operations
     case AutomationView = 'automation.view';

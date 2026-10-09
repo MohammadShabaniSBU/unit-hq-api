@@ -356,6 +356,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('contacts/{contact}/consents', [Controllers\ContactConsentController::class, 'store']);
     Route::get('consent-texts', [Controllers\ConsentTextController::class, 'index']);
     Route::post('consent-texts', [Controllers\ConsentTextController::class, 'store']);
+    Route::get('subscription-lists', [Controllers\SubscriptionListController::class, 'index']);
+    Route::post('subscription-lists', [Controllers\SubscriptionListController::class, 'store']);
+    Route::put('subscription-lists/{subscriptionList}', [Controllers\SubscriptionListController::class, 'update']);
+    Route::post('subscription-lists/{subscriptionList}/archive', [Controllers\SubscriptionListController::class, 'archive']);
+    Route::get('subscription-lists/{subscriptionList}/members', [Controllers\SubscriptionListController::class, 'members']);
+    Route::post('subscription-lists/{subscriptionList}/import', [Controllers\SubscriptionListController::class, 'import']);
     Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
     Route::get('contacts/{contact}/access-events', [Controllers\AccessEventController::class, 'forContact']);
     Route::get('contacts/{contact}/payment-methods', [Controllers\ContactPaymentMethodController::class, 'index']);
