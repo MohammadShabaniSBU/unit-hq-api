@@ -114,6 +114,7 @@ return [
         'parties_required' => 'Un document de contrat doit contenir un bloc parties.',
         'terms_table_required' => 'Un document de contrat doit contenir un bloc terms_table.',
         'family_not_found' => 'Aucune famille de modèles de document de contrat active n’a été trouvée.',
+        'template_not_published' => 'Ce modèle de contrat n’a pas de version publiée et ne peut pas être utilisé.',
         'regenerate_frozen' => 'Les documents envoyés ou signés ne peuvent pas être régénérés.',
         'document_mismatch' => 'Le document n’appartient pas à ce contrat.',
         'preview_requires_contract' => 'L’aperçu du document nécessite un contrat.',

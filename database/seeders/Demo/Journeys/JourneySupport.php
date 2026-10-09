@@ -520,6 +520,7 @@ final class JourneySupport
         return ContractDocument::query()->create([
             'contract_id' => $contract->id,
             'template_family_id' => $family->id,
+            'template_version_id' => $variant->template_version_id,
             'template_variant_id' => $variant->id,
             'rendered_at' => now(),
             'pdf_path' => $path,

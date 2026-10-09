@@ -53,6 +53,7 @@ class TemplateFamilyController extends Controller
             'purpose' => ['sometimes', 'nullable', Rule::enum(TemplatePurpose::class)],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'nullable', Rule::in(['active', 'archived', 'all'])],
+            'sendable' => ['sometimes', 'boolean'],
         ]);
 
         $query = TemplateFamily::query()->with($this->versionRelations())->latest();
@@ -75,6 +76,12 @@ class TemplateFamilyController extends Controller
         if (! empty($validated['search'])) {
             $search = trim((string) $validated['search']);
             $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($request->boolean('sendable')) {
+            $query->whereHas('versions', function ($versions): void {
+                $versions->where('status', TemplateVersionStatus::Published);
+            });
         }
 
         return $this->paginated(

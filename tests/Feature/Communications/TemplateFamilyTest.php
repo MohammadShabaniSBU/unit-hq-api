@@ -91,4 +91,39 @@ class TemplateFamilyTest extends TestCase
         $this->assertContains('Welcome', $leadNames);
         $this->assertNotContains('Debt note', $leadNames);
     }
+
+    public function test_sendable_filter_keeps_families_with_a_published_version(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $draftOnly = $this->postJson('/api/template-families', [
+            'channel' => 'email',
+            'name' => 'Still drafting',
+            'purpose' => 'general',
+            'locale' => 'en',
+            'subject' => 'Draft',
+            'legacy_html' => '<p>draft</p>',
+        ]);
+        $draftOnly->assertCreated();
+
+        $published = TemplateFamilyFactory::published([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Live welcome',
+            'purpose' => TemplatePurpose::General,
+        ], variants: [[
+            'locale' => 'en',
+            'subject' => 'Hello',
+            'legacy_html' => '<p>hi</p>',
+        ]]);
+
+        $this->postJson("/api/template-families/{$published->id}/versions")->assertCreated();
+
+        $sendable = $this->getJson('/api/template-families?sendable=1&channel=email');
+        $sendable->assertOk();
+        $names = collect($sendable->json('data'))->pluck('name')->all();
+        $this->assertContains('Live welcome', $names);
+        $this->assertNotContains('Still drafting', $names);
+        $this->assertNotNull(collect($sendable->json('data'))->firstWhere('name', 'Live welcome')['current_version']);
+    }
 }

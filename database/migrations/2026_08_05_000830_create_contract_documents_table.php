@@ -14,6 +14,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('contract_id')->constrained('contracts')->cascadeOnDelete();
             $table->foreignId('template_family_id')->constrained('template_families')->restrictOnDelete();
+            $table->foreignId('template_version_id')->constrained('template_versions')->restrictOnDelete();
+            $table->index('template_version_id', 'cd_template_version_idx');
             $table->foreignId('template_variant_id')->constrained('template_variants')->restrictOnDelete();
             $table->timestamp('rendered_at');
             $table->string('pdf_path', 255);

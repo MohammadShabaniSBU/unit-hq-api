@@ -135,6 +135,7 @@ return [
         'parties_required' => 'A contract document must contain a parties block.',
         'terms_table_required' => 'A contract document must contain a terms_table block.',
         'family_not_found' => 'No active contract document template family was found.',
+        'template_not_published' => 'This contract template has no published version and cannot be used.',
         'regenerate_frozen' => 'Sent or signed documents cannot be regenerated.',
         'document_mismatch' => 'The document does not belong to this contract.',
         'preview_requires_contract' => 'Document preview requires a contract context.',

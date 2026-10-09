@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Resources\WhatsappTemplateResource;
+use App\Models\CommunicationAccount;
 use App\Models\WhatsappTemplate;
+use App\Support\Auth\Permission;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Contracts\ManagesWhatsAppTemplates;
 use App\Support\Communications\Exceptions\ChannelNotConfigured;
@@ -17,10 +19,9 @@ use App\Support\Communications\WhatsAppTemplateSync;
 use App\Support\Communications\WhatsAppTemplateValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class WhatsappTemplateController extends Controller
 {
@@ -236,6 +237,7 @@ class WhatsappTemplateController extends Controller
             'variables' => $whatsappTemplate->variables,
             'status' => WhatsappTemplate::STATUS_DRAFT,
             'communication_account_id' => $whatsappTemplate->communication_account_id,
+            'supersedes_id' => $whatsappTemplate->id,
             'created_by' => request()->user()?->id,
         ]);
 
@@ -278,7 +280,7 @@ class WhatsappTemplateController extends Controller
         );
     }
 
-    private function activeAccount(): \App\Models\CommunicationAccount
+    private function activeAccount(): CommunicationAccount
     {
         try {
             return $this->resolver->resolve(Channel::Whatsapp)->account;

@@ -121,6 +121,7 @@ return [
         'parties_required' => 'Un documento de contrato debe contener un bloque parties.',
         'terms_table_required' => 'Un documento de contrato debe contener un bloque terms_table.',
         'family_not_found' => 'No se encontró una familia de plantillas de documento de contrato activa.',
+        'template_not_published' => 'Esta plantilla de contrato no tiene una versión publicada y no se puede usar.',
         'regenerate_frozen' => 'Los documentos enviados o firmados no se pueden regenerar.',
         'document_mismatch' => 'El documento no pertenece a este contrato.',
         'preview_requires_contract' => 'La vista previa del documento requiere un contrato.',

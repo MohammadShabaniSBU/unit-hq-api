@@ -12,20 +12,21 @@ use Illuminate\Support\Carbon;
 /**
  * Immutable rendered contract PDF snapshot (legal artifact).
  *
- * @property int                     $id
- * @property int                     $contract_id
- * @property int                     $template_family_id
- * @property int                     $template_variant_id
- * @property Carbon                  $rendered_at
- * @property string                  $pdf_path
- * @property string                  $sha256
- * @property ContractDocumentStatus  $status
- * @property int|null                $envelope_id
- * @property Carbon                  $created_at
- * @property Carbon                  $updated_at
- *
+ * @property int $id
+ * @property int $contract_id
+ * @property int $template_family_id
+ * @property int $template_version_id
+ * @property int $template_variant_id
+ * @property Carbon $rendered_at
+ * @property string $pdf_path
+ * @property string $sha256
+ * @property ContractDocumentStatus $status
+ * @property int|null $envelope_id
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Contract           $contract
  * @property-read TemplateFamily     $templateFamily
+ * @property-read TemplateVersion    $templateVersion
  * @property-read TemplateVariant    $templateVariant
  */
 class ContractDocument extends Model
@@ -33,6 +34,7 @@ class ContractDocument extends Model
     protected $fillable = [
         'contract_id',
         'template_family_id',
+        'template_version_id',
         'template_variant_id',
         'rendered_at',
         'pdf_path',
@@ -59,6 +61,12 @@ class ContractDocument extends Model
     public function templateFamily(): BelongsTo
     {
         return $this->belongsTo(TemplateFamily::class);
+    }
+
+    /** @return BelongsTo<TemplateVersion, $this> */
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(TemplateVersion::class);
     }
 
     /** @return BelongsTo<TemplateVariant, $this> */

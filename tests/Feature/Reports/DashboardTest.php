@@ -11,15 +11,19 @@ use App\Enums\ChargeType;
 use App\Enums\ContractEndedReason;
 use App\Enums\ContractStatus;
 use App\Enums\CredentialStatus;
+use App\Enums\DelinquencyPolicyAction;
 use App\Enums\DepositPayoutStatus;
 use App\Enums\DepositSettlementOutcome;
-use App\Enums\DelinquencyPolicyAction;
 use App\Enums\EsignEnvelopeStatus;
+use App\Enums\EsignProvider;
+use App\Enums\EsignWebhookState;
+use App\Enums\TemplateChannel;
+use App\Enums\TemplatePurpose;
 use App\Models\AccessProviderAccount;
 use App\Models\AutopayAttempt;
 use App\Models\Charge;
-use App\Models\CommunicationAccount;
 use App\Models\CommsTriage;
+use App\Models\CommunicationAccount;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractDocument;
@@ -40,10 +44,6 @@ use App\Models\TemplateVariant;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitOccupancy;
-use App\Enums\EsignProvider;
-use App\Enums\EsignWebhookState;
-use App\Enums\TemplateChannel;
-use App\Enums\TemplatePurpose;
 use App\Support\Billing\BillingMath;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
@@ -341,6 +341,7 @@ class DashboardTest extends TestCase
         $doc = ContractDocument::query()->create([
             'contract_id' => $awaiting->id,
             'template_family_id' => $family->id,
+            'template_version_id' => $variant->template_version_id,
             'template_variant_id' => $variant->id,
             'rendered_at' => now(),
             'pdf_path' => 'contracts/dash-awaiting.pdf',
@@ -370,6 +371,7 @@ class DashboardTest extends TestCase
         $doc2 = ContractDocument::query()->create([
             'contract_id' => $postCancel->id,
             'template_family_id' => $family->id,
+            'template_version_id' => $variant->template_version_id,
             'template_variant_id' => $variant->id,
             'rendered_at' => now(),
             'pdf_path' => 'contracts/dash-post.pdf',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Documents;
 
 use App\Models\Contact;
+use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
@@ -50,10 +51,14 @@ class DocLocaleTest extends TestCase
         $this->assertNotNull($activity);
         $this->assertSame('es', $activity->properties['resolved_locale'] ?? null);
         $this->assertSame('en', $activity->properties['chosen_locale'] ?? null);
+        $this->assertSame(
+            (int) $override->json('data.template_version.id'),
+            (int) ($activity->properties['template_version_id'] ?? 0),
+        );
 
         // Site ladder: null contact locale + ES site → es.
         $siteContact = Contact::factory()->fiscalComplete()->create(['locale' => null]);
-        $unit = \App\Models\Unit::factory()->create([
+        $unit = Unit::factory()->create([
             'site_id' => $this->site->id,
             'unit_class_id' => $this->unit->unit_class_id,
             'unit_number' => 'C-303',

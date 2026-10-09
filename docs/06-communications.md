@@ -92,7 +92,7 @@ Local `whatsapp_templates` rows are the operator-facing registry; Meta's approva
 |---|---|
 | `draft` / `rejected` | Editable; Submit calls `ManagesWhatsAppTemplates::submit` with samples |
 | `submitted` | Awaiting Meta; content locked |
-| `approved` | Content immutable (Meta rule); Clone → new draft (`{name}_v2`); sendable |
+| `approved` | Content immutable (Meta rule); Clone → new draft (`{name}_v2`) with `supersedes_id` set to the source; sendable |
 | `revoked` | Meta pulled approval; send refuses (`template_not_approved`) |
 | `archived` | Hidden from pickers; frees the partial unique `(account, name, language)` identity |
 

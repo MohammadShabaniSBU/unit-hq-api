@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -12,26 +13,27 @@ use RuntimeException;
 /**
  * Provider-synced WhatsApp template registry (approval substrate).
  *
- * @property int                       $id
- * @property string                    $name
- * @property string                    $language
- * @property string                    $category
- * @property string|null               $header_text
- * @property string                    $body
- * @property string|null               $footer_text
- * @property array<int, mixed>|null    $buttons
- * @property array<int, mixed>         $variables
- * @property string                    $status
- * @property string|null               $rejection_reason
- * @property string|null               $provider_template_id
- * @property Carbon|null               $submitted_at
- * @property Carbon|null               $decided_at
- * @property int                       $communication_account_id
- * @property int|null                  $created_by
- * @property Carbon                    $created_at
- * @property Carbon                    $updated_at
- *
- * @property-read CommunicationAccount $communicationAccount
+ * @property int $id
+ * @property string $name
+ * @property string $language
+ * @property string $category
+ * @property string|null $header_text
+ * @property string $body
+ * @property string|null $footer_text
+ * @property array<int, mixed>|null $buttons
+ * @property array<int, mixed> $variables
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property string|null $provider_template_id
+ * @property Carbon|null $submitted_at
+ * @property Carbon|null $decided_at
+ * @property int $communication_account_id
+ * @property int|null $supersedes_id
+ * @property int|null $created_by
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read CommunicationAccount  $communicationAccount
+ * @property-read WhatsappTemplate|null $supersedes
  */
 class WhatsappTemplate extends Model
 {
@@ -83,6 +85,7 @@ class WhatsappTemplate extends Model
         'submitted_at',
         'decided_at',
         'communication_account_id',
+        'supersedes_id',
         'created_by',
     ];
 
@@ -116,6 +119,46 @@ class WhatsappTemplate extends Model
     public function communicationAccount(): BelongsTo
     {
         return $this->belongsTo(CommunicationAccount::class);
+    }
+
+    public function supersedes(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'supersedes_id');
+    }
+
+    /**
+     * This row, then each ancestor via supersedes_id. Newest first.
+     *
+     * @return Collection<int, self>
+     */
+    public function lineage(int $limit = 20): Collection
+    {
+        /** @var Collection<int, self> $rows */
+        $rows = new Collection;
+        $seen = [];
+        $current = $this;
+
+        while ($rows->count() < $limit) {
+            if (isset($seen[$current->id])) {
+                break;
+            }
+
+            $seen[$current->id] = true;
+            $rows->push($current);
+
+            if ($current->supersedes_id === null) {
+                break;
+            }
+
+            $next = self::query()->find($current->supersedes_id);
+            if (! $next instanceof self) {
+                break;
+            }
+
+            $current = $next;
+        }
+
+        return $rows;
     }
 
     public function isApproved(): bool

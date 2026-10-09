@@ -82,6 +82,107 @@ class WaTemplateTest extends TestCase
         $clone->assertCreated();
         $this->assertSame('payment_reminder_v2', $clone->json('data.name'));
         $this->assertSame(WhatsappTemplate::STATUS_DRAFT, $clone->json('data.status'));
+        $this->assertSame($approved->id, $clone->json('data.supersedes_id'));
+        $this->assertArrayNotHasKey('lineage', $clone->json('data'));
+
+        $show = $this->getJson('/api/whatsapp-templates/'.$clone->json('data.id'));
+        $show->assertOk();
+        $show->assertJsonCount(2, 'data.lineage');
+        $show->assertJsonPath('data.lineage.0.id', $clone->json('data.id'));
+        $show->assertJsonPath('data.lineage.0.name', 'payment_reminder_v2');
+        $show->assertJsonPath('data.lineage.0.language', 'en');
+        $show->assertJsonPath('data.lineage.0.status', WhatsappTemplate::STATUS_DRAFT);
+        $show->assertJsonPath('data.lineage.0.decided_at', null);
+        $show->assertJsonPath('data.lineage.1.id', $approved->id);
+        $show->assertJsonPath('data.lineage.1.name', 'payment_reminder');
+        $show->assertJsonPath('data.lineage.1.language', 'en');
+        $show->assertJsonPath('data.lineage.1.status', WhatsappTemplate::STATUS_APPROVED);
+        $this->assertNotNull($show->json('data.lineage.1.decided_at'));
+    }
+
+    public function test_clone_of_a_clone_walks_three_deep(): void
+    {
+        $approved = WhatsappTemplate::query()->create([
+            'name' => 'payment_reminder',
+            'language' => 'en',
+            'category' => 'utility',
+            'body' => 'Pay by {{1}}',
+            'variables' => [['index' => 1, 'label' => 'date', 'sample' => 'Friday']],
+            'status' => WhatsappTemplate::STATUS_APPROVED,
+            'communication_account_id' => $this->account->id,
+            'decided_at' => now()->subDay(),
+        ]);
+
+        $first = $this->postJson("/api/whatsapp-templates/{$approved->id}/clone");
+        $first->assertCreated();
+        $firstId = $first->json('data.id');
+
+        $second = $this->postJson("/api/whatsapp-templates/{$firstId}/clone");
+        $second->assertCreated();
+        $this->assertSame('payment_reminder_v3', $second->json('data.name'));
+        $this->assertSame($firstId, $second->json('data.supersedes_id'));
+
+        $show = $this->getJson('/api/whatsapp-templates/'.$second->json('data.id'));
+        $show->assertOk();
+        $show->assertJsonPath('data.lineage.0.id', $second->json('data.id'));
+        $show->assertJsonPath('data.lineage.1.id', $firstId);
+        $show->assertJsonPath('data.lineage.2.id', $approved->id);
+        $show->assertJsonCount(3, 'data.lineage');
+    }
+
+    public function test_root_template_lineage_is_itself(): void
+    {
+        $draft = WhatsappTemplate::query()->create([
+            'name' => 'welcome',
+            'language' => 'en',
+            'category' => 'utility',
+            'body' => 'Hello',
+            'variables' => [],
+            'status' => WhatsappTemplate::STATUS_DRAFT,
+            'communication_account_id' => $this->account->id,
+        ]);
+
+        $this->assertNull($draft->supersedes_id);
+
+        $show = $this->getJson("/api/whatsapp-templates/{$draft->id}");
+        $show->assertOk();
+        $show->assertJsonPath('data.supersedes_id', null);
+        $show->assertJsonCount(1, 'data.lineage');
+        $show->assertJsonPath('data.lineage.0.id', $draft->id);
+        $show->assertJsonPath('data.lineage.0.decided_at', null);
+
+        $index = $this->getJson('/api/whatsapp-templates');
+        $index->assertOk();
+        $row = collect($index->json('data'))->firstWhere('id', $draft->id);
+        $this->assertIsArray($row);
+        $this->assertArrayNotHasKey('lineage', $row);
+        $this->assertNull($row['supersedes_id']);
+    }
+
+    public function test_lineage_walk_is_capped_at_twenty(): void
+    {
+        $previousId = null;
+        $newest = null;
+
+        for ($i = 1; $i <= 21; $i++) {
+            $newest = WhatsappTemplate::query()->create([
+                'name' => 'chain_v'.$i,
+                'language' => 'en',
+                'category' => 'utility',
+                'body' => 'Hello',
+                'variables' => [],
+                'status' => WhatsappTemplate::STATUS_DRAFT,
+                'communication_account_id' => $this->account->id,
+                'supersedes_id' => $previousId,
+            ]);
+            $previousId = $newest->id;
+        }
+
+        $show = $this->getJson("/api/whatsapp-templates/{$newest->id}");
+        $show->assertOk();
+        $show->assertJsonCount(20, 'data.lineage');
+        $show->assertJsonPath('data.lineage.0.name', 'chain_v21');
+        $show->assertJsonPath('data.lineage.19.name', 'chain_v2');
     }
 
     public function test_clone_and_archive_frees_identity(): void

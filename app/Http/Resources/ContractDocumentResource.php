@@ -18,6 +18,10 @@ class ContractDocumentResource extends BaseResource
             'contract_id' => $this->contract_id,
             'template_family_id' => $this->template_family_id,
             'template_variant_id' => $this->template_variant_id,
+            'template_version' => $this->whenLoaded('templateVersion', fn () => $this->templateVersion === null ? null : [
+                'id' => $this->templateVersion->id,
+                'version_number' => $this->templateVersion->version_number,
+            ]),
             'locale' => $variant ? $variant->locale : null,
             'rendered_at' => $this->datetime($this->rendered_at),
             'sha256' => $this->sha256,

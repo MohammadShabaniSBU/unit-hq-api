@@ -27,6 +27,7 @@ return new class extends Migration
             $table->timestampTz('submitted_at')->nullable();
             $table->timestampTz('decided_at')->nullable();
             $table->foreignId('communication_account_id')->constrained('communication_accounts');
+            $table->foreignId('supersedes_id')->nullable()->constrained('whatsapp_templates')->nullOnDelete();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
         });
