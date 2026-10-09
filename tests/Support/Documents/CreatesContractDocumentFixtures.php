@@ -127,6 +127,9 @@ trait CreatesContractDocumentFixtures
 
     protected function variant(string $locale): TemplateVariant
     {
-        return $this->documentFamily->variants()->where('locale', $locale)->firstOrFail();
+        return $this->documentFamily->currentVersion()->firstOrFail()
+            ->variants()
+            ->where('locale', $locale)
+            ->firstOrFail();
     }
 }

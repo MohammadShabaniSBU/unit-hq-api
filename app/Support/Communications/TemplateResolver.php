@@ -18,9 +18,10 @@ final class TemplateResolver
 {
     public static function variant(TemplateFamily $family, Contact $contact, ?Site $site): TemplateVariant
     {
-        $family->loadMissing('variants');
+        $family->loadMissing(['currentVersion.variants', 'draft.variants']);
 
-        $variants = $family->variants;
+        $version = $family->currentVersion ?? $family->draft;
+        $variants = $version?->variants ?? collect();
         if ($variants->isEmpty()) {
             throw new RuntimeException("Template family [{$family->id}] has no variants.");
         }

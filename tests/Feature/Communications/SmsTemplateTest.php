@@ -18,6 +18,7 @@ use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Messages\SmsMessage;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -56,16 +57,14 @@ class SmsTemplateTest extends TestCase
         $this->site = Site::factory()->create();
         $this->seedSmsAccount($this->site);
 
-        $this->family = TemplateFamily::query()->create([
+        $this->family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Sms,
             'name' => 'Sms nudge',
             'purpose' => TemplatePurpose::General,
-        ]);
-        // Long enough resolved body to assert segment count > 1 when needed; keep short for XOR.
-        $this->family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'body_text' => 'Hello {{contact.first_name}}, please call us about your unit.',
-        ]);
+        ]]);
     }
 
     public function test_xor_three_surfaces_segments(): void

@@ -7,8 +7,8 @@ namespace Tests\Feature\Communications;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Models\Employee;
-use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -57,25 +57,25 @@ class TemplateFamilyTest extends TestCase
         $this->deleteJson("/api/template-families/{$familyId}/variants/{$lastId}")
             ->assertStatus(422);
 
-        TemplateFamily::query()->create([
+        TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Debt note',
             'purpose' => TemplatePurpose::Debt,
-        ])->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Pay',
             'legacy_html' => '<p>pay</p>',
-        ]);
+        ]]);
 
-        TemplateFamily::query()->create([
+        TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Lead chase',
             'purpose' => TemplatePurpose::Lead,
-        ])->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Hello',
             'legacy_html' => '<p>lead</p>',
-        ]);
+        ]]);
 
         $debt = $this->getJson('/api/template-families?purpose=debt&channel=email');
         $debt->assertOk();

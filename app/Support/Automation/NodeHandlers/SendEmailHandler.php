@@ -8,6 +8,7 @@ use App\Enums\ContactChannelType;
 use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
+use App\Models\Contact;
 use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Support\Automation\Contracts\NodeHandler;
@@ -131,7 +132,7 @@ final class SendEmailHandler implements NodeHandler
     private function resolveContent(
         array $config,
         RunContext $context,
-        \App\Models\Contact $contact,
+        Contact $contact,
         mixed $site,
     ): array {
         $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
@@ -146,7 +147,9 @@ final class SendEmailHandler implements NodeHandler
                 throw new RuntimeException('send_email template path requires template_family_id');
             }
 
-            $family = TemplateFamily::query()->with('variants')->find($templateId);
+            $family = TemplateFamily::query()
+                ->with(['currentVersion.variants', 'draft.variants'])
+                ->find($templateId);
             if ($family === null) {
                 throw new RuntimeException("send_email template family [{$templateId}] not found");
             }

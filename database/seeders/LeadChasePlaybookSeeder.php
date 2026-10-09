@@ -11,8 +11,8 @@ use App\Enums\TemplatePurpose;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
 use App\Models\TemplateFamily;
-use App\Models\TemplateVariant;
 use App\Support\Communications\LegacyEmailBlocksHtml;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\Seeder;
 
 /**
@@ -22,12 +22,12 @@ class LeadChasePlaybookSeeder extends Seeder
 {
     public function run(): void
     {
-        $thanks = TemplateFamily::query()->firstOrCreate(
-            ['name' => 'Enquiry thanks', 'channel' => TemplateChannel::Email],
-            ['purpose' => TemplatePurpose::Lead],
-        );
+        $thanks = TemplateFamily::query()
+            ->where('name', 'Enquiry thanks')
+            ->where('channel', TemplateChannel::Email)
+            ->first();
 
-        if ($thanks->variants()->count() === 0) {
+        if ($thanks === null) {
             $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
                 'type' => 'text',
                 'props' => [
@@ -38,20 +38,23 @@ class LeadChasePlaybookSeeder extends Seeder
                 ],
             ]]);
 
-            TemplateVariant::query()->create([
-                'template_family_id' => $thanks->id,
+            $thanks = TemplateFamilyFactory::published([
+                'name' => 'Enquiry thanks',
+                'channel' => TemplateChannel::Email,
+                'purpose' => TemplatePurpose::Lead,
+            ], variants: [[
                 'locale' => 'es',
                 'subject' => 'Gracias por su consulta',
                 'legacy_html' => $legacyHtml,
-            ]);
+            ]]);
         }
 
-        $offers = TemplateFamily::query()->firstOrCreate(
-            ['name' => 'Offers this month', 'channel' => TemplateChannel::Email],
-            ['purpose' => TemplatePurpose::Lead],
-        );
+        $offers = TemplateFamily::query()
+            ->where('name', 'Offers this month')
+            ->where('channel', TemplateChannel::Email)
+            ->first();
 
-        if ($offers->variants()->count() === 0) {
+        if ($offers === null) {
             $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
                 'type' => 'text',
                 'props' => [
@@ -62,12 +65,15 @@ class LeadChasePlaybookSeeder extends Seeder
                 ],
             ]]);
 
-            TemplateVariant::query()->create([
-                'template_family_id' => $offers->id,
+            $offers = TemplateFamilyFactory::published([
+                'name' => 'Offers this month',
+                'channel' => TemplateChannel::Email,
+                'purpose' => TemplatePurpose::Lead,
+            ], variants: [[
                 'locale' => 'es',
                 'subject' => 'Ofertas de este mes',
                 'legacy_html' => $legacyHtml,
-            ]);
+            ]]);
         }
 
         $existing = Playbook::query()

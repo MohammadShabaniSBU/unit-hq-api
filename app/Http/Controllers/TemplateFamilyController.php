@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\LogChannel;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
+use App\Enums\TemplateVersionStatus;
 use App\Http\Resources\TemplateFamilyResource;
+use App\Http\Resources\TemplateVersionResource;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
-use App\Support\Communications\EmailTemplateRenderer;
+use App\Models\TemplateVersion;
+use App\Support\Auth\Permission;
 use App\Support\Communications\EmailBlockDocument;
+use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\SendClass;
@@ -21,16 +26,19 @@ use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\SiteLocale;
 use App\Support\Communications\TemplateBuilderContext;
+use App\Support\Communications\TemplatePublishValidator;
 use App\Support\Documents\ContractDocumentRenderer;
 use App\Support\Documents\DocumentBlockDocument;
+use App\Support\RecordsActivity;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class TemplateFamilyController extends Controller
 {
@@ -45,7 +53,7 @@ class TemplateFamilyController extends Controller
             'status' => ['sometimes', 'nullable', Rule::in(['active', 'archived', 'all'])],
         ]);
 
-        $query = TemplateFamily::query()->with('variants')->latest();
+        $query = TemplateFamily::query()->with($this->versionRelations())->latest();
 
         $status = $validated['status'] ?? 'active';
         match ($status) {
@@ -111,7 +119,14 @@ class TemplateFamilyController extends Controller
                 'purpose' => $purpose,
             ]);
 
-            TemplateVariant::query()->create([
+            $version = $family->versions()->create([
+                'version_number' => 1,
+                'status' => TemplateVersionStatus::Draft,
+                'published_at' => null,
+                'created_by' => $request->user()?->id,
+            ]);
+
+            $version->variants()->create([
                 'template_family_id' => $family->id,
                 'locale' => $validated['locale'] ?? 'en',
                 'subject' => $validated['subject'] ?? $validated['name'],
@@ -121,11 +136,13 @@ class TemplateFamilyController extends Controller
                 'updated_by' => $request->user()?->id,
             ]);
 
+            $this->logVersion($family, 'template.version.drafted', $version, $request->user());
+
             return $family;
         });
 
         return $this->created(
-            TemplateFamilyResource::make($family->load('variants')),
+            TemplateFamilyResource::make($family->load($this->versionRelations())),
             'Template family created successfully.'
         );
     }
@@ -135,7 +152,7 @@ class TemplateFamilyController extends Controller
         Gate::authorize(Permission::TemplateManage->value, $templateFamily);
 
         return $this->success(
-            TemplateFamilyResource::make($templateFamily->load('variants')),
+            TemplateFamilyResource::make($templateFamily->load($this->versionRelations())),
             'Template family retrieved successfully.'
         );
     }
@@ -153,7 +170,7 @@ class TemplateFamilyController extends Controller
         $templateFamily->update($validated);
 
         return $this->success(
-            TemplateFamilyResource::make($templateFamily->fresh('variants')),
+            TemplateFamilyResource::make($templateFamily->fresh($this->versionRelations())),
             'Template family updated successfully.'
         );
     }
@@ -169,7 +186,7 @@ class TemplateFamilyController extends Controller
         $templateFamily->update(['archived_at' => now()]);
 
         return $this->success(
-            TemplateFamilyResource::make($templateFamily->fresh('variants')),
+            TemplateFamilyResource::make($templateFamily->fresh($this->versionRelations())),
             'Template family archived successfully.'
         );
     }
@@ -185,13 +202,134 @@ class TemplateFamilyController extends Controller
         return $this->noContent('Template family archived successfully.');
     }
 
+    public function versions(TemplateFamily $templateFamily): JsonResponse
+    {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $versions = $templateFamily->versions()
+            ->with('variants')
+            ->reorder()
+            ->orderByDesc('version_number')
+            ->get();
+
+        $items = $versions->map(
+            fn (TemplateVersion $version): array => (new TemplateVersionResource($version, 'history'))->resolve()
+        )->all();
+
+        return $this->success($items, 'Template versions retrieved successfully.');
+    }
+
+    public function showVersion(TemplateFamily $templateFamily, TemplateVersion $templateVersion): JsonResponse
+    {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $this->assertVersionBelongs($templateFamily, $templateVersion);
+
+        return $this->success(
+            new TemplateVersionResource($templateVersion->load('variants'), 'detail'),
+            'Template version retrieved successfully.'
+        );
+    }
+
+    public function storeVersion(Request $request, TemplateFamily $templateFamily): JsonResponse
+    {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $validated = $request->validate([
+            'from_version_id' => ['sometimes', 'nullable', 'integer'],
+        ]);
+
+        $fromVersionId = isset($validated['from_version_id']) ? (int) $validated['from_version_id'] : null;
+        $opened = $this->openDraft($templateFamily, $fromVersionId, $request->user());
+
+        if (! $opened['created']) {
+            return $this->draftConflict($opened['version']);
+        }
+
+        return $this->created(
+            new TemplateVersionResource($opened['version'], 'detail'),
+            'Template draft created successfully.'
+        );
+    }
+
+    public function publish(
+        Request $request,
+        TemplateFamily $templateFamily,
+        TemplateVersion $templateVersion,
+    ): JsonResponse {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $this->assertVersionBelongs($templateFamily, $templateVersion);
+
+        $warnings = DB::transaction(function () use ($request, $templateFamily, $templateVersion): array {
+            $draft = TemplateVersion::query()->whereKey($templateVersion->id)->lockForUpdate()->firstOrFail();
+
+            if ($draft->status !== TemplateVersionStatus::Draft) {
+                throw ValidationException::withMessages([
+                    'version' => [__('errors.templates.version_published')],
+                ]);
+            }
+
+            $draft->load('variants');
+            if ($draft->variants->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'version' => [__('errors.templates.publish_empty')],
+                ]);
+            }
+
+            $warnings = TemplatePublishValidator::warnings($draft);
+
+            $draft->status = TemplateVersionStatus::Published;
+            $draft->published_at = now();
+            $draft->published_by = $request->user()?->getKey();
+            $draft->save();
+
+            $this->logVersion($templateFamily, 'template.version.published', $draft, $request->user());
+
+            return $warnings;
+        });
+
+        return response()->json([
+            'message' => 'Template version published.',
+            'data' => (new TemplateFamilyResource($templateFamily->fresh($this->versionRelations())))->resolve(),
+            'warnings' => $warnings,
+        ]);
+    }
+
+    public function destroyVersion(
+        Request $request,
+        TemplateFamily $templateFamily,
+        TemplateVersion $templateVersion,
+    ): JsonResponse {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $this->assertVersionBelongs($templateFamily, $templateVersion);
+
+        DB::transaction(function () use ($request, $templateFamily, $templateVersion): void {
+            $version = TemplateVersion::query()->whereKey($templateVersion->id)->lockForUpdate()->firstOrFail();
+
+            if ($version->status !== TemplateVersionStatus::Draft) {
+                throw ValidationException::withMessages([
+                    'version' => [__('errors.templates.version_published')],
+                ]);
+            }
+
+            $this->logVersion($templateFamily, 'template.version.discarded', $version, $request->user());
+            $version->delete();
+        });
+
+        return $this->noContent('Template draft discarded successfully.');
+    }
+
     public function storeVariant(Request $request, TemplateFamily $templateFamily): JsonResponse
     {
         Gate::authorize(Permission::TemplateManage->value, $templateFamily);
 
         $validated = $this->variantRules($request, updating: false);
 
-        if ($templateFamily->variants()->where('locale', $validated['locale'])->exists()) {
+        $version = $this->ensureDraft($templateFamily, $request->user());
+
+        if ($version->variants()->where('locale', $validated['locale'])->exists()) {
             throw ValidationException::withMessages([
                 'locale' => ['A variant for this locale already exists on the family.'],
             ]);
@@ -221,10 +359,10 @@ class TemplateFamilyController extends Controller
             }
         }
 
-        $this->createOrUpdateVariant($templateFamily, $payload, $request->user()?->id);
+        $this->createOrUpdateVariant($templateFamily, $version, $payload, $request->user()?->id);
 
         return $this->created(
-            TemplateFamilyResource::make($templateFamily->fresh('variants')),
+            TemplateFamilyResource::make($templateFamily->fresh($this->versionRelations())),
             'Template variant created successfully.'
         );
     }
@@ -238,11 +376,12 @@ class TemplateFamilyController extends Controller
 
         $this->assertVariantBelongs($templateFamily, $variant);
         $validated = $this->variantRules($request, updating: true);
+        $target = $this->mutableVariant($templateFamily, $variant, $request->user());
 
-        if (isset($validated['locale']) && $validated['locale'] !== $variant->locale) {
-            $exists = $templateFamily->variants()
+        if (isset($validated['locale']) && $validated['locale'] !== $target->locale) {
+            $exists = $target->version->variants()
                 ->where('locale', $validated['locale'])
-                ->where('id', '!=', $variant->id)
+                ->where('id', '!=', $target->id)
                 ->exists();
             if ($exists) {
                 throw ValidationException::withMessages([
@@ -251,10 +390,10 @@ class TemplateFamilyController extends Controller
             }
         }
 
-        $this->applyVariantPayload($variant, $validated, $request->user()?->id);
+        $this->applyVariantPayload($target, $validated, $request->user()?->id);
 
         return $this->success(
-            TemplateFamilyResource::make($templateFamily->fresh('variants')),
+            TemplateFamilyResource::make($templateFamily->fresh($this->versionRelations())),
             'Template variant updated successfully.'
         );
     }
@@ -264,8 +403,15 @@ class TemplateFamilyController extends Controller
         Gate::authorize(Permission::TemplateManage->value, $templateFamily);
 
         $this->assertVariantBelongs($templateFamily, $variant);
+        $variant->loadMissing('version');
 
-        if ($templateFamily->variants()->count() <= 1) {
+        if ($variant->version->status !== TemplateVersionStatus::Draft) {
+            throw ValidationException::withMessages([
+                'variant' => [__('errors.templates.version_published')],
+            ]);
+        }
+
+        if ($variant->version->variants()->count() <= 1) {
             throw ValidationException::withMessages([
                 'variant' => ['The last variant on a family cannot be deleted.'],
             ]);
@@ -457,10 +603,14 @@ class TemplateFamilyController extends Controller
      */
     private function createOrUpdateVariant(
         TemplateFamily $family,
+        TemplateVersion $version,
         array $validated,
         ?int $employeeId,
     ): TemplateVariant {
-        $variant = new TemplateVariant(['template_family_id' => $family->id]);
+        $variant = new TemplateVariant([
+            'template_family_id' => $family->id,
+            'template_version_id' => $version->id,
+        ]);
         $this->applyVariantPayload($variant, $validated, $employeeId);
 
         return $variant;
@@ -525,5 +675,205 @@ class TemplateFamilyController extends Controller
         if ($variant->template_family_id !== $family->id) {
             abort(404);
         }
+    }
+
+    private function assertVersionBelongs(TemplateFamily $family, TemplateVersion $version): void
+    {
+        if ($version->template_family_id !== $family->id) {
+            abort(404);
+        }
+    }
+
+    /** @return list<string> */
+    private function versionRelations(): array
+    {
+        return ['currentVersion.variants', 'draft.variants'];
+    }
+
+    private function ensureDraft(TemplateFamily $family, ?Model $causer): TemplateVersion
+    {
+        $existing = $this->findDraft($family);
+        if ($existing instanceof TemplateVersion) {
+            return $existing;
+        }
+
+        $opened = $this->openDraft($family, null, $causer);
+
+        return $opened['version'];
+    }
+
+    private function mutableVariant(
+        TemplateFamily $family,
+        TemplateVariant $variant,
+        ?Model $causer,
+    ): TemplateVariant {
+        $variant->loadMissing('version');
+        $version = $variant->version;
+
+        if ($version->status === TemplateVersionStatus::Draft) {
+            return $variant;
+        }
+
+        if ($this->findDraft($family) instanceof TemplateVersion) {
+            throw ValidationException::withMessages([
+                'variant' => [__('errors.templates.version_published')],
+            ]);
+        }
+
+        $currentId = $this->latestPublishedId($family);
+        if ($currentId === null || $currentId !== $version->id) {
+            throw ValidationException::withMessages([
+                'variant' => [__('errors.templates.version_published')],
+            ]);
+        }
+
+        $opened = $this->openDraft($family, $currentId, $causer);
+        if (! $opened['created']) {
+            throw ValidationException::withMessages([
+                'variant' => [__('errors.templates.version_published')],
+            ]);
+        }
+
+        $copy = $opened['version']->variants->firstWhere('locale', $variant->locale);
+        if (! $copy instanceof TemplateVariant) {
+            throw ValidationException::withMessages([
+                'variant' => [__('errors.templates.variant_mismatch')],
+            ]);
+        }
+
+        return $copy;
+    }
+
+    /**
+     * @return array{version: TemplateVersion, created: bool}
+     */
+    private function openDraft(TemplateFamily $family, ?int $fromVersionId, ?Model $causer): array
+    {
+        try {
+            return DB::transaction(function () use ($family, $fromVersionId, $causer): array {
+                TemplateFamily::query()->whereKey($family->id)->lockForUpdate()->firstOrFail();
+
+                $existing = $this->findDraft($family);
+                if ($existing instanceof TemplateVersion) {
+                    return [
+                        'version' => $existing->load('variants'),
+                        'created' => false,
+                    ];
+                }
+
+                $source = $this->draftSource($family, $fromVersionId);
+                $next = ((int) TemplateVersion::query()
+                    ->where('template_family_id', $family->id)
+                    ->max('version_number')) + 1;
+
+                $draft = $family->versions()->create([
+                    'version_number' => $next,
+                    'status' => TemplateVersionStatus::Draft,
+                    'based_on_version_id' => $source?->id,
+                    'published_at' => null,
+                    'created_by' => $causer?->getKey(),
+                ]);
+
+                if ($source instanceof TemplateVersion) {
+                    foreach ($source->variants as $variant) {
+                        $draft->variants()->create([
+                            'template_family_id' => $family->id,
+                            'locale' => $variant->locale,
+                            'subject' => $variant->subject,
+                            'blocks' => $variant->blocks,
+                            'legacy_html' => $variant->legacy_html,
+                            'body_text' => $variant->body_text,
+                            'updated_by' => $causer?->getKey(),
+                        ]);
+                    }
+                }
+
+                $latestId = $this->latestPublishedId($family);
+                $event = $source instanceof TemplateVersion && $latestId !== null && $source->id !== $latestId
+                    ? 'template.version.restored'
+                    : 'template.version.drafted';
+                $this->logVersion($family, $event, $draft, $causer);
+
+                return [
+                    'version' => $draft->load('variants'),
+                    'created' => true,
+                ];
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            $existing = $this->findDraft($family);
+            if ($existing instanceof TemplateVersion) {
+                return [
+                    'version' => $existing->load('variants'),
+                    'created' => false,
+                ];
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function draftSource(TemplateFamily $family, ?int $fromVersionId): ?TemplateVersion
+    {
+        if ($fromVersionId !== null) {
+            $source = TemplateVersion::query()
+                ->whereKey($fromVersionId)
+                ->where('template_family_id', $family->id)
+                ->with('variants')
+                ->first();
+
+            if (! $source instanceof TemplateVersion || $source->status !== TemplateVersionStatus::Published) {
+                throw ValidationException::withMessages([
+                    'from_version_id' => [__('errors.templates.version_mismatch')],
+                ]);
+            }
+
+            return $source;
+        }
+
+        $latestId = $this->latestPublishedId($family);
+        if ($latestId === null) {
+            return null;
+        }
+
+        return TemplateVersion::query()->with('variants')->find($latestId);
+    }
+
+    private function findDraft(TemplateFamily $family): ?TemplateVersion
+    {
+        return TemplateVersion::query()
+            ->where('template_family_id', $family->id)
+            ->where('status', TemplateVersionStatus::Draft)
+            ->first();
+    }
+
+    private function latestPublishedId(TemplateFamily $family): ?int
+    {
+        $id = TemplateVersion::query()
+            ->where('template_family_id', $family->id)
+            ->where('status', TemplateVersionStatus::Published)
+            ->orderByDesc('version_number')
+            ->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    private function draftConflict(TemplateVersion $draft): JsonResponse
+    {
+        return response()->json([
+            'message' => __('errors.templates.draft_exists'),
+            'data' => (new TemplateVersionResource($draft->loadMissing('variants'), 'draft'))->resolve(),
+        ], 409);
+    }
+
+    private function logVersion(
+        TemplateFamily $family,
+        string $event,
+        TemplateVersion $version,
+        mixed $causer,
+    ): void {
+        RecordsActivity::log(LogChannel::Comms, $event, $family, [
+            'version_number' => $version->version_number,
+            'based_on_version_id' => $version->based_on_version_id,
+        ], $causer instanceof Model ? $causer : null);
     }
 }

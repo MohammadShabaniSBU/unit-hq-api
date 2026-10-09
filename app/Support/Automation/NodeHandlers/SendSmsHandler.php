@@ -130,7 +130,9 @@ final class SendSmsHandler implements NodeHandler
                 throw new RuntimeException('send_sms template path requires template_family_id');
             }
 
-            $family = TemplateFamily::query()->with('variants')->find((int) $templateId);
+            $family = TemplateFamily::query()
+                ->with(['currentVersion.variants', 'draft.variants'])
+                ->find((int) $templateId);
             if ($family === null) {
                 throw new RuntimeException("send_sms template family [{$templateId}] not found");
             }

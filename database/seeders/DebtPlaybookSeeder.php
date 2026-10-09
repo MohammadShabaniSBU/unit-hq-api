@@ -11,8 +11,8 @@ use App\Enums\TemplatePurpose;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
 use App\Models\TemplateFamily;
-use App\Models\TemplateVariant;
 use App\Support\Communications\LegacyEmailBlocksHtml;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\Seeder;
 
 /**
@@ -23,12 +23,12 @@ class DebtPlaybookSeeder extends Seeder
 {
     public function run(): void
     {
-        $family = TemplateFamily::query()->firstOrCreate(
-            ['name' => 'Payment reminder', 'channel' => TemplateChannel::Email],
-            ['purpose' => TemplatePurpose::Debt],
-        );
+        $family = TemplateFamily::query()
+            ->where('name', 'Payment reminder')
+            ->where('channel', TemplateChannel::Email)
+            ->first();
 
-        if ($family->variants()->count() === 0) {
+        if ($family === null) {
             $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
                 'type' => 'text',
                 'props' => [
@@ -39,12 +39,15 @@ class DebtPlaybookSeeder extends Seeder
                 ],
             ]]);
 
-            TemplateVariant::query()->create([
-                'template_family_id' => $family->id,
+            $family = TemplateFamilyFactory::published([
+                'name' => 'Payment reminder',
+                'channel' => TemplateChannel::Email,
+                'purpose' => TemplatePurpose::Debt,
+            ], variants: [[
                 'locale' => 'en',
                 'subject' => 'Payment reminder',
                 'legacy_html' => $legacyHtml,
-            ]);
+            ]]);
         }
 
         $existing = Playbook::query()

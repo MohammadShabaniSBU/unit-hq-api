@@ -9,8 +9,8 @@ use App\Enums\TemplatePurpose;
 use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Site;
-use App\Models\TemplateFamily;
 use App\Support\Communications\TemplateResolver;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,27 +20,15 @@ class TemplateResolverTest extends TestCase
 
     public function test_locale_ladder(): void
     {
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Ladder',
             'purpose' => TemplatePurpose::General,
+        ], variants: [
+            ['locale' => 'fr', 'subject' => 'FR', 'legacy_html' => '<p>fr</p>'],
+            ['locale' => 'en', 'subject' => 'EN', 'legacy_html' => '<p>en</p>'],
+            ['locale' => 'es', 'subject' => 'ES', 'legacy_html' => '<p>es</p>'],
         ]);
-        $family->variants()->create([
-            'locale' => 'fr',
-            'subject' => 'FR',
-            'legacy_html' => '<p>fr</p>',
-        ]);
-        $family->variants()->create([
-            'locale' => 'en',
-            'subject' => 'EN',
-            'legacy_html' => '<p>en</p>',
-        ]);
-        $family->variants()->create([
-            'locale' => 'es',
-            'subject' => 'ES',
-            'legacy_html' => '<p>es</p>',
-        ]);
-        $family->load('variants');
 
         $esCountry = Country::factory()->create(['code' => 'ES', 'name' => 'Spain']);
         $siteEs = Site::factory()->create(['country_id' => $esCountry->id]);
@@ -54,34 +42,30 @@ class TemplateResolverTest extends TestCase
         $this->assertSame('es', TemplateResolver::variant($family, $contactNoLocale, $siteEs)->locale);
 
         // 3) en fallback when site locale missing
-        $familyEnOnly = TemplateFamily::query()->create([
+        $familyEnOnly = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'En only ladder',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $familyEnOnly->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'EN',
             'legacy_html' => '<p>en</p>',
-        ]);
-        $familyEnOnly->load('variants');
+        ]]);
 
         $deCountry = Country::factory()->create(['code' => 'DE', 'name' => 'Germany']);
         $siteDe = Site::factory()->create(['country_id' => $deCountry->id]);
         $this->assertSame('en', TemplateResolver::variant($familyEnOnly, $contactNoLocale, $siteDe)->locale);
 
         // 4) any fallback
-        $familyFrOnly = TemplateFamily::query()->create([
+        $familyFrOnly = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Fr only',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $familyFrOnly->variants()->create([
+        ], variants: [[
             'locale' => 'fr',
             'subject' => 'FR',
             'legacy_html' => '<p>fr</p>',
-        ]);
-        $familyFrOnly->load('variants');
+        ]]);
         $this->assertSame('fr', TemplateResolver::variant($familyFrOnly, $contactNoLocale, $siteDe)->locale);
     }
 }

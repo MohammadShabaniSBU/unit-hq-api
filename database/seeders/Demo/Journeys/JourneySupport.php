@@ -62,7 +62,6 @@ use App\Models\Setting;
 use App\Models\Site;
 use App\Models\SystemEvent;
 use App\Models\TemplateFamily;
-use App\Models\TemplateVariant;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Models\UnitClassRate;
@@ -513,9 +512,7 @@ final class JourneySupport
             ->where('channel', TemplateChannel::Document)
             ->where('purpose', TemplatePurpose::Contract)
             ->firstOrFail();
-        $variant = TemplateVariant::query()
-            ->where('template_family_id', $family->id)
-            ->firstOrFail();
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
 
         $path = 'contracts/demo-'.$contract->id.'-'.Str::lower(Str::random(6)).'.pdf';
         Storage::disk('local')->put($path, FakeESignPdf::BYTES);

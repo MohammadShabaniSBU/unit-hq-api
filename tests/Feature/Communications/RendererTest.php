@@ -10,7 +10,6 @@ use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\Site;
-use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectTokenBag;
@@ -18,6 +17,7 @@ use App\Support\Automation\TokenResolver;
 use App\Support\Communications\Channel;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\LegacyEmailBlocksHtml;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -76,12 +76,11 @@ class RendererTest extends TestCase
         ]);
         $this->givePrimaryEmail($contact, 'ada@example.com');
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Warn me',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Hi',
             'legacy_html' => LegacyEmailBlocksHtml::fromBlocks([[
@@ -93,10 +92,10 @@ class RendererTest extends TestCase
                     'color' => '#000000',
                 ],
             ]]),
-        ]);
+        ]]);
 
         $preview = EmailTemplateRenderer::render(
-            $family->variants()->firstOrFail(),
+            $family->currentVersion()->firstOrFail()->variants()->firstOrFail(),
             new RunContext(subjectBag: SubjectTokenBag::forContact($contact)),
             previewMarkers: true,
         );

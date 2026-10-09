@@ -861,7 +861,9 @@ class InboxController extends Controller
         ?Site $site,
     ): string {
         if (! empty($validated['template_family_id'])) {
-            $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);
+            $family = TemplateFamily::query()
+                ->with(['currentVersion.variants', 'draft.variants'])
+                ->findOrFail($validated['template_family_id']);
             $channel = $family->channel instanceof TemplateChannel
                 ? $family->channel
                 : TemplateChannel::tryFrom((string) $family->channel);
@@ -890,7 +892,9 @@ class InboxController extends Controller
         ?Site $site,
     ): array {
         if (! empty($validated['template_family_id'])) {
-            $family = TemplateFamily::query()->with('variants')->findOrFail($validated['template_family_id']);
+            $family = TemplateFamily::query()
+                ->with(['currentVersion.variants', 'draft.variants'])
+                ->findOrFail($validated['template_family_id']);
             $variant = TemplateResolver::variant($family, $contact, $site);
             $rendered = EmailTemplateRenderer::render($variant, $tokenContext);
 

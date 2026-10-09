@@ -49,7 +49,7 @@ class BlockDocTest extends TestCase
         ]);
         $create->assertCreated();
         $familyId = (int) $create->json('data.id');
-        $variantId = (int) $create->json('data.variants.0.id');
+        $variantId = (int) $create->json('data.draft_version.variants.0.id');
 
         $response = $this->putJson("/api/template-families/{$familyId}/variants/{$variantId}", [
             'blocks' => [
@@ -79,7 +79,7 @@ class BlockDocTest extends TestCase
         ]);
         $create->assertCreated();
         $familyId = (int) $create->json('data.id');
-        $variantId = (int) $create->json('data.variants.0.id');
+        $variantId = (int) $create->json('data.draft_version.variants.0.id');
 
         $doc = [
             'version' => 1,
@@ -94,8 +94,8 @@ class BlockDocTest extends TestCase
             'blocks' => $doc,
         ]);
         $update->assertOk();
-        $this->assertNull($update->json('data.variants.0.legacy_html'));
-        $this->assertSame(1, $update->json('data.variants.0.blocks.version'));
-        $this->assertSame('paragraph', $update->json('data.variants.0.blocks.blocks.0.type'));
+        $this->assertNull($update->json('data.draft_version.variants.0.legacy_html'));
+        $this->assertSame(1, $update->json('data.draft_version.variants.0.blocks.version'));
+        $this->assertSame('paragraph', $update->json('data.draft_version.variants.0.blocks.blocks.0.type'));
     }
 }

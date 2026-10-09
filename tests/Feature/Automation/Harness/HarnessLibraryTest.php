@@ -32,12 +32,12 @@ use App\Models\Interaction;
 use App\Models\PaymentMethod;
 use App\Models\Site;
 use App\Models\Task;
-use App\Models\TemplateFamily;
 use App\Models\Unit;
 use App\Models\UnitClass;
 use App\Support\Communications\LegacyEmailBlocksHtml;
 use App\Support\Delinquency\DelinquencyLifecycle;
 use Carbon\Carbon;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AutomationHarness;
 use Tests\Support\CreatesCataloguePrices;
@@ -431,12 +431,11 @@ class HarnessLibraryTest extends TestCase
     {
         $this->seedEmailAccount(Site::factory()->create());
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Debt reminder',
             'purpose' => TemplatePurpose::Debt,
-        ]);
-        $family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Debt reminder',
             'legacy_html' => LegacyEmailBlocksHtml::fromBlocks([[
@@ -448,7 +447,7 @@ class HarnessLibraryTest extends TestCase
                     'color' => '#000000',
                 ],
             ]]),
-        ]);
+        ]]);
 
         $contact = Contact::factory()->create([
             'first_name' => 'Templated',

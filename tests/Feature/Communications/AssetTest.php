@@ -6,9 +6,11 @@ namespace Tests\Feature\Communications;
 
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
+use App\Enums\TemplateVersionStatus;
 use App\Models\Employee;
 use App\Models\TemplateAsset;
 use App\Models\TemplateFamily;
+use App\Models\TemplateVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -46,12 +48,18 @@ class AssetTest extends TestCase
         $serve->assertOk();
         $this->assertStringStartsWith('image/', (string) $serve->headers->get('Content-Type'));
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamily::factory()->create([
             'channel' => TemplateChannel::Email,
             'name' => 'With image',
             'purpose' => TemplatePurpose::General,
         ]);
-        $family->variants()->create([
+        $version = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 1,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $variant = $version->variants()->create([
+            'template_family_id' => $family->id,
             'locale' => 'en',
             'subject' => 'Hi',
             'blocks' => [
@@ -71,8 +79,8 @@ class AssetTest extends TestCase
         $blocked = $this->deleteJson('/api/template-assets/'.$assetId);
         $blocked->assertStatus(422);
 
-        // Clear reference then delete succeeds.
-        $family->variants()->firstOrFail()->update(['blocks' => null]);
+        // A draft reference can be cleared. A published one cannot.
+        $variant->update(['blocks' => null]);
         $this->deleteJson('/api/template-assets/'.$assetId)->assertNoContent();
         $this->assertNull(TemplateAsset::query()->find($assetId));
     }

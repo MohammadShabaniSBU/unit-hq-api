@@ -18,11 +18,11 @@ use App\Models\AutomationEdge;
 use App\Models\AutomationNode;
 use App\Models\LayoutField;
 use App\Models\TemplateFamily;
-use App\Models\TemplateVariant;
 use App\Support\Communications\EmailBlockDocument;
 use App\Support\Filtering\AttributeFieldResolver;
 use App\Support\Filtering\FilterSchemaResponder;
 use App\Support\Layout\NativeFields;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\Seeder;
 
 /**
@@ -193,16 +193,17 @@ class CelebrationAutomationsSeeder extends Seeder
      */
     private function emailFamily(string $name, array $locales): TemplateFamily
     {
-        $family = TemplateFamily::query()->firstOrCreate(
-            ['name' => $name, 'channel' => TemplateChannel::Email],
-            ['purpose' => TemplatePurpose::General],
-        );
+        $family = TemplateFamily::query()
+            ->where('name', $name)
+            ->where('channel', TemplateChannel::Email)
+            ->first();
 
+        if ($family !== null) {
+            return $family;
+        }
+
+        $variants = [];
         foreach ($locales as $locale => $copy) {
-            if ($family->variants()->where('locale', $locale)->exists()) {
-                continue;
-            }
-
             $blocks = EmailBlockDocument::validate([
                 'version' => 1,
                 'blocks' => [
@@ -224,16 +225,19 @@ class CelebrationAutomationsSeeder extends Seeder
                 ],
             ]);
 
-            TemplateVariant::query()->create([
-                'template_family_id' => $family->id,
+            $variants[] = [
                 'locale' => $locale,
                 'subject' => $copy['subject'],
                 'blocks' => $blocks,
                 'legacy_html' => null,
-            ]);
+            ];
         }
 
-        return $family;
+        return TemplateFamilyFactory::published([
+            'name' => $name,
+            'channel' => TemplateChannel::Email,
+            'purpose' => TemplatePurpose::General,
+        ], variants: $variants);
     }
 
     /** @return array<string, mixed> */

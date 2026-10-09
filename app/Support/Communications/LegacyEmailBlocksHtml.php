@@ -4,28 +4,19 @@ declare(strict_types=1);
 
 namespace App\Support\Communications;
 
-use App\Models\EmailBlock;
-use App\Models\EmailTemplate;
-use Illuminate\Support\Collection;
-
 /**
- * Freezes pre-family EmailBlock rows (or equivalent arrays) to HTML for legacy_html.
- * Used by the migrate-families command and transitional panel saves.
+ * Freezes block arrays to HTML for legacy_html.
  */
 final class LegacyEmailBlocksHtml
 {
     /**
-     * @param  Collection<int, EmailBlock>|iterable<int, array{type: string, props?: array<string, mixed>}>  $blocks
+     * @param  iterable<int, array{type?: string, props?: array<string, mixed>}>  $blocks
      */
     public static function fromBlocks(iterable $blocks): string
     {
         $parts = [];
         foreach ($blocks as $block) {
-            if ($block instanceof EmailBlock) {
-                $html = self::blockToHtml($block->type, $block->props ?? []);
-            } else {
-                $html = self::blockToHtml((string) ($block['type'] ?? ''), $block['props'] ?? []);
-            }
+            $html = self::blockToHtml((string) ($block['type'] ?? ''), $block['props'] ?? []);
             if ($html !== '') {
                 $parts[] = $html;
             }
@@ -36,13 +27,6 @@ final class LegacyEmailBlocksHtml
         return '<div style="max-width:600px;margin:0 auto;font-family:sans-serif;background:#ffffff;">'
             .$body
             .'</div>';
-    }
-
-    public static function fromEmailTemplate(EmailTemplate $template): string
-    {
-        $template->loadMissing('emailBlocks');
-
-        return self::fromBlocks($template->emailBlocks);
     }
 
     /** @param  array<string, mixed>  $p */

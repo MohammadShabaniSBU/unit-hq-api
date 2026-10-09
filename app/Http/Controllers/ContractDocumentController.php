@@ -12,6 +12,8 @@ use App\Models\Contract;
 use App\Models\ContractDocument;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
+use App\Models\Unit;
+use App\Support\Auth\Permission;
 use App\Support\Communications\TemplateResolver;
 use App\Support\Documents\ContractDocumentRenderer;
 use App\Support\RecordsActivity;
@@ -19,10 +21,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class ContractDocumentController extends Controller
 {
@@ -196,7 +197,7 @@ class ContractDocumentController extends Controller
         $contract->loadMissing(['contact', 'unitItem.item.site']);
         $site = null;
         $unit = $contract->unitItem?->item;
-        if ($unit instanceof \App\Models\Unit) {
+        if ($unit instanceof Unit) {
             $site = $unit->site;
         }
 
@@ -218,8 +219,9 @@ class ContractDocumentController extends Controller
         }
 
         if (! empty($validated['locale'])) {
-            $family->loadMissing('variants');
-            $variant = $family->variants->firstWhere('locale', $validated['locale']);
+            $family->loadMissing(['currentVersion.variants', 'draft.variants']);
+            $version = $family->currentVersion ?? $family->draft;
+            $variant = $version?->variants->firstWhere('locale', $validated['locale']);
             if ($variant === null) {
                 throw ValidationException::withMessages([
                     'locale' => ['No variant exists for locale '.$validated['locale'].'.'],

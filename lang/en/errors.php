@@ -119,6 +119,12 @@ return [
         'asset_in_use' => 'Cannot delete a template asset that is referenced by a template.',
         'variant_mismatch' => 'The variant does not belong to this template family.',
         'test_send_failed' => 'The test email could not be sent.',
+        'version_published' => 'Published template versions cannot be changed.',
+        'draft_exists' => 'This template family already has a draft.',
+        'publish_failed' => 'Variant :variant (:locale) cannot be published: :reason',
+        'publish_empty' => 'A draft must have at least one variant before it can be published.',
+        'version_missing' => 'Template family has no version.',
+        'version_mismatch' => 'The version does not belong to this template family.',
     ],
     'documents' => [
         'blocks_invalid' => 'The document block document is invalid.',

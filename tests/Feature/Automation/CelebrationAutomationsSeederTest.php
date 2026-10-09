@@ -8,6 +8,7 @@ use App\Enums\AttributeEntityType;
 use App\Enums\AttributeType;
 use App\Enums\AutomationStatus;
 use App\Enums\TemplateChannel;
+use App\Enums\TemplateVersionStatus;
 use App\Models\AttributeDefinition;
 use App\Models\Automation;
 use App\Models\AutomationNode;
@@ -32,9 +33,16 @@ class CelebrationAutomationsSeederTest extends TestCase
             ->where('channel', TemplateChannel::Email)
             ->first();
         $this->assertNotNull($anniversary);
-        $this->assertSame(2, $anniversary->variants()->count());
+        $this->assertSame(1, $anniversary->versions()->count());
+        $this->assertNull($anniversary->draft);
 
-        $variant = $anniversary->variants()->where('locale', 'en')->first();
+        $current = $anniversary->currentVersion;
+        $this->assertNotNull($current);
+        $this->assertSame(1, $current->version_number);
+        $this->assertSame(TemplateVersionStatus::Published, $current->status);
+        $this->assertSame(2, $current->variants()->count());
+
+        $variant = $current->variants()->where('locale', 'en')->first();
         $this->assertNotNull($variant);
         $this->assertNull($variant->legacy_html);
         EmailBlockDocument::validate($variant->blocks);

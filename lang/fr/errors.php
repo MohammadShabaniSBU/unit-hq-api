@@ -97,6 +97,14 @@ return [
         'transition_not_allowed' => 'Impossible de faire passer l’exécution d’automatisation de :from à :to.',
         'already_terminal' => 'L’exécution d’automatisation est déjà :status et ne peut pas être annulée.',
     ],
+    'templates' => [
+        'version_published' => 'Les versions publiées ne peuvent pas être modifiées.',
+        'draft_exists' => 'Cette famille de modèles a déjà un brouillon.',
+        'publish_failed' => 'La variante :variant (:locale) ne peut pas être publiée : :reason',
+        'publish_empty' => 'Un brouillon doit contenir au moins une variante avant publication.',
+        'version_missing' => 'Cette famille de modèles n’a pas de version.',
+        'version_mismatch' => 'La version n’appartient pas à cette famille de modèles.',
+    ],
     'documents' => [
         'blocks_invalid' => 'Le document de blocs est invalide.',
         'blocks_unknown_version' => 'Version de document de blocs non prise en charge : :version.',

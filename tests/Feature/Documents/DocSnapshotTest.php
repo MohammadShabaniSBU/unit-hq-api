@@ -38,11 +38,14 @@ class DocSnapshotTest extends TestCase
         $path = ContractDocument::query()->findOrFail($documentId)->pdf_path;
         $bytes = Storage::disk('local')->get($path);
 
-        // Template edit after generation must leave stored draft unchanged.
+        // Editing opens a draft. The published variant, and the stored PDF, stay put.
         $variant = $this->variant('en');
         $blocks = $variant->blocks;
         $blocks['blocks'][0]['params']['heading'] = 'MUTATED HEADING';
-        $variant->update(['blocks' => $blocks]);
+        $this->putJson("/api/template-families/{$this->documentFamily->id}/variants/{$variant->id}", [
+            'blocks' => $blocks,
+        ])->assertOk();
+        $this->assertNotSame('MUTATED HEADING', $variant->fresh()->blocks['blocks'][0]['params']['heading']);
 
         $this->assertSame($bytes, Storage::disk('local')->get($path));
         $this->assertSame($sha, ContractDocument::query()->findOrFail($documentId)->sha256);

@@ -7,7 +7,7 @@ namespace Database\Seeders;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Models\TemplateFamily;
-use App\Models\TemplateVariant;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -18,45 +18,48 @@ class ContractDocumentTemplateSeeder extends Seeder
 {
     public function run(): void
     {
-        $family = TemplateFamily::query()->firstOrCreate(
-            ['name' => 'Self-storage rental agreement', 'channel' => TemplateChannel::Document],
-            ['purpose' => TemplatePurpose::Contract],
-        );
+        $family = TemplateFamily::query()
+            ->where('name', 'Self-storage rental agreement')
+            ->where('channel', TemplateChannel::Document)
+            ->first();
+
+        if ($family === null) {
+            $family = TemplateFamilyFactory::published([
+                'name' => 'Self-storage rental agreement',
+                'channel' => TemplateChannel::Document,
+                'purpose' => TemplatePurpose::Contract,
+            ], variants: [
+                $this->variantPayload('en', 'Self-storage rental agreement', [
+                    'heading' => 'Agreement',
+                    'intro' => 'This agreement is entered into between the landlord and the tenant named below for the self-storage unit(s) described in the terms table.',
+                    'obligations_heading' => 'Tenant obligations',
+                    'obligations_body' => "The tenant ({{contact.name}}) agrees to pay rent as specified, keep the unit secure, and give notice before vacating.\nGoods are stored at the tenant's risk unless insurance cover is separately agreed.",
+                    'law_heading' => 'Governing law',
+                    'law_body' => 'This agreement is governed by the laws applicable at the site where the unit is located.',
+                ]),
+                $this->variantPayload('es', 'Contrato de alquiler de trastero', [
+                    'heading' => 'Contrato',
+                    'intro' => 'El presente contrato se celebra entre el arrendador y el inquilino identificados a continuación para la(s) unidad(es) de trastero descritas en la tabla de condiciones.',
+                    'obligations_heading' => 'Obligaciones del inquilino',
+                    'obligations_body' => "El inquilino ({{contact.name}}) se compromete a pagar el alquiler indicado, mantener la unidad segura y preavisar antes de la salida.\nLos bienes se almacenan bajo riesgo del inquilino salvo seguro acordado por separado.",
+                    'law_heading' => 'Legislación aplicable',
+                    'law_body' => 'Este contrato se rige por la legislación aplicable en el centro donde se encuentra la unidad.',
+                ]),
+            ]);
+        }
 
         if ($family->purpose !== TemplatePurpose::Contract) {
             $family->update(['purpose' => TemplatePurpose::Contract]);
         }
-
-        $this->seedVariant($family, 'en', 'Self-storage rental agreement', [
-            'heading' => 'Agreement',
-            'intro' => 'This agreement is entered into between the landlord and the tenant named below for the self-storage unit(s) described in the terms table.',
-            'obligations_heading' => 'Tenant obligations',
-            'obligations_body' => "The tenant ({{contact.name}}) agrees to pay rent as specified, keep the unit secure, and give notice before vacating.\nGoods are stored at the tenant's risk unless insurance cover is separately agreed.",
-            'law_heading' => 'Governing law',
-            'law_body' => 'This agreement is governed by the laws applicable at the site where the unit is located.',
-        ]);
-
-        $this->seedVariant($family, 'es', 'Contrato de alquiler de trastero', [
-            'heading' => 'Contrato',
-            'intro' => 'El presente contrato se celebra entre el arrendador y el inquilino identificados a continuación para la(s) unidad(es) de trastero descritas en la tabla de condiciones.',
-            'obligations_heading' => 'Obligaciones del inquilino',
-            'obligations_body' => "El inquilino ({{contact.name}}) se compromete a pagar el alquiler indicado, mantener la unidad segura y preavisar antes de la salida.\nLos bienes se almacenan bajo riesgo del inquilino salvo seguro acordado por separado.",
-            'law_heading' => 'Legislación aplicable',
-            'law_body' => 'Este contrato se rige por la legislación aplicable en el centro donde se encuentra la unidad.',
-        ]);
     }
 
     /**
      * @param  array{heading: string, intro: string, obligations_heading: string, obligations_body: string, law_heading: string, law_body: string}  $copy
+     * @return array{locale: string, subject: string, blocks: array{version: int, blocks: list<array{id: string, type: string, params: array<string, mixed>}>}}
      */
-    private function seedVariant(TemplateFamily $family, string $locale, string $subject, array $copy): void
+    private function variantPayload(string $locale, string $subject, array $copy): array
     {
-        if ($family->variants()->where('locale', $locale)->exists()) {
-            return;
-        }
-
-        TemplateVariant::query()->create([
-            'template_family_id' => $family->id,
+        return [
             'locale' => $locale,
             'subject' => $subject,
             'blocks' => [
@@ -108,6 +111,6 @@ class ContractDocumentTemplateSeeder extends Seeder
                     ],
                 ],
             ],
-        ]);
+        ];
     }
 }

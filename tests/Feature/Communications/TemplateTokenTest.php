@@ -10,13 +10,13 @@ use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Message;
 use App\Models\Site;
-use App\Models\TemplateFamily;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectTokenBag;
 use App\Support\Communications\Channel;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\LegacyEmailBlocksHtml;
 use App\Support\Communications\TemplateResolver;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -45,12 +45,11 @@ class TemplateTokenTest extends TestCase
         ]);
         $this->givePrimaryEmail($contact, 'ada@example.com');
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Inbox hello',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Inbox hello',
             'legacy_html' => LegacyEmailBlocksHtml::fromBlocks([[
@@ -62,8 +61,7 @@ class TemplateTokenTest extends TestCase
                     'color' => '#000000',
                 ],
             ]]),
-        ]);
-        $family->load('variants');
+        ]]);
 
         $thread = $this->makeInboxThread($contact, [
             'subject' => 'Tokens',

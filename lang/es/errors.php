@@ -105,6 +105,12 @@ return [
         'asset_in_use' => 'No se puede eliminar un recurso de plantilla referenciado por una plantilla.',
         'variant_mismatch' => 'La variante no pertenece a esta familia de plantillas.',
         'test_send_failed' => 'No se pudo enviar el email de prueba.',
+        'version_published' => 'Las versiones publicadas no se pueden modificar.',
+        'draft_exists' => 'Esta familia de plantillas ya tiene un borrador.',
+        'publish_failed' => 'La variante :variant (:locale) no se puede publicar: :reason',
+        'publish_empty' => 'Un borrador debe tener al menos una variante antes de publicarse.',
+        'version_missing' => 'La familia de plantillas no tiene versión.',
+        'version_mismatch' => 'La versión no pertenece a esta familia de plantillas.',
     ],
     'documents' => [
         'blocks_invalid' => 'El documento de bloques no es válido.',

@@ -9,11 +9,12 @@ use App\Enums\TemplatePurpose;
 use App\Models\Contact;
 use App\Models\Employee;
 use App\Models\Site;
-use App\Models\TemplateFamily;
+use App\Models\TemplateVariant;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectTokenBag;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\TemplateBuilderContext;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -39,12 +40,11 @@ class BuilderFlowTest extends TestCase
             'email' => 'ada@example.com',
         ]);
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Builder flow',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $variant = $family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Hi {{contact.first_name}}',
             'blocks' => [
@@ -56,7 +56,8 @@ class BuilderFlowTest extends TestCase
                 ]],
             ],
             'legacy_html' => null,
-        ]);
+        ]]);
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
 
         $preview = $this->post(
             "/api/template-families/{$family->id}/variants/{$variant->id}/preview",
@@ -103,19 +104,19 @@ class BuilderFlowTest extends TestCase
         Sanctum::actingAs($employee);
 
         $contact = Contact::factory()->create(['first_name' => 'Ada']);
+        $legacy = '<div style="padding:8px">Hello {{contact.first_name}}</div>';
 
-        $family = TemplateFamily::query()->create([
+        $family = TemplateFamilyFactory::published([
             'channel' => TemplateChannel::Email,
             'name' => 'Legacy',
             'purpose' => TemplatePurpose::General,
-        ]);
-        $legacy = '<div style="padding:8px">Hello {{contact.first_name}}</div>';
-        $variant = $family->variants()->create([
+        ], variants: [[
             'locale' => 'en',
             'subject' => 'Hi',
             'legacy_html' => $legacy,
             'blocks' => null,
-        ]);
+        ]]);
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
 
         $before = EmailTemplateRenderer::render(
             $variant,
@@ -133,10 +134,12 @@ class BuilderFlowTest extends TestCase
             ],
         ]);
         $update->assertOk();
-        $this->assertNull($update->json('data.variants.0.legacy_html'));
+        $this->assertSame($legacy, $update->json('data.current_version.variants.0.legacy_html'));
+        $this->assertNull($update->json('data.draft_version.variants.0.legacy_html'));
 
+        $draftVariant = TemplateVariant::query()->findOrFail((int) $update->json('data.draft_version.variants.0.id'));
         $after = EmailTemplateRenderer::render(
-            $variant->fresh(),
+            $draftVariant,
             TemplateBuilderContext::for($contact),
         );
 

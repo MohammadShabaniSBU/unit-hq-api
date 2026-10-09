@@ -502,6 +502,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::apiResource('template-families', Controllers\TemplateFamilyController::class);
     Route::post('template-families/{templateFamily}/archive', [Controllers\TemplateFamilyController::class, 'archive']);
+    Route::get('template-families/{templateFamily}/versions', [Controllers\TemplateFamilyController::class, 'versions']);
+    Route::post('template-families/{templateFamily}/versions', [Controllers\TemplateFamilyController::class, 'storeVersion']);
+    Route::get('template-families/{templateFamily}/versions/{templateVersion}', [Controllers\TemplateFamilyController::class, 'showVersion']);
+    Route::post('template-families/{templateFamily}/versions/{templateVersion}/publish', [Controllers\TemplateFamilyController::class, 'publish']);
+    Route::delete('template-families/{templateFamily}/versions/{templateVersion}', [Controllers\TemplateFamilyController::class, 'destroyVersion']);
     Route::post('template-families/{templateFamily}/variants', [Controllers\TemplateFamilyController::class, 'storeVariant']);
     Route::put('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'updateVariant']);
     Route::delete('template-families/{templateFamily}/variants/{variant}', [Controllers\TemplateFamilyController::class, 'destroyVariant']);

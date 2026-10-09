@@ -6,27 +6,35 @@ namespace App\Models;
 
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
+use App\Enums\TemplateVersionStatus;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
- * Template identity (channel, name, purpose) with per-locale variants for content.
+ * Template identity (channel, name, purpose). Content lives on versions.
  *
- * @property int                  $id
- * @property TemplateChannel      $channel
- * @property string               $name
- * @property TemplatePurpose      $purpose
- * @property Carbon|null          $archived_at
- * @property Carbon               $created_at
- * @property Carbon               $updated_at
- *
- * @property-read Collection<int, TemplateVariant> $variants
+ * @property int $id
+ * @property TemplateChannel $channel
+ * @property string $name
+ * @property TemplatePurpose $purpose
+ * @property Carbon|null $archived_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Collection<int, TemplateVersion> $versions
+ * @property-read TemplateVersion|null $currentVersion
+ * @property-read TemplateVersion|null $draft
  */
 class TemplateFamily extends Model
 {
+    /** @use HasFactory<TemplateFamilyFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'channel',
         'name',
@@ -43,10 +51,30 @@ class TemplateFamily extends Model
         ];
     }
 
-    /** @return HasMany<TemplateVariant, $this> */
-    public function variants(): HasMany
+    /** @return HasMany<TemplateVersion, $this> */
+    public function versions(): HasMany
     {
-        return $this->hasMany(TemplateVariant::class)->orderBy('locale');
+        return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
+    }
+
+    /**
+     * Latest published version. Derived, not a stored pointer.
+     *
+     * @return HasOne<TemplateVersion, $this>
+     */
+    public function currentVersion(): HasOne
+    {
+        return $this->hasOne(TemplateVersion::class)->ofMany(
+            ['version_number' => 'max'],
+            fn (Builder $query) => $query->where('status', TemplateVersionStatus::Published->value),
+        );
+    }
+
+    /** @return HasOne<TemplateVersion, $this> */
+    public function draft(): HasOne
+    {
+        return $this->hasOne(TemplateVersion::class)
+            ->where('status', TemplateVersionStatus::Draft->value);
     }
 
     /** @param  Builder<TemplateFamily>  $query */

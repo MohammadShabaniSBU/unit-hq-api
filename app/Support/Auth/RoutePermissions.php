@@ -308,6 +308,7 @@ final class RoutePermissions
             'DELETE /api/settings/esign' => Permission::CredentialManage, // EsignProviderAccountController@destroy
             'DELETE /api/template-assets/{templateAsset}' => Permission::TemplateManage, // TemplateAssetController@destroy
             'DELETE /api/template-families/{templateFamily}/variants/{variant}' => Permission::TemplateManage, // TemplateFamilyController@destroyVariant
+            'DELETE /api/template-families/{templateFamily}/versions/{templateVersion}' => Permission::TemplateManage, // TemplateFamilyController@destroyVersion
             'DELETE /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@destroy
             'GET /api/calls/availability' => Permission::CallPlace, // CallController@availability
             'GET /api/comms-triage' => Permission::InboxView, // CommsTriageController@index
@@ -335,6 +336,8 @@ final class RoutePermissions
             'GET /api/template-builder/sample-contexts' => Permission::TemplateManage, // TemplateFamilyController@sampleContexts
             'GET /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@index
             'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
+            'GET /api/template-families/{templateFamily}/versions' => Permission::TemplateManage, // TemplateFamilyController@versions
+            'GET /api/template-families/{templateFamily}/versions/{templateVersion}' => Permission::TemplateManage, // TemplateFamilyController@showVersion
             'GET /api/whatsapp-templates' => Permission::TemplateManage, // WhatsappTemplateController@index
             'GET /api/whatsapp-templates/{whatsappTemplate}' => Permission::TemplateManage, // WhatsappTemplateController@show
             'PATCH /api/sites/{site}/voice-bridge-tokens/{voiceBridgeToken}' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@update
@@ -373,6 +376,8 @@ final class RoutePermissions
             'POST /api/template-assets' => Permission::TemplateManage, // TemplateAssetController@store
             'POST /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@store
             'POST /api/template-families/{templateFamily}/archive' => Permission::TemplateManage, // TemplateFamilyController@archive
+            'POST /api/template-families/{templateFamily}/versions' => Permission::TemplateManage, // TemplateFamilyController@storeVersion
+            'POST /api/template-families/{templateFamily}/versions/{templateVersion}/publish' => Permission::TemplateManage, // TemplateFamilyController@publish
             'POST /api/template-families/{templateFamily}/variants' => Permission::TemplateManage, // TemplateFamilyController@storeVariant
             'POST /api/template-families/{templateFamily}/variants/{variant}/preview' => Permission::TemplateManage, // TemplateFamilyController@preview
             'POST /api/template-families/{templateFamily}/variants/{variant}/test-send' => Permission::TemplateManage, // TemplateFamilyController@testSend
