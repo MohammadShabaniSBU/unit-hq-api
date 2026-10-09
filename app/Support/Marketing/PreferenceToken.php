@@ -133,13 +133,18 @@ final class PreferenceToken
         ?int $listId = null,
         ?int $messageId = null,
     ): string {
-        return rtrim((string) config('app.url'), '/').'/api/comms/unsubscribe/'.self::issue(
+        return self::unsubscribeUrlFromToken(self::issue(
             $contactId,
             $channel,
             $address,
             $listId,
             $messageId,
-        );
+        ));
+    }
+
+    public static function unsubscribeUrlFromToken(string $token): string
+    {
+        return rtrim((string) config('app.url'), '/').'/api/comms/unsubscribe/'.$token;
     }
 
     /**
@@ -158,7 +163,7 @@ final class PreferenceToken
 
         return [
             'preferences_url' => self::pageUrl($token),
-            'unsubscribe_url' => rtrim((string) config('app.url'), '/').'/api/comms/unsubscribe/'.$token,
+            'unsubscribe_url' => self::unsubscribeUrlFromToken($token),
         ];
     }
 

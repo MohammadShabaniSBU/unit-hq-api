@@ -8,4 +8,5 @@ enum SettingKey: string
     case Billing = 'billing';
     case Leasing = 'leasing';
     case ActivityLog = 'activity_log';
+    case Marketing = 'marketing';
 }

@@ -40,7 +40,7 @@ final class SmsSender
         ?MessageThread $thread = null,
         ?array $detail = null,
     ): SendResult {
-        $resolved = $this->resolver->resolve(Channel::Sms, $site);
+        $resolved = $this->resolver->resolve(Channel::Sms, $site, $context->class);
         $adapter = $resolved->require(SendsSms::class, 'sending SMS');
 
         $identity = SiteSenderIdentity::query()

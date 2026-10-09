@@ -84,7 +84,7 @@ final class WhatsAppSender
     ): SendResult {
         $this->assertConsentFloor($contact, $message->to);
 
-        $resolved = $this->resolver->resolve(Channel::Whatsapp, $site);
+        $resolved = $this->resolver->resolve(Channel::Whatsapp, $site, $context->class);
         $this->assertTemplateApproved(
             $resolved->account->id,
             $message->templateName,
@@ -140,7 +140,7 @@ final class WhatsAppSender
         ?array $interactionMetadata = null,
         ?array $detail = null,
     ): SendResult {
-        $account = $this->resolver->resolve(Channel::Whatsapp, $site)->account;
+        $account = $this->resolver->resolve(Channel::Whatsapp, $site, $context->class)->account;
 
         try {
             $resolution = WhatsAppTemplateResolver::resolve(
@@ -197,7 +197,7 @@ final class WhatsAppSender
         ?object $resolvedAdapter = null,
     ): SendResult {
         if ($resolvedAdapter === null) {
-            $resolved = $this->resolver->resolve(Channel::Whatsapp, $site);
+            $resolved = $this->resolver->resolve(Channel::Whatsapp, $site, $context->class);
             $resolvedAdapter = $resolved->require(SendsWhatsApp::class, 'sending WhatsApp');
             $resolvedAccountId = $resolved->account->id;
             $resolvedProvider = $resolved->account->provider;

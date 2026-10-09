@@ -149,6 +149,13 @@ final class FilterBuilder
         }
 
         $native = FilterableFields::assertExists($this->entityType, $field);
+
+        if ($native->apply !== null) {
+            ($native->apply)($query, $op, $value, $boolean);
+
+            return;
+        }
+
         $this->applyNativeCondition($query, $native, $op, $value, $boolean);
     }
 

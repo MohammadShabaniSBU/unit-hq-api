@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\CredentialStatus;
+use App\Support\Communications\AccountPurpose;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Provider;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Channel                      $channel
  * @property Provider                     $provider
  * @property bool                         $is_active
+ * @property AccountPurpose               $purpose
  * @property array<string, mixed>|null    $credentials
  * @property string|null                  $webhook_url_token
  * @property string|null                  $webhook_endpoint_id
@@ -49,6 +51,7 @@ class CommunicationAccount extends Model
         'channel',
         'provider',
         'is_active',
+        'purpose',
         'credentials',
         'webhook_url_token',
         'webhook_endpoint_id',
@@ -69,6 +72,7 @@ class CommunicationAccount extends Model
             'channel' => Channel::class,
             'provider' => Provider::class,
             'is_active' => 'boolean',
+            'purpose' => AccountPurpose::class,
             'credentials' => 'encrypted:array',
             'webhook_configured_at' => 'datetime',
             'status' => CredentialStatus::class,

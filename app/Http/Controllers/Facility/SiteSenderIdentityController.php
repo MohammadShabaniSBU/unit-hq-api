@@ -11,6 +11,7 @@ use App\Models\CommunicationAccount;
 use App\Models\Site;
 use App\Models\SiteSenderIdentity;
 use App\Support\Auth\Permission;
+use App\Support\Communications\AccountPurpose;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\RecordsActivity;
@@ -62,7 +63,9 @@ class SiteSenderIdentityController extends Controller
             ->where('scope', AccountScope::Company)
             ->whereNull('site_id')
             ->where('channel', $channel)
+            ->where('purpose', '!=', AccountPurpose::Marketing)
             ->where('is_active', true)
+            ->orderByRaw("case when purpose = 'all' then 0 else 1 end")
             ->first();
 
         $identity = SiteSenderIdentity::query()->updateOrCreate(

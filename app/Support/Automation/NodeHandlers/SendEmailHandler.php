@@ -15,14 +15,17 @@ use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\TokenResolver;
+use App\Support\Communications\Channel;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
+use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplateResolver;
+use App\Support\Marketing\MarketingFooter;
 use RuntimeException;
 
 final class SendEmailHandler implements NodeHandler
@@ -42,6 +45,7 @@ final class SendEmailHandler implements NodeHandler
         }
 
         $site = SubjectChain::site($run);
+        $sendContext = SendContext::forRun($run, $step);
 
         try {
             [$subject, $bodyHtml, $bodyText, $warnings, $provenance] = $this->resolveContent(
@@ -49,6 +53,7 @@ final class SendEmailHandler implements NodeHandler
                 $context,
                 $contact,
                 $site,
+                $sendContext->class,
             );
         } catch (TemplateNotPublished) {
             return [
@@ -83,7 +88,6 @@ final class SendEmailHandler implements NodeHandler
             throw new RuntimeException('send_email requires a site for provider resolution');
         }
 
-        $sendContext = SendContext::forRun($run, $step);
         $metadata = [
             'automation_id' => $run->automation_id,
             'automation_run_id' => $run->id,
@@ -161,6 +165,7 @@ final class SendEmailHandler implements NodeHandler
         RunContext $context,
         Contact $contact,
         mixed $site,
+        SendClass $class = SendClass::Transactional,
     ): array {
         $bodyType = (string) ($config['bodyType'] ?? $config['body_type'] ?? 'custom');
         $templateId = $config['template_family_id']
@@ -180,6 +185,10 @@ final class SendEmailHandler implements NodeHandler
             }
 
             $siteModel = $site instanceof Site ? $site : null;
+            if ($class === SendClass::Marketing && $siteModel === null) {
+                throw new RuntimeException('send_email requires a site for provider resolution');
+            }
+
             $variant = TemplateResolver::variant($family, $contact, $siteModel);
             $provenance = TemplateProvenance::from($variant, $contact, $siteModel);
 
@@ -189,7 +198,14 @@ final class SendEmailHandler implements NodeHandler
                 $subjectOverride = is_string($resolved) ? $resolved : (string) ($resolved ?? '');
             }
 
-            $rendered = EmailTemplateRenderer::render($variant, $context, $subjectOverride);
+            $rendered = EmailTemplateRenderer::render(
+                $variant,
+                $context,
+                $subjectOverride,
+                class: $class,
+                site: $siteModel,
+                contact: $contact,
+            );
 
             return [$rendered['subject'], $rendered['html'], $rendered['text'], $rendered['warnings'], $provenance];
         }
@@ -199,6 +215,13 @@ final class SendEmailHandler implements NodeHandler
 
         $resolved = TokenResolver::resolveValueSource($config['body'] ?? null, $context);
         $body = is_string($resolved) ? $resolved : '';
+
+        if ($class === SendClass::Marketing && $site instanceof Site) {
+            $footer = MarketingFooter::render($site, $contact, Channel::Email);
+            ['html' => $bodyHtml, 'text' => $bodyText] = MarketingFooter::appendEmail($body, $body, $footer);
+
+            return [$subject, $bodyHtml, $bodyText, [], null];
+        }
 
         return [$subject, $body, $body, [], null];
     }

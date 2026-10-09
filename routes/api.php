@@ -42,6 +42,14 @@ Route::get('public/template-assets/{hash}/{filename}', [Controllers\TemplateAsse
     ->where('hash', '[a-f0-9]{64}')
     ->where('filename', '.*');
 
+// Signup forms — unguessable public_token. Submit is throttled per IP. Confirm token is hashed at rest.
+Route::get('public/forms/confirm/{token}', [Controllers\PublicSignupFormController::class, 'confirm'])
+    ->middleware('throttle:30,1');
+Route::get('public/forms/{token}', [Controllers\PublicSignupFormController::class, 'show'])
+    ->middleware('throttle:60,1');
+Route::post('public/forms/{token}/submit', [Controllers\PublicSignupFormController::class, 'submit'])
+    ->middleware('throttle:10,1');
+
 // Offer links — crypto-random offers.token (invariant 6).
 Route::get('offers/token/{token}', [Controllers\OfferController::class, 'showByToken']);
 Route::get('offers/token/{token}/options/{offerOption}/map', [Controllers\OfferController::class, 'mapByToken']);
@@ -250,6 +258,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('settings/billing', [Facility\SettingController::class, 'updateBilling']);
     Route::get('settings/leasing', [Facility\SettingController::class, 'showLeasing']);
     Route::patch('settings/leasing', [Facility\SettingController::class, 'updateLeasing']);
+    Route::get('settings/marketing', [Facility\SettingController::class, 'showMarketing']);
+    Route::patch('settings/marketing', [Facility\SettingController::class, 'updateMarketing']);
     Route::get('settings/activity-log', [Facility\SettingController::class, 'showActivityLog']);
     Route::patch('settings/activity-log', [Facility\SettingController::class, 'updateActivityLog']);
 
@@ -369,6 +379,17 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('subscription-lists/{subscriptionList}/archive', [Controllers\SubscriptionListController::class, 'archive']);
     Route::get('subscription-lists/{subscriptionList}/members', [Controllers\SubscriptionListController::class, 'members']);
     Route::post('subscription-lists/{subscriptionList}/import', [Controllers\SubscriptionListController::class, 'import']);
+    Route::get('signup-forms', [Controllers\SignupFormController::class, 'index']);
+    Route::post('signup-forms', [Controllers\SignupFormController::class, 'store']);
+    Route::get('signup-forms/{signupForm}', [Controllers\SignupFormController::class, 'show']);
+    Route::put('signup-forms/{signupForm}', [Controllers\SignupFormController::class, 'update']);
+    Route::post('signup-forms/{signupForm}/archive', [Controllers\SignupFormController::class, 'archive']);
+    Route::get('segments', [Controllers\SegmentController::class, 'index']);
+    Route::post('segments', [Controllers\SegmentController::class, 'store']);
+    Route::post('segments/preview', [Controllers\SegmentController::class, 'preview']);
+    Route::get('segments/{segment}', [Controllers\SegmentController::class, 'show'])->whereNumber('segment');
+    Route::put('segments/{segment}', [Controllers\SegmentController::class, 'update'])->whereNumber('segment');
+    Route::post('segments/{segment}/archive', [Controllers\SegmentController::class, 'archive'])->whereNumber('segment');
     Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
     Route::get('contacts/{contact}/access-events', [Controllers\AccessEventController::class, 'forContact']);
     Route::get('contacts/{contact}/payment-methods', [Controllers\ContactPaymentMethodController::class, 'index']);

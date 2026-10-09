@@ -233,6 +233,18 @@ return [
         'csv_invalid_header' => 'The CSV header must be email,phone,name,consent_date,original_source.',
         'csv_too_many_rows' => 'The CSV has too many rows.',
     ],
+    'signup_forms' => [
+        'field_required' => 'This field is required.',
+        'lists' => 'Choose a list from this form.',
+        'list_unavailable' => 'A selected list is archived or does not accept email.',
+        'consent_text' => 'This form has no consent text.',
+        'site_required' => 'Double opt-in needs a site so the confirmation email has a sender.',
+        'fields' => 'Each field can only be listed once.',
+    ],
+    'segments' => [
+        'invalid' => 'This segment uses a filter field that is no longer available (:field).',
+        'filter_required' => 'A segment needs at least one filter.',
+    ],
     'voice' => [
         'not_configured' => 'Copilot voice is not configured. Set VOCAL_BRIDGE_API_KEY on the server.',
         'token_unavailable' => 'The voice service could not issue a session token. Try again shortly.',

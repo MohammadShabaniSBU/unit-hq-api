@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunicationAccount;
 use App\Models\SiteSenderIdentity;
 use App\Models\WhatsappTemplate;
+use App\Support\Communications\AccountPurpose;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\AircallUserDirectory;
 use App\Support\Communications\Channel;
@@ -55,7 +56,7 @@ class CommunicationAccountController extends Controller
         foreach (Channel::implemented() as $channel) {
             $channelAccounts = $accounts->get($channel->value, collect());
             $options = $this->registry->optionsFor($channel);
-            $active = $channelAccounts->first(fn (CommunicationAccount $a) => $a->is_active);
+            $active = $this->primaryActive($channelAccounts);
 
             $channels[] = [
                 'channel' => $channel->value,
@@ -91,9 +92,11 @@ class CommunicationAccountController extends Controller
             'credentials' => ['nullable', 'array'],
             'credentials.*' => ['nullable', 'string'],
             'activate' => ['sometimes', 'boolean'],
+            'purpose' => ['sometimes', 'string', Rule::in(AccountPurpose::values())],
         ]);
 
         $provider = Provider::from($validated['provider']);
+        $purpose = AccountPurpose::from($validated['purpose'] ?? AccountPurpose::All->value);
         $adapter = $this->registry->make($channel, $provider, []);
         $fields = $adapter->credentialFields();
 
@@ -102,6 +105,7 @@ class CommunicationAccountController extends Controller
             ->whereNull('site_id')
             ->where('channel', $channel)
             ->where('provider', $provider)
+            ->where('purpose', $purpose)
             ->first();
 
         /** @var array<string, mixed> $existing */
@@ -130,6 +134,7 @@ class CommunicationAccountController extends Controller
             ->where('scope', AccountScope::Company)
             ->whereNull('site_id')
             ->where('channel', $channel)
+            ->where('purpose', $purpose)
             ->where('is_active', true)
             ->value('provider');
 
@@ -151,6 +156,7 @@ class CommunicationAccountController extends Controller
             'site_id' => null,
             'channel' => $channel,
             'provider' => $provider,
+            'purpose' => $purpose,
         ]);
 
         if ($activate) {
@@ -158,6 +164,7 @@ class CommunicationAccountController extends Controller
                 ->where('scope', AccountScope::Company)
                 ->whereNull('site_id')
                 ->where('channel', $channel)
+                ->where('purpose', $purpose)
                 ->where('is_active', true)
                 ->update(['is_active' => false]);
         }
@@ -171,7 +178,9 @@ class CommunicationAccountController extends Controller
         ]);
         $account->save();
 
-        if ($activate && $previousActiveProvider !== null && $previousActiveProvider !== $provider->value) {
+        // Sender identities belong to the primary stream; a marketing account never resets them.
+        if ($purpose !== AccountPurpose::Marketing
+            && $activate && $previousActiveProvider !== null && $previousActiveProvider !== $provider->value) {
             SenderIdentitySync::clearAllSitesForChannel($channel);
         }
 
@@ -191,11 +200,11 @@ class CommunicationAccountController extends Controller
         );
     }
 
-    public function createWebhook(Channel $channel): JsonResponse
+    public function createWebhook(Request $request, Channel $channel): JsonResponse
     {
         Gate::authorize(Permission::CredentialManage->value);
 
-        $account = $this->activeCompanyAccount($channel);
+        $account = $this->activeCompanyAccount($channel, $this->purposeFrom($request));
 
         if ($account === null) {
             throw ValidationException::withMessages([
@@ -247,11 +256,11 @@ class CommunicationAccountController extends Controller
         );
     }
 
-    public function deleteWebhook(Channel $channel): JsonResponse
+    public function deleteWebhook(Request $request, Channel $channel): JsonResponse
     {
         Gate::authorize(Permission::CredentialManage->value);
 
-        $account = $this->activeCompanyAccount($channel);
+        $account = $this->activeCompanyAccount($channel, $this->purposeFrom($request));
 
         if ($account === null || $account->webhook_endpoint_id === null) {
             return $this->success(
@@ -282,9 +291,11 @@ class CommunicationAccountController extends Controller
         );
     }
 
-    public function destroy(Channel $channel, Provider $provider): JsonResponse
+    public function destroy(Request $request, Channel $channel, Provider $provider): JsonResponse
     {
         Gate::authorize(Permission::CredentialManage->value);
+
+        $purpose = $this->purposeFrom($request);
 
         if (! $this->registry->supports($channel, $provider)) {
             return $this->notFound('Provider not supported for this channel.');
@@ -295,6 +306,7 @@ class CommunicationAccountController extends Controller
             ->whereNull('site_id')
             ->where('channel', $channel)
             ->where('provider', $provider)
+            ->where('purpose', $purpose)
             ->first();
 
         if ($account === null) {
@@ -327,7 +339,7 @@ class CommunicationAccountController extends Controller
 
         $account->delete();
 
-        if ($wasActive) {
+        if ($wasActive && $purpose !== AccountPurpose::Marketing) {
             SenderIdentitySync::clearAllSitesForChannel($channel);
         }
 
@@ -336,14 +348,35 @@ class CommunicationAccountController extends Controller
         return $this->noContent('Communication account removed successfully.');
     }
 
-    private function activeCompanyAccount(Channel $channel): ?CommunicationAccount
+    private function activeCompanyAccount(Channel $channel, AccountPurpose $purpose = AccountPurpose::All): ?CommunicationAccount
     {
         return CommunicationAccount::query()
             ->where('scope', AccountScope::Company)
             ->whereNull('site_id')
             ->where('channel', $channel)
+            ->where('purpose', $purpose)
             ->where('is_active', true)
             ->first();
+    }
+
+    private function purposeFrom(Request $request): AccountPurpose
+    {
+        $validated = $request->validate([
+            'purpose' => ['sometimes', 'string', Rule::in(AccountPurpose::values())],
+        ]);
+
+        return AccountPurpose::from($validated['purpose'] ?? AccountPurpose::All->value);
+    }
+
+    /**
+     * The headline account for a channel: the active `all` account, else any active one.
+     *
+     * @param  \Illuminate\Support\Collection<int, CommunicationAccount>  $accounts
+     */
+    private function primaryActive(\Illuminate\Support\Collection $accounts): ?CommunicationAccount
+    {
+        return $accounts->first(fn (CommunicationAccount $a) => $a->is_active && $a->purpose === AccountPurpose::All)
+            ?? $accounts->first(fn (CommunicationAccount $a) => $a->is_active);
     }
 
     /**
@@ -379,6 +412,7 @@ class CommunicationAccountController extends Controller
             'channel' => $account->channel->value,
             'provider' => $account->provider->value,
             'is_active' => $account->is_active,
+            'purpose' => $account->purpose->value,
             'credentials' => CredentialMasker::maskFields($credentials, $fields),
             'credentials_unreadable' => CredentialMasker::isUnreadable($account, 'credentials'),
             'webhook_url' => $webhookUrl,
@@ -409,7 +443,7 @@ class CommunicationAccountController extends Controller
             ->get();
 
         $options = $this->registry->optionsFor($channel);
-        $active = $accounts->first(fn (CommunicationAccount $a) => $a->is_active);
+        $active = $this->primaryActive($accounts);
 
         return [
             'channel' => $channel->value,
@@ -425,6 +459,10 @@ class CommunicationAccountController extends Controller
     private function syncSenderIdentityAccounts(Channel $channel, CommunicationAccount $account): void
     {
         if (! $account->is_active) {
+            return;
+        }
+
+        if ($account->purpose === AccountPurpose::Marketing) {
             return;
         }
 

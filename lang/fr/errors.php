@@ -207,6 +207,18 @@ return [
         'csv_invalid_header' => 'L’en-tête du CSV doit être email,phone,name,consent_date,original_source.',
         'csv_too_many_rows' => 'Le CSV contient trop de lignes.',
     ],
+    'signup_forms' => [
+        'field_required' => 'Ce champ est obligatoire.',
+        'lists' => 'Choisissez une liste de ce formulaire.',
+        'list_unavailable' => 'Une liste choisie est archivée ou n’accepte pas l’e-mail.',
+        'consent_text' => 'Ce formulaire n’a pas de texte de consentement.',
+        'site_required' => 'Le double opt-in exige un site pour l’expéditeur de l’e-mail.',
+        'fields' => 'Chaque champ ne peut figurer qu’une fois.',
+    ],
+    'segments' => [
+        'invalid' => 'Ce segment utilise un champ de filtre qui n’est plus disponible (:field).',
+        'filter_required' => 'Un segment doit contenir au moins un filtre.',
+    ],
     'voice' => [
         'not_configured' => 'La voix du copilote n’est pas configurée. Définissez VOCAL_BRIDGE_API_KEY sur le serveur.',
         'token_unavailable' => 'Le service vocal n’a pas pu émettre de jeton de session. Réessayez sous peu.',

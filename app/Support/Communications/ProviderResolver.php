@@ -9,10 +9,11 @@ use App\Models\Site;
 use App\Support\Communications\Exceptions\ChannelNotConfigured;
 
 /**
- * Resolves the active account for a channel:
- * 1. site-scoped active account (when a site is given)
- * 2. else company-scoped active account
- * 3. else ChannelNotConfigured
+ * Resolves the active account for a channel and send class. Purposes are tried
+ * in order (marketing: marketing → all; transactional: transactional → all);
+ * within a purpose the site-scoped account wins over the company one.
+ * A marketing send never falls back to a `transactional` account (M7), and a
+ * transactional send never uses a `marketing` one.
  *
  * Archived sites keep credentials but must not send.
  */
@@ -22,32 +23,45 @@ final class ProviderResolver
         private readonly ProviderRegistry $registry,
     ) {}
 
-    public function resolve(Channel $channel, ?Site $site = null): ResolvedProvider
-    {
+    public function resolve(
+        Channel $channel,
+        ?Site $site = null,
+        SendClass $class = SendClass::Transactional,
+    ): ResolvedProvider {
         if ($site !== null && $site->isArchived()) {
             throw ChannelNotConfigured::siteArchived();
         }
 
         $account = null;
 
-        if ($site !== null) {
-            $account = CommunicationAccount::query()
-                ->where('scope', AccountScope::Site)
-                ->where('site_id', $site->id)
+        foreach (AccountPurpose::eligibleFor($class) as $purpose) {
+            if ($site !== null) {
+                $account = CommunicationAccount::query()
+                    ->where('scope', AccountScope::Site)
+                    ->where('site_id', $site->id)
+                    ->where('channel', $channel)
+                    ->where('purpose', $purpose)
+                    ->where('is_active', true)
+                    ->first();
+            }
+
+            $account ??= CommunicationAccount::query()
+                ->where('scope', AccountScope::Company)
+                ->whereNull('site_id')
                 ->where('channel', $channel)
+                ->where('purpose', $purpose)
                 ->where('is_active', true)
                 ->first();
+
+            if ($account !== null) {
+                break;
+            }
         }
 
-        $account ??= CommunicationAccount::query()
-            ->where('scope', AccountScope::Company)
-            ->whereNull('site_id')
-            ->where('channel', $channel)
-            ->where('is_active', true)
-            ->first();
-
         if ($account === null) {
-            throw ChannelNotConfigured::for($channel);
+            throw $class === SendClass::Marketing
+                ? ChannelNotConfigured::forMarketing($channel)
+                : ChannelNotConfigured::for($channel);
         }
 
         /** @var array<string, mixed> $credentials */

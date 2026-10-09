@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Facility;
 use App\Enums\LogChannel;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Settings\MarketingSettings;
 use App\Support\Auth\Permission;
 use App\Support\Billing\SupportedCurrencies;
 use App\Support\Country\CountryGuard;
@@ -212,6 +213,47 @@ class SettingController extends Controller
         return $this->success(
             Setting::activityLog()->toArray(),
             'Activity log settings updated successfully.'
+        );
+    }
+
+    public function showMarketing(): JsonResponse
+    {
+        Gate::authorize(Permission::SettingsManage->value);
+
+        return $this->success(
+            Setting::marketing()->toArray(),
+            'Marketing settings retrieved successfully.'
+        );
+    }
+
+    public function updateMarketing(Request $request): JsonResponse
+    {
+        Gate::authorize(Permission::SettingsManage->value);
+
+        $validated = $request->validate([
+            'marketing_frequency_cap_count' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000'],
+            'marketing_frequency_cap_days' => ['sometimes', 'required', 'integer', 'min:1', 'max:365'],
+            'marketing_exclude_delinquent' => ['sometimes', 'required', 'boolean'],
+            'marketing_exclude_active_playbook_kinds' => ['sometimes', 'present', 'array'],
+            'marketing_exclude_active_playbook_kinds.*' => ['string', Rule::in(MarketingSettings::playbookKindValues())],
+            'marketing_approval_threshold' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
+        ]);
+
+        Setting::setMarketing(
+            Setting::marketing()->with(
+                frequencyCapCount: $validated['marketing_frequency_cap_count'] ?? null,
+                frequencyCapDays: $validated['marketing_frequency_cap_days'] ?? null,
+                excludeDelinquent: $validated['marketing_exclude_delinquent'] ?? null,
+                excludeActivePlaybookKinds: isset($validated['marketing_exclude_active_playbook_kinds'])
+                    ? array_values(array_unique($validated['marketing_exclude_active_playbook_kinds']))
+                    : null,
+                approvalThreshold: $validated['marketing_approval_threshold'] ?? null,
+            )
+        );
+
+        return $this->success(
+            Setting::marketing()->toArray(),
+            'Marketing settings updated successfully.'
         );
     }
 }

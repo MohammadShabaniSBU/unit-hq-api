@@ -44,7 +44,7 @@ final class EmailSender
         ?MessageThread $thread = null,
         ?array $detail = null,
     ): SendResult {
-        $resolved = $this->resolver->resolve(Channel::Email, $site);
+        $resolved = $this->resolver->resolve(Channel::Email, $site, $context->class);
         $adapter = $resolved->require(SendsEmail::class, 'sending email');
 
         $identity = SiteSenderIdentity::query()

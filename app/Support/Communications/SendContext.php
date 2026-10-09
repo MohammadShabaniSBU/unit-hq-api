@@ -9,6 +9,7 @@ use App\Models\AgentConversation;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
 use App\Models\OfferDelivery;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Provenance for an outbound send — callers pass this so the message store
@@ -64,6 +65,25 @@ final readonly class SendContext
             SendClass::Transactional,
             ['offer_delivery_id' => $delivery->id, 'offer_id' => $delivery->offer_id],
             $delivery->id,
+        );
+    }
+
+    /**
+     * Campaign provenance. Sprint 31 introduces the CampaignRecipient model and
+     * narrows the parameter; until then the recipient is a nullable reference
+     * read by attribute so the factory can land first.
+     */
+    public static function campaign(?Model $recipient = null, SendClass $class = SendClass::Marketing): self
+    {
+        return new self(
+            MessageSource::Campaign,
+            $class,
+            [
+                'campaign_id' => $recipient?->getAttribute('campaign_id'),
+                'campaign_send_id' => $recipient?->getAttribute('campaign_send_id'),
+                'campaign_recipient_id' => $recipient?->getKey(),
+                'subscription_list_id' => $recipient?->getAttribute('subscription_list_id'),
+            ],
         );
     }
 

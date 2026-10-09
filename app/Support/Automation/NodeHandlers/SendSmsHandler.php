@@ -14,13 +14,16 @@ use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\TokenResolver;
+use App\Support\Communications\Channel;
 use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\SmsSender;
 use App\Support\Communications\SmsTemplateRenderer;
 use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplateResolver;
+use App\Support\Marketing\MarketingFooter;
 use RuntimeException;
 
 final class SendSmsHandler implements NodeHandler
@@ -76,6 +79,13 @@ final class SendSmsHandler implements NodeHandler
         }
 
         $sendContext = SendContext::forRun($run, $step);
+        if ($sendContext->class === SendClass::Marketing) {
+            $footer = MarketingFooter::render($site, $contact, Channel::Sms, null, $channel->value);
+            if ($footer['text'] !== '') {
+                $body = rtrim($body)."\n".$footer['text'];
+            }
+        }
+
         $metadata = [
             'automation_id' => $run->automation_id,
             'automation_run_id' => $run->id,

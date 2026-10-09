@@ -219,6 +219,18 @@ return [
         'csv_invalid_header' => 'La cabecera del CSV debe ser email,phone,name,consent_date,original_source.',
         'csv_too_many_rows' => 'El CSV tiene demasiadas filas.',
     ],
+    'signup_forms' => [
+        'field_required' => 'Este campo es obligatorio.',
+        'lists' => 'Elige una lista de este formulario.',
+        'list_unavailable' => 'Una lista seleccionada está archivada o no acepta email.',
+        'consent_text' => 'Este formulario no tiene texto de consentimiento.',
+        'site_required' => 'La doble confirmación necesita un centro para el remitente del email.',
+        'fields' => 'Cada campo solo puede aparecer una vez.',
+    ],
+    'segments' => [
+        'invalid' => 'Este segmento usa un campo de filtro que ya no está disponible (:field).',
+        'filter_required' => 'Un segmento necesita al menos un filtro.',
+    ],
     'voice' => [
         'not_configured' => 'La voz del copiloto no está configurada. Defina VOCAL_BRIDGE_API_KEY en el servidor.',
         'token_unavailable' => 'El servicio de voz no pudo emitir un token de sesión. Inténtelo de nuevo en breve.',

@@ -55,6 +55,6 @@ Settings UI: Settings → Marketing.
 
 ## Acceptance criteria
 
-- [ ] Marketing send with only a `transactional` account configured → refused.
-- [ ] Marketing email contains the legal footer + working preference link; transactional doesn't.
-- [ ] Existing transactional senders unchanged (full comms test suite green).
+- [x] Marketing send with only a `transactional` account configured → refused.
+- [x] Marketing email contains the legal footer + working preference link; transactional doesn't.
+- [x] Existing transactional senders unchanged (full comms test suite green).

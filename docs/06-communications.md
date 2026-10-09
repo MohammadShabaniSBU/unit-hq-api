@@ -77,12 +77,20 @@ The panel renders "Create webhook" only when `auto_registers_webhooks` is true (
 
 ### Resolution order (`ProviderResolver`)
 
-Mirrors site-over-org preference:
+`resolve(Channel, ?Site, SendClass = Transactional)` — `SendContext->class` is passed by every sender. Purposes (`communication_accounts.purpose`: `all` | `transactional` | `marketing`, default `all`) are tried in order; within a purpose the site account wins over the company one:
 
-1. Site-scoped active account for this channel (when a site is given)
-2. Else company-scoped active account
+1. Marketing send: active `marketing` account (site, then company), then `all`. **Never** `transactional`. None → `ChannelNotConfigured::forMarketing()` (S31 surfaces it at scheduling time, not at send).
+2. Transactional send: active `transactional` account (site, then company), then `all`. Never `marketing`.
 3. Else `ChannelNotConfigured`
 4. Archived site → `ChannelNotConfigured::siteArchived()` (credentials kept, sending refused)
+
+The marketing lane exists because Postmark forbids broadcast mail on a transactional stream and dunning/offer deliverability must not share reputation with campaigns (S30 M7). One active account per `(channel, purpose)`.
+
+**Marketing footer (M8).** `EmailTemplateRenderer::render(..., class: SendClass::Marketing, site:, contact:, listId:)` always appends `MarketingFooter` (legal name, tax id, address from the site's legal entity; "why am I receiving this" with the list label; preferences + unsubscribe links). It is not a template block and cannot be removed; a marketing render without site and contact throws. SMS/WhatsApp marketing sends append one locale-aware line `"{trading_name}: baja {preferences_url}"` (counts toward the segment total). Transactional renders carry no footer. Lead-chase playbooks are marketing class and therefore carry it.
+
+**Marketing settings.** `Setting::marketing()` holds the S31 defaults (frequency cap, exclude delinquent, excluded playbook kinds, approval threshold); `GET|PATCH /api/settings/marketing`, panel Settings → Marketing → Sending defaults.
+
+**Campaign provenance.** `MessageSource::Campaign` and `SendContext::campaign(?Model $recipient, SendClass)`; `sourceRef = {campaign_id, campaign_send_id, campaign_recipient_id, subscription_list_id}`. S31 wires the `CampaignRecipient` model.
 
 Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` / `WhatsAppSender` (same tier as `ContractBilling` — **no** `app/Services/`). WhatsApp session sends refuse locally when the 24h window is closed; template sends skip the window but require a live `approved` registry row and a `whatsapp` contact channel (phone alone is not consent).
 
@@ -132,7 +140,7 @@ Local `whatsapp_templates` rows are the operator-facing registry; Meta's approva
 | `communication_accounts` | Encrypted `credentials` JSON (shape varies by provider), webhook registration state, `is_active`, connection status | `scope = company` or `scope = site` — site scope is modeled but ships no UI yet |
 | `site_sender_identities` | From-name / from-email / from-number / reply-to — **no secret**; keyed by `channel` | One row per `site_id` + `channel`. `provider_sender_id` is nulled when the site's active provider for that channel changes |
 
-Indexes (company path): unique `(scope, site_id, channel, provider)`; partial unique one active company account per channel; one active site account per `(site_id, channel)`.
+Indexes (company path): unique `(channel, provider, purpose)` per scope; partial unique one active company account per `(channel, purpose)`; one active site account per `(site_id, channel, purpose)`.
 
 ### Credential handling rules (shared with Stripe — see `05-billing-ledger.md`)
 

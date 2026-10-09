@@ -7,6 +7,7 @@ use App\Settings\ActivityLogSettings;
 use App\Settings\BillingSettings;
 use App\Settings\GeneralSettings;
 use App\Settings\LeasingSettings;
+use App\Settings\MarketingSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -101,6 +102,23 @@ class Setting extends Model
     {
         static::updateOrCreate(
             ['name' => SettingKey::ActivityLog->value],
+            ['payload' => $settings->toArray()]
+        );
+    }
+
+    public static function marketing(): MarketingSettings
+    {
+        $setting = static::where('name', SettingKey::Marketing)->first();
+
+        return $setting
+            ? MarketingSettings::fromArray($setting->payload)
+            : MarketingSettings::default();
+    }
+
+    public static function setMarketing(MarketingSettings $settings): void
+    {
+        static::updateOrCreate(
+            ['name' => SettingKey::Marketing->value],
             ['payload' => $settings->toArray()]
         );
     }

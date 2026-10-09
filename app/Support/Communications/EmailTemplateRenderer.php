@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Support\Communications;
 
+use App\Models\Contact;
 use App\Models\Setting;
+use App\Models\Site;
 use App\Models\TemplateVariant;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\TokenResolver;
+use App\Support\Marketing\MarketingFooter;
 
 /**
  * Renders a template variant to email HTML/text.
  * Legacy variants use legacy_html passthrough; v2 blocks go through EmailBlockRenderer.
+ * A marketing-class render always appends the legal footer (M8) — never a block,
+ * never removable.
  */
 final class EmailTemplateRenderer
 {
@@ -23,6 +28,10 @@ final class EmailTemplateRenderer
         RunContext $context,
         ?string $subjectOverride = null,
         bool $previewMarkers = false,
+        SendClass $class = SendClass::Transactional,
+        ?Site $site = null,
+        ?Contact $contact = null,
+        ?int $listId = null,
     ): array {
         $source = self::htmlSource($variant, $context, $previewMarkers);
         $html = $source['html'];
@@ -44,6 +53,15 @@ final class EmailTemplateRenderer
             if (! in_array($path, $warnings, true)) {
                 $warnings[] = $path;
             }
+        }
+
+        if ($class === SendClass::Marketing) {
+            if ($site === null || $contact === null) {
+                throw new \LogicException('A marketing render needs the site and contact for the legal footer.');
+            }
+
+            $footer = MarketingFooter::render($site, $contact, Channel::Email, $listId);
+            ['html' => $html, 'text' => $text] = MarketingFooter::appendEmail($html, $text, $footer);
         }
 
         return [

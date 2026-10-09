@@ -186,8 +186,15 @@ final class FilterTreeValidator
         ];
     }
 
-    private function validateValue(string $fieldKey, string $type, string $op, mixed $value): mixed
+    /**
+     * @return string|int|float|bool|array<string, mixed>
+     */
+    private function validateValue(string $fieldKey, string $type, string $op, mixed $value): string|int|float|bool|array
     {
+        if ($type === 'consent') {
+            return $this->validateConsent($fieldKey, $value);
+        }
+
         if ($op === 'between') {
             if (! is_array($value) || count($value) !== 2) {
                 throw ValidationException::withMessages([
@@ -221,6 +228,37 @@ final class FilterTreeValidator
         }
 
         return $this->castScalar($fieldKey, $type, $value);
+    }
+
+    /**
+     * @return array{list_id: int, channel: string}
+     */
+    private function validateConsent(string $fieldKey, mixed $value): array
+    {
+        if (! is_array($value) || ! isset($value['list_id'], $value['channel'])) {
+            throw ValidationException::withMessages([
+                'filter' => ["Field [{$fieldKey}] expects a list and a channel."],
+            ]);
+        }
+
+        if (! is_numeric($value['list_id'])) {
+            throw ValidationException::withMessages([
+                'filter' => ["Field [{$fieldKey}] expects a numeric list id."],
+            ]);
+        }
+
+        $channel = (string) $value['channel'];
+
+        if (! in_array($channel, ['email', 'sms', 'whatsapp'], true)) {
+            throw ValidationException::withMessages([
+                'filter' => ["Field [{$fieldKey}] channel [{$channel}] is not valid."],
+            ]);
+        }
+
+        return [
+            'list_id' => (int) $value['list_id'],
+            'channel' => $channel,
+        ];
     }
 
     private function castScalar(string $fieldKey, string $type, mixed $value): string|int|float|bool

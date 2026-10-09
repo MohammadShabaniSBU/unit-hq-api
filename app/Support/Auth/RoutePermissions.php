@@ -25,7 +25,10 @@ final class RoutePermissions
             // PUBLIC  'GET /api/offers/token/{token}'  // OfferController@showByToken — offers.token crypto link
             // PUBLIC  'GET /api/offers/token/{token}/options/{offerOption}/map'  // OfferController@mapByToken — floor SVG for a token-scoped option
             // PUBLIC  'GET /api/pay/{token}'  // PublicPaymentController@show — payment-request token
+            // PUBLIC  'GET /api/public/forms/{token}'  // PublicSignupFormController@show — signup form public_token
+            // PUBLIC  'GET /api/public/forms/confirm/{token}'  // PublicSignupFormController@confirm — hashed confirmation token
             // PUBLIC  'GET /api/public/template-assets/{hash}/{filename}'  // TemplateAssetController@showPublic — content-hash public URL
+            // PUBLIC  'POST /api/public/forms/{token}/submit'  // PublicSignupFormController@submit — signup form public_token, throttle 10/min per IP
             // PUBLIC  'POST /api/comms/preferences/{token}'  // PreferenceCenterController@update — preference HMAC
             // PUBLIC  'POST /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — RFC 8058 one-click HMAC
             // PUBLIC  'POST /api/login'  // EmployeeAuthController@login — issues Sanctum token
@@ -178,6 +181,17 @@ final class RoutePermissions
             'POST /api/subscription-lists/{subscriptionList}/archive' => Permission::MarketingManage, // SubscriptionListController@archive
             'POST /api/subscription-lists/{subscriptionList}/import' => Permission::MarketingManage, // SubscriptionListController@import
             'PUT /api/subscription-lists/{subscriptionList}' => Permission::MarketingManage, // SubscriptionListController@update
+            'GET /api/signup-forms' => Permission::MarketingView, // SignupFormController@index
+            'GET /api/signup-forms/{signupForm}' => Permission::MarketingView, // SignupFormController@show
+            'POST /api/signup-forms' => Permission::MarketingManage, // SignupFormController@store
+            'POST /api/signup-forms/{signupForm}/archive' => Permission::MarketingManage, // SignupFormController@archive
+            'PUT /api/signup-forms/{signupForm}' => Permission::MarketingManage, // SignupFormController@update
+            'GET /api/segments' => Permission::MarketingView, // SegmentController@index — personal rows: ContactView, own only
+            'POST /api/segments' => Permission::MarketingManage, // SegmentController@store — personal rows: ContactView
+            'POST /api/segments/preview' => Permission::MarketingView, // SegmentController@preview
+            'GET /api/segments/{segment}' => Permission::MarketingView, // SegmentController@show — personal rows: ContactView, own only
+            'PUT /api/segments/{segment}' => Permission::MarketingManage, // SegmentController@update — personal rows: ContactView, own only
+            'POST /api/segments/{segment}/archive' => Permission::MarketingManage, // SegmentController@archive — personal rows: ContactView, own only
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
             'POST /api/contacts/{contact}/consents' => Permission::ConsentManage, // ContactConsentController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search
@@ -451,6 +465,7 @@ final class RoutePermissions
             'GET /api/settings/insight-reports' => Permission::SettingsManage, // InsightReportController@index
             'GET /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@show
             'GET /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@showLeasing
+            'GET /api/settings/marketing' => Permission::SettingsManage, // Facility\SettingController@showMarketing
             'GET /api/settings/object-customization/{entityType}' => Permission::SettingsManage, // ObjectCustomizationController@show
             'GET /api/units/{unit}/access-events' => Permission::AccessView, // AccessEventController@forUnit
             'GET /api/voice-sessions' => Permission::AiAgentUse, // VoiceSessionController@index
@@ -467,6 +482,7 @@ final class RoutePermissions
             'PATCH /api/settings/general' => Permission::SettingsManage, // Facility\SettingController@updateGeneral
             'PATCH /api/settings/insight-reports/{insightReport}' => Permission::SettingsManage, // InsightReportController@update
             'PATCH /api/settings/leasing' => Permission::SettingsManage, // Facility\SettingController@updateLeasing
+            'PATCH /api/settings/marketing' => Permission::SettingsManage, // Facility\SettingController@updateMarketing
             'PATCH /api/settings/object-customization/fields/{field}' => Permission::SettingsManage, // ObjectCustomizationController@updateField
             'PATCH /api/settings/object-customization/groups/{group}' => Permission::SettingsManage, // ObjectCustomizationController@updateGroup
             'POST /api/access/grants/{accessGrant}/retry' => Permission::AccessManage, // AccessGrantController@retry

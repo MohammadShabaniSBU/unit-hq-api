@@ -19,6 +19,7 @@ use App\Models\EsignProviderAccount;
 use App\Models\LegalEntity;
 use App\Models\PaymentProviderAccount;
 use App\Models\Site;
+use App\Support\Communications\AccountPurpose;
 use App\Support\Communications\AccountScope;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Provider;
@@ -231,6 +232,7 @@ final class IntegrationCredentialTransfer
                 'site_code' => $account->scope === AccountScope::Site ? $account->site?->code : null,
                 'channel' => $account->channel->value,
                 'provider' => $account->provider->value,
+                'purpose' => $account->purpose->value,
                 'is_active' => $account->is_active,
                 'credentials' => is_array($credentials) ? $credentials : null,
                 'webhook_url_token' => $account->webhook_url_token,
@@ -451,6 +453,7 @@ final class IntegrationCredentialTransfer
             $scope = $this->backed(AccountScope::class, $row['scope'] ?? null, 'Communication account scope');
             $channel = $this->backed(Channel::class, $row['channel'] ?? null, 'Communication account channel');
             $provider = $this->backed(Provider::class, $row['provider'] ?? null, 'Communication account provider');
+            $purpose = $this->backed(AccountPurpose::class, $row['purpose'] ?? AccountPurpose::All->value, 'Communication account purpose');
             $label = $channel.' '.$provider.' communication account';
             $siteCode = $this->nullableString($row, 'site_code', $label);
             $siteId = $this->communicationSiteId($scope, $siteCode);
@@ -458,7 +461,8 @@ final class IntegrationCredentialTransfer
             $query = CommunicationAccount::query()
                 ->where('scope', $scope)
                 ->where('channel', $channel)
-                ->where('provider', $provider);
+                ->where('provider', $provider)
+                ->where('purpose', $purpose);
 
             if ($siteId === null) {
                 $query->whereNull('site_id');
@@ -472,7 +476,8 @@ final class IntegrationCredentialTransfer
             if ($isActive) {
                 $active = CommunicationAccount::query()
                     ->where('scope', $scope)
-                    ->where('channel', $channel);
+                    ->where('channel', $channel)
+                    ->where('purpose', $purpose);
 
                 if ($siteId === null) {
                     $active->whereNull('site_id');
@@ -488,6 +493,7 @@ final class IntegrationCredentialTransfer
                 'site_id' => $siteId,
                 'channel' => $channel,
                 'provider' => $provider,
+                'purpose' => $purpose,
                 'is_active' => $isActive,
                 'credentials' => $this->credentialMap($row, $label, true),
                 'webhook_url_token' => $this->nullableString($row, 'webhook_url_token', $label),

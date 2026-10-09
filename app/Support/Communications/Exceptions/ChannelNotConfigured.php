@@ -13,6 +13,11 @@ final class ChannelNotConfigured extends CommunicationException
         return new self("No active {$channel->value} communication account is configured.");
     }
 
+    public static function forMarketing(Channel $channel): self
+    {
+        return new self("No active {$channel->value} communication account is configured for marketing sends.");
+    }
+
     public static function siteArchived(): self
     {
         return new self('Cannot send communications for an archived site.');

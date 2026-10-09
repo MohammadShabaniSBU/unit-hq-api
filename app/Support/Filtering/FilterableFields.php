@@ -79,6 +79,7 @@ final class FilterableFields
             self::select('status', 'Status', self::enumOptions(ContactLifecycleStatus::cases())),
             self::date('created_at', 'Created'),
             self::number('assigned_to', 'Assigned to'),
+            ...ContactMarketingFields::all(),
         ];
     }
 
