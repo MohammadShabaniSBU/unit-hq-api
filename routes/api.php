@@ -352,6 +352,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('contacts/board/columns/{status}', [Controllers\ContactBoardController::class, 'column']);
     Route::patch('contacts/{contact}/status', [Controllers\ContactController::class, 'updateStatus']);
     Route::apiResource('contacts', Controllers\ContactController::class);
+    Route::get('contacts/{contact}/consents', [Controllers\ContactConsentController::class, 'index']);
+    Route::post('contacts/{contact}/consents', [Controllers\ContactConsentController::class, 'store']);
+    Route::get('consent-texts', [Controllers\ConsentTextController::class, 'index']);
+    Route::post('consent-texts', [Controllers\ConsentTextController::class, 'store']);
     Route::get('contacts/{contact}/transactions', [Controllers\ContactController::class, 'transactions']);
     Route::get('contacts/{contact}/access-events', [Controllers\AccessEventController::class, 'forContact']);
     Route::get('contacts/{contact}/payment-methods', [Controllers\ContactPaymentMethodController::class, 'index']);

@@ -11,6 +11,8 @@ use App\Models\OfferDelivery;
 use App\Models\SystemEvent;
 use App\Support\Communications\Results\DeliveryEvent;
 use App\Support\Communications\Results\DeliveryStatus;
+use App\Support\Marketing\ConsentSource;
+use App\Support\Marketing\ConsentWriter;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 final class DeliveryEventApplier
 {
     /**
-     * @return Message|null  matched message, or null when unmatched
+     * @return Message|null matched message, or null when unmatched
      */
     public static function apply(Provider $provider, DeliveryEvent $event): ?Message
     {
@@ -66,6 +68,12 @@ final class DeliveryEventApplier
             if ($event->status === DeliveryStatus::Unsubscribed) {
                 $address = $event->recipient ?? $message->to_address;
                 SuppressionWriter::fromUnsubscribe($address, (int) $message->id);
+                ConsentWriter::withdrawAllListsForAddress(
+                    Channel::Email,
+                    $address,
+                    ConsentSource::OneClick,
+                    ['message_id' => (int) $message->id],
+                );
             }
 
             return $message->fresh(['interaction', 'thread']);

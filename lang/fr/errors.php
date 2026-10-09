@@ -187,6 +187,18 @@ return [
         'param_unresolved' => 'Un paramètre insights requis n’a pas pu être résolu.',
         'site_required' => 'Ce rapport nécessite un seul site ; choisissez-en un.',
     ],
+    'consent' => [
+        'channel' => 'Le consentement n’est pas enregistré pour ce canal.',
+        'list_channel' => 'Cette liste d’abonnement n’autorise pas ce canal.',
+        'list_archived' => 'Cette liste d’abonnement est archivée.',
+        'grant_source' => 'Cette source ne peut pas accorder le consentement.',
+        'consent_text' => 'Cet accord exige un texte de consentement.',
+        'operator_note' => 'Un accord saisi par un opérateur exige une note.',
+        'operator_causer' => 'Un accord saisi par un opérateur exige l’employé qui l’a enregistré.',
+        'import_evidence' => 'Un accord d’import exige le lot et la source d’origine.',
+        'pending_source' => 'Le consentement en attente n’est enregistré que depuis un formulaire d’inscription.',
+        'text_missing' => 'Le texte de consentement n’existe pas.',
+    ],
     'voice' => [
         'not_configured' => 'La voix du copilote n’est pas configurée. Définissez VOCAL_BRIDGE_API_KEY sur le serveur.',
         'token_unavailable' => 'Le service vocal n’a pas pu émettre de jeton de session. Réessayez sous peu.',

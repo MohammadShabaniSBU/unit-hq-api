@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
         $this->call(DefaultDealAttributeDefinitionsSeeder::class);
         $this->call(InsightReportSeeder::class);
         $this->call(RbacSystemRoleSeeder::class);
+        $this->call(SubscriptionListSeeder::class);
         $this->call(AiAgentSeeder::class);
 
         Employee::factory()->manager()->create();

@@ -213,6 +213,18 @@ return [
         'param_unresolved' => 'A required insight param could not be resolved.',
         'site_required' => 'This report requires a single site; choose one.',
     ],
+    'consent' => [
+        'channel' => 'Consent is not recorded for this channel.',
+        'list_channel' => 'This subscription list does not allow that channel.',
+        'list_archived' => 'This subscription list is archived.',
+        'grant_source' => 'This source cannot grant consent.',
+        'consent_text' => 'A consent text is required for this grant.',
+        'operator_note' => 'An operator grant requires a note.',
+        'operator_causer' => 'An operator grant requires the employee who recorded it.',
+        'import_evidence' => 'An import grant requires an import batch and the original source.',
+        'pending_source' => 'Pending consent is only recorded from a signup form.',
+        'text_missing' => 'The consent text does not exist.',
+    ],
     'voice' => [
         'not_configured' => 'Copilot voice is not configured. Set VOCAL_BRIDGE_API_KEY on the server.',
         'token_unavailable' => 'The voice service could not issue a session token. Try again shortly.',

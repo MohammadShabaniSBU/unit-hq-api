@@ -15,6 +15,7 @@ use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\SystemEvent;
 use App\Support\Communications\Channel;
+use App\Support\Marketing\ConsentWriter;
 use App\Support\RecordsActivity;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
@@ -124,6 +125,7 @@ class RedactContactCommand extends Command
 
         $wrapupCount = $this->redactCallWrapupsAndRecordings($contact);
         $summaryCount = $this->redactAiSummaries($contact);
+        ConsentWriter::redact($contact);
 
         RecordsActivity::core('contact.redacted', $contact, [
             'activity_rows' => $activityCount,

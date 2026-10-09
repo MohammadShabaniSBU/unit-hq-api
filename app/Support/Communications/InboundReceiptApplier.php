@@ -12,6 +12,8 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Support\Communications\Results\InboundAttachment;
 use App\Support\Communications\Results\InboundMessage;
+use App\Support\Marketing\ConsentSource;
+use App\Support\Marketing\ConsentWriter;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -343,6 +345,17 @@ final class InboundReceiptApplier
         }
 
         SuppressionWriter::fromStopKeyword($inbound->from, $messageId, $inbound->channel);
+
+        if ($inbound->channel !== Channel::Sms) {
+            return;
+        }
+
+        ConsentWriter::withdrawAllListsForAddress(
+            Channel::Sms,
+            $inbound->from,
+            ConsentSource::StopKeyword,
+            $messageId !== null ? ['message_id' => $messageId] : null,
+        );
     }
 
     /**

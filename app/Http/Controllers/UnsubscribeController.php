@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\Communications\Channel;
 use App\Support\Communications\SuppressionWriter;
 use App\Support\Communications\UnsubscribeToken;
+use App\Support\Marketing\ConsentSource;
+use App\Support\Marketing\ConsentWriter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -25,8 +28,11 @@ class UnsubscribeController extends Controller
 
         SuppressionWriter::fromUnsubscribe($address);
 
-        // RFC 8058 one-click expects 2xx; keep body minimal.
+        // GET stays consent-neutral. Link scanners hit GET; task 03 makes that
+        // path non-destructive for suppression too. One-click is POST.
         if ($request->isMethod('POST')) {
+            ConsentWriter::withdrawAllListsForAddress(Channel::Email, $address, ConsentSource::OneClick);
+
             return response('OK', 200);
         }
 

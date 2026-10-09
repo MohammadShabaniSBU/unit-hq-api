@@ -126,7 +126,9 @@ final class RoutePermissions
             'GET /api/contacts/options' => Permission::ContactView, // ContactController@options
             'GET /api/contacts/status-counts' => Permission::ContactView, // ContactController@statusCounts
             'GET /api/contacts/{contact}' => Permission::ContactView, // ContactController@show
+            'GET /api/consent-texts' => Permission::ConsentManage, // ConsentTextController@index
             'GET /api/contacts/{contact}/ai-summary' => Permission::AiSummaryView, // AiSummaryController@show
+            'GET /api/contacts/{contact}/consents' => Permission::ContactView, // ContactConsentController@index
             'GET /api/contacts/{contact}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
             'GET /api/contacts/{contact}/interactions' => Permission::ContactView, // ContactInteractionController@index
             'GET /api/deals' => Permission::DealManage, // DealController@index
@@ -167,7 +169,9 @@ final class RoutePermissions
             'PATCH /api/reservations/{reservation}/status' => Permission::ReservationManage, // ReservationController@updateStatus
             'PATCH /api/tasks/{task}' => Permission::ContactManage, // TaskController@update
             'PATCH /api/tasks/{task}/status' => Permission::ContactManage, // TaskController@updateStatus
+            'POST /api/consent-texts' => Permission::ConsentManage, // ConsentTextController@store
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
+            'POST /api/contacts/{contact}/consents' => Permission::ConsentManage, // ContactConsentController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search
             'POST /api/contacts/{contact}/addresses' => Permission::ContactManage, // ContactAddressController@store
             'POST /api/contacts/{contact}/ai-summary' => Permission::AiSummaryGenerate, // AiSummaryController@store

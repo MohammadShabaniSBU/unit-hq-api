@@ -199,6 +199,18 @@ return [
         'param_unresolved' => 'No se pudo resolver un parámetro de insights obligatorio.',
         'site_required' => 'Este informe requiere un solo sitio; elija uno.',
     ],
+    'consent' => [
+        'channel' => 'No se registra consentimiento para este canal.',
+        'list_channel' => 'Esta lista de suscripción no admite ese canal.',
+        'list_archived' => 'Esta lista de suscripción está archivada.',
+        'grant_source' => 'Este origen no puede otorgar consentimiento.',
+        'consent_text' => 'Este otorgamiento requiere un texto de consentimiento.',
+        'operator_note' => 'Un otorgamiento del operador requiere una nota.',
+        'operator_causer' => 'Un otorgamiento del operador requiere el empleado que lo registró.',
+        'import_evidence' => 'Un otorgamiento por importación requiere el lote y el origen original.',
+        'pending_source' => 'El consentimiento pendiente solo se registra desde un formulario de alta.',
+        'text_missing' => 'El texto de consentimiento no existe.',
+    ],
     'voice' => [
         'not_configured' => 'La voz del copiloto no está configurada. Defina VOCAL_BRIDGE_API_KEY en el servidor.',
         'token_unavailable' => 'El servicio de voz no pudo emitir un token de sesión. Inténtelo de nuevo en breve.',

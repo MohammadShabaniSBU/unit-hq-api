@@ -6,9 +6,17 @@ namespace Tests\Feature;
 
 use App\Enums\LogChannel;
 use App\Models\Activity;
+use App\Models\ConsentEvent;
+use App\Models\ConsentText;
 use App\Models\Contact;
+use App\Models\SubscriptionList;
 use App\Models\SystemEvent;
+use App\Support\Communications\Channel;
+use App\Support\Marketing\ConsentSource;
+use App\Support\Marketing\ConsentState;
+use App\Support\Marketing\ConsentWriter;
 use App\Support\RecordsActivity;
+use Database\Seeders\SubscriptionListSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -57,5 +65,28 @@ class RedactContactCommandTest extends TestCase
                 ->where('subject_id', $contact->id)
                 ->exists()
         );
+    }
+
+    public function test_redaction_nulls_consent_evidence_and_withdraws_grants(): void
+    {
+        $this->seed(SubscriptionListSeeder::class);
+        $list = SubscriptionList::query()->where('key', 'newsletter')->firstOrFail();
+        $contact = Contact::factory()->create();
+        $text = ConsentText::factory()->create();
+
+        ConsentWriter::grant(
+            $contact,
+            Channel::Email,
+            $list,
+            ConsentSource::Form,
+            $text->id,
+            ['ip' => '203.0.113.9'],
+        );
+
+        $this->artisan('contacts:redact', ['contact' => $contact->id])->assertSuccessful();
+
+        $this->assertNull(ConsentEvent::query()->where('source', ConsentSource::Form)->firstOrFail()->evidence);
+        $this->assertFalse(ConsentState::isGranted($contact->id, Channel::Email, $list->id));
+        $this->assertSame(1, ConsentEvent::query()->where('source', ConsentSource::Redaction)->count());
     }
 }

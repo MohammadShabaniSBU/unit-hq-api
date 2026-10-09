@@ -25,7 +25,7 @@ Three logging tiers on two tables:
 | `core` | 3 | Always on |
 | `crm` | 2 | Contact / ContactChannel / Deal diffs; attribute value upserts on CRM entities |
 | `facility` | 2 | Unit / UnitClass / Insurance / Discount diffs; `rate.changed`; `rate.tax.versioned`; object-customization layout mutations; attribute value upserts on Unit |
-| `comms` | 2 | `offer.sent` |
+| `comms` | 2 | `offer.sent`; `contact.consent.granted` / `contact.consent.withdrawn` (ids and enums only — no evidence, no note) |
 | `billing` | 2 | Billing run events (`billing.run.completed`); reserved for further billing attribute/events |
 | `ai` | 2 | Customer-facing agent lifecycle (`agent.conversation.started`, `agent.handoff`, `agent.guardrail.blocked`). Properties never carry draft text |
 
@@ -36,6 +36,13 @@ Tier-1 (system_events): `billing.contract.failed` — per-contract failure insid
 
 - Tier 1: `domain.action.phase` — e.g. `offer.accept.started`, `offer.accept.committed`
 - Tier 2/3 `description`: machine key — e.g. `deal.stage_changed`, `contract.signed`. Panel translates via i18n. Money in properties as strings.
+
+### Marketing consent (Tier-2 `comms`)
+
+| Event | Subject | Properties |
+|---|---|---|
+| `contact.consent.granted` | Contact | `channel`, `subscription_list_id`, `source`, `consent_text_id`, `consent_event_id`. No evidence payload. |
+| `contact.consent.withdrawn` | Contact | Same keys. |
 
 ### Contract discount / rate-change (Tier-3)
 
