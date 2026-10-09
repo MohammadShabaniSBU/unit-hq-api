@@ -182,6 +182,7 @@
 - Visual diff between template versions. History is read-only views, not a diff.
 - Migrating WhatsApp into `template_families`. Meta approval already makes approved rows immutable; lineage is `whatsapp_templates.supersedes_id` (S29 V9).
 - Per-site template overrides (deferred since S13; not built).
+- Generating a contract document from an older published template version. An explicit `template_variant_id` must belong to the current published version (`errors.templates.variant_not_current`). Using an older version would need its own permission and activity entry.
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
 

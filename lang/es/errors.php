@@ -112,6 +112,7 @@ return [
         'version_missing' => 'La familia de plantillas no tiene versión.',
         'version_mismatch' => 'La versión no pertenece a esta familia de plantillas.',
         'not_published' => 'Esta plantilla no tiene una versión publicada y no se puede enviar.',
+        'variant_not_current' => 'La variante no pertenece a la versión publicada actual.',
     ],
     'documents' => [
         'blocks_invalid' => 'El documento de bloques no es válido.',
@@ -125,6 +126,7 @@ return [
         'regenerate_frozen' => 'Los documentos enviados o firmados no se pueden regenerar.',
         'document_mismatch' => 'El documento no pertenece a este contrato.',
         'preview_requires_contract' => 'La vista previa del documento requiere un contrato.',
+        'locale_missing' => 'No existe una variante para el idioma :locale.',
     ],
     'esign' => [
         'contract_not_awaiting' => 'Solo se pueden enviar sobres para contratos en espera de firma.',

@@ -196,8 +196,9 @@ class ContractDocumentController extends Controller
     }
 
     /**
-     * Latest published content, unless the request pins a published variant or locale.
-     * Regenerate passes $preserveLocale so a clause fix keeps the document's locale.
+     * Latest published content, unless the request pins a variant of that current
+     * version or a locale on it. Regenerate passes $preserveLocale so a clause
+     * fix keeps the document's locale.
      *
      * @param  array<string, mixed>  $validated
      * @return array{variant: TemplateVariant, overridden: bool, resolved_locale: string}
@@ -241,6 +242,12 @@ class ContractDocumentController extends Controller
                 ]);
             }
 
+            if ((int) $variant->template_version_id !== (int) $published->id) {
+                throw ValidationException::withMessages([
+                    'template_variant_id' => [__('errors.templates.variant_not_current')],
+                ]);
+            }
+
             return [
                 'variant' => $variant,
                 'overridden' => $variant->id !== $ladderVariant->id,
@@ -252,7 +259,7 @@ class ContractDocumentController extends Controller
             $variant = $published->variants->firstWhere('locale', $validated['locale']);
             if (! $variant instanceof TemplateVariant) {
                 throw ValidationException::withMessages([
-                    'locale' => ['No variant exists for locale '.$validated['locale'].'.'],
+                    'locale' => [__('errors.documents.locale_missing', ['locale' => $validated['locale']])],
                 ]);
             }
 

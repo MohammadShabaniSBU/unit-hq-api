@@ -9,6 +9,7 @@ use App\Enums\TemplatePurpose;
 use App\Models\TemplateVariant;
 use App\Models\TemplateVersion;
 use App\Support\Automation\RunContext;
+use App\Support\Automation\SubjectTokenBag;
 use App\Support\Automation\TokenResolver;
 use App\Support\Documents\DocumentBlockDocument;
 use Illuminate\Validation\ValidationException;
@@ -109,35 +110,6 @@ final class TemplatePublishValidator
 
     private static function sampleContext(TemplatePurpose $purpose): RunContext
     {
-        $bag = [
-            'contact' => [
-                'id' => 1,
-                'first_name' => 'Ada',
-                'last_name' => 'Lovelace',
-                'name' => 'Ada Lovelace',
-                'email' => 'ada@example.com',
-                'company' => 'Analytical Engines',
-            ],
-            'pay_link' => 'https://example.test/pay',
-        ];
-
-        if ($purpose === TemplatePurpose::Debt || $purpose === TemplatePurpose::Contract) {
-            $bag['contract'] = [
-                'id' => 1,
-                'balance_owed' => '0.00',
-                'currency' => 'EUR',
-                'unit_name' => 'A1',
-                'unit_rate' => '10.00',
-            ];
-        }
-
-        if ($purpose === TemplatePurpose::Lead || $purpose === TemplatePurpose::Offer) {
-            $bag['deal'] = [
-                'id' => 1,
-                'status' => 'open',
-            ];
-        }
-
-        return new RunContext(subjectBag: $bag);
+        return new RunContext(subjectBag: SubjectTokenBag::sample($purpose));
     }
 }

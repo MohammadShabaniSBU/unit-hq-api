@@ -41,11 +41,12 @@ class TemplateFamilyFactory extends Factory
         return DB::transaction(function () use ($attributes, $variants): TemplateFamily {
             $family = TemplateFamily::factory()->create($attributes);
 
+            // Insert variants while the version is still a draft. A published
+            // version rejects new rows (model guard and the Postgres trigger).
             $version = TemplateVersion::query()->create([
                 'template_family_id' => $family->id,
                 'version_number' => 1,
-                'status' => TemplateVersionStatus::Published,
-                'published_at' => now(),
+                'status' => TemplateVersionStatus::Draft,
             ]);
 
             foreach ($variants as $variant) {
@@ -54,6 +55,11 @@ class TemplateFamilyFactory extends Factory
                     'template_family_id' => $family->id,
                 ]);
             }
+
+            $version->update([
+                'status' => TemplateVersionStatus::Published,
+                'published_at' => now(),
+            ]);
 
             return $family;
         });

@@ -105,6 +105,7 @@ return [
         'version_missing' => 'Cette famille de modèles n’a pas de version.',
         'version_mismatch' => 'La version n’appartient pas à cette famille de modèles.',
         'not_published' => 'Ce modèle n’a pas de version publiée et ne peut pas être envoyé.',
+        'variant_not_current' => 'La variante n’appartient pas à la version publiée actuelle.',
     ],
     'documents' => [
         'blocks_invalid' => 'Le document de blocs est invalide.',
@@ -118,6 +119,7 @@ return [
         'regenerate_frozen' => 'Les documents envoyés ou signés ne peuvent pas être régénérés.',
         'document_mismatch' => 'Le document n’appartient pas à ce contrat.',
         'preview_requires_contract' => 'L’aperçu du document nécessite un contrat.',
+        'locale_missing' => 'Aucune variante n’existe pour la langue :locale.',
     ],
     'esign' => [
         'contract_not_awaiting' => 'Les enveloppes ne peuvent être envoyées que pour les contrats en attente de signature.',

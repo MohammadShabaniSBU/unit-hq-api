@@ -412,16 +412,25 @@
     `prices.currency` stays the only authority for denomination (D1).
 74. **Published template content is immutable.** `template_versions` with
     `status = published` and their `template_variants` are never updated or
-    deleted. Edits happen on the single draft per family; publishing creates
-    the next version. "Current version" is derived (highest published
-    `version_number` via `TemplateFamily::currentVersion()`), never stored.
-    Live senders resolve the current version through `TemplateResolver::variant()`;
-    pinning consumers (contract documents, campaigns) store `template_version_id`
-    and resolve through `TemplateResolver::variantOf()`. Every templated outbound
-    message records its version in `messages.detail.template`. Enforced by
-    `PublishedTemplateImmutable` on `TemplateVersion` and `TemplateVariant`, and
-    by the Postgres triggers `tver_reject_published_mutation` and
-    `tv_reject_published_mutation` (`published_template_immutable`).
+    deleted, and a variant cannot be inserted into a published version.
+    `template_variants.template_version_id` and `template_family_id` are
+    immutable: a variant never moves between versions or families. Family
+    consistency is a composite foreign key
+    `(template_version_id, template_family_id)` →
+    `template_versions (id, template_family_id)`. Edits happen on the single
+    draft per family; publishing creates the next version. "Current version"
+    is derived (highest published `version_number` via
+    `TemplateFamily::currentVersion()`), never stored. Live senders resolve
+    the current version through `TemplateResolver::variant()`; pinning
+    consumers (contract documents, campaigns) store `template_version_id`
+    and resolve through `TemplateResolver::variantOf()`. An explicit contract
+    variant must be on that current published version. Every templated
+    outbound message records its version in `messages.detail.template`.
+    Enforced by `PublishedTemplateImmutable` on `TemplateVersion` and
+    `TemplateVariant` (`creating`, `updating`, and `deleting`), and by the
+    Postgres triggers `tver_reject_published_mutation` and
+    `tv_reject_published_mutation` (`BEFORE INSERT OR UPDATE OR DELETE`,
+    `published_template_immutable`).
 
 ## Code conventions
 

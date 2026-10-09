@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Automation;
 
 use App\Enums\DealStatus;
+use App\Enums\TemplatePurpose;
 use App\Models\AutomationRun;
 use App\Models\Contact;
 use App\Models\Contract;
@@ -154,6 +155,45 @@ final class SubjectTokenBag
 
         // S10 gap: real payment-request links land later; keep a stable placeholder.
         $bag['pay_link'] = '[pay-link]';
+
+        return $bag;
+    }
+
+    /**
+     * Publish-time stand-in for the real bags. One place to extend when tokens are added.
+     *
+     * @return array<string, mixed>
+     */
+    public static function sample(TemplatePurpose $purpose): array
+    {
+        $bag = [
+            'contact' => [
+                'id' => 1,
+                'first_name' => 'Ada',
+                'last_name' => 'Lovelace',
+                'name' => 'Ada Lovelace',
+                'email' => 'ada@example.com',
+                'company' => 'Analytical Engines',
+            ],
+            'pay_link' => 'https://example.test/pay',
+        ];
+
+        if ($purpose === TemplatePurpose::Debt || $purpose === TemplatePurpose::Contract) {
+            $bag['contract'] = [
+                'id' => 1,
+                'balance_owed' => '0.00',
+                'currency' => 'EUR',
+                'unit_name' => 'A1',
+                'unit_rate' => '10.00',
+            ];
+        }
+
+        if ($purpose === TemplatePurpose::Lead || $purpose === TemplatePurpose::Offer) {
+            $bag['deal'] = [
+                'id' => 1,
+                'status' => 'open',
+            ];
+        }
 
         return $bag;
     }

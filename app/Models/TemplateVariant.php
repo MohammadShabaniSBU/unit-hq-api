@@ -50,16 +50,44 @@ class TemplateVariant extends Model
 
     protected static function booted(): void
     {
-        $guard = function (self $variant): void {
-            $status = $variant->version()->value('status');
-            $raw = $status instanceof TemplateVersionStatus ? $status->value : $status;
-            if ($raw === TemplateVersionStatus::Published->value) {
+        static::creating(function (self $variant): void {
+            if (self::versionIsPublished($variant->template_version_id)) {
                 throw PublishedTemplateImmutable::variant();
             }
-        };
+        });
 
-        static::updating($guard);
-        static::deleting($guard);
+        static::updating(function (self $variant): void {
+            $originalVersionId = $variant->getOriginal('template_version_id');
+            $originalFamilyId = $variant->getOriginal('template_family_id');
+
+            if ((int) $originalVersionId !== (int) $variant->template_version_id
+                || (int) $originalFamilyId !== (int) $variant->template_family_id) {
+                throw PublishedTemplateImmutable::variant();
+            }
+
+            if (self::versionIsPublished($originalVersionId) || self::versionIsPublished($variant->template_version_id)) {
+                throw PublishedTemplateImmutable::variant();
+            }
+        });
+
+        static::deleting(function (self $variant): void {
+            $versionId = $variant->getOriginal('template_version_id') ?? $variant->template_version_id;
+            if (self::versionIsPublished($versionId)) {
+                throw PublishedTemplateImmutable::variant();
+            }
+        });
+    }
+
+    private static function versionIsPublished(mixed $versionId): bool
+    {
+        if ($versionId === null || $versionId === '') {
+            return false;
+        }
+
+        $status = TemplateVersion::query()->whereKey($versionId)->value('status');
+        $raw = $status instanceof TemplateVersionStatus ? $status->value : $status;
+
+        return $raw === TemplateVersionStatus::Published->value;
     }
 
     /** @return BelongsTo<TemplateFamily, $this> */

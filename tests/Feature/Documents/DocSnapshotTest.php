@@ -160,6 +160,29 @@ class DocSnapshotTest extends TestCase
         );
     }
 
+    public function test_explicit_variant_from_a_superseded_published_version_is_refused(): void
+    {
+        $contact = Contact::factory()->fiscalComplete()->create(['locale' => 'en']);
+        $contract = $this->createRemoteContract($contact);
+
+        $create = $this->postJson("/api/contracts/{$contract->id}/documents", [
+            'locale' => 'en',
+        ]);
+        $create->assertCreated();
+        $v1VariantId = (int) $create->json('data.template_variant_id');
+
+        $this->publishNextDocumentVersion('CLAUSE FIX');
+
+        $stale = $this->postJson("/api/contracts/{$contract->id}/documents", [
+            'template_variant_id' => $v1VariantId,
+        ]);
+        $stale->assertStatus(422);
+        $stale->assertJsonPath(
+            'errors.template_variant_id.0',
+            __('errors.templates.variant_not_current'),
+        );
+    }
+
     public function test_regenerate_uses_latest_published_version(): void
     {
         $contact = Contact::factory()->fiscalComplete()->create(['locale' => 'en']);

@@ -126,6 +126,7 @@ return [
         'version_missing' => 'Template family has no version.',
         'version_mismatch' => 'The version does not belong to this template family.',
         'not_published' => 'This template has no published version and cannot be sent.',
+        'variant_not_current' => 'The variant is not on the current published version.',
     ],
     'documents' => [
         'blocks_invalid' => 'The document block document is invalid.',
@@ -139,6 +140,7 @@ return [
         'regenerate_frozen' => 'Sent or signed documents cannot be regenerated.',
         'document_mismatch' => 'The document does not belong to this contract.',
         'preview_requires_contract' => 'Document preview requires a contract context.',
+        'locale_missing' => 'No variant exists for locale :locale.',
     ],
     'esign' => [
         'contract_not_awaiting' => 'Envelopes can only be sent for contracts awaiting signature.',

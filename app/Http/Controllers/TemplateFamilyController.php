@@ -298,11 +298,11 @@ class TemplateFamilyController extends Controller
             return $warnings;
         });
 
-        return response()->json([
-            'message' => 'Template version published.',
-            'data' => (new TemplateFamilyResource($templateFamily->fresh($this->versionRelations())))->resolve(),
-            'warnings' => $warnings,
-        ]);
+        return $this->success(
+            new TemplateFamilyResource($templateFamily->fresh($this->versionRelations())),
+            'Template version published.',
+            warnings: $warnings,
+        );
     }
 
     public function destroyVersion(
@@ -882,10 +882,11 @@ class TemplateFamilyController extends Controller
 
     private function draftConflict(TemplateVersion $draft): JsonResponse
     {
-        return response()->json([
-            'message' => __('errors.templates.draft_exists'),
-            'data' => (new TemplateVersionResource($draft->loadMissing('variants'), 'draft'))->resolve(),
-        ], 409);
+        return $this->success(
+            new TemplateVersionResource($draft->loadMissing('variants'), 'draft'),
+            __('errors.templates.draft_exists'),
+            409,
+        );
     }
 
     private function logVersion(

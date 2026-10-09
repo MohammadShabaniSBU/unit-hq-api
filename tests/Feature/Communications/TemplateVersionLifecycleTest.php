@@ -11,7 +11,9 @@ use App\Models\Employee;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
 use App\Models\TemplateVersion;
+use App\Support\Automation\SubjectTokenBag;
 use App\Support\Communications\Exceptions\PublishedTemplateImmutable;
+use App\Support\Communications\TemplatePublishValidator;
 use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -220,18 +222,7 @@ class TemplateVersionLifecycleTest extends TestCase
 
         $v2 = null;
         for ($number = 2; $number <= 5; $number++) {
-            $version = TemplateVersion::query()->create([
-                'template_family_id' => $family->id,
-                'version_number' => $number,
-                'status' => TemplateVersionStatus::Published,
-                'published_at' => now(),
-            ]);
-            $version->variants()->create([
-                'template_family_id' => $family->id,
-                'locale' => 'en',
-                'subject' => 'v'.$number,
-                'legacy_html' => '<p>'.$number.'</p>',
-            ]);
+            $version = $this->appendPublishedVersion($family, $number, 'v'.$number, '<p>'.$number.'</p>');
             if ($number === 2) {
                 $v2 = $version;
             }
@@ -325,18 +316,7 @@ class TemplateVersionLifecycleTest extends TestCase
         ]);
         $older = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
 
-        $current = TemplateVersion::query()->create([
-            'template_family_id' => $family->id,
-            'version_number' => 2,
-            'status' => TemplateVersionStatus::Published,
-            'published_at' => now(),
-        ]);
-        $current->variants()->create([
-            'template_family_id' => $family->id,
-            'locale' => 'en',
-            'subject' => 'v2',
-            'legacy_html' => '<p>2</p>',
-        ]);
+        $this->appendPublishedVersion($family, 2, 'v2', '<p>2</p>');
 
         $this->putJson("/api/template-families/{$family->id}/variants/{$older->id}", [
             'subject' => 'rewritten',
@@ -346,6 +326,270 @@ class TemplateVersionLifecycleTest extends TestCase
 
         $this->assertSame('v1', $older->fresh()->subject);
         $this->assertSame('v2', $family->currentVersion()->firstOrFail()->variants()->firstOrFail()->subject);
+    }
+
+    public function test_eloquent_cannot_insert_a_variant_into_a_published_version(): void
+    {
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $version = $family->currentVersion()->firstOrFail();
+
+        try {
+            $version->variants()->create([
+                'template_family_id' => $family->id,
+                'locale' => 'es',
+                'subject' => 'extra',
+                'legacy_html' => '<p>x</p>',
+            ]);
+            $this->fail('Expected PublishedTemplateImmutable on create.');
+        } catch (PublishedTemplateImmutable $exception) {
+            $this->assertStringContainsString('immutable', $exception->getMessage());
+        }
+
+        $this->assertSame(1, $version->variants()->count());
+    }
+
+    public function test_post_variant_lands_on_the_draft_not_the_published_version(): void
+    {
+        $this->actingManager();
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+
+        $create = $this->postJson("/api/template-families/{$family->id}/variants", [
+            'locale' => 'es',
+            'subject' => 'Hola',
+            'legacy_html' => '<p>hola</p>',
+        ]);
+        $create->assertCreated();
+
+        $publishedLocales = collect($create->json('data.current_version.variants'))->pluck('locale')->all();
+        $draftLocales = collect($create->json('data.draft_version.variants'))->pluck('locale')->all();
+        $this->assertSame(['en'], $publishedLocales);
+        $this->assertContains('es', $draftLocales);
+        $this->assertContains('en', $draftLocales);
+    }
+
+    public function test_postgres_trigger_rejects_insert_into_a_published_version(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('published immutability trigger is postgres-only.');
+        }
+
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $version = $family->currentVersion()->firstOrFail();
+
+        try {
+            DB::transaction(function () use ($family, $version): void {
+                DB::table('template_variants')->insert([
+                    'template_family_id' => $family->id,
+                    'template_version_id' => $version->id,
+                    'locale' => 'es',
+                    'subject' => 'extra',
+                    'legacy_html' => '<p>x</p>',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+            $this->fail('Expected published_template_immutable.');
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('published_template_immutable', $exception->getMessage());
+        }
+
+        $this->assertSame(1, $version->variants()->count());
+    }
+
+    public function test_eloquent_cannot_move_a_variant(): void
+    {
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $publishedVariant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
+        $publishedVersionId = (int) $publishedVariant->template_version_id;
+        $draft = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $draftVariant = $draft->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'draft',
+            'legacy_html' => '<p>d</p>',
+        ]);
+        $other = TemplateFamily::factory()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Other',
+            'purpose' => TemplatePurpose::General,
+        ]);
+
+        foreach ([
+            [$draftVariant, 'template_version_id', $publishedVariant->template_version_id],
+            [$draftVariant, 'template_family_id', $other->id],
+            [$publishedVariant, 'template_version_id', $draft->id],
+            [$publishedVariant, 'template_family_id', $other->id],
+        ] as [$variant, $column, $value]) {
+            try {
+                $variant->update([$column => $value]);
+                $this->fail('Expected PublishedTemplateImmutable when changing '.$column.'.');
+            } catch (PublishedTemplateImmutable $exception) {
+                $this->assertStringContainsString('immutable', $exception->getMessage());
+            }
+            $variant->refresh();
+        }
+
+        $draftFresh = $draftVariant->fresh();
+        $publishedFresh = $publishedVariant->fresh();
+        $this->assertSame($draft->id, (int) $draftFresh->template_version_id);
+        $this->assertSame($family->id, (int) $draftFresh->template_family_id);
+        $this->assertSame($publishedVersionId, (int) $publishedFresh->template_version_id);
+        $this->assertSame($family->id, (int) $publishedFresh->template_family_id);
+    }
+
+    public function test_postgres_trigger_rejects_moving_a_variant(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('published immutability trigger is postgres-only.');
+        }
+
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $published = $family->currentVersion()->firstOrFail();
+        $draft = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $variant = $draft->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'draft',
+            'legacy_html' => '<p>d</p>',
+        ]);
+        $other = TemplateFamily::factory()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Other',
+            'purpose' => TemplatePurpose::General,
+        ]);
+
+        try {
+            DB::transaction(function () use ($variant, $published): void {
+                DB::table('template_variants')->where('id', $variant->id)->update([
+                    'template_version_id' => $published->id,
+                ]);
+            });
+            $this->fail('Expected published_template_immutable when moving template_version_id.');
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('published_template_immutable', $exception->getMessage());
+        }
+
+        try {
+            DB::transaction(function () use ($variant, $other): void {
+                DB::table('template_variants')->where('id', $variant->id)->update([
+                    'template_family_id' => $other->id,
+                ]);
+            });
+            $this->fail('Expected published_template_immutable when moving template_family_id.');
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('published_template_immutable', $exception->getMessage());
+        }
+
+        $fresh = $variant->fresh();
+        $this->assertSame($draft->id, (int) $fresh->template_version_id);
+        $this->assertSame($family->id, (int) $fresh->template_family_id);
+    }
+
+    public function test_variant_family_must_match_its_version(): void
+    {
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $draft = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $other = TemplateFamily::factory()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Other',
+            'purpose' => TemplatePurpose::General,
+        ]);
+
+        try {
+            DB::transaction(function () use ($draft, $other): void {
+                TemplateVariant::query()->create([
+                    'template_family_id' => $other->id,
+                    'template_version_id' => $draft->id,
+                    'locale' => 'fr',
+                    'subject' => 'nope',
+                    'legacy_html' => '<p>x</p>',
+                ]);
+            });
+            $this->fail('Expected the composite family foreign key to reject the insert.');
+        } catch (QueryException $exception) {
+            $message = strtolower($exception->getMessage());
+            $this->assertTrue(
+                str_contains($message, 'tv_version_family_fk') || str_contains($message, 'foreign key'),
+                $exception->getMessage(),
+            );
+        }
+
+        $this->assertSame(0, TemplateVariant::query()->where('template_version_id', $draft->id)->count());
+    }
+
+    public function test_sample_token_bag_follows_purpose_and_publish_uses_it(): void
+    {
+        $contract = SubjectTokenBag::sample(TemplatePurpose::Contract);
+        $this->assertArrayHasKey('contract', $contract);
+        $this->assertArrayNotHasKey('deal', $contract);
+        $this->assertSame('Ada', $contract['contact']['first_name']);
+
+        $lead = SubjectTokenBag::sample(TemplatePurpose::Lead);
+        $this->assertArrayHasKey('deal', $lead);
+        $this->assertArrayNotHasKey('contract', $lead);
+
+        $general = SubjectTokenBag::sample(TemplatePurpose::General);
+        $this->assertArrayNotHasKey('contract', $general);
+        $this->assertArrayNotHasKey('deal', $general);
+        $this->assertArrayHasKey('pay_link', $general);
+
+        $family = TemplateFamily::factory()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Contract tokens',
+            'purpose' => TemplatePurpose::Contract,
+        ]);
+        $version = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 1,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $version->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'Unit {{contract.unit_name}} {{deal.id}}',
+            'legacy_html' => '<p>Hello</p>',
+        ]);
+
+        $warnings = TemplatePublishValidator::warnings($version->fresh(['family', 'variants']));
+        $tokens = $warnings[0]['tokens'] ?? [];
+        $this->assertContains('deal.id', $tokens);
+        $this->assertNotContains('contract.unit_name', $tokens);
     }
 
     private function actingManager(): Employee
@@ -366,6 +610,31 @@ class TemplateVersionLifecycleTest extends TestCase
             'name' => 'Lifecycle',
             'purpose' => TemplatePurpose::General,
         ], variants: [$variant]);
+    }
+
+    private function appendPublishedVersion(
+        TemplateFamily $family,
+        int $number,
+        string $subject,
+        string $html,
+    ): TemplateVersion {
+        $version = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => $number,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $version->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => $subject,
+            'legacy_html' => $html,
+        ]);
+        $version->update([
+            'status' => TemplateVersionStatus::Published,
+            'published_at' => now(),
+        ]);
+
+        return $version->fresh() ?? $version;
     }
 
     private function assertVersionActivity(string $event, int $versionNumber, ?int $basedOn): void

@@ -16,12 +16,21 @@ trait ApiResponsable
         return min(max(request()->integer('per_page'), 1), $max);
     }
 
-    protected function success(mixed $data = null, string $message = 'OK', int $statusCode = 200): JsonResponse
+    /**
+     * @param  list<mixed>|null  $warnings
+     */
+    protected function success(mixed $data = null, string $message = 'OK', int $statusCode = 200, ?array $warnings = null): JsonResponse
     {
-        return response()->json([
+        $payload = [
             'message' => $message,
             'data' => $data,
-        ], $statusCode);
+        ];
+
+        if ($warnings !== null) {
+            $payload['warnings'] = $warnings;
+        }
+
+        return response()->json($payload, $statusCode);
     }
 
     protected function created(mixed $data = null, string $message = 'Created successfully.'): JsonResponse
