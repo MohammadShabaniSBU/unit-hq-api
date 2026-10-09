@@ -111,6 +111,7 @@ return [
         'publish_empty' => 'Un borrador debe tener al menos una variante antes de publicarse.',
         'version_missing' => 'La familia de plantillas no tiene versión.',
         'version_mismatch' => 'La versión no pertenece a esta familia de plantillas.',
+        'not_published' => 'Esta plantilla no tiene una versión publicada y no se puede enviar.',
     ],
     'documents' => [
         'blocks_invalid' => 'El documento de bloques no es válido.',

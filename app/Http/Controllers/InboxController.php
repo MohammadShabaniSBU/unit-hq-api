@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\ContactChannelType;
 use App\Enums\LogChannel;
 use App\Enums\TemplateChannel;
+use App\Enums\TemplateVersionStatus;
 use App\Models\AgentConversation;
 use App\Models\AgentPendingAction;
 use App\Models\CommsTriage;
@@ -17,6 +18,7 @@ use App\Models\MessageAttachment;
 use App\Models\MessageThread;
 use App\Models\Site;
 use App\Models\TemplateFamily;
+use App\Models\TemplateVariant;
 use App\Models\WhatsappTemplate;
 use App\Support\Ai\Enums\AgentOrigin;
 use App\Support\Ai\Enums\ConversationState;
@@ -33,6 +35,7 @@ use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\EmailTemplateRenderer;
 use App\Support\Communications\Exceptions\SendRefused;
+use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\HtmlSanitizer;
 use App\Support\Communications\InboxBadgeBroadcast;
 use App\Support\Communications\InboxThreadContext;
@@ -51,6 +54,7 @@ use App\Support\Communications\Senders\SmsSender;
 use App\Support\Communications\Senders\WhatsAppSender;
 use App\Support\Communications\SmsTemplateRenderer;
 use App\Support\Communications\SuppressionWriter;
+use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplateResolver;
 use App\Support\Communications\WhatsAppVariableResolver;
 use App\Support\Communications\WhatsAppWindow;
@@ -371,24 +375,10 @@ class InboxController extends Controller
         $whatsappConsent = null;
 
         if ($channel === Channel::Email) {
-            $templates = TemplateFamily::query()
-                ->notArchived()
-                ->channel(TemplateChannel::Email)
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (TemplateFamily $t) => ['id' => $t->id, 'name' => $t->name])
-                ->values()
-                ->all();
+            $templates = $this->publishedTemplateOptions(TemplateChannel::Email);
             $tokens = SubjectTokenBag::vocabulary();
         } elseif ($channel === Channel::Sms) {
-            $templates = TemplateFamily::query()
-                ->notArchived()
-                ->channel(TemplateChannel::Sms)
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (TemplateFamily $t) => ['id' => $t->id, 'name' => $t->name])
-                ->values()
-                ->all();
+            $templates = $this->publishedTemplateOptions(TemplateChannel::Sms);
             $tokens = SubjectTokenBag::vocabulary();
         } elseif ($channel === Channel::Whatsapp) {
             $whatsappWindow = WhatsAppWindow::payload($messageThread);
@@ -615,7 +605,7 @@ class InboxController extends Controller
                 return $this->error('Contact has no email address.', [], 422);
             }
 
-            [$bodyText, $bodyHtml, $warnings] = $this->resolveEmailBodies(
+            [$bodyText, $bodyHtml, $warnings, $provenance] = $this->resolveEmailBodies(
                 $validated,
                 $tokenContext,
                 $contact,
@@ -637,7 +627,7 @@ class InboxController extends Controller
                 $resolved['site'],
                 $contact,
                 $context,
-                detail: $warnings !== [] ? ['token_warnings' => $warnings] : null,
+                detail: $this->outboundDetail($warnings, $provenance),
             );
 
             if ($result->wasSuppressed()) {
@@ -658,13 +648,14 @@ class InboxController extends Controller
             return $this->error('Contact has no phone number.', [], 422);
         }
 
-        $body = $this->resolveSmsBody($validated, $tokenContext, $contact, $resolved['site']);
+        [$body, $provenance] = $this->resolveSmsBody($validated, $tokenContext, $contact, $resolved['site']);
         $sms = new SmsMessage(to: $to, body: $body);
         $result = app(SmsSender::class)->send(
             $sms,
             $resolved['site'],
             $contact,
             $context,
+            detail: $this->outboundDetail([], $provenance),
         );
 
         if ($result->wasSuppressed()) {
@@ -696,7 +687,7 @@ class InboxController extends Controller
             return $this->error('Contact has no email address.', [], 422);
         }
 
-        [$bodyText, $bodyHtml, $warnings] = $this->resolveEmailBodies(
+        [$bodyText, $bodyHtml, $warnings, $provenance] = $this->resolveEmailBodies(
             $validated,
             $tokenContext,
             $contact,
@@ -720,7 +711,7 @@ class InboxController extends Controller
             $contact,
             $context,
             thread: $thread,
-            detail: $warnings !== [] ? ['token_warnings' => $warnings] : null,
+            detail: $this->outboundDetail($warnings, $provenance),
         );
 
         if ($result->wasSuppressed()) {
@@ -755,7 +746,7 @@ class InboxController extends Controller
             return $this->error('Contact has no phone number.', [], 422);
         }
 
-        $body = $this->resolveSmsBody($validated, $tokenContext, $contact, $site);
+        [$body, $provenance] = $this->resolveSmsBody($validated, $tokenContext, $contact, $site);
         $sms = new SmsMessage(to: $to, body: $body);
 
         $result = app(SmsSender::class)->send(
@@ -764,6 +755,7 @@ class InboxController extends Controller
             $contact,
             $context,
             thread: $thread,
+            detail: $this->outboundDetail([], $provenance),
         );
 
         if ($result->wasSuppressed()) {
@@ -853,17 +845,16 @@ class InboxController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
+     * @return array{0: string, 1: TemplateProvenance|null}
      */
     private function resolveSmsBody(
         array $validated,
         RunContext $tokenContext,
         Contact $contact,
         ?Site $site,
-    ): string {
+    ): array {
         if (! empty($validated['template_family_id'])) {
-            $family = TemplateFamily::query()
-                ->with(['currentVersion.variants', 'draft.variants'])
-                ->findOrFail($validated['template_family_id']);
+            $family = TemplateFamily::query()->findOrFail($validated['template_family_id']);
             $channel = $family->channel instanceof TemplateChannel
                 ? $family->channel
                 : TemplateChannel::tryFrom((string) $family->channel);
@@ -872,18 +863,19 @@ class InboxController extends Controller
                     'template_family_id' => ['Template family must be an SMS template.'],
                 ]);
             }
-            $variant = TemplateResolver::variant($family, $contact, $site);
+            $variant = $this->publishedVariant($family, $contact, $site);
+
             $rendered = SmsTemplateRenderer::render($variant, $tokenContext);
 
-            return $rendered['text'];
+            return [$rendered['text'], TemplateProvenance::from($variant, $contact, $site)];
         }
 
-        return TokenResolver::resolve((string) ($validated['body_text'] ?? ''), $tokenContext);
+        return [TokenResolver::resolve((string) ($validated['body_text'] ?? ''), $tokenContext), null];
     }
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{0: string, 1: string|null, 2: list<string>}
+     * @return array{0: string, 1: string|null, 2: list<string>, 3: TemplateProvenance|null}
      */
     private function resolveEmailBodies(
         array $validated,
@@ -892,13 +884,16 @@ class InboxController extends Controller
         ?Site $site,
     ): array {
         if (! empty($validated['template_family_id'])) {
-            $family = TemplateFamily::query()
-                ->with(['currentVersion.variants', 'draft.variants'])
-                ->findOrFail($validated['template_family_id']);
-            $variant = TemplateResolver::variant($family, $contact, $site);
+            $family = TemplateFamily::query()->findOrFail($validated['template_family_id']);
+            $variant = $this->publishedVariant($family, $contact, $site);
             $rendered = EmailTemplateRenderer::render($variant, $tokenContext);
 
-            return [$rendered['text'], $rendered['html'], $rendered['warnings']];
+            return [
+                $rendered['text'],
+                $rendered['html'],
+                $rendered['warnings'],
+                TemplateProvenance::from($variant, $contact, $site),
+            ];
         }
 
         $textResolved = TokenResolver::resolveCollectingWarnings($validated['body_text'], $tokenContext);
@@ -914,7 +909,51 @@ class InboxController extends Controller
             }
         }
 
-        return [$textResolved['value'], $bodyHtml, $warnings];
+        return [$textResolved['value'], $bodyHtml, $warnings, null];
+    }
+
+    private function publishedVariant(TemplateFamily $family, Contact $contact, ?Site $site): TemplateVariant
+    {
+        try {
+            return TemplateResolver::variant($family, $contact, $site);
+        } catch (TemplateNotPublished) {
+            throw ValidationException::withMessages([
+                'template_family_id' => [__('errors.templates.not_published')],
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<string>  $warnings
+     * @return array<string, mixed>|null
+     */
+    private function outboundDetail(array $warnings, ?TemplateProvenance $provenance): ?array
+    {
+        $detail = [];
+        if ($warnings !== []) {
+            $detail['token_warnings'] = $warnings;
+        }
+        if ($provenance !== null) {
+            $detail['template'] = $provenance->toArray();
+        }
+
+        return $detail === [] ? null : $detail;
+    }
+
+    /** @return list<array{id: int, name: string}> */
+    private function publishedTemplateOptions(TemplateChannel $channel): array
+    {
+        return TemplateFamily::query()
+            ->notArchived()
+            ->channel($channel)
+            ->whereHas('versions', function ($query): void {
+                $query->where('status', TemplateVersionStatus::Published);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (TemplateFamily $t) => ['id' => $t->id, 'name' => $t->name])
+            ->values()
+            ->all();
     }
 
     /**

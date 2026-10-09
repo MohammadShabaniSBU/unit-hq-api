@@ -14,10 +14,12 @@ use App\Support\Automation\Contracts\NodeHandler;
 use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\TokenResolver;
+use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\Messages\SmsMessage;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\SmsSender;
 use App\Support\Communications\SmsTemplateRenderer;
+use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplateResolver;
 use RuntimeException;
 
@@ -32,7 +34,21 @@ final class SendSmsHandler implements NodeHandler
         $config = $node->config ?? [];
         $this->assertXor($config);
 
-        $body = $this->resolveBody($config, $context, $run);
+        try {
+            [$body, $provenance] = $this->resolveBody($config, $context, $run);
+        } catch (TemplateNotPublished) {
+            return [
+                'to' => null,
+                'body' => null,
+                'channel' => 'sms',
+                'segments' => 0,
+                'provider_message_id' => null,
+                'communication_account_id' => null,
+                'interaction_id' => null,
+                'message_id' => null,
+                'skipped_reason' => 'template_not_published',
+            ];
+        }
 
         $contact = SubjectChain::contact($run);
         if ($contact === null) {
@@ -74,6 +90,7 @@ final class SendSmsHandler implements NodeHandler
             $sendContext,
             $dealId,
             $metadata,
+            detail: $provenance !== null ? ['template' => $provenance->toArray()] : null,
         );
 
         if ($result->wasSuppressed()) {
@@ -118,8 +135,11 @@ final class SendSmsHandler implements NodeHandler
         }
     }
 
-    /** @param  array<string, mixed>  $config */
-    private function resolveBody(array $config, RunContext $context, AutomationRun $run): string
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array{0: string, 1: TemplateProvenance|null}
+     */
+    private function resolveBody(array $config, RunContext $context, AutomationRun $run): array
     {
         $tokens = (bool) ($config['tokens'] ?? true);
         $templateId = $config['template_family_id'] ?? $config['templateId'] ?? null;
@@ -130,9 +150,7 @@ final class SendSmsHandler implements NodeHandler
                 throw new RuntimeException('send_sms template path requires template_family_id');
             }
 
-            $family = TemplateFamily::query()
-                ->with(['currentVersion.variants', 'draft.variants'])
-                ->find((int) $templateId);
+            $family = TemplateFamily::query()->find((int) $templateId);
             if ($family === null) {
                 throw new RuntimeException("send_sms template family [{$templateId}] not found");
             }
@@ -143,14 +161,15 @@ final class SendSmsHandler implements NodeHandler
             }
 
             $site = SubjectChain::site($run);
-            $variant = TemplateResolver::variant($family, $contact, $site instanceof Site ? $site : null);
+            $siteModel = $site instanceof Site ? $site : null;
+            $variant = TemplateResolver::variant($family, $contact, $siteModel);
             $rendered = SmsTemplateRenderer::render($variant, $context);
 
-            return $rendered['text'];
+            return [$rendered['text'], TemplateProvenance::from($variant, $contact, $siteModel)];
         }
 
         $rawBody = (string) ($config['body'] ?? '');
 
-        return $tokens ? TokenResolver::resolve($rawBody, $context) : $rawBody;
+        return [$tokens ? TokenResolver::resolve($rawBody, $context) : $rawBody, null];
     }
 }

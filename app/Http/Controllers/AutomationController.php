@@ -16,6 +16,7 @@ use App\Models\AutomationNode;
 use App\Models\AutomationRun;
 use App\Models\Deal;
 use App\Models\Employee;
+use App\Support\Auth\Permission;
 use App\Support\Automation\AutomationWatchCache;
 use App\Support\Automation\CreateObjectValidator;
 use App\Support\Automation\RunLifecycle;
@@ -25,10 +26,9 @@ use App\Support\Automation\TriggerConfigValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class AutomationController extends Controller
 {
@@ -95,6 +95,9 @@ class AutomationController extends Controller
             TargetRecordValidator::assertValid($nodes, $edges);
             CreateObjectValidator::assertValid($nodes);
             TriggerConfigValidator::assertValid($nodes);
+            if ($this->statusIsActive($validated['status'] ?? AutomationStatus::Draft)) {
+                TriggerConfigValidator::assertSendableTemplates($nodes);
+            }
             $this->syncNodes($automation, $nodes);
             $this->syncEdges($automation, $edges);
 
@@ -152,6 +155,8 @@ class AutomationController extends Controller
             if (! array_key_exists('nodes', $validated)) {
                 $automation->loadMissing('nodes');
                 TriggerConfigValidator::assertAutomation($automation);
+            } else {
+                TriggerConfigValidator::assertSendableTemplates($validated['nodes']);
             }
         }
 
@@ -298,6 +303,15 @@ class AutomationController extends Controller
             AutomationResource::make($automation->fresh()->load(['nodes', 'edges.sourceNode', 'edges.targetNode'])),
             'Automation activated successfully.',
         );
+    }
+
+    private function statusIsActive(mixed $status): bool
+    {
+        if ($status instanceof AutomationStatus) {
+            return $status === AutomationStatus::Active;
+        }
+
+        return AutomationStatus::tryFrom((string) $status) === AutomationStatus::Active;
     }
 
     public function triggerFields(string $objectType): JsonResponse

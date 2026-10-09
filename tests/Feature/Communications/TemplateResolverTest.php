@@ -6,9 +6,13 @@ namespace Tests\Feature\Communications;
 
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
+use App\Enums\TemplateVersionStatus;
 use App\Models\Contact;
 use App\Models\Country;
 use App\Models\Site;
+use App\Models\TemplateFamily;
+use App\Models\TemplateVersion;
+use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\TemplateResolver;
 use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,5 +71,60 @@ class TemplateResolverTest extends TestCase
             'legacy_html' => '<p>fr</p>',
         ]]);
         $this->assertSame('fr', TemplateResolver::variant($familyFrOnly, $contactNoLocale, $siteDe)->locale);
+    }
+
+    public function test_variant_uses_published_and_ignores_a_newer_draft(): void
+    {
+        $family = TemplateFamilyFactory::published([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Published wins',
+            'purpose' => TemplatePurpose::General,
+        ], variants: [[
+            'locale' => 'en',
+            'subject' => 'Published',
+            'legacy_html' => '<p>published</p>',
+        ]]);
+
+        $current = $family->currentVersion()->firstOrFail();
+        $draft = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Draft,
+            'based_on_version_id' => $current->id,
+        ]);
+        $draft->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'Draft',
+            'legacy_html' => '<p>draft</p>',
+        ]);
+
+        $contact = Contact::factory()->create(['locale' => 'en']);
+
+        $this->assertSame('Published', TemplateResolver::variant($family->fresh(), $contact, null)->subject);
+        $this->assertSame('Draft', TemplateResolver::variantOf($draft, $contact, null)->subject);
+    }
+
+    public function test_variant_throws_when_only_a_draft_exists(): void
+    {
+        $family = TemplateFamily::factory()->create([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Draft only',
+            'purpose' => TemplatePurpose::General,
+        ]);
+        $draft = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 1,
+            'status' => TemplateVersionStatus::Draft,
+        ]);
+        $draft->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'Draft',
+            'legacy_html' => '<p>draft</p>',
+        ]);
+
+        $this->expectException(TemplateNotPublished::class);
+        TemplateResolver::variant($family, Contact::factory()->create(), null);
     }
 }

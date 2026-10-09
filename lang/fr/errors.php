@@ -104,6 +104,7 @@ return [
         'publish_empty' => 'Un brouillon doit contenir au moins une variante avant publication.',
         'version_missing' => 'Cette famille de modèles n’a pas de version.',
         'version_mismatch' => 'La version n’appartient pas à cette famille de modèles.',
+        'not_published' => 'Ce modèle n’a pas de version publiée et ne peut pas être envoyé.',
     ],
     'documents' => [
         'blocks_invalid' => 'Le document de blocs est invalide.',

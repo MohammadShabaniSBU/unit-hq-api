@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\TemplateAsset;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVersion;
+use Database\Factories\TemplateFamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -83,5 +84,63 @@ class AssetTest extends TestCase
         $variant->update(['blocks' => null]);
         $this->deleteJson('/api/template-assets/'.$assetId)->assertNoContent();
         $this->assertNull(TemplateAsset::query()->find($assetId));
+    }
+
+    public function test_asset_referenced_only_by_an_old_version_is_kept(): void
+    {
+        Storage::fake('template-assets');
+
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $upload = $this->post('/api/template-assets', [
+            'file' => UploadedFile::fake()->image('logo.png', 40, 40),
+        ], [
+            'Accept' => 'application/json',
+        ]);
+        $upload->assertCreated();
+        $assetId = (int) $upload->json('data.id');
+
+        $family = TemplateFamilyFactory::published([
+            'channel' => TemplateChannel::Email,
+            'name' => 'Historical image',
+            'purpose' => TemplatePurpose::General,
+        ], variants: [[
+            'locale' => 'en',
+            'subject' => 'Old',
+            'blocks' => [
+                'version' => 1,
+                'blocks' => [[
+                    'id' => 'i1',
+                    'type' => 'image',
+                    'params' => [
+                        'asset_id' => $assetId,
+                        'alt' => 'Logo',
+                        'width_percent' => 100,
+                    ],
+                ]],
+            ],
+        ]]);
+
+        $current = $family->currentVersion()->firstOrFail();
+        $next = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Draft,
+            'based_on_version_id' => $current->id,
+        ]);
+        $next->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'New',
+            'legacy_html' => '<p>no image</p>',
+        ]);
+        $next->update([
+            'status' => TemplateVersionStatus::Published,
+            'published_at' => now(),
+        ]);
+
+        $this->deleteJson('/api/template-assets/'.$assetId)->assertStatus(422);
+        $this->assertNotNull(TemplateAsset::query()->find($assetId));
     }
 }

@@ -11,8 +11,8 @@ use App\Models\SiteSenderIdentity;
 use App\Support\Communications\Channel;
 use App\Support\Communications\Contracts\SendsSms;
 use App\Support\Communications\Exceptions\ProviderRequestFailed;
-use App\Support\Communications\MessageStatus;
 use App\Support\Communications\Messages\SmsMessage;
+use App\Support\Communications\MessageStatus;
 use App\Support\Communications\OutboundMessageRecorder;
 use App\Support\Communications\Provider;
 use App\Support\Communications\ProviderResolver;
@@ -67,6 +67,7 @@ final class SmsSender
                 $dealId,
                 $interactionMetadata,
                 $thread,
+                $detail,
             );
         }
 
@@ -89,6 +90,7 @@ final class SmsSender
                     providerMessageId: null,
                     dealId: $dealId,
                     interactionMetadata: $interactionMetadata,
+                    detail: $detail,
                     thread: $thread,
                 );
             }
@@ -124,6 +126,7 @@ final class SmsSender
 
     /**
      * @param  array<string, mixed>|null  $interactionMetadata
+     * @param  array<string, mixed>|null  $detail
      */
     private function recordSuppressed(
         SmsMessage $message,
@@ -136,6 +139,7 @@ final class SmsSender
         ?int $dealId,
         ?array $interactionMetadata,
         ?MessageThread $thread,
+        ?array $detail = null,
     ): SendResult {
         $messageId = null;
         $interactionId = null;
@@ -156,7 +160,9 @@ final class SmsSender
                 providerMessageId: null,
                 dealId: $dealId,
                 interactionMetadata: $interactionMetadata,
-                detail: ['suppressed_reason' => $suppressedReason],
+                detail: array_merge($detail ?? [], [
+                    'suppressed_reason' => $suppressedReason,
+                ]),
                 thread: $thread,
             );
             $messageId = $recorded['message']->id;

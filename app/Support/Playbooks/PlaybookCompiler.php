@@ -300,6 +300,7 @@ final class PlaybookCompiler
                     'steps' => 'send_sms template_family_id must reference an SMS template family.',
                 ]);
             }
+            self::assertPublished($family);
 
             return [
                 'bodyType' => 'template',
@@ -387,6 +388,8 @@ final class PlaybookCompiler
         }
 
         if ($hasTemplate) {
+            self::assertPublishedId($templateFamilyId);
+
             return [
                 'subject' => $params['subject'] ?? null,
                 'bodyType' => 'template',
@@ -409,6 +412,70 @@ final class PlaybookCompiler
             'bodyType' => 'custom',
             'body' => $params['body'] ?? ['kind' => 'static', 'value' => 'Please pay your balance.'],
         ];
+    }
+
+    public static function assertPublishedTemplates(Playbook $playbook): void
+    {
+        $playbook->loadMissing('steps');
+
+        foreach ($playbook->steps as $step) {
+            if (! in_array($step->action, [PlaybookStepAction::SendEmail, PlaybookStepAction::SendSms], true)) {
+                continue;
+            }
+
+            $params = is_array($step->params) ? $step->params : [];
+            $templateFamilyId = $params['template_family_id'] ?? $params['email_template_id'] ?? null;
+            if ($templateFamilyId === null || $templateFamilyId === '') {
+                continue;
+            }
+
+            if ($step->action === PlaybookStepAction::SendSms) {
+                $family = is_numeric($templateFamilyId)
+                    ? TemplateFamily::query()->find((int) $templateFamilyId)
+                    : null;
+                if ($family === null) {
+                    throw ValidationException::withMessages([
+                        'steps' => "SMS template family [{$templateFamilyId}] was not found.",
+                    ]);
+                }
+                $channel = $family->channel instanceof TemplateChannel
+                    ? $family->channel
+                    : TemplateChannel::tryFrom((string) $family->channel);
+                if ($channel !== TemplateChannel::Sms) {
+                    throw ValidationException::withMessages([
+                        'steps' => 'send_sms template_family_id must reference an SMS template family.',
+                    ]);
+                }
+                self::assertPublished($family);
+
+                continue;
+            }
+
+            self::assertPublishedId($templateFamilyId);
+        }
+    }
+
+    private static function assertPublishedId(mixed $templateFamilyId): void
+    {
+        $family = is_numeric($templateFamilyId)
+            ? TemplateFamily::query()->find((int) $templateFamilyId)
+            : null;
+        if ($family === null) {
+            throw ValidationException::withMessages([
+                'steps' => "Template family [{$templateFamilyId}] has no published version.",
+            ]);
+        }
+
+        self::assertPublished($family);
+    }
+
+    private static function assertPublished(TemplateFamily $family): void
+    {
+        if ($family->currentVersion === null) {
+            throw ValidationException::withMessages([
+                'steps' => "Template family [{$family->id}] has no published version.",
+            ]);
+        }
     }
 
     /** @param  array<int, array<string, mixed>>  $nodes */

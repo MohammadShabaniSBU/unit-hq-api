@@ -16,10 +16,12 @@ use App\Support\Automation\RunContext;
 use App\Support\Automation\SubjectChain;
 use App\Support\Automation\TokenResolver;
 use App\Support\Communications\EmailTemplateRenderer;
+use App\Support\Communications\Exceptions\TemplateNotPublished;
 use App\Support\Communications\Messages\EmailAddress;
 use App\Support\Communications\Messages\EmailMessage;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
+use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplateResolver;
 use RuntimeException;
 
@@ -39,15 +41,31 @@ final class SendEmailHandler implements NodeHandler
             throw new RuntimeException('send_email could not resolve contact from subject chain');
         }
 
-        $channel = SubjectChain::primaryChannel($contact, ContactChannelType::Email);
-        if ($channel === null || trim($channel->value) === '') {
-            [$subject, $bodyHtml, $bodyText] = $this->resolveContent(
+        $site = SubjectChain::site($run);
+
+        try {
+            [$subject, $bodyHtml, $bodyText, $warnings, $provenance] = $this->resolveContent(
                 $config,
                 $context,
                 $contact,
-                SubjectChain::site($run),
+                $site,
             );
+        } catch (TemplateNotPublished) {
+            return [
+                'to' => null,
+                'subject' => null,
+                'body' => null,
+                'channel' => 'email',
+                'provider_message_id' => null,
+                'communication_account_id' => null,
+                'interaction_id' => null,
+                'message_id' => null,
+                'skipped_reason' => 'template_not_published',
+            ];
+        }
 
+        $channel = SubjectChain::primaryChannel($contact, ContactChannelType::Email);
+        if ($channel === null || trim($channel->value) === '') {
             return [
                 'to' => null,
                 'subject' => $subject,
@@ -61,14 +79,6 @@ final class SendEmailHandler implements NodeHandler
             ];
         }
 
-        [$subject, $bodyHtml, $bodyText, $warnings] = $this->resolveContent(
-            $config,
-            $context,
-            $contact,
-            SubjectChain::site($run),
-        );
-
-        $site = SubjectChain::site($run);
         if (! $site instanceof Site) {
             throw new RuntimeException('send_email requires a site for provider resolution');
         }
@@ -81,7 +91,7 @@ final class SendEmailHandler implements NodeHandler
         ];
         $dealId = $run->subject_type === 'deal' ? $run->subject_id : null;
 
-        $detail = $warnings !== [] ? ['token_warnings' => $warnings] : null;
+        $detail = $this->sendDetail($warnings, $provenance);
 
         $result = app(EmailSender::class)->send(
             new EmailMessage(
@@ -126,8 +136,25 @@ final class SendEmailHandler implements NodeHandler
     }
 
     /**
+     * @param  list<string>  $warnings
+     * @return array<string, mixed>|null
+     */
+    private function sendDetail(array $warnings, ?TemplateProvenance $provenance): ?array
+    {
+        $detail = [];
+        if ($warnings !== []) {
+            $detail['token_warnings'] = $warnings;
+        }
+        if ($provenance !== null) {
+            $detail['template'] = $provenance->toArray();
+        }
+
+        return $detail === [] ? null : $detail;
+    }
+
+    /**
      * @param  array<string, mixed>  $config
-     * @return array{0: string, 1: string, 2: string, 3: list<string>} subject, html, text, warnings
+     * @return array{0: string, 1: string, 2: string, 3: list<string>, 4: TemplateProvenance|null} subject, html, text, warnings, provenance
      */
     private function resolveContent(
         array $config,
@@ -147,15 +174,14 @@ final class SendEmailHandler implements NodeHandler
                 throw new RuntimeException('send_email template path requires template_family_id');
             }
 
-            $family = TemplateFamily::query()
-                ->with(['currentVersion.variants', 'draft.variants'])
-                ->find($templateId);
+            $family = TemplateFamily::query()->find($templateId);
             if ($family === null) {
                 throw new RuntimeException("send_email template family [{$templateId}] not found");
             }
 
             $siteModel = $site instanceof Site ? $site : null;
             $variant = TemplateResolver::variant($family, $contact, $siteModel);
+            $provenance = TemplateProvenance::from($variant, $contact, $siteModel);
 
             $subjectOverride = null;
             if (isset($config['subject'])) {
@@ -165,7 +191,7 @@ final class SendEmailHandler implements NodeHandler
 
             $rendered = EmailTemplateRenderer::render($variant, $context, $subjectOverride);
 
-            return [$rendered['subject'], $rendered['html'], $rendered['text'], $rendered['warnings']];
+            return [$rendered['subject'], $rendered['html'], $rendered['text'], $rendered['warnings'], $provenance];
         }
 
         $subject = TokenResolver::resolveValueSource($config['subject'] ?? null, $context);
@@ -174,7 +200,7 @@ final class SendEmailHandler implements NodeHandler
         $resolved = TokenResolver::resolveValueSource($config['body'] ?? null, $context);
         $body = is_string($resolved) ? $resolved : '';
 
-        return [$subject, $body, $body, []];
+        return [$subject, $body, $body, [], null];
     }
 
     /** @param  array<string, mixed>  $config */

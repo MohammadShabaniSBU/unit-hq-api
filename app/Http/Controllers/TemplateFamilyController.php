@@ -26,7 +26,9 @@ use App\Support\Communications\SendContext;
 use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\SiteLocale;
 use App\Support\Communications\TemplateBuilderContext;
+use App\Support\Communications\TemplateProvenance;
 use App\Support\Communications\TemplatePublishValidator;
+use App\Support\Communications\TemplateResolver;
 use App\Support\Documents\ContractDocumentRenderer;
 use App\Support\Documents\DocumentBlockDocument;
 use App\Support\RecordsActivity;
@@ -454,7 +456,7 @@ class TemplateFamilyController extends Controller
                 ]);
             }
 
-            $rendered = ContractDocumentRenderer::render($contract, $variant);
+            $rendered = ContractDocumentRenderer::render($contract, $this->openedVariant($variant, $contact, null));
 
             return response($rendered['html'], 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
@@ -462,7 +464,7 @@ class TemplateFamilyController extends Controller
         }
 
         $context = TemplateBuilderContext::for($contact, $contract);
-        $rendered = EmailTemplateRenderer::render($variant, $context, previewMarkers: true);
+        $rendered = EmailTemplateRenderer::render($this->openedVariant($variant, $contact, null), $context, previewMarkers: true);
 
         return response($rendered['html'], 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
@@ -510,7 +512,8 @@ class TemplateFamilyController extends Controller
         }
 
         $context = TemplateBuilderContext::for($contact, $contract);
-        $rendered = EmailTemplateRenderer::render($variant, $context, previewMarkers: false);
+        $opened = $this->openedVariant($variant, $contact, $site);
+        $rendered = EmailTemplateRenderer::render($opened, $context, previewMarkers: false);
 
         $message = new EmailMessage(
             to: [new EmailAddress($validated['to'])],
@@ -530,6 +533,7 @@ class TemplateFamilyController extends Controller
             detail: [
                 'token_warnings' => $rendered['warnings'],
                 'test_send' => true,
+                'template' => TemplateProvenance::from($opened, $contact, $site)->toArray(),
             ],
         );
 
@@ -668,6 +672,18 @@ class TemplateFamilyController extends Controller
             TemplateChannel::Document => DocumentBlockDocument::validate($blocks, $purpose),
             default => EmailBlockDocument::validate($blocks),
         };
+    }
+
+    /**
+     * Resolve the opened locale tab inside its own version, drafts included.
+     */
+    private function openedVariant(TemplateVariant $variant, Contact $contact, ?Site $site): TemplateVariant
+    {
+        $variant->loadMissing('version');
+        $pinned = clone $contact;
+        $pinned->locale = $variant->locale;
+
+        return TemplateResolver::variantOf($variant->version, $pinned, $site);
     }
 
     private function assertVariantBelongs(TemplateFamily $family, TemplateVariant $variant): void

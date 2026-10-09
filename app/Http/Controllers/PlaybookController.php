@@ -15,6 +15,7 @@ use App\Models\Automation;
 use App\Models\AutomationRun;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
+use App\Support\Auth\Permission;
 use App\Support\Automation\RunLifecycle;
 use App\Support\Playbooks\DebtPlaybookOverlap;
 use App\Support\Playbooks\PlaybookCompiler;
@@ -22,10 +23,9 @@ use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\Auth\Permission;
-use Illuminate\Support\Facades\Gate;
 
 class PlaybookController extends Controller
 {
@@ -213,6 +213,7 @@ class PlaybookController extends Controller
         }
 
         DebtPlaybookOverlap::assertCanActivate($playbook);
+        PlaybookCompiler::assertPublishedTemplates($playbook);
 
         DB::transaction(function () use ($playbook): void {
             $playbook->update(['is_active' => true]);

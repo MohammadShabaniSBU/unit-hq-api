@@ -7,6 +7,7 @@ namespace App\Support\Automation;
 use App\Enums\AutomationNodeType;
 use App\Models\Automation;
 use App\Models\AutomationNode;
+use App\Models\TemplateFamily;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -117,6 +118,62 @@ final class TriggerConfigValidator
         ])->all();
 
         self::assertValid($nodes);
+        self::assertSendableTemplates($nodes);
+    }
+
+    /**
+     * Live send_email / send_sms nodes must point at a published template family.
+     *
+     * @param  array<int, array<string, mixed>>  $nodes
+     */
+    public static function assertSendableTemplates(array $nodes): void
+    {
+        foreach ($nodes as $node) {
+            $type = $node['type'] ?? '';
+            $type = $type instanceof AutomationNodeType ? $type->value : (string) $type;
+            if (! in_array($type, [
+                AutomationNodeType::SendEmail->value,
+                AutomationNodeType::SendSms->value,
+            ], true)) {
+                continue;
+            }
+
+            $config = is_array($node['config'] ?? null) ? $node['config'] : [];
+            $templateId = self::templateFamilyId($config);
+            if ($templateId === null) {
+                continue;
+            }
+
+            $family = TemplateFamily::query()->find($templateId);
+            if ($family === null || $family->currentVersion === null) {
+                $nodeKey = (string) ($node['node_key'] ?? $node['id'] ?? '');
+                throw ValidationException::withMessages([
+                    'nodes' => "Node {$nodeKey}: template family [{$templateId}] has no published version.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private static function templateFamilyId(array $config): ?int
+    {
+        $raw = $config['template_family_id']
+            ?? $config['templateId']
+            ?? $config['template_id']
+            ?? $config['email_template_id']
+            ?? null;
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if ((is_string($raw) || is_float($raw)) && is_numeric($raw)) {
+            return (int) $raw;
+        }
+
+        return null;
     }
 
     /**

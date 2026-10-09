@@ -125,6 +125,7 @@ return [
         'publish_empty' => 'A draft must have at least one variant before it can be published.',
         'version_missing' => 'Template family has no version.',
         'version_mismatch' => 'The version does not belong to this template family.',
+        'not_published' => 'This template has no published version and cannot be sent.',
     ],
     'documents' => [
         'blocks_invalid' => 'The document block document is invalid.',
