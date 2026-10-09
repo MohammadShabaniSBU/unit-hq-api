@@ -58,5 +58,8 @@ Before writing code, consult the doc that matches the task:
   (invariant 72). A principal reaches `verified` only by consuming an OTP
   delivered to a channel already on the contact; demo origin is excluded
   from every metric (invariant 59).
+- Published template content is immutable (invariant 74). Edits land on the
+  single draft; publish freezes it. Current version is the highest published
+  `version_number`, never a stored pointer.
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

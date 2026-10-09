@@ -17,6 +17,7 @@ creates exactly one `messages` row. See invariant 38 in `09`.
 |---|---|
 | `message_threads` | One conversation per contact+channel (email subject reuse; SMS/call/WhatsApp by `channel_key`) |
 | `messages` | Direction, status, bodies (HTML sanitized at write), provider ids, `source` / `source_ref` |
+| `messages.detail.template` | Templated outbound only: `{family_id, version_id, version_number, variant_id, locale, preferred_locale}`. Inline sends write nothing (invariant 74) |
 | `message_attachments` | Private-disk files linked to a message |
 | `Threading::forOutbound` / `forInbound` | Outbound subject/number reuse; inbound References → subject → new (email) or `(contact, number)` (SMS/call/WhatsApp) |
 | `SendContext` | Callers pass provenance (`manual` / `offer` / `playbook` / `automation` / `system` / `ai_agent`) **and required `class`** (`transactional` / `marketing`) into `EmailSender` / `SmsSender` / `WhatsAppSender`. Agent replies go through `App\Support\Ai\AgentSend` with `source = ai_agent` (invariant 69) — never a direct `messages` insert |
@@ -83,6 +84,22 @@ Mirrors site-over-org preference:
 4. Archived site → `ChannelNotConfigured::siteArchived()` (credentials kept, sending refused)
 
 Orchestration lives in `App\Support\Communications\Senders\EmailSender` / `SmsSender` / `WhatsAppSender` (same tier as `ContractBilling` — **no** `app/Services/`). WhatsApp session sends refuse locally when the 24h window is closed; template sends skip the window but require a live `approved` registry row and a `whatsapp` contact channel (phone alone is not consent).
+
+### Template families (S29)
+
+Email, SMS, and contract documents share one stack. WhatsApp does not — it keeps the registry below.
+
+```
+template_families (identity) → template_versions (draft | published) → template_variants (locale content)
+```
+
+- At most one draft per family (partial unique index). Publish freezes that draft and it becomes the next version. Restore copies an older published version into a new draft; nothing is unpublished or reordered.
+- "Current" is the highest published `version_number` (`TemplateFamily::currentVersion()`). It is not a stored pointer (invariant 74).
+- Published versions and their variants are immutable: `PublishedTemplateImmutable` in Eloquent, and Postgres triggers `tver_reject_published_mutation` / `tv_reject_published_mutation`. A `PUT` on the current published variant opens the next draft. A `PUT` while a draft already exists, a `PUT` on an older published version, and a `DELETE` of published content return 422.
+- `template_variants.template_family_id` stays, denormalised and immutable, so existing family lookups do not change.
+- **Resolver.** `TemplateResolver::variant()` reads the latest published version and throws `TemplateNotPublished` when none exists. `TemplateResolver::variantOf()` is the pinned, preview, and test-send path. Both share the same locale ladder (contact locale → site country language → `en` → any variant).
+- **Who follows, who pins.** Automations, playbooks, and inbox sends follow the latest published version. Contract documents store `template_version_id` (campaigns will too). Either way, a templated outbound `messages` row records `detail.template`.
+- A family with no published version is not sendable and is hidden from live pickers. Generating a contract document returns `errors.documents.template_not_published`. Activating an automation or playbook that names such a family is refused. At send time the step succeeds with `skipped_reason: template_not_published`.
 
 ### WhatsApp template registry (S13-03)
 

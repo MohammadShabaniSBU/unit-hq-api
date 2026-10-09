@@ -124,6 +124,7 @@
   answers or non-answers live in S28-05 findings. Plan for no. Transfer from
   a Vocal Bridge number to an approved Aircall destination; Aircall stays
   integrated through webhooks.
+- **Template versioning (S29, V1–V10).** Versions sit on the family: every locale publishes together. No backfill — original migrations and seeders create a published v1 (`template_version_id` is `NOT NULL` from day one). Status stores only `draft` / `published`; current is the highest published `version_number`, never a pointer. Rollback restores an old version as a new draft, then publishes. At most one draft per family. Published versions and their variants are immutable in Eloquent and in Postgres (invariant 74). Automations, playbooks, and inbox follow the latest published version; contract documents (and later campaigns) pin `template_version_id`. A family with no published version is not sendable. WhatsApp stays on `whatsapp_templates` and only gains `supersedes_id`. `template_variants.template_family_id` stays denormalised and immutable. Table: `roadmap/sprint-29-template-versioning/README.md`.
 
 ## Blocking for S23
 
@@ -177,6 +178,10 @@
   Agent `AgentChannel::Webchat` is a profile today; the comms `Channel` enum
   has no `webchat` case yet.
 - RAG / vector retrieval for agent knowledge (D-AI-5).
+- Separate `template.publish` permission. v1 publish uses `template.manage`.
+- Visual diff between template versions. History is read-only views, not a diff.
+- Migrating WhatsApp into `template_families`. Meta approval already makes approved rows immutable; lineage is `whatsapp_templates.supersedes_id` (S29 V9).
+- Per-site template overrides (deferred since S13; not built).
 
 ## Gestor confirmations (needed before S04 ends, not before S03 starts)
 

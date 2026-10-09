@@ -111,14 +111,14 @@ restriction.
 |---|---|---|
 | Create | `POST /api/playbooks` | Creates the playbook (`is_active: false`) and immediately compiles it (steps included in the same request) |
 | Update | `PUT/PATCH /api/playbooks/{playbook}` | Updates `name`/`enrolment_filters`/`steps`; recompiles whenever any of those changed. Refused once `archived_at` is set |
-| Activate | `POST /api/playbooks/{playbook}/activate` | `DebtPlaybookOverlap` check (debt kind only) → `is_active = true` → compile if never compiled → set the compiled `Automation.status = active` |
+| Activate | `POST /api/playbooks/{playbook}/activate` | `DebtPlaybookOverlap` check (debt kind only) → refuse when a `send_email` or `send_sms` step names a family with no published version (`PlaybookCompiler::assertPublishedTemplates`) → `is_active = true` → compile if never compiled → set the compiled `Automation.status = active` |
 | Deactivate | `POST /api/playbooks/{playbook}/deactivate` | `is_active = false`, compiled `Automation.status = inactive`. New enrolments stop; in-flight runs are **not** touched |
 | Exit enrolments | `POST /api/playbooks/{playbook}/exit-enrolments` | Cancels every `pending`/`running`/`waiting` run across **all** automation versions this playbook has ever compiled, cause `superseded` (`RunLifecycle::cancel`) |
 | Archive | `DELETE /api/playbooks/{playbook}` | Soft-archives (`archived_at`), forces `is_active = false`, and deactivates the compiled automation |
 | List enrolments | `GET /api/playbooks/{playbook}/enrolments` | Paginated `AutomationRun`s across the playbook's full compiled-automation lineage, filterable `status=active\|exited` |
 | List / show | `GET /api/playbooks`, `GET /api/playbooks/{playbook}` | List (filter `kind`/`search`); show includes a live `active_enrolment_count` |
 
-Both create and update require `Permission::PlaybookManage`.
+Both create and update require `Permission::PlaybookManage`. Create and update compile through `PlaybookCompiler`, which applies the same unpublished-family refusal. In-flight enrolments follow the latest published version; they do not pin. The next send after publish uses the new version. At send time `TemplateNotPublished` succeeds the step with `skipped_reason: template_not_published`.
 
 ## Enrolment summary (`PlaybookEnrolmentSummary`)
 

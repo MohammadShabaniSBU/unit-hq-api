@@ -276,6 +276,78 @@ class TemplateVersionLifecycleTest extends TestCase
         $this->assertNotNull(TemplateVersion::query()->find($publishedId));
     }
 
+    public function test_delete_published_variant_is_refused(): void
+    {
+        $this->actingManager();
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
+
+        $this->deleteJson("/api/template-families/{$family->id}/variants/{$variant->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.variant.0', __('errors.templates.version_published'));
+
+        $this->assertNotNull(TemplateVariant::query()->find($variant->id));
+        $this->assertSame('Pay', $variant->fresh()->subject);
+    }
+
+    public function test_put_published_variant_is_refused_while_a_draft_exists(): void
+    {
+        $this->actingManager();
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'Pay',
+            'legacy_html' => '<p>pay</p>',
+        ]);
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
+
+        $this->postJson("/api/template-families/{$family->id}/versions")->assertCreated();
+
+        $this->putJson("/api/template-families/{$family->id}/variants/{$variant->id}", [
+            'subject' => 'Changed',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.variant.0', __('errors.templates.version_published'));
+
+        $this->assertSame('Pay', $variant->fresh()->subject);
+    }
+
+    public function test_put_on_an_older_published_version_is_refused(): void
+    {
+        $this->actingManager();
+        $family = $this->publishedEmail([
+            'locale' => 'en',
+            'subject' => 'v1',
+            'legacy_html' => '<p>1</p>',
+        ]);
+        $older = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
+
+        $current = TemplateVersion::query()->create([
+            'template_family_id' => $family->id,
+            'version_number' => 2,
+            'status' => TemplateVersionStatus::Published,
+            'published_at' => now(),
+        ]);
+        $current->variants()->create([
+            'template_family_id' => $family->id,
+            'locale' => 'en',
+            'subject' => 'v2',
+            'legacy_html' => '<p>2</p>',
+        ]);
+
+        $this->putJson("/api/template-families/{$family->id}/variants/{$older->id}", [
+            'subject' => 'rewritten',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.variant.0', __('errors.templates.version_published'));
+
+        $this->assertSame('v1', $older->fresh()->subject);
+        $this->assertSame('v2', $family->currentVersion()->firstOrFail()->variants()->firstOrFail()->subject);
+    }
+
     private function actingManager(): Employee
     {
         $employee = Employee::factory()->manager()->create();

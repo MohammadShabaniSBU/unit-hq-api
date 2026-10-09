@@ -410,6 +410,18 @@
     country is locked. `sites.country_id` stays (D2) and is constant;
     `sites.timezone` and `SiteClock` stay authoritative for civil dates (D8);
     `prices.currency` stays the only authority for denomination (D1).
+74. **Published template content is immutable.** `template_versions` with
+    `status = published` and their `template_variants` are never updated or
+    deleted. Edits happen on the single draft per family; publishing creates
+    the next version. "Current version" is derived (highest published
+    `version_number` via `TemplateFamily::currentVersion()`), never stored.
+    Live senders resolve the current version through `TemplateResolver::variant()`;
+    pinning consumers (contract documents, campaigns) store `template_version_id`
+    and resolve through `TemplateResolver::variantOf()`. Every templated outbound
+    message records its version in `messages.detail.template`. Enforced by
+    `PublishedTemplateImmutable` on `TemplateVersion` and `TemplateVariant`, and
+    by the Postgres triggers `tver_reject_published_mutation` and
+    `tv_reject_published_mutation` (`published_template_immutable`).
 
 ## Code conventions
 

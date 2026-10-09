@@ -24,11 +24,11 @@
 
 ## Test checklist
 
-- [ ] Factory helper creates family → published v1 → variants; seeders use it.
-- [ ] Immutability: API 422, Eloquent exception, Postgres trigger (pgsql-only test group).
-- [ ] Lifecycle: draft create/409, publish validations, discard, restore.
-- [ ] Resolver: current vs pinned, ladder unchanged, `TemplateNotPublished`.
-- [ ] Handler tests: email + SMS record `detail.template`; mid-run publish switches content.
-- [ ] Usage counter counts `send_sms` and contract documents.
-- [ ] Asset GC keeps assets referenced only by old versions.
-- [ ] `RouteAuthCoverageTest` / `PermissionCoverageTest` pass with new routes.
+- [x] Factory helper creates family → published v1 → variants; seeders use it.
+- [x] Immutability: API 422, Eloquent exception, Postgres trigger (pgsql-only test group).
+- [x] Lifecycle: draft create/409, publish validations, discard, restore.
+- [x] Resolver: current vs pinned, ladder unchanged, `TemplateNotPublished`.
+- [x] Handler tests: email + SMS record `detail.template`; mid-run publish switches content.
+- [x] Usage counter counts `send_sms` and contract documents.
+- [x] Asset GC keeps assets referenced only by old versions.
+- [x] `RouteAuthCoverageTest` / `PermissionCoverageTest` pass with new routes.

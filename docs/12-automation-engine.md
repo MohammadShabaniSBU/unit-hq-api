@@ -34,8 +34,8 @@ reading a prior send's `to`/`channel`) relies on.
 | `trigger.email_received` | trigger | Modeled (type exists, `TriggerConfigValidator` accepts it) but **activation is blocked** — no inbound webhook handler wires it yet (`10-open-decisions.md`) |
 | `action.update_object` | action | `UpdateObjectHandler` — resolves a target record (`TokenResolver::resolveTargetRecord`) and applies field updates (`ValueSource`: `static`/`dynamic`) |
 | `action.create_object` | action | `CreateObjectHandler` — inserts a new record; allowlisted object types only (below) |
-| `action.send_email` | action | `SendEmailHandler` — template (`TemplateFamily` + `TemplateResolver` locale ladder) or inline subject/body (XOR), sent via `EmailSender` |
-| `action.send_sms` | action | `SendSmsHandler` — template or inline body (XOR), sent via `SmsSender` |
+| `action.send_email` | action | `SendEmailHandler` — template (`TemplateFamily` + `TemplateResolver::variant()` on the latest published version) or inline subject/body (XOR), sent via `EmailSender`. `TemplateNotPublished` succeeds the step with `skipped_reason: template_not_published` |
+| `action.send_sms` | action | `SendSmsHandler` — template or inline body (XOR), sent via `SmsSender`. Same `template_not_published` skip as email |
 | `action.send_whatsapp_template` | action | `SendWhatsAppTemplateHandler` — approved-template send via `WhatsAppSender::sendResolvedTemplate`; category gate when the run belongs to a playbook (`WhatsAppPlaybookCategory`) |
 | `action.record_notice` | action | `RecordNoticeHandler` — writes a `ContractNotice` (and, when the run subject is a delinquency case, a `DelinquencyStep` timeline row); can pair with a prior send step via `sent_from_node_key` to copy `sent_at`/`channel`/`to` when that send actually delivered |
 | `logic.branch` | condition | `BranchHandler` — evaluates a filter group against the **trigger snapshot** (never live) and returns `handle: 'true'|'false'` for the executor to pick an outgoing edge |
@@ -176,7 +176,7 @@ All under the authenticated `api.php` group.
 | `PUT/PATCH` | `/api/automations/{automation}` | Update — same bulk `nodes`/`edges` replace; refused when `playbook_id` is set (compiled automations aren't hand-editable) |
 | `DELETE` | `/api/automations/{automation}` | Archive (`archived_at`), not a hard delete |
 | `POST` | `/api/automations/{automation}/archive` \| `/unarchive` | Explicit archive lifecycle endpoints |
-| `POST` | `/api/automations/{automation}/activate` \| `/deactivate` | Activate re-validates the graph (`TriggerConfigValidator::assertAutomation`, target/create-object validators) before flipping to `active` |
+| `POST` | `/api/automations/{automation}/activate` \| `/deactivate` | Activate re-validates the graph (`TriggerConfigValidator::assertAutomation`, target/create-object validators) before flipping to `active`. Activation is refused when a `send_email` or `send_sms` node names a family with no published version (`assertSendableTemplates`) |
 | `GET` | `/api/automations/trigger-fields/{objectType}` | `TriggerableFields` schema for building trigger/condition pickers per object type |
 | `GET` | `/api/automations/{automation}/runs` | Run history, filterable by `status`/`subject_type`/`subject_id`/date range |
 | `GET` | `/api/automations/{automation}/runs/{run}` | Run detail incl. steps |

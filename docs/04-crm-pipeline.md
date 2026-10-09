@@ -107,7 +107,7 @@ The operational and billing anchor. Creation accepts `signature_mode: immediate 
 - **Rate changes**: `ContractRateChangeController` (`POST contracts/{contract}/rate-changes`) — schedules an effective-dated rate change on an active contract.
 - **Contract notices**: `ContractNotice` model is an append-only audit trail (rate changes, delinquency, move-out notices, etc.), never updated or deleted — `POST contract-notices/{contractNotice}/mark-sent` records the send.
 - **Autopay**: `GET`/`PUT contracts/{contract}/autopay` and `POST contracts/{contract}/autopay/retry` — per-contract autopay enrollment and manual retry of a failed charge.
-- **Contract documents**: `ContractDocument` model — generated contract paperwork (`GET`/`POST contracts/{contract}/documents`, plus `/preview`, `/regenerate`, `/pdf`), distinct from the e-sign envelope flow above.
+- **Contract documents**: `ContractDocument` model — generated contract paperwork (`GET`/`POST contracts/{contract}/documents`, plus `/preview`, `/regenerate`, `/pdf`), distinct from the e-sign envelope flow above. Generate stores `template_version_id` of the published version that produced the PDF. Regenerate resolves the latest published version and records that id. A family with only a draft cannot generate (`errors.documents.template_not_published`).
 
 ### Billing snapshots
 
