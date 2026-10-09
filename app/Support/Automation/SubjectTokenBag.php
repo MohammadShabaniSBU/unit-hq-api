@@ -10,7 +10,10 @@ use App\Models\AutomationRun;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
+use App\Support\Communications\ContactChannelMatcher;
+use App\Support\Marketing\PreferenceToken;
 
 /**
  * Friendly token roots for playbook sends: contact.*, contract.*, deal.*, pay_link.
@@ -41,6 +44,8 @@ final class SubjectTokenBag
             'deal.id',
             'deal.status',
             'pay_link',
+            'preferences_url',
+            'unsubscribe_url',
         ];
     }
 
@@ -114,7 +119,7 @@ final class SubjectTokenBag
 
         $bag['pay_link'] = '[pay-link]';
 
-        return $bag;
+        return array_replace($bag, self::marketingUrls($contact));
     }
 
     /**
@@ -156,6 +161,10 @@ final class SubjectTokenBag
         // S10 gap: real payment-request links land later; keep a stable placeholder.
         $bag['pay_link'] = '[pay-link]';
 
+        if ($contact instanceof Contact) {
+            $bag = array_replace($bag, self::marketingUrls($contact));
+        }
+
         return $bag;
     }
 
@@ -176,6 +185,8 @@ final class SubjectTokenBag
                 'company' => 'Analytical Engines',
             ],
             'pay_link' => 'https://example.test/pay',
+            'preferences_url' => 'https://example.test/preferences/sample',
+            'unsubscribe_url' => 'https://example.test/unsubscribe/sample',
         ];
 
         if ($purpose === TemplatePurpose::Debt || $purpose === TemplatePurpose::Contract) {
@@ -196,5 +207,20 @@ final class SubjectTokenBag
         }
 
         return $bag;
+    }
+
+    /**
+     * Preference and unsubscribe links for this recipient. Absent when there is no email.
+     *
+     * @return array<string, string>
+     */
+    private static function marketingUrls(Contact $contact): array
+    {
+        $email = ContactChannelMatcher::normalizeEmail((string) ($contact->email ?? ''));
+        if ($email === '') {
+            return [];
+        }
+
+        return PreferenceToken::templateUrls($contact->id, Channel::Email, $email);
     }
 }

@@ -8,6 +8,7 @@ use App\Enums\ContactChannelType;
 use App\Enums\CredentialStatus;
 use App\Events\ChannelDeliveryFailed;
 use App\Models\Activity;
+use App\Models\ChannelSuppression;
 use App\Models\CommunicationAccount;
 use App\Models\ConsentEvent;
 use App\Models\ConsentText;
@@ -209,10 +210,12 @@ class ConsentLedgerTest extends TestCase
         }
 
         $before = ConsentEvent::query()->count();
+        $suppressions = ChannelSuppression::query()->count();
         $token = UnsubscribeToken::issue('shared@example.com');
 
-        $this->getJson('/api/comms/unsubscribe/'.$token)->assertOk();
+        $this->getJson('/api/comms/unsubscribe/'.$token)->assertRedirect();
         $this->assertSame($before, ConsentEvent::query()->count());
+        $this->assertSame($suppressions, ChannelSuppression::query()->count());
         $this->assertTrue(ConsentState::isGranted($primary->id, Channel::Email, $this->newsletter->id));
 
         $this->post('/api/comms/unsubscribe/'.$token)->assertOk();
@@ -276,6 +279,7 @@ class ConsentLedgerTest extends TestCase
             ),
         );
         $this->assertSame('message', $result['outcome']);
+        $messageId = $result['message']->id;
         $this->assertFalse(ConsentState::isGranted($contact->id, Channel::Sms, $this->promotions->id));
         $this->assertTrue(ConsentState::isGranted($contact->id, Channel::Email, $this->newsletter->id));
         $this->assertSame(
@@ -288,7 +292,7 @@ class ConsentLedgerTest extends TestCase
 
         $beforeBounce = ConsentEvent::query()->count();
         event(new ChannelDeliveryFailed(
-            messageId: 1,
+            messageId: $messageId,
             channel: Channel::Email,
             address: 'renter@example.com',
             isPermanent: true,
@@ -298,7 +302,7 @@ class ConsentLedgerTest extends TestCase
         $this->assertTrue(ConsentState::isGranted($contact->id, Channel::Email, $this->newsletter->id));
 
         event(new ChannelDeliveryFailed(
-            messageId: 2,
+            messageId: $messageId,
             channel: Channel::Email,
             address: 'renter@example.com',
             isPermanent: true,

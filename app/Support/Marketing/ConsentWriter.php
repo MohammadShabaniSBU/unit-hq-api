@@ -307,7 +307,7 @@ final class ConsentWriter
     /**
      * @return list<int>
      */
-    private static function contactIdsForAddress(Channel $channel, string $address): array
+    public static function contactIdsForAddress(Channel $channel, string $address): array
     {
         $normalized = ContactChannelMatcher::normalize($channel, $address);
         if ($normalized === '') {

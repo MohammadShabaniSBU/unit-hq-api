@@ -23,6 +23,7 @@ final class PublicApiAllowlist
         'api/webhooks/access/{webhookToken}',
         'api/webhooks/{provider}/{webhookUrlToken}',
         'api/webhooks/{provider}/{webhookUrlToken}/inbound',
+        'api/comms/preferences/{token}',
         'api/comms/unsubscribe/{token}',
         'api/public/template-assets/{hash}/{filename}',
         'api/offers/token/{token}',

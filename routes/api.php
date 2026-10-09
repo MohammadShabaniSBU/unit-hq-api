@@ -27,8 +27,15 @@ Route::post('webhooks/access/{webhookToken}', Webhooks\AccessWebhookController::
 Route::post('webhooks/{provider}/{webhookUrlToken}', Webhooks\DeliveryWebhookController::class);
 Route::post('webhooks/{provider}/{webhookUrlToken}/inbound', Webhooks\DeliveryWebhookController::class);
 
-// List-Unsubscribe floor — public HMAC token, not Sanctum.
-Route::match(['get', 'post'], 'comms/unsubscribe/{token}', Controllers\UnsubscribeController::class);
+// Preference center — public HMAC (PreferenceToken or legacy UnsubscribeToken). GET does not write.
+Route::get('comms/preferences/{token}', [Controllers\PreferenceCenterController::class, 'show'])
+    ->middleware('throttle:30,1');
+Route::post('comms/preferences/{token}', [Controllers\PreferenceCenterController::class, 'update'])
+    ->middleware('throttle:30,1');
+
+// List-Unsubscribe floor — public HMAC token, not Sanctum. GET redirects; POST is RFC 8058 one-click.
+Route::match(['get', 'post'], 'comms/unsubscribe/{token}', Controllers\UnsubscribeController::class)
+    ->middleware('throttle:30,1');
 
 // Template email assets — content-hash public URLs for mailbox clients.
 Route::get('public/template-assets/{hash}/{filename}', [Controllers\TemplateAssetController::class, 'showPublic'])

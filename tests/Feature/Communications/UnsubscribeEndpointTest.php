@@ -80,6 +80,12 @@ class UnsubscribeEndpointTest extends TestCase
 
         $token = UnsubscribeToken::issue('bulk@example.com');
 
+        $this->get('/api/comms/unsubscribe/'.$token)->assertRedirect();
+        $this->assertSame(
+            0,
+            ChannelSuppression::query()->where('address', 'bulk@example.com')->count(),
+        );
+
         $this->post("/api/comms/unsubscribe/{$token}")
             ->assertOk();
 

@@ -19,13 +19,15 @@ final class RoutePermissions
         return [
 
             // ===== Public (17) =====
-            // PUBLIC  'GET /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC
+            // PUBLIC  'GET /api/comms/preferences/{token}'  // PreferenceCenterController@show — preference HMAC, no writes
+            // PUBLIC  'GET /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC, redirect only
             // PUBLIC  'GET /api/legal-entities/{legal_entity}/stripe/public-key'  // LegalEntityStripeController@publicKey — Stripe publishable key (not secret)
             // PUBLIC  'GET /api/offers/token/{token}'  // OfferController@showByToken — offers.token crypto link
             // PUBLIC  'GET /api/offers/token/{token}/options/{offerOption}/map'  // OfferController@mapByToken — floor SVG for a token-scoped option
             // PUBLIC  'GET /api/pay/{token}'  // PublicPaymentController@show — payment-request token
             // PUBLIC  'GET /api/public/template-assets/{hash}/{filename}'  // TemplateAssetController@showPublic — content-hash public URL
-            // PUBLIC  'POST /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC
+            // PUBLIC  'POST /api/comms/preferences/{token}'  // PreferenceCenterController@update — preference HMAC
+            // PUBLIC  'POST /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — RFC 8058 one-click HMAC
             // PUBLIC  'POST /api/login'  // EmployeeAuthController@login — issues Sanctum token
             // PUBLIC  'POST /api/offer-options/{offerOption}/select'  // OfferOptionController@select — anonymous accept after token load
             // PUBLIC  'POST /api/pay/{token}/intent'  // PublicPaymentController@intent — payment-request token

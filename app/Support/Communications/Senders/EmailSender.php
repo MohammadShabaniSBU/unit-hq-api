@@ -22,6 +22,7 @@ use App\Support\Communications\SendClass;
 use App\Support\Communications\SendContext;
 use App\Support\Communications\SuppressionWriter;
 use App\Support\Communications\UnsubscribeToken;
+use App\Support\Marketing\PreferenceToken;
 
 final class EmailSender
 {
@@ -95,7 +96,14 @@ final class EmailSender
         }
 
         if ($context->class === SendClass::Marketing && $toAddress !== '') {
-            $url = UnsubscribeToken::url($toAddress);
+            $url = $contact !== null
+                ? PreferenceToken::unsubscribeUrl(
+                    $contact->id,
+                    Channel::Email,
+                    $toAddress,
+                    self::listIdFromContext($context),
+                )
+                : UnsubscribeToken::url($toAddress);
             $headers = $message->headers;
             $headers['List-Unsubscribe'] = '<'.$url.'>';
             $headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
@@ -210,5 +218,17 @@ final class EmailSender
             interactionId: $interactionId,
             suppressedReason: $suppressedReason,
         );
+    }
+
+    private static function listIdFromContext(SendContext $context): ?int
+    {
+        $ref = $context->sourceRef;
+        if (! is_array($ref) || ! isset($ref['subscription_list_id'])) {
+            return null;
+        }
+
+        $listId = (int) $ref['subscription_list_id'];
+
+        return $listId > 0 ? $listId : null;
     }
 }
