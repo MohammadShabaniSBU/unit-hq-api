@@ -89,6 +89,71 @@ One row per funnel transition:
 Columns: `event_type`, `occurred_at`, `site_id` (nullable when unresolved),
 `subject_type`, `subject_id`.
 
+### `analytics.v_consent_state`
+
+One row per (contact, channel, subscription list): the latest `consent_events`
+row, ordered by `occurred_at` then `id`. Derived state (invariants 5 and 75),
+never stored, and never read by `app/`.
+
+| Column | Notes |
+|--------|--------|
+| `contact_id`, `channel`, `subscription_list_id` | Grain |
+| `list_key` | `subscription_lists.key` (`metabase_ro` cannot read `public`) |
+| `action` | `granted`, `pending`, or `withdrawn` |
+| `source` | How the latest event was recorded |
+| `occurred_at` | Timestamp of that event |
+
+`evidence` is absent. It holds IP and wording-adjacent payload, and redaction
+nulls it on the ledger. Current membership is `action = granted`. Grants and
+withdrawals over time are `analytics.v_consent_events`, not this view.
+
+### `analytics.v_consent_events`
+
+One row per `consent_events` row. Derived (invariants 5 and 75). `app/` does
+not query it. List growth (grants minus withdrawals per list) reads this view.
+
+| Column | Notes |
+|--------|--------|
+| `id` | Ledger row |
+| `contact_id`, `channel`, `subscription_list_id` | Who, channel, list |
+| `list_key` | `subscription_lists.key` |
+| `action` | `granted`, `pending`, or `withdrawn` |
+| `source` | How the event was recorded |
+| `occurred_at` | Timestamp of that event |
+
+`evidence` is absent, same reason as `v_consent_state`. `pending` is neither
+a grant nor a withdrawal.
+
+### `analytics.v_campaigns`
+
+One row per campaign. Derived. No stored counters (invariant 84). A campaign
+may pin one template version per channel, so template columns are split by
+channel. Channel-level recipient rows are `v_campaign_recipients`.
+
+| Column | Notes |
+|--------|--------|
+| `id`, `type`, `name`, `status` | `campaign`, `newsletter`, or `announcement` |
+| `subscription_list_id`, `list_key` | Null for an announcement |
+| `site_ids` | JSON array. Empty means company-wide |
+| `approved_at` | Null when approval was not required |
+| `window_start`, `window_end` | Earliest `campaign_sends.scheduled_at`, latest `completed_at` |
+| `email_template_family_id`, `email_template_version_id` | Email send pin. Null when that channel is absent |
+| `sms_template_family_id`, `sms_template_version_id` | SMS send pin. Null when that channel is absent |
+
+### `analytics.v_campaign_recipients`
+
+One row per `campaign_recipients` row. Delivery flags are derived from
+`messages.delivery_events` (`status` of `delivered`, `bounced`, `opened`,
+`clicked`, or `spam` for complained). Address, body, and `error` are absent.
+
+| Column | Notes |
+|--------|--------|
+| `campaign_id`, `campaign_send_id`, `contact_id` | Grain |
+| `channel` | `email` or `sms` |
+| `template_family_id`, `template_version_id` | Pin on that send |
+| `status`, `skip_reason`, `processed_at` | Recipient outcome |
+| `delivered`, `bounced`, `opened`, `clicked`, `complained` | Boolean. False when no message or no matching event |
+
 ## Known additive follow-ups
 
 These are gaps, not defects in the objects that ship:

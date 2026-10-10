@@ -56,6 +56,10 @@ enum Permission: string
     case ConsentManage = 'consent.manage';
     case MarketingView = 'marketing.view';
     case MarketingManage = 'marketing.manage';
+    case CampaignView = 'campaign.view';
+    case CampaignManage = 'campaign.manage';
+    case CampaignApprove = 'campaign.approve';
+    case AnnouncementSend = 'announcement.send';
 
     // Operations
     case AutomationView = 'automation.view';

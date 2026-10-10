@@ -10,6 +10,12 @@ The native **dashboard** (`GET /api/reports/dashboard`) is card-zoom of these
 same definitions — one computation class, two zoom levels. It introduces no new
 terms.
 
+Campaign performance and list growth are not `native_key` pages. They are
+external BI over `analytics.v_campaigns`, `analytics.v_campaign_recipients`,
+and `analytics.v_consent_events`. The operator campaign report is
+`GET /api/campaigns/{id}/report` (`CampaignReport`), still derived
+(invariant 84).
+
 Spanish terms (ES) sit beside English so the operator and accountant share one
 glossary. Review Spanish in the PR that introduces this doc (`es-reviewed`).
 
@@ -347,6 +353,47 @@ occupancy active at E.
 | Overdue | Vencido | Open amount past due at that checkpoint. |
 | Delinquent | En morosidad | More than 30 days overdue. |
 | Antigüedad | Antigüedad | Same ageing buckets as the Ageing report. |
+
+## Campaign performance / Rendimiento de campañas
+
+External BI, grouped by month and campaign type. Not an Insights `native_key`.
+The in-app report on a campaign is `GET /api/campaigns/{id}/report`. Both
+read recipients, delivery events, and consent withdrawals. Nothing is stored
+on `campaigns` (invariant 84).
+
+Month is the site-agnostic `window_start` on `analytics.v_campaigns` (earliest
+send `scheduled_at`). Recipient outcomes and delivery flags are
+`analytics.v_campaign_recipients`.
+
+| Term | ES | Meaning |
+|---|---|---|
+| Targeted | Destinatarios | Count of recipient rows. |
+| Sent | Enviados | `status = sent`. |
+| Skipped | Omitidos | `status = skipped`, split by `skip_reason`. |
+| Failed | Fallidos | `status = failed`. |
+| Delivered | Entregados | A `delivered` event on the linked message. |
+| Opened | Aperturas | An `opened` event. Approximate (mailbox privacy). |
+| Bounced | Rebotados | A `bounced` event. |
+| Unsubscribed | Bajas | A `withdrawn` consent event whose evidence names a campaign message, or a one-click from that campaign. The BI view does not carry evidence; the in-app report does this count. |
+
+While the campaign is `sending`, targeted = sent + skipped + failed + pending
++ claimed. After `sent`, pending and claimed are zero. A delivery webhook
+after completion changes the next read.
+
+## List growth / Crecimiento de listas
+
+External BI over `analytics.v_consent_events`. Not an Insights `native_key`.
+Current membership stays `analytics.v_consent_state` (`action = granted`).
+
+For a list and a month, growth is the count of `action = granted` minus the
+count of `action = withdrawn`, using `occurred_at`. `pending` is neither.
+`evidence` is not on the view.
+
+| Term | ES | Meaning |
+|---|---|---|
+| Grant | Alta | A `granted` event in the month. |
+| Withdrawal | Baja | A `withdrawn` event in the month. |
+| Growth | Crecimiento | Grants minus withdrawals. |
 
 ## Cross-cutting rules
 

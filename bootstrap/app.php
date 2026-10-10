@@ -2,9 +2,9 @@
 
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\RejectCountryMismatch;
-use App\Support\Country\CountryProfiles;
 use App\Support\Auth\DenialContext;
 use App\Support\Auth\PermissionDeniedException;
+use App\Support\Country\CountryProfiles;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -44,6 +44,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ai-usage:sweep')->everyFifteenMinutes()->skip($skipMismatch);
         $schedule->command('automations:run-scheduled')->everyMinute()->skip($skipMismatch);
         $schedule->command('automations:resume-waiting')->everyMinute()->skip($skipMismatch);
+        $schedule->command('campaigns:dispatch-due')->everyMinute()->withoutOverlapping()->skip($skipMismatch);
+        $schedule->command('campaigns:complete-sends')->everyMinute()->withoutOverlapping()->skip($skipMismatch);
         $schedule->command('analytics:refresh')->daily()->skip($skipMismatch);
         $schedule->command('insights:validate')->daily()->skip($skipMismatch);
         $schedule->command('agents:check-model-prices')->daily()->skip($skipMismatch);
@@ -60,7 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $profile = CountryProfiles::current();
             $billingAt = $profile->billingRunAt();
             $billingTz = $profile->schedulerTimezone();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Schedule still registers; skip() below no-ops a broken profile.
         }
 

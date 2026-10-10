@@ -28,9 +28,9 @@
 
 ## Test checklist
 
-- [ ] Ledger: append-only trigger, latest-wins, redaction.
-- [ ] Preference center: GET no-write, POST changes, one-click, legacy token.
-- [ ] Forms: double opt-in, enumeration-safe response, honeypot, rate limit.
-- [ ] Segments: each field, invalid-tree surfacing, RBAC scoping.
-- [ ] Provider purpose resolution matrix (site/company × purpose × class).
-- [ ] `RouteAuthCoverageTest`, `PermissionCoverageTest` green.
+- [x] Ledger: append-only trigger, latest-wins, redaction.
+- [x] Preference center: GET no-write, POST changes, one-click, legacy token.
+- [x] Forms: double opt-in, enumeration-safe response, honeypot, rate limit.
+- [x] Segments: each field, invalid-tree surfacing, RBAC scoping.
+- [x] Provider purpose resolution matrix (site/company × purpose × class).
+- [x] `RouteAuthCoverageTest`, `PermissionCoverageTest` green.

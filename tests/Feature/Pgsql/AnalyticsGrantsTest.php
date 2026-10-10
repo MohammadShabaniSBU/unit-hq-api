@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Pgsql;
 
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -71,6 +72,7 @@ class AnalyticsGrantsTest extends TestCase
             'analytics.v_rent_roll',
             'analytics.mv_unit_state_daily',
             'analytics.v_pipeline_events',
+            'analytics.v_consent_state',
         ] as $view) {
             $conn->select("select 1 from {$view} limit 1");
         }
@@ -84,7 +86,7 @@ class AnalyticsGrantsTest extends TestCase
         $this->assertTrue($denied, 'Reporting role must not SELECT public.charges');
     }
 
-    private function reportingConnection(): \Illuminate\Database\Connection
+    private function reportingConnection(): Connection
     {
         $base = config('database.connections.pgsql');
         config([
@@ -102,7 +104,7 @@ class AnalyticsGrantsTest extends TestCase
     private function dropRole(): void
     {
         DB::statement(sprintf(
-            "DO \$\$
+            'DO $$
             BEGIN
                 REASSIGN OWNED BY %s TO CURRENT_USER;
                 DROP OWNED BY %s;
@@ -110,7 +112,7 @@ class AnalyticsGrantsTest extends TestCase
             EXCEPTION WHEN undefined_object THEN
                 NULL;
             END
-            \$\$;",
+            $$;',
             $this->role,
             $this->role,
             $this->role,

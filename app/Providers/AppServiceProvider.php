@@ -235,6 +235,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by('copilot-voice-token|'.$employeeId);
         });
 
+        RateLimiter::for('campaign-account', function (object $job): Limit {
+            $accountId = (int) ($job->accountId ?? 0);
+            $perMinute = (int) ($job->rateLimitPerMinute ?? 60);
+
+            return Limit::perMinute(max(1, $perMinute))->by('campaign-account:'.$accountId);
+        });
+
         Relation::morphMap([
             'employee' => Employee::class,
             'contact' => Contact::class,

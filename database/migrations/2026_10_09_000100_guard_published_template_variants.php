@@ -15,6 +15,11 @@ return new class extends Migration
             $table->unique(['id', 'template_family_id'], 'tver_id_family_idx');
         });
 
+        // Databases that already ran the pre-versioning create migrations never
+        // picked up template_version_id, because those files were edited in place.
+        $this->adoptPreVersioningVariants();
+        $this->adoptPreVersioningContractDocuments();
+
         Schema::table('template_variants', function (Blueprint $table): void {
             $table->foreign(['template_version_id', 'template_family_id'], 'tv_version_family_fk')
                 ->references(['id', 'template_family_id'])
@@ -40,6 +45,96 @@ return new class extends Migration
         Schema::table('template_versions', function (Blueprint $table): void {
             $table->dropUnique('tver_id_family_idx');
         });
+    }
+
+    private function adoptPreVersioningVariants(): void
+    {
+        if (Schema::hasColumn('template_variants', 'template_version_id')) {
+            return;
+        }
+
+        Schema::table('template_variants', function (Blueprint $table): void {
+            $table->unsignedBigInteger('template_version_id')->nullable();
+        });
+
+        foreach (DB::table('template_variants')->distinct()->pluck('template_family_id') as $familyId) {
+            DB::table('template_variants')
+                ->where('template_family_id', $familyId)
+                ->update(['template_version_id' => $this->publishedVersionIdFor((int) $familyId)]);
+        }
+
+        if (DB::table('template_variants')->whereNull('template_version_id')->exists()) {
+            throw new RuntimeException('template_variants.template_version_id could not be backfilled.');
+        }
+
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE template_variants ALTER COLUMN template_version_id SET NOT NULL');
+        }
+
+        Schema::table('template_variants', function (Blueprint $table): void {
+            $table->foreign('template_version_id')->references('id')->on('template_versions')->cascadeOnDelete();
+            $table->dropUnique('tv_family_locale_idx');
+            $table->unique(['template_version_id', 'locale'], 'tv_version_locale_idx');
+        });
+    }
+
+    private function adoptPreVersioningContractDocuments(): void
+    {
+        if (! Schema::hasTable('contract_documents') || Schema::hasColumn('contract_documents', 'template_version_id')) {
+            return;
+        }
+
+        Schema::table('contract_documents', function (Blueprint $table): void {
+            $table->unsignedBigInteger('template_version_id')->nullable();
+        });
+
+        DB::statement(<<<'SQL'
+            UPDATE contract_documents
+            SET template_version_id = (
+                SELECT template_version_id
+                FROM template_variants
+                WHERE template_variants.id = contract_documents.template_variant_id
+            )
+        SQL);
+
+        if (DB::table('contract_documents')->whereNull('template_version_id')->exists()) {
+            throw new RuntimeException('contract_documents.template_version_id could not be backfilled.');
+        }
+
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE contract_documents ALTER COLUMN template_version_id SET NOT NULL');
+        }
+
+        Schema::table('contract_documents', function (Blueprint $table): void {
+            $table->foreign('template_version_id')->references('id')->on('template_versions')->restrictOnDelete();
+            $table->index('template_version_id', 'cd_template_version_idx');
+        });
+    }
+
+    private function publishedVersionIdFor(int $familyId): int
+    {
+        $existing = DB::table('template_versions')
+            ->where('template_family_id', $familyId)
+            ->where('status', 'published')
+            ->orderByDesc('version_number')
+            ->value('id');
+
+        if ($existing !== null) {
+            return (int) $existing;
+        }
+
+        $number = (int) DB::table('template_versions')
+            ->where('template_family_id', $familyId)
+            ->max('version_number');
+
+        return (int) DB::table('template_versions')->insertGetId([
+            'template_family_id' => $familyId,
+            'version_number' => $number + 1,
+            'status' => 'published',
+            'published_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function installPublishedVariantTrigger(): void

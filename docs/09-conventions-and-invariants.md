@@ -127,7 +127,8 @@
 
 40. **Inbound receipt never creates contacts silently.** Unknown senders park on
     `comms_triage`; contacts are created only via explicit triage resolve
-    (`create-and-attach`). Inbound HTML is sanitized at write (scripts, handlers,
+    (`create-and-attach`). Public signup forms are the explicit exception
+    (invariant 79). Inbound HTML is sanitized at write (scripts, handlers,
     external http(s) refs); attachments are size-capped with honest `oversize`
     stubs on the private disk. Auto-Submitted / X-Autoreply messages are stored
     with `auto_generated` and do not increment unread. Auto-lead capture for
@@ -431,6 +432,96 @@
     Postgres triggers `tver_reject_published_mutation` and
     `tv_reject_published_mutation` (`BEFORE INSERT OR UPDATE OR DELETE`,
     `published_template_immutable`).
+75. **Marketing consent is an append-only ledger.** `consent_events` is never
+    updated or deleted. Redaction (`contacts:redact`) nulls `evidence` only
+    and keeps `action`, `source`, `occurred_at`, and `consent_text_id` on the
+    original row, then appends a `withdrawn` event with `source = redaction`.
+    Current consent is the latest event per (contact, channel, subscription
+    list), computed by `ConsentState`, never stored. Tie-break is `id`.
+    Marketing never reads `contact_channels.opted_in`. Enforced by
+    `ConsentLedgerTest` (`ledger_rejects_update_and_delete`,
+    `latest_event_wins_including_same_timestamp_tie_break`,
+    `redaction_nulls_evidence_and_withdraws_every_grant`).
+76. **Grants need evidence; machines only withdraw.** `ConsentWriter::grant()`
+    is the only grant path. It accepts `form`, `double_opt_in`, `operator`
+    (employee causer and a note), `import` (`import_batch` and
+    `original_source`), `preference_center`, and `soft_opt_in` (default off).
+    Every grant except `operator` requires `consent_text_id`. Automations, AI
+    tools, and inbound triage may call `withdraw()` only. Enforced by
+    `ConsentLedgerTest` (`automation_and_ai_cannot_grant`,
+    `grant_without_text_or_import_evidence_is_rejected`).
+77. **Unsubscribe links are safe to prefetch.** `GET
+    /api/comms/preferences/{token}` and `GET /api/comms/unsubscribe/{token}`
+    never write consent or `channel_suppressions`. Only `POST` does. Enforced
+    by `PreferenceCenterTest::get_on_either_url_does_not_change_consent_or_suppression`.
+78. **Marketing sends use a marketing-eligible account and a renderer-appended
+    footer.** `ProviderResolver` for `SendClass::Marketing` tries
+    `purpose = marketing`, then `all`, and never `transactional`.
+    `EmailTemplateRenderer` always appends `MarketingFooter` for marketing
+    class. The footer is not a template block and cannot be removed.
+    Enforced by `MarketingSendLaneTest`
+    (`marketing_never_falls_back_to_a_transactional_account`,
+    `a_marketing_render_cannot_skip_the_footer`).
+79. **Signup forms may create contacts.** Explicit exception to invariant 40.
+    `SignupSubmission` may insert a contact with `source = signup_form`,
+    always with a consent event and consent text, and never a deal. Unknown
+    inbound mail still parks on `comms_triage`.     Enforced by `SignupFormTest`
+    (`double_opt_in_stays_pending_until_the_link_is_confirmed`,
+    `single_opt_in_grants_immediately`).
+80. **A campaign pins its template version and its audience at scheduling;
+    both stay immutable.** Submit writes `audience_snapshot` and
+    `campaign_sends.template_version_id`. Audience columns (`type`, list,
+    segment, `site_ids`, `audience_snapshot`, `ignore_send_window`) cannot
+    change once status has left `draft` and `pending_approval`. A pinned send
+    cannot change family, channel, or subject. `template_version_id` may move
+    only while the campaign is `pending_approval`, and only to another
+    published version of the same family. Name and status stay writable
+    (pause, resume, cancel). Changing content or audience after scheduling
+    is cancel, then duplicate. Duplicate drops the pin. Enforced by
+    `CampaignImmutable` on `Campaign` and `CampaignSend`, and by the Postgres
+    triggers `campaigns_reject_audience_mutation` and
+    `campaign_sends_reject_pinned_mutation`. Tests:
+    `CampaignLifecycleTest::submit_pins_the_version_and_a_later_publish_does_not_move_it`,
+    `CampaignSchemaTest::scheduled_audience_cannot_change`,
+    `Pgsql\CampaignSchemaTest::pinned_version_cannot_change_via_sql`.
+81. **One recipient row per (send, contact), and claim-before-send.** Unique
+    `(campaign_send_id, contact_id)`. `ON CONFLICT DO NOTHING` makes
+    materialisation re-runnable. `CampaignBatchSender` claims with
+    `UPDATE … WHERE status = pending`. A second claim updates nothing and
+    does not send. No campaign message is written without that claim. A
+    skipped row stores `skip_reason`. A row that fails after three attempts
+    stores `error` and `status = failed`. Pending and claimed rows are in
+    flight. Enforced by `CampaignDispatchTest`
+    (`rerunning_a_batch_sends_each_recipient_once`,
+    `a_second_claim_of_an_in_flight_row_updates_nothing`,
+    `materialising_twice_inserts_each_contact_once`).
+82. **Consent is re-checked at send time.** Materialisation reads granted
+    consent. `CampaignSendGate` reads it again before send for campaigns and
+    newsletters. A withdrawal after scheduling skips `no_consent`.
+    Announcements do not read marketing consent. Enforced by
+    `CampaignDispatchTest::withdrawing_consent_after_scheduling_skips_no_consent`.
+83. **Announcements stay inside their fence.** The audience is current tenants
+    (`contracts.status` of `active` or `notice_given`, open occupancy) of the
+    chosen sites. Templates are purpose `announcement` only. A discount is
+    rejected. The send class is transactional: a marketing suppression does
+    not block; an all-scope suppression does. `AnnouncementSend` is required
+    to create or send one, and to publish an announcement template.
+    Completion writes `campaign.announcement_sent` on each chosen site.
+    Enforced by `CampaignAnnouncementTest`
+    (`a_marketing_template_is_rejected_for_an_announcement`,
+    `an_announcement_rejects_a_discount`,
+    `a_marketing_suppression_does_not_block_and_a_hard_bounce_does`,
+    `completion_logs_announcement_sent_on_each_site`,
+    `materialising_an_announcement_keeps_current_tenants_only`).
+84. **Campaign statistics are derived.** `CampaignReport` counts recipients,
+    `messages.delivery_events`, and consent withdrawals. No delivered, opened,
+    bounced, or unsubscribed counter is stored on `campaigns`.
+    `estimated_recipients` is the schedule-time estimate, frozen with the
+    snapshot, not a live counter. A delivery webhook after `sent` changes the
+    next report read. While `sending`, the report is cached for 60 seconds.
+    Enforced by
+    `CampaignPanelReadTest::report_totals_reconcile_and_a_later_bounce_updates_them`
+    and `a_sending_report_stays_cached_for_sixty_seconds`.
 
 ## Code conventions
 

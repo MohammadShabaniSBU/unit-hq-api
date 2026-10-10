@@ -33,13 +33,13 @@ class SettingController extends Controller
         Gate::authorize(Permission::SettingsManage->value);
 
         $validated = $request->validate([
-            'company_name'          => ['sometimes', 'required', 'string', 'max:255'],
+            'company_name' => ['sometimes', 'required', 'string', 'max:255'],
             'company_contact_email' => ['sometimes', 'required', 'email', 'max:255'],
-            'phone'                 => ['sometimes', 'required', 'string', 'max:50'],
-            'send_window_start'     => ['sometimes', 'required', 'date_format:H:i'],
-            'send_window_end'       => ['sometimes', 'nullable', 'date_format:H:i'],
-            'email_accent_color'    => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'date_format'           => ['sometimes', 'required', 'string', Rule::in(DateFormat::values())],
+            'phone' => ['sometimes', 'required', 'string', 'max:50'],
+            'send_window_start' => ['sometimes', 'required', 'date_format:H:i'],
+            'send_window_end' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'email_accent_color' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'date_format' => ['sometimes', 'required', 'string', Rule::in(DateFormat::values())],
         ]);
 
         Setting::setGeneral(
@@ -81,17 +81,17 @@ class SettingController extends Controller
         }
 
         $validated = $request->validate([
-            'default_currency'               => ['sometimes', ...SupportedCurrencies::rules(required: true)],
-            'default_billing_interval'       => ['sometimes', 'required', 'string', Rule::in(['day', 'week', 'month'])],
+            'default_currency' => ['sometimes', ...SupportedCurrencies::rules(required: true)],
+            'default_billing_interval' => ['sometimes', 'required', 'string', Rule::in(['day', 'week', 'month'])],
             'default_billing_interval_count' => ['sometimes', 'required', 'integer', 'min:1'],
-            'billing_anchor_model'           => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar', 'calendar_week'])],
-            'billing_anchor_day'             => ['sometimes', 'required', 'integer', 'min:1', 'max:28'],
-            'proration_method'               => ['sometimes', 'required', 'string', Rule::in(['daily', 'full_period', 'none'])],
-            'default_deposit_amount'         => ['sometimes', 'required', 'numeric', 'min:0'],
-            'move_out_settlement'            => ['sometimes', 'required', 'string', Rule::in(['none', 'daily', 'notice_based'])],
-            'turnover_hold_days'             => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
-            'transfer_billing'               => ['sometimes', 'required', 'string', Rule::in(['prorate_immediately', 'next_period'])],
-            'billing_horizon_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
+            'billing_anchor_model' => ['sometimes', 'required', 'string', Rule::in(['anniversary', 'calendar', 'calendar_week'])],
+            'billing_anchor_day' => ['sometimes', 'required', 'integer', 'min:1', 'max:28'],
+            'proration_method' => ['sometimes', 'required', 'string', Rule::in(['daily', 'full_period', 'none'])],
+            'default_deposit_amount' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'move_out_settlement' => ['sometimes', 'required', 'string', Rule::in(['none', 'daily', 'notice_based'])],
+            'turnover_hold_days' => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
+            'transfer_billing' => ['sometimes', 'required', 'string', Rule::in(['prorate_immediately', 'next_period'])],
+            'billing_horizon_days' => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
         ]);
 
         if (isset($validated['default_currency'])) {
@@ -158,12 +158,12 @@ class SettingController extends Controller
         Gate::authorize(Permission::SettingsManage->value);
 
         $validated = $request->validate([
-            'default_offer_expiration_value'       => ['sometimes', 'required', 'integer', 'min:1'],
-            'default_offer_expiration_unit'        => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
+            'default_offer_expiration_value' => ['sometimes', 'required', 'integer', 'min:1'],
+            'default_offer_expiration_unit' => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
             'default_reservation_expiration_value' => ['sometimes', 'required', 'integer', 'min:1'],
-            'default_reservation_expiration_unit'  => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
-            'default_notice_period_days'           => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
-            'default_esign_expiration_days'        => ['sometimes', 'required', 'integer', 'min:1', 'max:365'],
+            'default_reservation_expiration_unit' => ['sometimes', 'required', 'string', Rule::in(['minutes', 'hours', 'days', 'weeks'])],
+            'default_notice_period_days' => ['sometimes', 'required', 'integer', 'min:0', 'max:365'],
+            'default_esign_expiration_days' => ['sometimes', 'required', 'integer', 'min:1', 'max:365'],
         ]);
 
         Setting::setLeasing(
@@ -237,6 +237,8 @@ class SettingController extends Controller
             'marketing_exclude_active_playbook_kinds' => ['sometimes', 'present', 'array'],
             'marketing_exclude_active_playbook_kinds.*' => ['string', Rule::in(MarketingSettings::playbookKindValues())],
             'marketing_approval_threshold' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
+            'marketing_newsletter_bypasses_cap' => ['sometimes', 'required', 'boolean'],
+            'announcement_approval_required' => ['sometimes', 'required', 'boolean'],
         ]);
 
         Setting::setMarketing(
@@ -248,6 +250,8 @@ class SettingController extends Controller
                     ? array_values(array_unique($validated['marketing_exclude_active_playbook_kinds']))
                     : null,
                 approvalThreshold: $validated['marketing_approval_threshold'] ?? null,
+                newsletterBypassesCap: $validated['marketing_newsletter_bypasses_cap'] ?? null,
+                announcementApprovalRequired: $validated['announcement_approval_required'] ?? null,
             )
         );
 

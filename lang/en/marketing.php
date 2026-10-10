@@ -9,5 +9,6 @@ return [
         'preferences' => 'Manage your preferences',
         'unsubscribe' => 'Unsubscribe',
         'sms' => ':name: opt out :url',
+        'announcement' => ':name · :phone',
     ],
 ];

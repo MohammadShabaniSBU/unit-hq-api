@@ -8,19 +8,21 @@ use App\Enums\LogChannel;
 use App\Http\Resources\ActivityResource;
 use App\Models\Activity;
 use App\Models\AgentConversation;
+use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\Offer;
 use App\Models\Reservation;
 use App\Models\Setting;
+use App\Models\Site;
 use App\Models\User;
+use App\Support\Auth\Permission;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Support\Auth\Permission;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class ActivityController extends Controller
 {
@@ -31,7 +33,9 @@ class ActivityController extends Controller
         'offer' => Offer::class,
         'reservation' => Reservation::class,
         'contract' => Contract::class,
+        'site' => Site::class,
         'agent_conversation' => AgentConversation::class,
+        'campaign' => Campaign::class,
     ];
 
     public function index(Request $request): JsonResponse

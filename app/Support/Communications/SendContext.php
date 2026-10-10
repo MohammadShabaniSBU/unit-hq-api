@@ -8,6 +8,7 @@ use App\Enums\PlaybookKind;
 use App\Models\AgentConversation;
 use App\Models\AutomationRun;
 use App\Models\AutomationRunStep;
+use App\Models\CampaignRecipient;
 use App\Models\OfferDelivery;
 use Illuminate\Database\Eloquent\Model;
 
@@ -69,20 +70,31 @@ final readonly class SendContext
     }
 
     /**
-     * Campaign provenance. Sprint 31 introduces the CampaignRecipient model and
-     * narrows the parameter; until then the recipient is a nullable reference
-     * read by attribute so the factory can land first.
+     * Campaign provenance. `campaign_id` and `subscription_list_id` are not
+     * columns on the recipient row; a CampaignRecipient resolves them through
+     * its send.
      */
     public static function campaign(?Model $recipient = null, SendClass $class = SendClass::Marketing): self
     {
+        $campaignId = $recipient?->getAttribute('campaign_id');
+        $listId = $recipient?->getAttribute('subscription_list_id');
+        $sendId = $recipient?->getAttribute('campaign_send_id');
+
+        if ($recipient instanceof CampaignRecipient) {
+            $recipient->loadMissing('campaignSend.campaign');
+            $send = $recipient->campaignSend;
+            $campaignId ??= $send?->campaign_id;
+            $listId ??= $send?->campaign?->subscription_list_id;
+        }
+
         return new self(
             MessageSource::Campaign,
             $class,
             [
-                'campaign_id' => $recipient?->getAttribute('campaign_id'),
-                'campaign_send_id' => $recipient?->getAttribute('campaign_send_id'),
+                'campaign_id' => $campaignId,
+                'campaign_send_id' => $sendId,
                 'campaign_recipient_id' => $recipient?->getKey(),
-                'subscription_list_id' => $recipient?->getAttribute('subscription_list_id'),
+                'subscription_list_id' => $listId,
             ],
         );
     }

@@ -32,8 +32,8 @@ class DefaultContactAttributeDefinitionsSeederTest extends TestCase
             ->orderBy('display_order')
             ->get();
 
-        $this->assertCount(8, $definitions);
-        $this->assertSame(8, AttributeDefinition::query()->count());
+        $this->assertCount(9, $definitions);
+        $this->assertSame(9, AttributeDefinition::query()->count());
 
         $this->assertFalse(
             AttributeDefinition::query()

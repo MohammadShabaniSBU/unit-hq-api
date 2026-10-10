@@ -24,15 +24,28 @@ class SignupFormController extends Controller
 
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = SignupForm::query()->orderByDesc('id');
+        $query = SignupForm::query()->orderByDesc('created_at')->orderByDesc('id');
 
         match ($validated['status'] ?? 'active') {
             'archived' => $query->whereNotNull('archived_at'),
             'all' => null,
             default => $query->active(),
         };
+
+        $paged = array_key_exists('page', $validated) || array_key_exists('per_page', $validated);
+
+        if ($paged) {
+            $perPage = (int) ($validated['per_page'] ?? 25);
+            $paginator = $query->paginate($perPage)->through(
+                fn (SignupForm $form): array => $this->payload($form),
+            );
+
+            return $this->paginated($paginator, 'Signup forms retrieved successfully.');
+        }
 
         $forms = $query->get()->map(fn (SignupForm $form): array => $this->payload($form))->all();
 

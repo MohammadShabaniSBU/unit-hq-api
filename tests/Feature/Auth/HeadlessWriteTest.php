@@ -36,6 +36,8 @@ class HeadlessWriteTest extends TestCase
             'delinquency:run' => ['delinquency:run', []],
             'access:sync' => ['access:sync', ['--dry-run' => true]],
             'automations:run-scheduled' => ['automations:run-scheduled', []],
+            'campaigns:dispatch-due' => ['campaigns:dispatch-due', []],
+            'campaigns:complete-sends' => ['campaigns:complete-sends', []],
         ];
     }
 

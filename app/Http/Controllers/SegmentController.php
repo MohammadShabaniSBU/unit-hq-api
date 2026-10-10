@@ -22,6 +22,8 @@ class SegmentController extends Controller
         $validated = $request->validate([
             'scope' => ['nullable', Rule::in(['shared', 'personal', 'all'])],
             'status' => ['nullable', Rule::in(['active', 'archived', 'all'])],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
         $scope = $validated['scope'] ?? 'all';
@@ -36,7 +38,7 @@ class SegmentController extends Controller
             $seesPersonal = true;
         }
 
-        $query = Segment::query()->orderByDesc('id');
+        $query = Segment::query()->orderByDesc('created_at')->orderByDesc('id');
 
         match ($validated['status'] ?? 'active') {
             'archived' => $query->whereNotNull('archived_at'),
@@ -54,6 +56,17 @@ class SegmentController extends Controller
                 });
             }
         });
+
+        $paged = array_key_exists('page', $validated) || array_key_exists('per_page', $validated);
+
+        if ($paged) {
+            $perPage = (int) ($validated['per_page'] ?? 25);
+            $paginator = $query->paginate($perPage)->through(
+                fn (Segment $segment): array => $this->payload($segment, $employee),
+            );
+
+            return $this->paginated($paginator, 'Segments retrieved successfully.');
+        }
 
         $rows = $query->get()->map(fn (Segment $segment): array => $this->payload($segment, $employee))->all();
 

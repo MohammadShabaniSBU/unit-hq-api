@@ -54,6 +54,31 @@ on the subject), never a global Eloquent scope, never middleware ambient context
 and never baked into Sanctum tokens. Company-wide grants allow anywhere; site
 grants allow only when the subject's site matches.
 
+### Marketing permissions
+
+| Permission | Gates |
+|---|---|
+| `MarketingView` | Read subscription lists, signup forms, and segments; segment preview |
+| `MarketingManage` | Create, update, and archive those |
+| `ConsentManage` | Record a consent (`POST contacts/{contact}/consents`) and manage consent texts |
+
+`GET contacts/{contact}/consents` stays `ContactView`. A personal segment (`is_shared = false`) uses `ContactView` and is visible only to its owner.
+
+### Campaign permissions
+
+| Permission | Gates |
+|---|---|
+| `CampaignView` | Read campaigns |
+| `CampaignManage` | Draft, edit, test-send, and submit campaigns and newsletters |
+| `CampaignApprove` | Approve or reject a submitted campaign |
+| `AnnouncementSend` | Create and send announcements, with no approval step by default. Publishing, creating, or retargeting a template whose purpose is `announcement` also requires this permission |
+
+`owner` and `operations_manager` receive all four. `read_only` receives `CampaignView`. `site_manager` receives `CampaignView`, `CampaignManage`, and `AnnouncementSend`, not `CampaignApprove`.
+
+`POST /api/campaigns` and draft updates require `CampaignManage`. `type = announcement` requires `AnnouncementSend` instead, including publish of a template whose purpose is `announcement`. Approve and reject require `CampaignApprove`. The submitter cannot approve their own campaign unless they are the only employee who holds `CampaignApprove`. Newsletter issue list is `CampaignView`; "duplicate last issue" is `CampaignManage`.
+
+A site-scoped employee may target only `site_ids` inside their grants (`Campaign::sitesWithin`). List and show use `Campaign::visibleTo`: every site id on the campaign must sit inside the grant. An empty `site_ids` is company-wide and stays visible to a site-scoped viewer. Materialisation intersects `Contact::visibleTo` for a site-scoped creator, using `ContactView`.
+
 ## Site scoping in the panel (UX rule)
 
 A **global site selector** scopes the portal context, with two carve-outs:

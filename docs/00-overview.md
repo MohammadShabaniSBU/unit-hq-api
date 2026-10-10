@@ -15,6 +15,7 @@ Keevaris is a **mono-tenant** (single-company) self-storage operations platform.
 | Billing | Charges, payments, invoices, allocations (append-only ledger); contract cadence / tax / deposit at signing |
 | Payments | Stripe credentials per legal entity — each entity is the merchant of record (`architecture-payments-and-fiscal.md`) |
 | Insights | Operator-ordered registry of native reports and embedded analytics (Metabase / iframe); native vocabulary in `report-definitions.md`, surface in `11-insights.md` |
+| Marketing | One broadcast engine for campaigns, newsletters, and announcements (email and SMS). Consent, lists, and segments are the audience (`06-communications.md`). Drip sequences stay automations |
 | Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automation engine (flow graph: triggers/actions/logic, `12-automation-engine.md`), Playbooks (compiled linear automations for debt process / lead chase, `13-playbooks.md`), AI copilot and the customer-facing concierge agent (`14-ai-agents.md`), tasks/notes |
 
 ## Workspace layout
@@ -52,7 +53,7 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 - `03-pricing.md` — Price model, tax rates, insurance, discounts
 - `04-crm-pipeline.md` — Contact → Deal → Offer → Reservation → Contract
 - `05-billing-ledger.md` — Contract billing (cadence/anchor/tax/deposit), charges, payments, invoices, Stripe
-- `06-communications.md` — ContactChannel, Interaction, OfferDelivery
+- `06-communications.md` — ContactChannel, consent, campaign engine, Interaction, OfferDelivery
 - `07-people-and-auth.md` — User / Employee / Contact, roles, site scoping
 - `08-activity-logging.md` — activitylog + system_events
 - `09-conventions-and-invariants.md` — hard rules; read before writing code

@@ -9,5 +9,6 @@ return [
         'preferences' => 'Gestiona tus preferencias',
         'unsubscribe' => 'Darme de baja',
         'sms' => ':name: baja :url',
+        'announcement' => ':name · :phone',
     ],
 ];

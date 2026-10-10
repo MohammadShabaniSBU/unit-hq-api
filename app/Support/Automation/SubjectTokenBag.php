@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Support\Automation;
 
+use App\Enums\CampaignType;
 use App\Enums\DealStatus;
 use App\Enums\TemplatePurpose;
 use App\Models\AutomationRun;
+use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\SubscriptionList;
 use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\ContactChannelMatcher;
@@ -206,7 +209,75 @@ final class SubjectTokenBag
             ];
         }
 
+        if ($purpose === TemplatePurpose::Newsletter) {
+            $bag['newsletter'] = [
+                'issue_number' => 1,
+                'name' => 'Newsletter',
+            ];
+        }
+
         return $bag;
+    }
+
+    /**
+     * Issue tokens for a newsletter send. Not part of forContact or forRun.
+     *
+     * @return array{newsletter: array{issue_number: int, name: string}}
+     */
+    public static function newsletter(SubscriptionList $list, int $issueNumber, string $locale): array
+    {
+        return [
+            'newsletter' => [
+                'issue_number' => $issueNumber,
+                'name' => self::listLabel($list, $locale),
+            ],
+        ];
+    }
+
+    /**
+     * Merge newsletter tokens onto a send bag. No-op for other campaign types.
+     *
+     * @param  array<string, mixed>  $bag
+     * @return array<string, mixed>
+     */
+    public static function mergeNewsletter(array $bag, Campaign $campaign, string $locale): array
+    {
+        if ($campaign->type !== CampaignType::Newsletter) {
+            return $bag;
+        }
+
+        $campaign->loadMissing('subscriptionList');
+        $list = $campaign->subscriptionList;
+        if (! $list instanceof SubscriptionList) {
+            return $bag;
+        }
+
+        return array_replace($bag, self::newsletter(
+            $list,
+            (int) ($campaign->newsletter_issue_number ?? 0),
+            $locale,
+        ));
+    }
+
+    private static function listLabel(SubscriptionList $list, string $locale): string
+    {
+        $code = strtolower(substr(trim($locale), 0, 2));
+        if (! in_array($code, ['en', 'es', 'fr'], true)) {
+            $code = 'en';
+        }
+
+        $labels = $list->labels;
+        $label = trim((string) ($labels[$code] ?? $labels['en'] ?? ''));
+        if ($label !== '') {
+            return $label;
+        }
+
+        $first = reset($labels);
+        if (is_string($first) && trim($first) !== '') {
+            return trim($first);
+        }
+
+        return $list->key;
     }
 
     /**

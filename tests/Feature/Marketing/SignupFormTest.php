@@ -295,6 +295,33 @@ class SignupFormTest extends TestCase
         $this->getJson('/api/public/forms/'.$form->public_token)->assertNotFound();
     }
 
+    #[Test]
+    public function index_orders_by_created_at_and_paginates_when_asked(): void
+    {
+        $viewer = $this->employeeWithPermission(Permission::MarketingView);
+        Sanctum::actingAs($viewer);
+
+        $newest = $this->form(['name' => 'Newest']);
+        $newest->forceFill(['created_at' => now()])->save();
+        $older = $this->form(['name' => 'Older']);
+        $older->forceFill(['created_at' => now()->subDay()])->save();
+
+        $this->getJson('/api/signup-forms')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $newest->id)
+            ->assertJsonPath('data.1.id', $older->id)
+            ->assertJsonMissingPath('meta');
+
+        $this->getJson('/api/signup-forms?per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $newest->id)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

@@ -7,6 +7,10 @@ this doc covers the graph/run engine itself. **Condition/filter syntax
 (operators, typing, null rules) is documented separately in
 `automation-conditions.md` — link there, don't duplicate it.**
 
+Drip sequences are not campaigns. A wait-then-send sequence stays an
+automation. Sprint 31's broadcast types (campaign, newsletter, announcement)
+do not grow a drip graph (C9). There is one flow engine, and it is this one.
+
 ## Model / schema
 
 | Model | Table | Role |

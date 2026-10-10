@@ -297,7 +297,7 @@ final class ContactMarketingFields
      * else latest reservation, else latest contract occupancy, else open hold,
      * else the lowest contact_sites id.
      */
-    private static function businessSiteExpression(): string
+    public static function businessSiteExpression(): string
     {
         return <<<'SQL'
 COALESCE(

@@ -354,18 +354,24 @@ class MarketingSendLaneTest extends TestCase
             ->assertJsonPath('data.marketing_frequency_cap_days', 7)
             ->assertJsonPath('data.marketing_exclude_delinquent', true)
             ->assertJsonPath('data.marketing_exclude_active_playbook_kinds', ['debt_process'])
-            ->assertJsonPath('data.marketing_approval_threshold', 500);
+            ->assertJsonPath('data.marketing_approval_threshold', 500)
+            ->assertJsonPath('data.marketing_newsletter_bypasses_cap', true)
+            ->assertJsonPath('data.announcement_approval_required', false);
 
         $this->patchJson('/api/settings/marketing', [
             'marketing_frequency_cap_count' => 3,
             'marketing_exclude_delinquent' => false,
             'marketing_exclude_active_playbook_kinds' => ['debt_process', 'lead_chase'],
+            'marketing_newsletter_bypasses_cap' => false,
+            'announcement_approval_required' => true,
         ])
             ->assertOk()
             ->assertJsonPath('data.marketing_frequency_cap_count', 3)
             ->assertJsonPath('data.marketing_frequency_cap_days', 7)
             ->assertJsonPath('data.marketing_exclude_delinquent', false)
-            ->assertJsonPath('data.marketing_exclude_active_playbook_kinds', ['debt_process', 'lead_chase']);
+            ->assertJsonPath('data.marketing_exclude_active_playbook_kinds', ['debt_process', 'lead_chase'])
+            ->assertJsonPath('data.marketing_newsletter_bypasses_cap', false)
+            ->assertJsonPath('data.announcement_approval_required', true);
 
         $this->assertSame(3, Setting::marketing()->frequencyCapCount);
 

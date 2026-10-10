@@ -199,6 +199,10 @@ Objects that ship:
 | `analytics.v_rent_roll` | Open occupancies as of today |
 | `analytics.mv_unit_state_daily` | Materialized date spine × unit state |
 | `analytics.v_pipeline_events` | Pipeline transitions for funnel / conversion |
+| `analytics.v_consent_state` | Latest consent per contact, channel, and list |
+| `analytics.v_consent_events` | Every consent event, without evidence |
+| `analytics.v_campaigns` | One row per campaign, with per-channel template pins |
+| `analytics.v_campaign_recipients` | Recipient outcome and derived delivery flags |
 
 Every monetary view exposes `currency`. Never sum across currencies. There is
 no conversion layer.
@@ -259,3 +263,7 @@ environment had run it. **Deploy requires `migrate:fresh`.**
 | `analytics.v_rent_roll` | Reporting contract — open rent roll |
 | `analytics.mv_unit_state_daily` | Reporting contract — daily unit state (refreshed); columns include `enabled` and `area` (`unit_classes.size`) |
 | `analytics.v_pipeline_events` | Reporting contract — pipeline funnel events |
+| `analytics.v_consent_state` | Reporting contract — latest consent per contact, channel, and list |
+| `analytics.v_consent_events` | Reporting contract — consent events over time, no evidence |
+| `analytics.v_campaigns` | Reporting contract — one row per campaign |
+| `analytics.v_campaign_recipients` | Reporting contract — recipient outcome and delivery flags |

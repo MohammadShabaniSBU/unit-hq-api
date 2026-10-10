@@ -115,6 +115,7 @@ class TemplateFamilyController extends Controller
                 ? $validated['purpose']
                 : TemplatePurpose::from((string) $validated['purpose']))
             : TemplatePurpose::General;
+        $this->authorizeAnnouncementPurpose($purpose);
 
         $blocksDoc = null;
         if (array_key_exists('blocks', $validated) && $validated['blocks'] !== null) {
@@ -175,6 +176,15 @@ class TemplateFamilyController extends Controller
             'purpose' => ['sometimes', Rule::enum(TemplatePurpose::class)],
             'channel' => ['sometimes', Rule::enum(TemplateChannel::class)],
         ]);
+
+        $purpose = $templateFamily->purpose;
+        if (array_key_exists('purpose', $validated)) {
+            $raw = $validated['purpose'];
+            $purpose = $raw instanceof TemplatePurpose
+                ? $raw
+                : TemplatePurpose::from((string) $raw);
+        }
+        $this->authorizeAnnouncementPurpose($purpose);
 
         $templateFamily->update($validated);
 
@@ -267,6 +277,7 @@ class TemplateFamilyController extends Controller
         TemplateVersion $templateVersion,
     ): JsonResponse {
         Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+        $this->authorizeAnnouncementPurpose($templateFamily->purpose);
 
         $this->assertVersionBelongs($templateFamily, $templateVersion);
 
@@ -878,6 +889,15 @@ class TemplateFamilyController extends Controller
             ->value('id');
 
         return $id === null ? null : (int) $id;
+    }
+
+    private function authorizeAnnouncementPurpose(TemplatePurpose $purpose): void
+    {
+        if ($purpose !== TemplatePurpose::Announcement) {
+            return;
+        }
+
+        Gate::authorize(Permission::AnnouncementSend->value);
     }
 
     private function draftConflict(TemplateVersion $draft): JsonResponse

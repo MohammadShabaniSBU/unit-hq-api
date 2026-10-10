@@ -67,6 +67,31 @@ final class SiteClock
         return $current >= $startMinutes || $current < $endMinutes;
     }
 
+    /**
+     * Next instant the window opens, in UTC. When `$now` is already inside
+     * the window, returns that instant. Otherwise the next `$start` in the
+     * site timezone (or `config('app.timezone')` when `$site` is null).
+     */
+    public static function nextWindowOpening(?Site $site, string $start, ?string $end, ?CarbonInterface $now = null): CarbonImmutable
+    {
+        $tz = $site !== null ? self::timezone($site) : (string) config('app.timezone', 'UTC');
+        $instant = CarbonImmutable::instance($now ?? now())->setTimezone($tz);
+
+        if (self::withinWindow($site, $start, $end, $instant)) {
+            return $instant->utc();
+        }
+
+        $parts = explode(':', $start);
+        $hour = max(0, min(23, (int) ($parts[0] ?? 0)));
+        $minute = max(0, min(59, (int) ($parts[1] ?? 0)));
+        $opening = $instant->setTime($hour, $minute, 0);
+        if ($opening->lessThanOrEqualTo($instant)) {
+            $opening = $opening->addDay();
+        }
+
+        return $opening->utc();
+    }
+
     private static function minutesOfDay(string $hhmm): int
     {
         $parts = explode(':', $hhmm);

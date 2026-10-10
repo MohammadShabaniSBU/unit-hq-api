@@ -20,6 +20,8 @@ readonly class MarketingSettings implements SettingsPayload
         public bool $excludeDelinquent = true,
         public array $excludeActivePlaybookKinds = ['debt_process'],
         public int $approvalThreshold = 500,
+        public bool $newsletterBypassesCap = true,
+        public bool $announcementApprovalRequired = false,
     ) {}
 
     public static function default(): static
@@ -42,6 +44,8 @@ readonly class MarketingSettings implements SettingsPayload
             excludeDelinquent: (bool) ($data['marketing_exclude_delinquent'] ?? $default->excludeDelinquent),
             excludeActivePlaybookKinds: array_values(array_map('strval', $kinds)),
             approvalThreshold: (int) ($data['marketing_approval_threshold'] ?? $default->approvalThreshold),
+            newsletterBypassesCap: (bool) ($data['marketing_newsletter_bypasses_cap'] ?? $default->newsletterBypassesCap),
+            announcementApprovalRequired: (bool) ($data['announcement_approval_required'] ?? $default->announcementApprovalRequired),
         );
     }
 
@@ -53,6 +57,8 @@ readonly class MarketingSettings implements SettingsPayload
             'marketing_exclude_delinquent' => $this->excludeDelinquent,
             'marketing_exclude_active_playbook_kinds' => $this->excludeActivePlaybookKinds,
             'marketing_approval_threshold' => $this->approvalThreshold,
+            'marketing_newsletter_bypasses_cap' => $this->newsletterBypassesCap,
+            'announcement_approval_required' => $this->announcementApprovalRequired,
         ];
     }
 
@@ -65,6 +71,8 @@ readonly class MarketingSettings implements SettingsPayload
         ?bool $excludeDelinquent = null,
         ?array $excludeActivePlaybookKinds = null,
         ?int $approvalThreshold = null,
+        ?bool $newsletterBypassesCap = null,
+        ?bool $announcementApprovalRequired = null,
     ): static {
         return new self(
             frequencyCapCount: $frequencyCapCount ?? $this->frequencyCapCount,
@@ -72,6 +80,8 @@ readonly class MarketingSettings implements SettingsPayload
             excludeDelinquent: $excludeDelinquent ?? $this->excludeDelinquent,
             excludeActivePlaybookKinds: $excludeActivePlaybookKinds ?? $this->excludeActivePlaybookKinds,
             approvalThreshold: $approvalThreshold ?? $this->approvalThreshold,
+            newsletterBypassesCap: $newsletterBypassesCap ?? $this->newsletterBypassesCap,
+            announcementApprovalRequired: $announcementApprovalRequired ?? $this->announcementApprovalRequired,
         );
     }
 

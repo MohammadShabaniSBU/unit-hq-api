@@ -61,5 +61,12 @@ Before writing code, consult the doc that matches the task:
 - Published template content is immutable (invariant 74). Edits land on the
   single draft; publish freezes it. Current version is the highest published
   `version_number`, never a stored pointer.
+- Never grant consent except through `ConsentWriter` grant sources
+  (invariant 76). Automations, AI tools, and inbound triage may withdraw only.
+- A scheduled campaign pins its template version and audience snapshot.
+  Both stay immutable. Edit means cancel and duplicate (invariant 80).
+  An announcement stays inside its fence: current tenants of the chosen
+  sites, `announcement` templates, no promotion (invariant 83). Campaign
+  statistics are derived (invariant 84).
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

@@ -177,6 +177,8 @@ final class RoutePermissions
             'POST /api/consent-texts' => Permission::ConsentManage, // ConsentTextController@store
             'GET /api/subscription-lists' => Permission::MarketingView, // SubscriptionListController@index
             'GET /api/subscription-lists/{subscriptionList}/members' => Permission::MarketingView, // SubscriptionListController@members
+            'GET /api/subscription-lists/{subscriptionList}/newsletters' => Permission::CampaignView, // CampaignController@newsletters
+            'POST /api/subscription-lists/{subscriptionList}/newsletters/next' => Permission::CampaignManage, // CampaignController@nextNewsletter
             'POST /api/subscription-lists' => Permission::MarketingManage, // SubscriptionListController@store
             'POST /api/subscription-lists/{subscriptionList}/archive' => Permission::MarketingManage, // SubscriptionListController@archive
             'POST /api/subscription-lists/{subscriptionList}/import' => Permission::MarketingManage, // SubscriptionListController@import
@@ -192,6 +194,26 @@ final class RoutePermissions
             'GET /api/segments/{segment}' => Permission::MarketingView, // SegmentController@show — personal rows: ContactView, own only
             'PUT /api/segments/{segment}' => Permission::MarketingManage, // SegmentController@update — personal rows: ContactView, own only
             'POST /api/segments/{segment}/archive' => Permission::MarketingManage, // SegmentController@archive — personal rows: ContactView, own only
+            'GET /api/campaigns' => Permission::CampaignView, // CampaignController@index
+            'GET /api/campaigns/approval-count' => Permission::CampaignApprove, // CampaignController@approvalCount
+            'GET /api/campaigns/{campaign}' => Permission::CampaignView, // CampaignController@show
+            'GET /api/campaigns/{campaign}/report' => Permission::CampaignView, // CampaignController@report
+            'GET /api/campaigns/{campaign}/recipients' => Permission::CampaignView, // CampaignController@recipients
+            'GET /api/campaigns/{campaign}/recipients/export' => Permission::CampaignView, // CampaignController@exportRecipients
+            'GET /api/campaigns/{campaign}/sends/{channel}/preview' => Permission::CampaignView, // CampaignController@previewSend
+            'POST /api/campaigns' => Permission::CampaignManage, // CampaignController@store — AnnouncementSend when type=announcement
+            'PUT /api/campaigns/{campaign}' => Permission::CampaignManage, // CampaignController@update — draft only; AnnouncementSend for announcements
+            'PUT /api/campaigns/{campaign}/sends/{channel}' => Permission::CampaignManage, // CampaignController@upsertSend
+            'DELETE /api/campaigns/{campaign}/sends/{channel}' => Permission::CampaignManage, // CampaignController@destroySend
+            'POST /api/campaigns/{campaign}/audience-preview' => Permission::CampaignView, // CampaignController@audiencePreview
+            'POST /api/campaigns/{campaign}/test-send' => Permission::CampaignManage, // CampaignController@testSend
+            'POST /api/campaigns/{campaign}/submit' => Permission::CampaignManage, // CampaignController@submit
+            'POST /api/campaigns/{campaign}/approve' => Permission::CampaignApprove, // CampaignController@approve
+            'POST /api/campaigns/{campaign}/reject' => Permission::CampaignApprove, // CampaignController@reject
+            'POST /api/campaigns/{campaign}/pause' => Permission::CampaignManage, // CampaignController@pause
+            'POST /api/campaigns/{campaign}/resume' => Permission::CampaignManage, // CampaignController@resume
+            'POST /api/campaigns/{campaign}/cancel' => Permission::CampaignManage, // CampaignController@cancel
+            'POST /api/campaigns/{campaign}/duplicate' => Permission::CampaignManage, // CampaignController@duplicate
             'POST /api/contacts' => Permission::ContactManage, // ContactController@store
             'POST /api/contacts/{contact}/consents' => Permission::ConsentManage, // ContactConsentController@store
             'POST /api/contacts/search' => Permission::ContactView, // ContactController@search

@@ -25,11 +25,11 @@
 
 ## Test checklist
 
-- [ ] Lifecycle transitions (legal/illegal), approval rules, version pinning.
-- [ ] Materialisation per type, RBAC intersection, idempotent rerun.
-- [ ] Gates: consent, exclusions, frequency cap, suppression → skip reasons.
-- [ ] Send window deferral and announcement override (SiteClock-frozen tests).
-- [ ] Crash/retry exactly-once (claim tests with two workers simulated).
-- [ ] Pause/resume/cancel mid-send.
-- [ ] Report reconciliation incl. late delivery webhooks.
-- [ ] Route/permission coverage tests.
+- [x] Lifecycle transitions (legal/illegal), approval rules, version pinning.
+- [x] Materialisation per type, RBAC intersection, idempotent rerun.
+- [x] Gates: consent, exclusions, frequency cap, suppression → skip reasons.
+- [x] Send window deferral and announcement override (SiteClock-frozen tests).
+- [x] Crash/retry exactly-once (claim tests with two workers simulated).
+- [x] Pause/resume/cancel mid-send.
+- [x] Report reconciliation incl. late delivery webhooks.
+- [x] Route/permission coverage tests.
