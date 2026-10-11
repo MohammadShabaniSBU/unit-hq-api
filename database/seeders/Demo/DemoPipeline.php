@@ -96,6 +96,8 @@ final class DemoPipeline
             AdvertisingDemo::apply($world);
         }
 
+        MarketingDemo::apply();
+
         return [
             'world' => $world,
             'days' => $result['days'],
