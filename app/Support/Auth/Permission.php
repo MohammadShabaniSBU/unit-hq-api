@@ -60,6 +60,9 @@ enum Permission: string
     case CampaignManage = 'campaign.manage';
     case CampaignApprove = 'campaign.approve';
     case AnnouncementSend = 'announcement.send';
+    case AdvertisingView = 'advertising.view';
+    case AdvertisingManage = 'advertising.manage';
+    case AdvertisingConnect = 'advertising.connect';
 
     // Operations
     case AutomationView = 'automation.view';

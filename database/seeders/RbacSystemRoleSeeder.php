@@ -157,6 +157,8 @@ class RbacSystemRoleSeeder extends Seeder
                     Permission::CampaignView,
                     Permission::CampaignManage,
                     Permission::AnnouncementSend,
+                    Permission::AdvertisingView,
+                    Permission::AdvertisingManage,
                     Permission::InvoiceView,
                     Permission::InvoiceIssue,
                     Permission::PaymentRecord,

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Support\Communications\Channel;
 use App\Support\Marketing\ConsentAction;
+use App\Support\Marketing\ConsentChannel;
+use App\Support\Marketing\ConsentChannelCast;
 use App\Support\Marketing\ConsentSource;
 use Database\Factories\ConsentEventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,7 +20,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $contact_id
- * @property Channel $channel
+ * @property ConsentChannel $channel
  * @property int $subscription_list_id
  * @property ConsentAction $action
  * @property ConsentSource $source
@@ -53,7 +54,7 @@ class ConsentEvent extends Model
     protected function casts(): array
     {
         return [
-            'channel' => Channel::class,
+            'channel' => ConsentChannelCast::class,
             'action' => ConsentAction::class,
             'source' => ConsentSource::class,
             'evidence' => 'array',

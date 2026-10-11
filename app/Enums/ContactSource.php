@@ -10,4 +10,7 @@ enum ContactSource: string
 
     /** Public signup form. Documented exception to inbound-never-creates (S30-07 invariant 79). */
     case SignupForm = 'signup_form';
+
+    /** Public enquiry form. May open one deal per contact and site (S32 invariant 85). */
+    case EnquiryForm = 'enquiry_form';
 }

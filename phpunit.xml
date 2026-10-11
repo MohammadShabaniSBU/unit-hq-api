@@ -31,5 +31,11 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AGENTS_DRIVER" value="fake"/>
         <env name="KEEVARIS_COUNTRY" value="ES"/>
+        <env name="ADVERTISING_HTTP_RETRY_SLEEP_MS" value="0"/>
+        <env name="GOOGLE_ADS_DEVELOPER_TOKEN" value="dev-token"/>
+        <env name="GOOGLE_ADS_CLIENT_ID" value="client-id"/>
+        <env name="GOOGLE_ADS_CLIENT_SECRET" value="client-secret"/>
+        <env name="GOOGLE_ADS_REDIRECT_URI" value="http://localhost/api/ad-platform-accounts/google/oauth/callback"/>
+        <env name="PANEL_URL" value="http://localhost:3000"/>
     </php>
 </phpunit>

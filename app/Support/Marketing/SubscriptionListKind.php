@@ -8,4 +8,5 @@ enum SubscriptionListKind: string
 {
     case Promotions = 'promotions';
     case Newsletter = 'newsletter';
+    case Advertising = 'advertising';
 }

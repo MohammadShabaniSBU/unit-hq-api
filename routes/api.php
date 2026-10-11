@@ -65,6 +65,11 @@ Route::post('pay/{token}/intent', [Controllers\PublicPaymentController::class, '
 // Stripe publishable key — not a secret; documented public by decision.
 Route::get('legal-entities/{legal_entity}/stripe/public-key', [Controllers\LegalEntityStripeController::class, 'publicKey']);
 
+// Google Ads OAuth callback — single-use cache state issued by the authenticated
+// start route. Google redirects the browser here, so there is no Sanctum session.
+Route::get('ad-platform-accounts/google/oauth/callback', [Controllers\AdPlatformAccountController::class, 'googleCallback'])
+    ->middleware('throttle:30,1');
+
 // Employee invitation — crypto-random token hashed at rest (invariant 6).
 Route::get('invitations/{token}', [Controllers\EmployeeInvitationController::class, 'show'])
     ->middleware('throttle:invitation');
@@ -162,6 +167,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('settings/analytics-accounts/{analyticsAccount}/archive', [Controllers\AnalyticsAccountController::class, 'archive']);
     Route::post('settings/analytics-accounts/{analyticsAccount}/unarchive', [Controllers\AnalyticsAccountController::class, 'unarchive']);
     Route::delete('settings/analytics-accounts/{analyticsAccount}', [Controllers\AnalyticsAccountController::class, 'destroy']);
+
+    Route::post('ad-platform-accounts/google/oauth/start', [Controllers\AdPlatformAccountController::class, 'googleStart']);
+    Route::get('ad-platform-accounts/google/oauth/selection', [Controllers\AdPlatformAccountController::class, 'googleSelection']);
+    Route::post('ad-platform-accounts/google/oauth/complete', [Controllers\AdPlatformAccountController::class, 'googleComplete']);
+    Route::get('ad-platform-accounts', [Controllers\AdPlatformAccountController::class, 'index']);
+    Route::post('ad-platform-accounts', [Controllers\AdPlatformAccountController::class, 'store']);
+    Route::put('ad-platform-accounts/{adPlatformAccount}', [Controllers\AdPlatformAccountController::class, 'update']);
+    Route::post('ad-platform-accounts/{adPlatformAccount}/verify', [Controllers\AdPlatformAccountController::class, 'verify']);
+    Route::post('ad-platform-accounts/{adPlatformAccount}/archive', [Controllers\AdPlatformAccountController::class, 'archive']);
+    Route::delete('ad-platform-accounts/{adPlatformAccount}', [Controllers\AdPlatformAccountController::class, 'destroy']);
 
     Route::get('settings/ai-providers', [Controllers\AiProviderAccountController::class, 'providers']);
     Route::get('settings/ai-provider-accounts', [Controllers\AiProviderAccountController::class, 'index']);

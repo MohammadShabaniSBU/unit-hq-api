@@ -10,6 +10,7 @@ use App\Models\Contact;
 use App\Models\SubscriptionList;
 use App\Support\Communications\Channel;
 use App\Support\Marketing\ConsentAction;
+use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\ConsentSource;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -27,7 +28,7 @@ class ConsentEventFactory extends Factory
     {
         return [
             'contact_id' => Contact::factory(),
-            'channel' => Channel::Email,
+            'channel' => ConsentChannel::fromComms(Channel::Email),
             'subscription_list_id' => SubscriptionList::factory(),
             'action' => ConsentAction::Granted,
             'source' => ConsentSource::Form,

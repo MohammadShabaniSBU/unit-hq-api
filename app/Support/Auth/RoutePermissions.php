@@ -19,6 +19,7 @@ final class RoutePermissions
         return [
 
             // ===== Public (17) =====
+            // PUBLIC  'GET /api/ad-platform-accounts/google/oauth/callback'  // AdPlatformAccountController@googleCallback — single-use OAuth state from authenticated start
             // PUBLIC  'GET /api/comms/preferences/{token}'  // PreferenceCenterController@show — preference HMAC, no writes
             // PUBLIC  'GET /api/comms/unsubscribe/{token}'  // UnsubscribeController@__invoke — List-Unsubscribe HMAC, redirect only
             // PUBLIC  'GET /api/legal-entities/{legal_entity}/stripe/public-key'  // LegalEntityStripeController@publicKey — Stripe publishable key (not secret)
@@ -553,6 +554,17 @@ final class RoutePermissions
             'PUT /api/automations/{automation}' => Permission::AutomationManage, // AutomationController@update
             'PUT /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@update
             'PUT /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@update — provider account
+
+            // ===== Advertising =====
+            'DELETE /api/ad-platform-accounts/{adPlatformAccount}' => Permission::AdvertisingConnect, // AdPlatformAccountController@destroy — aliases archive
+            'GET /api/ad-platform-accounts' => Permission::AdvertisingConnect, // AdPlatformAccountController@index
+            'GET /api/ad-platform-accounts/google/oauth/selection' => Permission::AdvertisingConnect, // AdPlatformAccountController@googleSelection
+            'POST /api/ad-platform-accounts' => Permission::AdvertisingConnect, // AdPlatformAccountController@store — Meta only
+            'POST /api/ad-platform-accounts/google/oauth/complete' => Permission::AdvertisingConnect, // AdPlatformAccountController@googleComplete
+            'POST /api/ad-platform-accounts/google/oauth/start' => Permission::AdvertisingConnect, // AdPlatformAccountController@googleStart
+            'POST /api/ad-platform-accounts/{adPlatformAccount}/archive' => Permission::AdvertisingConnect, // AdPlatformAccountController@archive
+            'POST /api/ad-platform-accounts/{adPlatformAccount}/verify' => Permission::AdvertisingConnect, // AdPlatformAccountController@verify
+            'PUT /api/ad-platform-accounts/{adPlatformAccount}' => Permission::AdvertisingConnect, // AdPlatformAccountController@update
 
             // ===== RBAC =====
             'DELETE /api/employees/{employee}/invitations/{invitation}' => Permission::RbacManage, // EmployeeController@destroyInvitation

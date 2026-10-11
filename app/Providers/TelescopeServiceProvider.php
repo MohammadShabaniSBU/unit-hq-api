@@ -17,6 +17,10 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     {
         // Telescope::night();
 
+        // Always, including local: ad credentials and the OAuth code must not
+        // land in Telescope. Model $hidden covers the credentials attribute.
+        Telescope::hideRequestParameters(['credentials', 'code', 'refresh_token']);
+
         $this->hideSensitiveRequestDetails();
 
         $isLocal = $this->app->environment('local');

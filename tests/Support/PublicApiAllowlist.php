@@ -35,6 +35,7 @@ final class PublicApiAllowlist
         'api/pay/{token}',
         'api/pay/{token}/intent',
         'api/legal-entities/{legal_entity}/stripe/public-key',
+        'api/ad-platform-accounts/google/oauth/callback',
         'api/invitations/{token}',
         'api/invitations/{token}/accept',
         'api/voice/bridge/{bridgeToken}',

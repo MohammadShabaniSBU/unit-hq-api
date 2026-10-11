@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Support\Communications\Channel;
 use App\Support\Marketing\ConsentSource;
+use App\Support\Marketing\SignupFormPurpose;
 use Database\Factories\SignupFormFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +24,8 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property int|null $site_id
  * @property list<int> $subscription_list_ids
+ * @property SignupFormPurpose $purpose
+ * @property array<string, mixed>|null $enquiry_fields
  * @property string $channel
  * @property list<array{key: string, required: bool}> $fields
  * @property string $consent_text_key
@@ -42,6 +45,8 @@ class SignupForm extends Model
     protected $fillable = [
         'public_token',
         'name',
+        'purpose',
+        'enquiry_fields',
         'site_id',
         'subscription_list_ids',
         'channel',
@@ -57,6 +62,8 @@ class SignupForm extends Model
     protected function casts(): array
     {
         return [
+            'purpose' => SignupFormPurpose::class,
+            'enquiry_fields' => 'array',
             'subscription_list_ids' => 'array',
             'fields' => 'array',
             'double_opt_in' => 'boolean',

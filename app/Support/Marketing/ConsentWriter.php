@@ -238,7 +238,7 @@ final class ConsentWriter
     ): ConsentEvent {
         $event = ConsentEvent::query()->create([
             'contact_id' => $contact->id,
-            'channel' => $channel,
+            'channel' => ConsentChannel::fromComms($channel),
             'subscription_list_id' => $list->id,
             'action' => $action,
             'source' => $source,
