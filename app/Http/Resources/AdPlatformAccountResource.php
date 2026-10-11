@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Support\Advertising\AdPlatformRegistry;
 use App\Support\Advertising\Contracts\ListsCampaigns;
+use App\Support\Advertising\Contracts\ListsConversionTargets;
 use App\Support\Advertising\Contracts\ReportsConversions;
 use App\Support\Advertising\Contracts\ReportsSpend;
 use App\Support\Credentials\CredentialMasker;
@@ -22,6 +23,7 @@ class AdPlatformAccountResource extends BaseResource
         $reportsConversions = false;
         $reportsSpend = false;
         $listsCampaigns = false;
+        $listsConversionTargets = false;
 
         try {
             $class = $registry->adapterClass($this->provider);
@@ -29,6 +31,7 @@ class AdPlatformAccountResource extends BaseResource
             $reportsConversions = is_subclass_of($class, ReportsConversions::class);
             $reportsSpend = is_subclass_of($class, ReportsSpend::class);
             $listsCampaigns = is_subclass_of($class, ListsCampaigns::class);
+            $listsConversionTargets = is_subclass_of($class, ListsConversionTargets::class);
         } catch (InvalidArgumentException) {
             $fields = [];
         }
@@ -51,6 +54,7 @@ class AdPlatformAccountResource extends BaseResource
             'reports_conversions' => $reportsConversions,
             'reports_spend' => $reportsSpend,
             'lists_campaigns' => $listsCampaigns,
+            'lists_conversion_targets' => $listsConversionTargets,
             'last_verified_at' => $this->datetime($this->last_verified_at),
             'last_error' => $this->last_error,
             'archived_at' => $this->datetime($this->archived_at),

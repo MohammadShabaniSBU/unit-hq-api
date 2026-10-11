@@ -12,6 +12,7 @@ enum LogChannel: string
     case Comms = 'comms';
     case Billing = 'billing';
     case Ai = 'ai';
+    case Ads = 'ads';
 
     public function tier(): int
     {

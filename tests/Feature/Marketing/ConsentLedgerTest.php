@@ -469,9 +469,10 @@ class ConsentLedgerTest extends TestCase
         $manager = $this->employeeWithPermission(Permission::ConsentManage);
 
         Sanctum::actingAs($viewer);
-        $this->getJson('/api/contacts/'.$contact->id.'/consents')
+        $lists = collect($this->getJson('/api/contacts/'.$contact->id.'/consents')
             ->assertOk()
-            ->assertJsonPath('data.lists.0.key', 'newsletter');
+            ->json('data.lists'));
+        $this->assertTrue($lists->contains(fn (array $list): bool => $list['key'] === 'newsletter'));
 
         Sanctum::actingAs($manager);
         $this->postJson('/api/contacts/'.$contact->id.'/consents', [

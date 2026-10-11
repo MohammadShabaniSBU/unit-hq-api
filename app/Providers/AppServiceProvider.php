@@ -10,6 +10,7 @@ use App\Listeners\BroadcastCopilotFailed;
 use App\Listeners\BroadcastCopilotToolInvoking;
 use App\Listeners\IncrementAiUsageToolCalls;
 use App\Listeners\QueueAutomationMatching;
+use App\Listeners\RecordAdConversion;
 use App\Listeners\RecordAgentFailoverUsage;
 use App\Listeners\RecordAgentUsage;
 use App\Listeners\RespondWithAgent;
@@ -300,6 +301,9 @@ class AppServiceProvider extends ServiceProvider
                 $event->connection->statement('SET jit = off');
             }
         });
+
+        Event::listen('eloquent.created: '.Deal::class, [RecordAdConversion::class, 'dealCreated']);
+        Event::listen('eloquent.created: '.Reservation::class, [RecordAdConversion::class, 'reservationCreated']);
 
         Event::listen(ModelCreated::class, [QueueAutomationMatching::class, 'handle']);
         Event::listen(ModelUpdated::class, [QueueAutomationMatching::class, 'handle']);

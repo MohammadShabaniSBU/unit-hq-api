@@ -13,5 +13,5 @@ interface ReportsConversions
      * @param  array<int, ConversionPayload>  $payloads
      * @return list<DeliveryResult>
      */
-    public function deliver(array $payloads): array;
+    public function deliver(array $payloads, bool $validateOnly = false, ?string $testEventCode = null): array;
 }

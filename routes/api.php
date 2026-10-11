@@ -42,6 +42,9 @@ Route::get('public/template-assets/{hash}/{filename}', [Controllers\TemplateAsse
     ->where('hash', '[a-f0-9]{64}')
     ->where('filename', '.*');
 
+// First-party ad tag. Public static script, no credentials. Operators paste it on their site.
+Route::get('public/tag.js', [Controllers\PublicTagController::class, 'show']);
+
 // Signup forms — unguessable public_token. Submit is throttled per IP. Confirm token is hashed at rest.
 Route::get('public/forms/confirm/{token}', [Controllers\PublicSignupFormController::class, 'confirm'])
     ->middleware('throttle:30,1');
@@ -177,6 +180,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('ad-platform-accounts/{adPlatformAccount}/verify', [Controllers\AdPlatformAccountController::class, 'verify']);
     Route::post('ad-platform-accounts/{adPlatformAccount}/archive', [Controllers\AdPlatformAccountController::class, 'archive']);
     Route::delete('ad-platform-accounts/{adPlatformAccount}', [Controllers\AdPlatformAccountController::class, 'destroy']);
+    Route::get('ad-platform-accounts/{adPlatformAccount}/conversion-targets', [Controllers\AdConversionMappingController::class, 'targets']);
+    Route::get('ad-platform-accounts/{adPlatformAccount}/conversion-mappings', [Controllers\AdConversionMappingController::class, 'show']);
+    Route::put('ad-platform-accounts/{adPlatformAccount}/conversion-mappings', [Controllers\AdConversionMappingController::class, 'update']);
+    Route::post('ad-platform-accounts/{adPlatformAccount}/test-conversion', [Controllers\AdConversionMappingController::class, 'test']);
+    Route::get('ad-conversion-deliveries/summary', [Controllers\AdConversionDeliveryController::class, 'summary']);
+    Route::get('ad-conversion-deliveries', [Controllers\AdConversionDeliveryController::class, 'index']);
+    Route::post('ad-conversion-deliveries/{adConversionDelivery}/retry', [Controllers\AdConversionDeliveryController::class, 'retry']);
 
     Route::get('settings/ai-providers', [Controllers\AiProviderAccountController::class, 'providers']);
     Route::get('settings/ai-provider-accounts', [Controllers\AiProviderAccountController::class, 'index']);

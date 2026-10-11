@@ -23,6 +23,15 @@ class SubscriptionListSeeder extends Seeder
         }
     }
 
+    public function seedAdvertising(): void
+    {
+        $list = $this->advertisingList();
+        SubscriptionList::query()->firstOrCreate(
+            ['key' => $list['key']],
+            $list,
+        );
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -69,6 +78,34 @@ class SubscriptionListSeeder extends Seeder
                 'is_system' => true,
                 'archived_at' => null,
             ],
+            $this->advertisingList(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function advertisingList(): array
+    {
+        return [
+            'key' => 'advertising',
+            'labels' => [
+                'en' => 'Use my data to measure and personalise ads',
+                'es' => 'Usar mis datos para medir y personalizar anuncios',
+                'fr' => 'Utiliser mes données pour mesurer et personnaliser les publicités',
+            ],
+            'descriptions' => [
+                'en' => 'Lets the company measure and personalise ads.',
+                'es' => 'Permite a la empresa medir y personalizar anuncios.',
+                'fr' => 'Permet à l’entreprise de mesurer et de personnaliser les publicités.',
+            ],
+            'kind' => 'advertising',
+            'channels' => ['ads'],
+            'site_id' => null,
+            'is_public' => false,
+            'requires_double_opt_in' => false,
+            'is_system' => true,
+            'archived_at' => null,
         ];
     }
 }

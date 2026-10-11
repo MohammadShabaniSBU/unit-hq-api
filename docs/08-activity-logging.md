@@ -28,6 +28,7 @@ Three logging tiers on two tables:
 | `comms` | 2 | `offer.sent`; `contact.consent.granted` / `contact.consent.withdrawn` (ids and enums only — no evidence, no note) |
 | `billing` | 2 | Billing run events (`billing.run.completed`); reserved for further billing attribute/events |
 | `ai` | 2 | Customer-facing agent lifecycle (`agent.conversation.started`, `agent.handoff`, `agent.guardrail.blocked`). Properties never carry draft text |
+| `ads` | 2 | `ads.conversion_mapping.updated`, `ads.delivery.retried`. Properties are account ids, event keys, and old/new refs. Never a payload or identifier value |
 
 Tier-1 (system_events): `billing.contract.failed` — per-contract failure inside a billing run
 (isolated; run continues). `ai.turn.failed` — agent driver errors and timeouts.

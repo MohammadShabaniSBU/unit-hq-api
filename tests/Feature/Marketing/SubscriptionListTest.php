@@ -50,8 +50,15 @@ class SubscriptionListTest extends TestCase
         $this->assertSame(['email', 'sms'], $this->promotions->channels);
         $this->assertSame('newsletter', $this->newsletter->kind->value);
         $this->assertSame(['email'], $this->newsletter->channels);
+        $advertising = SubscriptionList::query()->where('key', 'advertising')->firstOrFail();
+        $this->assertTrue($advertising->is_system);
+        $this->assertFalse($advertising->is_public);
+        $this->assertFalse($advertising->requires_double_opt_in);
+        $this->assertSame('advertising', $advertising->kind->value);
+        $this->assertSame(['ads'], $advertising->channels);
         $this->assertSame(1, SubscriptionList::query()->where('key', 'promotions')->count());
         $this->assertSame(1, SubscriptionList::query()->where('key', 'newsletter')->count());
+        $this->assertSame(1, SubscriptionList::query()->where('key', 'advertising')->count());
 
         $stage = (string) file_get_contents(base_path('database/seeders/Demo/StageSeeder.php'));
         $this->assertStringContainsString('SubscriptionListSeeder::class', $stage);
@@ -143,6 +150,14 @@ class SubscriptionListTest extends TestCase
 
         $this->assertNull($this->newsletter->fresh()?->archived_at);
         $this->assertSame('newsletter', $this->newsletter->fresh()?->key);
+
+        $advertising = SubscriptionList::query()->where('key', 'advertising')->firstOrFail();
+        $this->postJson('/api/subscription-lists/'.$advertising->id.'/archive')
+            ->assertStatus(422);
+        $this->putJson('/api/subscription-lists/'.$advertising->id, [
+            'channels' => ['email'],
+        ])->assertStatus(422);
+        $this->assertSame(['ads'], $advertising->fresh()?->channels);
 
         $created = $this->postJson('/api/subscription-lists', [
             'key' => 'madrid_centro_offers',

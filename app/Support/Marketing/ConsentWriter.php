@@ -31,7 +31,7 @@ final class ConsentWriter
      */
     public static function grant(
         Contact $contact,
-        Channel $channel,
+        Channel|ConsentChannel $channel,
         SubscriptionList $list,
         ConsentSource $source,
         ?int $consentTextId = null,
@@ -39,8 +39,12 @@ final class ConsentWriter
         ?Model $causer = null,
         ?Carbon $occurredAt = null,
     ): ConsentEvent {
-        self::assertMarketingChannel($channel);
-        self::assertListAllows($list, $channel);
+        $consentChannel = self::asConsentChannel($channel);
+        self::assertListAllows($list, $consentChannel);
+
+        if ($source === ConsentSource::SoftOptIn && $list->kind === SubscriptionListKind::Advertising) {
+            throw new ConsentRuleException('soft_opt_in');
+        }
 
         $grantSources = [
             ConsentSource::Form,
@@ -80,7 +84,7 @@ final class ConsentWriter
 
         return self::insert(
             $contact,
-            $channel,
+            $consentChannel,
             $list,
             ConsentAction::Granted,
             $source,
@@ -98,15 +102,15 @@ final class ConsentWriter
      */
     public static function pending(
         Contact $contact,
-        Channel $channel,
+        Channel|ConsentChannel $channel,
         SubscriptionList $list,
         ConsentSource $source,
         int $consentTextId,
         ?array $evidence = null,
         ?Carbon $occurredAt = null,
     ): ConsentEvent {
-        self::assertMarketingChannel($channel);
-        self::assertListAllows($list, $channel);
+        $consentChannel = self::asConsentChannel($channel);
+        self::assertListAllows($list, $consentChannel);
 
         if ($source !== ConsentSource::Form) {
             throw new ConsentRuleException('pending_source');
@@ -116,7 +120,7 @@ final class ConsentWriter
 
         return self::insert(
             $contact,
-            $channel,
+            $consentChannel,
             $list,
             ConsentAction::Pending,
             $source,
@@ -133,23 +137,30 @@ final class ConsentWriter
      */
     public static function withdraw(
         Contact $contact,
-        Channel $channel,
+        Channel|ConsentChannel $channel,
         SubscriptionList $list,
         ConsentSource $source,
         ?array $evidence = null,
         ?Model $causer = null,
         ?Carbon $occurredAt = null,
     ): ConsentEvent {
-        self::assertMarketingChannel($channel);
-        self::assertListAllows($list, $channel, allowArchived: true);
+        $consentChannel = self::asConsentChannel($channel);
+        self::assertListAllows($list, $consentChannel, allowArchived: true);
 
         if ($source === ConsentSource::Operator && ! $causer instanceof Employee) {
             throw new ConsentRuleException('operator_causer');
         }
 
+        if ($source === ConsentSource::Operator && $list->kind === SubscriptionListKind::Advertising) {
+            $note = trim((string) ($evidence['note'] ?? ''));
+            if ($note === '') {
+                throw new ConsentRuleException('operator_note');
+            }
+        }
+
         return self::insert(
             $contact,
-            $channel,
+            $consentChannel,
             $list,
             ConsentAction::Withdrawn,
             $source,
@@ -171,7 +182,7 @@ final class ConsentWriter
         ConsentSource $source,
         ?array $evidence = null,
     ): void {
-        self::assertMarketingChannel($channel);
+        self::asConsentChannel($channel);
 
         $contactIds = self::contactIdsForAddress($channel, $address);
         if ($contactIds === []) {
@@ -211,7 +222,7 @@ final class ConsentWriter
                 }
 
                 $list = SubscriptionList::query()->find($row['list']['id']);
-                $channel = Channel::tryFrom($row['channel']);
+                $channel = ConsentChannel::tryFrom($row['channel']);
                 if ($list === null || $channel === null) {
                     continue;
                 }
@@ -226,7 +237,7 @@ final class ConsentWriter
      */
     private static function insert(
         Contact $contact,
-        Channel $channel,
+        ConsentChannel $channel,
         SubscriptionList $list,
         ConsentAction $action,
         ConsentSource $source,
@@ -238,7 +249,7 @@ final class ConsentWriter
     ): ConsentEvent {
         $event = ConsentEvent::query()->create([
             'contact_id' => $contact->id,
-            'channel' => ConsentChannel::fromComms($channel),
+            'channel' => $channel,
             'subscription_list_id' => $list->id,
             'action' => $action,
             'source' => $source,
@@ -275,14 +286,20 @@ final class ConsentWriter
         return $event;
     }
 
-    private static function assertMarketingChannel(Channel $channel): void
+    private static function asConsentChannel(Channel|ConsentChannel $channel): ConsentChannel
     {
+        if ($channel instanceof ConsentChannel) {
+            return $channel;
+        }
+
         if (! in_array($channel, [Channel::Email, Channel::Sms, Channel::Whatsapp], true)) {
             throw new ConsentRuleException('channel');
         }
+
+        return ConsentChannel::fromComms($channel);
     }
 
-    private static function assertListAllows(SubscriptionList $list, Channel $channel, bool $allowArchived = false): void
+    private static function assertListAllows(SubscriptionList $list, Channel|ConsentChannel $channel, bool $allowArchived = false): void
     {
         if (! $allowArchived && $list->archived_at !== null) {
             throw new ConsentRuleException('list_archived');

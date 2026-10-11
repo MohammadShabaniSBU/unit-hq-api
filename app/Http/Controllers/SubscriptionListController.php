@@ -299,7 +299,7 @@ class SubscriptionListController extends Controller
             60,
             function () use ($list): array {
                 $counts = [];
-                foreach ($list->marketingChannels() as $channel) {
+                foreach ($list->consentChannels() as $channel) {
                     $counts[$channel->value] = (int) ConsentState::grantedQuery($channel, $list->id)->count();
                 }
 

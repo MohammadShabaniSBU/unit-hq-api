@@ -11,6 +11,7 @@ use App\Models\SubscriptionList;
 use App\Support\Auth\Permission;
 use App\Support\Communications\Channel;
 use App\Support\Marketing\ConsentAction;
+use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\ConsentRuleException;
 use App\Support\Marketing\ConsentSource;
 use App\Support\Marketing\ConsentState;
@@ -66,6 +67,7 @@ class ContactConsentController extends Controller
                 Channel::Email->value,
                 Channel::Sms->value,
                 Channel::Whatsapp->value,
+                ConsentChannel::Ads->value,
             ])],
             'subscription_list_id' => ['required', 'integer', 'exists:subscription_lists,id'],
             'action' => ['required', 'string', Rule::in([
@@ -77,7 +79,9 @@ class ContactConsentController extends Controller
         ]);
 
         $list = SubscriptionList::query()->findOrFail($validated['subscription_list_id']);
-        $channel = Channel::from($validated['channel']);
+        $channel = $validated['channel'] === ConsentChannel::Ads->value
+            ? ConsentChannel::Ads
+            : Channel::from($validated['channel']);
         $action = ConsentAction::from($validated['action']);
         $note = trim((string) ($validated['note'] ?? ''));
         $textId = isset($validated['consent_text_id']) ? (int) $validated['consent_text_id'] : null;

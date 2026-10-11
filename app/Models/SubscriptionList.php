@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Support\Communications\Channel;
+use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\SubscriptionListKind;
 use Database\Factories\SubscriptionListFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,7 +64,7 @@ class SubscriptionList extends Model
         ];
     }
 
-    public function allows(Channel $channel): bool
+    public function allows(Channel|ConsentChannel $channel): bool
     {
         return in_array($channel->value, $this->channels, true);
     }
@@ -107,6 +108,25 @@ class SubscriptionList extends Model
                 continue;
             }
             $channels[] = $channel;
+        }
+
+        return $channels;
+    }
+
+    /**
+     * Every consent channel stored on the list, including ads.
+     *
+     * @return list<ConsentChannel>
+     */
+    public function consentChannels(): array
+    {
+        $channels = [];
+
+        foreach ($this->channels as $value) {
+            $channel = ConsentChannel::tryFrom($value);
+            if ($channel !== null) {
+                $channels[] = $channel;
+            }
         }
 
         return $channels;

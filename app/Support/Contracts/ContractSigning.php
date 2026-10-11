@@ -16,6 +16,9 @@ use App\Models\Setting;
 use App\Models\Unit;
 use App\Models\UnitHold;
 use App\Models\UnitOccupancy;
+use App\Support\Access\AccessSync;
+use App\Support\Advertising\ConversionEventKey;
+use App\Support\Advertising\ConversionOutbox;
 use App\Support\Billing\BillingMath;
 use App\Support\Billing\ContractBilling;
 use App\Support\Billing\CurrencyGuard;
@@ -24,7 +27,6 @@ use App\Support\ESign\EnvelopeOrchestrator;
 use App\Support\Fiscal\InvoiceIssuer;
 use App\Support\Occupancy\HoldGuard;
 use App\Support\Occupancy\OccupancyGuard;
-use App\Support\Access\AccessSync;
 use App\Support\RecordsActivity;
 use App\Support\Time\SiteClock;
 use Carbon\CarbonImmutable;
@@ -82,6 +84,8 @@ final class ContractSigning
 
         self::writeUnitOccupancies($contract, $contractItems, $moveIn, $endedOn, $createdBy);
 
+        $chargeIdsBefore = Charge::query()->where('contract_id', $contract->id)->pluck('id');
+
         $billing = Setting::billing();
         $plan = ContractBilling::planFirstPeriod(
             $moveIn,
@@ -127,6 +131,8 @@ final class ContractSigning
         if ($contract->contact !== null) {
             RecordsActivity::core('contract.signed', $contract->contact, $signedProps);
         }
+
+        self::recordMoveIn($contract, $chargeIdsBefore);
 
         AccessSync::nudge((int) $contract->id);
     }
@@ -190,15 +196,15 @@ final class ContractSigning
             HoldGuard::assertUnheld($unitId, $startsOn, null);
 
             UnitHold::query()->create([
-                'unit_id'        => $unitId,
-                'hold_type'      => HoldType::ContractSignature,
+                'unit_id' => $unitId,
+                'hold_type' => HoldType::ContractSignature,
                 'reservation_id' => null,
-                'contract_id'    => $contract->id,
-                'starts_on'      => $startsOn->format('Y-m-d'),
-                'ends_on'        => null,
-                'released_at'    => null,
-                'reason'         => null,
-                'created_by'     => $createdBy,
+                'contract_id' => $contract->id,
+                'starts_on' => $startsOn->format('Y-m-d'),
+                'ends_on' => null,
+                'released_at' => null,
+                'reason' => null,
+                'created_by' => $createdBy,
             ]);
         }
     }
@@ -222,12 +228,12 @@ final class ContractSigning
             HoldGuard::assertUnheld((int) $item->item_id, $moveIn, $endedOn);
 
             UnitOccupancy::query()->create([
-                'unit_id'          => $item->item_id,
-                'contract_id'      => $contract->id,
+                'unit_id' => $item->item_id,
+                'contract_id' => $contract->id,
                 'contract_item_id' => $item->id,
-                'started_on'       => $moveIn->format('Y-m-d'),
-                'ended_on'         => $endedOn?->format('Y-m-d'),
-                'created_by'       => $createdBy,
+                'started_on' => $moveIn->format('Y-m-d'),
+                'ended_on' => $endedOn?->format('Y-m-d'),
+                'created_by' => $createdBy,
             ]);
         }
     }
@@ -256,18 +262,18 @@ final class ContractSigning
                 $breakdown = BillingMath::applyTax($net, $rate);
 
                 Charge::query()->create([
-                    'contract_id'        => $contract->id,
-                    'contract_item_id'   => $item->id,
-                    'charge_type'        => self::chargeTypeForItem($item->item_type),
-                    'period_start'       => $plan->windowStart->toDateString(),
-                    'period_end'         => $plan->windowEnd->toDateString(),
-                    'net_amount'         => $breakdown->net,
-                    'tax_rate_snapshot'  => $item->tax_rate_snapshot,
-                    'tax_amount'         => $breakdown->tax,
-                    'amount'             => $breakdown->gross,
-                    'currency'           => $contract->currency,
-                    'due_date'           => $moveIn->toDateString(),
-                    'description'        => self::chargeDescriptionForItem($item->item_type),
+                    'contract_id' => $contract->id,
+                    'contract_item_id' => $item->id,
+                    'charge_type' => self::chargeTypeForItem($item->item_type),
+                    'period_start' => $plan->windowStart->toDateString(),
+                    'period_end' => $plan->windowEnd->toDateString(),
+                    'net_amount' => $breakdown->net,
+                    'tax_rate_snapshot' => $item->tax_rate_snapshot,
+                    'tax_amount' => $breakdown->tax,
+                    'amount' => $breakdown->gross,
+                    'currency' => $contract->currency,
+                    'due_date' => $moveIn->toDateString(),
+                    'description' => self::chargeDescriptionForItem($item->item_type),
                 ]);
             }
 
@@ -276,7 +282,7 @@ final class ContractSigning
 
         $contract->forceFill([
             'billing_anchor_date' => $plan->anchorDate->toDateString(),
-            'billed_through'      => $plan->billedThrough->toDateString(),
+            'billed_through' => $plan->billedThrough->toDateString(),
         ])->save();
     }
 
@@ -287,36 +293,76 @@ final class ContractSigning
         }
 
         Charge::query()->create([
-            'contract_id'       => $contract->id,
-            'contract_item_id'  => null,
-            'charge_type'       => ChargeType::Deposit,
-            'period_start'      => null,
-            'period_end'        => null,
-            'net_amount'        => $contract->deposit_amount,
+            'contract_id' => $contract->id,
+            'contract_item_id' => null,
+            'charge_type' => ChargeType::Deposit,
+            'period_start' => null,
+            'period_end' => null,
+            'net_amount' => $contract->deposit_amount,
             'tax_rate_snapshot' => null,
-            'tax_amount'        => '0.00',
-            'amount'            => $contract->deposit_amount,
-            'currency'          => $contract->currency,
-            'due_date'          => $moveIn->toDateString(),
-            'description'       => 'Refundable deposit',
+            'tax_amount' => '0.00',
+            'amount' => $contract->deposit_amount,
+            'currency' => $contract->currency,
+            'due_date' => $moveIn->toDateString(),
+            'description' => 'Refundable deposit',
         ]);
+    }
+
+    /**
+     * @param  Collection<int, int|string>  $chargeIdsBefore
+     */
+    private static function recordMoveIn(Contract $contract, Collection $chargeIdsBefore): void
+    {
+        $contract->loadMissing(['contact', 'unitItem.item.site']);
+
+        if ($contract->contact === null) {
+            return;
+        }
+
+        $charges = Charge::query()->where('contract_id', $contract->id);
+        if ($chargeIdsBefore->isNotEmpty()) {
+            $charges->whereNotIn('id', $chargeIdsBefore->all());
+        }
+
+        $sum = '0.00';
+        foreach ($charges->get() as $charge) {
+            $type = $charge->charge_type instanceof ChargeType
+                ? $charge->charge_type
+                : ChargeType::tryFrom((string) $charge->charge_type);
+
+            if ($type === null || ! $type->isRevenue()) {
+                continue;
+            }
+
+            $sum = BillingMath::round2(bcadd($sum, (string) $charge->net_amount, 8));
+        }
+
+        ConversionOutbox::record(
+            ConversionEventKey::MoveIn,
+            $contract,
+            $contract->contact,
+            $contract->unitItem?->item?->site,
+            $sum,
+            (string) $contract->currency,
+            CarbonImmutable::parse($contract->signed_at ?? now()),
+        );
     }
 
     private static function chargeTypeForItem(string $itemType): ChargeType
     {
         return match ($itemType) {
-            'unit'      => ChargeType::Rent,
+            'unit' => ChargeType::Rent,
             'insurance' => ChargeType::Insurance,
-            default     => ChargeType::from($itemType),
+            default => ChargeType::from($itemType),
         };
     }
 
     private static function chargeDescriptionForItem(string $itemType): string
     {
         return match ($itemType) {
-            'unit'      => 'Rent',
+            'unit' => 'Rent',
             'insurance' => 'Insurance',
-            default     => ucfirst($itemType),
+            default => ucfirst($itemType),
         };
     }
 }

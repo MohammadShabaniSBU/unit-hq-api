@@ -14,6 +14,7 @@ use App\Models\ContactChannel;
 use App\Models\SignupConfirmation;
 use App\Models\SignupForm;
 use App\Models\SubscriptionList;
+use App\Support\Advertising\TouchRecorder;
 use App\Support\Communications\Channel;
 use App\Support\Communications\ContactChannelMatcher;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -46,6 +47,7 @@ final class SignupSubmission
             'opened_at' => ['nullable', 'integer'],
             'locale' => ['nullable', 'string', 'max:5'],
             'consent_text_version' => ['nullable', 'integer'],
+            't' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $email = ContactChannelMatcher::normalizeEmail((string) $input['email']);
@@ -75,7 +77,6 @@ final class SignupSubmission
         }
 
         $lists = self::listsFor($form, $listIds);
-        $channel = $form->marketingChannel();
         $evidence = [
             'ip' => (string) ($request->ip() ?? ''),
             'user_agent' => mb_substr((string) ($request->userAgent() ?? ''), 0, 512),
@@ -88,48 +89,18 @@ final class SignupSubmission
             'last_name' => trim((string) ($input['last_name'] ?? '')),
             'phone' => self::phone((string) ($input['phone'] ?? '')),
         ];
+        $touch = is_string($input['t'] ?? null) ? $input['t'] : null;
 
-        $token = DB::transaction(function () use ($form, $email, $names, $lists, $channel, $text, $evidence, $locale): ?string {
+        $token = DB::transaction(function () use ($form, $email, $names, $lists, $text, $evidence, $locale, $touch): ?string {
             $contact = self::resolveOrCreate($form, $email, $names, $locale);
-            $events = [];
+            $snapshot = TouchRecorder::fromEncoded($form, $contact, $touch);
+            AdvertisingConsent::recordFromSubmission($contact, $form, $snapshot, $locale, $evidence);
 
-            foreach ($lists as $list) {
-                if (ConsentState::isGranted((int) $contact->id, $channel, (int) $list->id)) {
-                    continue;
-                }
-
-                if ($form->double_opt_in) {
-                    $events[] = ConsentWriter::pending(
-                        $contact,
-                        $channel,
-                        $list,
-                        ConsentSource::Form,
-                        $text->id,
-                        $evidence,
-                    );
-
-                    continue;
-                }
-
-                ConsentWriter::grant(
-                    $contact,
-                    $channel,
-                    $list,
-                    ConsentSource::Form,
-                    $text->id,
-                    $evidence,
-                );
-            }
-
-            if (! $form->double_opt_in || $events === []) {
-                return null;
-            }
-
-            return self::issueConfirmation($form, $contact, $events);
+            return self::applyListConsent($form, $contact, $lists, $text, $evidence);
         });
 
         if ($token !== null) {
-            $contact = self::resolveContact($email);
+            $contact = self::findByEmail($email);
             if ($contact !== null) {
                 SignupConfirmationMail::send($form, $contact, $token, $locale);
             }
@@ -175,9 +146,12 @@ final class SignupSubmission
 
             foreach ($pending as $event) {
                 $list = SubscriptionList::query()->find($event->subscription_list_id);
-                $channel = $event->channel instanceof Channel
-                    ? $event->channel
-                    : Channel::tryFrom((string) $event->channel);
+                $rawChannel = $event->channel;
+                $channel = match (true) {
+                    $rawChannel instanceof Channel => $rawChannel,
+                    $rawChannel instanceof ConsentChannel => Channel::tryFrom($rawChannel->value),
+                    default => Channel::tryFrom((string) $rawChannel),
+                };
                 if ($list === null || $channel === null || $event->consent_text_id === null) {
                     continue;
                 }
@@ -240,9 +214,62 @@ final class SignupSubmission
     }
 
     /**
+     * @param  list<SubscriptionList>  $lists
+     * @param  array<string, mixed>  $evidence
+     */
+    public static function applyListConsent(
+        SignupForm $form,
+        Contact $contact,
+        array $lists,
+        ConsentText $text,
+        array $evidence,
+    ): ?string {
+        if ($lists === []) {
+            return null;
+        }
+
+        $channel = $form->marketingChannel();
+        $events = [];
+
+        foreach ($lists as $list) {
+            if (ConsentState::isGranted((int) $contact->id, $channel, (int) $list->id)) {
+                continue;
+            }
+
+            if ($form->double_opt_in) {
+                $events[] = ConsentWriter::pending(
+                    $contact,
+                    $channel,
+                    $list,
+                    ConsentSource::Form,
+                    $text->id,
+                    $evidence,
+                );
+
+                continue;
+            }
+
+            ConsentWriter::grant(
+                $contact,
+                $channel,
+                $list,
+                ConsentSource::Form,
+                $text->id,
+                $evidence,
+            );
+        }
+
+        if (! $form->double_opt_in || $events === []) {
+            return null;
+        }
+
+        return self::issueConfirmation($form, $contact, $events);
+    }
+
+    /**
      * @param  array<string, mixed>  $input
      */
-    private static function assertRequiredFields(SignupForm $form, array $input): void
+    public static function assertRequiredFields(SignupForm $form, array $input): void
     {
         foreach ($form->fields as $field) {
             $key = (string) ($field['key'] ?? '');
@@ -284,7 +311,7 @@ final class SignupSubmission
         return $selected;
     }
 
-    private static function dropped(Request $request): bool
+    public static function dropped(Request $request): bool
     {
         $website = trim((string) $request->input('website', ''));
         if ($website !== '') {
@@ -305,7 +332,7 @@ final class SignupSubmission
      * @param  list<int>  $listIds
      * @return list<SubscriptionList>
      */
-    private static function listsFor(SignupForm $form, array $listIds): array
+    public static function listsFor(SignupForm $form, array $listIds): array
     {
         $channel = $form->marketingChannel();
         $lists = SubscriptionList::query()
@@ -340,7 +367,7 @@ final class SignupSubmission
      */
     private static function resolveOrCreate(SignupForm $form, string $email, array $names, string $locale): Contact
     {
-        $existing = self::resolveContact($email);
+        $existing = self::findByEmail($email);
         if ($existing !== null) {
             return $existing;
         }
@@ -348,7 +375,7 @@ final class SignupSubmission
         try {
             return self::createContact($form, $email, $names, $locale);
         } catch (UniqueConstraintViolationException $exception) {
-            $existing = self::resolveContact($email);
+            $existing = self::findByEmail($email);
             if ($existing === null) {
                 throw $exception;
             }
@@ -357,7 +384,7 @@ final class SignupSubmission
         }
     }
 
-    private static function resolveContact(string $email): ?Contact
+    public static function findByEmail(string $email): ?Contact
     {
         $byColumn = Contact::query()
             ->whereNotNull('email')

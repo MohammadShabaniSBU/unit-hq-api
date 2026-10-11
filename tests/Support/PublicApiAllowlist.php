@@ -28,6 +28,7 @@ final class PublicApiAllowlist
         'api/public/forms/{token}',
         'api/public/forms/{token}/submit',
         'api/public/forms/confirm/{token}',
+        'api/public/tag.js',
         'api/public/template-assets/{hash}/{filename}',
         'api/offers/token/{token}',
         'api/offers/token/{token}/options/{offerOption}/map',

@@ -44,6 +44,7 @@ use App\Support\Playbooks\PlaybookCompiler;
 use Carbon\CarbonImmutable;
 use Database\Seeders\AgentInboxDraftSeeder;
 use Database\Seeders\CelebrationAutomationsSeeder;
+use Database\Seeders\ConsentTextSeeder;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\DebtPlaybookSeeder;
@@ -98,6 +99,7 @@ class StageSeeder extends Seeder
     public function run(): void
     {
         $this->call(SubscriptionListSeeder::class);
+        $this->call(ConsentTextSeeder::class);
 
         if (Site::query()->where('code', 'MAD-01')->exists()) {
             $this->command?->info('Demo stage already present — skipping.');

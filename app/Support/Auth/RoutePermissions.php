@@ -28,6 +28,7 @@ final class RoutePermissions
             // PUBLIC  'GET /api/pay/{token}'  // PublicPaymentController@show — payment-request token
             // PUBLIC  'GET /api/public/forms/{token}'  // PublicSignupFormController@show — signup form public_token
             // PUBLIC  'GET /api/public/forms/confirm/{token}'  // PublicSignupFormController@confirm — hashed confirmation token
+            // PUBLIC  'GET /api/public/tag.js'  // PublicTagController@show — first-party ad tag, no credentials
             // PUBLIC  'GET /api/public/template-assets/{hash}/{filename}'  // TemplateAssetController@showPublic — content-hash public URL
             // PUBLIC  'POST /api/public/forms/{token}/submit'  // PublicSignupFormController@submit — signup form public_token, throttle 10/min per IP
             // PUBLIC  'POST /api/comms/preferences/{token}'  // PreferenceCenterController@update — preference HMAC
@@ -565,6 +566,13 @@ final class RoutePermissions
             'POST /api/ad-platform-accounts/{adPlatformAccount}/archive' => Permission::AdvertisingConnect, // AdPlatformAccountController@archive
             'POST /api/ad-platform-accounts/{adPlatformAccount}/verify' => Permission::AdvertisingConnect, // AdPlatformAccountController@verify
             'PUT /api/ad-platform-accounts/{adPlatformAccount}' => Permission::AdvertisingConnect, // AdPlatformAccountController@update
+            'GET /api/ad-platform-accounts/{adPlatformAccount}/conversion-targets' => Permission::AdvertisingManage, // AdConversionMappingController@targets
+            'GET /api/ad-platform-accounts/{adPlatformAccount}/conversion-mappings' => Permission::AdvertisingView, // AdConversionMappingController@show
+            'PUT /api/ad-platform-accounts/{adPlatformAccount}/conversion-mappings' => Permission::AdvertisingManage, // AdConversionMappingController@update
+            'POST /api/ad-platform-accounts/{adPlatformAccount}/test-conversion' => Permission::AdvertisingManage, // AdConversionMappingController@test
+            'GET /api/ad-conversion-deliveries/summary' => Permission::AdvertisingView, // AdConversionDeliveryController@summary
+            'GET /api/ad-conversion-deliveries' => Permission::AdvertisingView, // AdConversionDeliveryController@index
+            'POST /api/ad-conversion-deliveries/{adConversionDelivery}/retry' => Permission::AdvertisingManage, // AdConversionDeliveryController@retry
 
             // ===== RBAC =====
             'DELETE /api/employees/{employee}/invitations/{invitation}' => Permission::RbacManage, // EmployeeController@destroyInvitation

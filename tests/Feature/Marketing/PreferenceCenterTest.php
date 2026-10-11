@@ -21,6 +21,7 @@ use App\Support\Communications\Senders\EmailSender;
 use App\Support\Communications\SuppressionReason;
 use App\Support\Communications\SuppressionScope;
 use App\Support\Communications\UnsubscribeToken;
+use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\ConsentSource;
 use App\Support\Marketing\ConsentState;
 use App\Support\Marketing\ConsentWriter;
@@ -246,6 +247,76 @@ class PreferenceCenterTest extends TestCase
         $this->assertArrayHasKey('unsubscribe_url', $sample);
         $this->assertContains('preferences_url', SubjectTokenBag::vocabulary());
         $this->assertContains('unsubscribe_url', SubjectTokenBag::vocabulary());
+    }
+
+    #[Test]
+    public function advertising_toggle_is_separate_and_withdrawal_clears_is_granted(): void
+    {
+        $contact = $this->grantedContact('en');
+        $list = SubscriptionList::query()->where('key', 'advertising')->firstOrFail();
+        $text = ConsentText::query()->where('key', 'advertising')->where('locale', 'en')->firstOrFail();
+        ConsentWriter::grant($contact, ConsentChannel::Ads, $list, ConsentSource::Form, $text->id);
+
+        $token = PreferenceToken::issue($contact->id, Channel::Email, 'ada@example.com');
+        $preferences = $this->getJson('/api/comms/preferences/'.$token)->assertOk();
+        $keys = collect($preferences->json('data.lists'))->pluck('key');
+        $this->assertFalse($keys->contains('advertising'));
+        $this->assertSame($list->id, $preferences->json('data.advertising.list_id'));
+        $this->assertTrue($preferences->json('data.advertising.subscribed'));
+        $this->assertSame(
+            'Use my data to measure and personalise ads',
+            $preferences->json('data.advertising.label'),
+        );
+
+        $this->postJson('/api/comms/preferences/'.$token, [
+            'changes' => [
+                ['list_id' => $list->id, 'channel' => 'ads', 'subscribed' => false],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.advertising.subscribed', false);
+
+        $this->assertFalse(ConsentState::isGranted($contact->id, ConsentChannel::Ads, $list->id));
+        $this->assertTrue(ConsentState::isGranted($contact->id, Channel::Email, $this->newsletter->id));
+    }
+
+    #[Test]
+    public function unsubscribe_all_leaves_advertising_consent(): void
+    {
+        $contact = $this->grantedContact('en');
+        $list = SubscriptionList::query()->where('key', 'advertising')->firstOrFail();
+        $text = ConsentText::query()->where('key', 'advertising')->where('locale', 'en')->firstOrFail();
+        ConsentWriter::grant($contact, ConsentChannel::Ads, $list, ConsentSource::Form, $text->id);
+
+        $token = PreferenceToken::issue($contact->id, Channel::Email, 'ada@example.com');
+        $this->postJson('/api/comms/preferences/'.$token, [
+            'unsubscribe_all' => true,
+        ])->assertOk();
+
+        $this->assertFalse(ConsentState::isGranted($contact->id, Channel::Email, $this->newsletter->id));
+        $this->assertTrue(ConsentState::isGranted($contact->id, ConsentChannel::Ads, $list->id));
+    }
+
+    #[Test]
+    public function preference_center_can_grant_advertising_consent(): void
+    {
+        $contact = $this->grantedContact('es');
+        $list = SubscriptionList::query()->where('key', 'advertising')->firstOrFail();
+        $token = PreferenceToken::issue($contact->id, Channel::Email, 'ada@example.com');
+
+        $this->postJson('/api/comms/preferences/'.$token, [
+            'changes' => [
+                ['list_id' => $list->id, 'channel' => 'ads', 'subscribed' => true],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.advertising.subscribed', true);
+
+        $this->assertTrue(ConsentState::isGranted($contact->id, ConsentChannel::Ads, $list->id));
+        $event = ConsentEvent::query()
+            ->where('source', ConsentSource::PreferenceCenter)
+            ->where('channel', 'ads')
+            ->firstOrFail();
+        $this->assertSame($list->id, $event->subscription_list_id);
+        $this->assertSame('es', $event->consentText?->locale);
     }
 
     #[Test]

@@ -224,6 +224,7 @@ return [
         'import_evidence' => 'An import grant requires an import batch and the original source.',
         'pending_source' => 'Pending consent is only recorded from a signup form.',
         'text_missing' => 'The consent text does not exist.',
+        'soft_opt_in' => 'Soft opt-in cannot grant advertising consent.',
     ],
     'subscription_lists' => [
         'key_immutable' => 'The subscription list key cannot change.',
@@ -239,6 +240,8 @@ return [
         'list_unavailable' => 'A selected list is archived or does not accept email.',
         'consent_text' => 'This form has no consent text.',
         'site_required' => 'Double opt-in needs a site so the confirmation email has a sender.',
+        'enquiry_site_required' => 'An enquiry form needs a site.',
+        'purpose_locked' => 'The form purpose cannot change after a submission.',
         'fields' => 'Each field can only be listed once.',
     ],
     'segments' => [
@@ -290,6 +293,13 @@ return [
         'duplicate_account' => 'An account for this provider and external id already exists.',
         'currency_missing' => 'Verify the ad account before reading spend. Currency is missing.',
         'spend_invalid' => 'The ad platform returned a spend amount that is not a decimal.',
+        'mappings_required' => 'Send all three conversion events together.',
+        'value_rule_move_in_only' => 'A value rule other than none is only allowed on move-in.',
+        'meta_event_name' => 'A Meta event name must be 1–40 letters, numbers, or underscores.',
+        'test_event_code_required' => 'Meta test conversions need a test event code.',
+        'mapping_missing' => 'Save a conversion mapping for this event first.',
+        'retry_only_failed' => 'Only a failed delivery can be retried.',
+        'not_conversion_capable' => 'This ad account cannot receive conversions.',
     ],
     'units' => [
         'csv_import_failed' => 'The unit CSV could not be imported.',

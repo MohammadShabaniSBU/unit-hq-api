@@ -16,7 +16,9 @@ enum AdDeliveryStatus: string
     {
         return match ($this) {
             self::Pending => $next === self::Claimed,
-            self::Claimed => in_array($next, [self::Sent, self::Skipped, self::Failed], true),
+            // Pending release is the retryable-error path. A dead worker's
+            // claim is failed instead, so an operator can see it and retry.
+            self::Claimed => in_array($next, [self::Pending, self::Sent, self::Skipped, self::Failed], true),
             self::Failed => $next === self::Pending,
             self::Sent, self::Skipped => false,
         };

@@ -10,6 +10,7 @@ use App\Support\Advertising\AdPlatformException;
 use App\Support\Advertising\Contracts\AdPlatformAccount;
 use App\Support\Advertising\Contracts\CapturesClickIds;
 use App\Support\Advertising\Contracts\ListsCampaigns;
+use App\Support\Advertising\Contracts\ListsConversionTargets;
 use App\Support\Advertising\Contracts\ReportsConversions;
 use App\Support\Advertising\Contracts\ReportsSpend;
 use App\Support\Advertising\Results\AccountInfo;
@@ -23,7 +24,7 @@ use Carbon\CarbonImmutable;
 /**
  * Google Ads REST adapter. The gRPC client is intentionally not used.
  */
-final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, ListsCampaigns, ReportsConversions, ReportsSpend
+final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, ListsCampaigns, ListsConversionTargets, ReportsConversions, ReportsSpend
 {
     private ?string $accessToken = null;
 
@@ -240,7 +241,43 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
         return $spend;
     }
 
-    public function deliver(array $payloads): array
+    /**
+     * @return list<array{ref: string, name: string, kind: string}>
+     */
+    public function conversionTargets(): array
+    {
+        $query = 'SELECT conversion_action.resource_name, conversion_action.name,'
+            .' conversion_action.type, conversion_action.status'
+            .' FROM conversion_action'
+            ." WHERE conversion_action.type = 'UPLOAD_CLICKS'"
+            ." AND conversion_action.status = 'ENABLED'";
+
+        $targets = [];
+
+        foreach ($this->search($query) as $row) {
+            $action = $row['conversionAction'] ?? null;
+            if (! is_array($action)) {
+                continue;
+            }
+
+            $ref = self::stringValue($action['resourceName'] ?? null);
+            $name = self::stringValue($action['name'] ?? null);
+            if ($ref === '' || $name === '') {
+                continue;
+            }
+
+            $kind = self::stringValue($action['type'] ?? null);
+            $targets[] = [
+                'ref' => $ref,
+                'name' => $name,
+                'kind' => $kind === '' ? 'UPLOAD_CLICKS' : $kind,
+            ];
+        }
+
+        return $targets;
+    }
+
+    public function deliver(array $payloads, bool $validateOnly = false, ?string $testEventCode = null): array
     {
         if ($payloads === []) {
             return [];
@@ -289,28 +326,65 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
             $conversions[] = $row;
         }
 
+        $body = [
+            'conversions' => $conversions,
+            'partialFailure' => true,
+        ];
+
+        if ($validateOnly) {
+            $body['validateOnly'] = true;
+        }
+
         $response = AdHttp::request(
             'POST',
             $this->customerUrl(':uploadClickConversions'),
             $this->adsHeaders(),
-            [
-                'conversions' => $conversions,
-                'partialFailure' => true,
-            ],
+            $body,
         );
 
         $requestId = $response->header('request-id');
         $requestId = $requestId !== '' ? $requestId : null;
+        $partial = $response->json('partialFailureError');
 
-        return array_map(
-            fn (ConversionPayload $payload): DeliveryResult => new DeliveryResult(
+        if (! is_array($partial)) {
+            return array_map(
+                fn (ConversionPayload $payload): DeliveryResult => new DeliveryResult(
+                    dedupeId: $payload->dedupeId,
+                    ok: true,
+                    retryable: false,
+                    providerRequestId: $requestId,
+                ),
+                $payloads,
+            );
+        }
+
+        $byIndex = self::partialIndexes($partial);
+        if ($byIndex === []) {
+            return array_map(
+                fn (ConversionPayload $payload): DeliveryResult => new DeliveryResult(
+                    dedupeId: $payload->dedupeId,
+                    ok: false,
+                    retryable: true,
+                    error: 'partial_failure',
+                    providerRequestId: $requestId,
+                ),
+                $payloads,
+            );
+        }
+
+        $results = [];
+        foreach ($payloads as $index => $payload) {
+            $code = $byIndex[$index] ?? null;
+            $results[] = new DeliveryResult(
                 dedupeId: $payload->dedupeId,
-                ok: true,
-                retryable: false,
+                ok: $code === null,
+                retryable: $code !== null && self::retryableUploadCode($code),
+                error: $code,
                 providerRequestId: $requestId,
-            ),
-            $payloads,
-        );
+            );
+        }
+
+        return $results;
     }
 
     public static function assertConfigured(): void
@@ -421,6 +495,100 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
         }
 
         return $this->accessToken = $token;
+    }
+
+    /**
+     * @param  array<string, mixed>  $partial
+     * @return array<int, string>
+     */
+    private static function partialIndexes(array $partial): array
+    {
+        $details = $partial['details'] ?? [];
+        if (! is_array($details)) {
+            return [];
+        }
+
+        $indexes = [];
+        foreach ($details as $detail) {
+            if (! is_array($detail)) {
+                continue;
+            }
+
+            $errors = $detail['errors'] ?? [];
+            if (! is_array($errors)) {
+                continue;
+            }
+
+            foreach ($errors as $error) {
+                if (! is_array($error)) {
+                    continue;
+                }
+
+                $index = self::conversionIndex($error);
+                if ($index === null || isset($indexes[$index])) {
+                    continue;
+                }
+
+                $indexes[$index] = self::uploadErrorCode($error);
+            }
+        }
+
+        return $indexes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $error
+     */
+    private static function conversionIndex(array $error): ?int
+    {
+        $location = $error['location'] ?? null;
+        if (! is_array($location)) {
+            return null;
+        }
+
+        $elements = $location['fieldPathElements'] ?? [];
+        if (! is_array($elements)) {
+            return null;
+        }
+
+        foreach ($elements as $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            if (($element['fieldName'] ?? null) !== 'conversions' || ! isset($element['index'])) {
+                continue;
+            }
+
+            return (int) $element['index'];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $error
+     */
+    private static function uploadErrorCode(array $error): string
+    {
+        $code = $error['errorCode'] ?? null;
+        if (! is_array($code) || $code === []) {
+            return 'partial_failure';
+        }
+
+        $value = reset($code);
+
+        return is_string($value) && $value !== '' ? $value : 'partial_failure';
+    }
+
+    private static function retryableUploadCode(string $code): bool
+    {
+        return in_array($code, [
+            'INTERNAL_ERROR',
+            'TRANSIENT_ERROR',
+            'DEADLINE_EXCEEDED',
+            'RESOURCE_EXHAUSTED',
+        ], true);
     }
 
     private function customerUrl(string $suffix): string

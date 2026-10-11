@@ -6,6 +6,9 @@ namespace App\Http\Controllers;
 
 use App\Models\SignupForm;
 use App\Models\SubscriptionList;
+use App\Support\Marketing\EnquiryFields;
+use App\Support\Marketing\EnquirySubmission;
+use App\Support\Marketing\SignupFormPurpose;
 use App\Support\Marketing\SignupSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,10 +46,22 @@ class PublicSignupFormController extends Controller
             })
             ->all();
 
+        $purpose = $form->purpose instanceof SignupFormPurpose
+            ? $form->purpose->value
+            : SignupFormPurpose::Subscribe->value;
+
         return $this->success([
             'name' => $form->name,
+            'purpose' => $purpose,
             'channel' => $form->channel,
             'fields' => $form->fields,
+            'site' => $form->site_id === null ? null : [
+                'id' => $form->site_id,
+                'name' => $form->site?->name,
+            ],
+            'enquiry_fields' => $form->purpose === SignupFormPurpose::Enquiry
+                ? EnquiryFields::forPublic(is_array($form->enquiry_fields) ? $form->enquiry_fields : null)
+                : null,
             'lists' => $lists,
             'consent_text' => [
                 'key' => $text->key,
@@ -66,7 +81,11 @@ class PublicSignupFormController extends Controller
             return $this->error('Signup form not found.', statusCode: 404);
         }
 
-        SignupSubmission::submit($form, $request);
+        if ($form->purpose === SignupFormPurpose::Enquiry) {
+            EnquirySubmission::submit($form, $request);
+        } else {
+            SignupSubmission::submit($form, $request);
+        }
 
         return $this->success(['status' => 'accepted'], 'Signup accepted.');
     }
@@ -89,6 +108,7 @@ class PublicSignupFormController extends Controller
     private function activeForm(string $token): ?SignupForm
     {
         return SignupForm::query()
+            ->with('site')
             ->where('public_token', $token)
             ->whereNull('archived_at')
             ->first();

@@ -3,24 +3,23 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Append-only note log. Attachable to Contact, Deal, Offer, Contract, and Reservation.
  * No updated_at — notes are never edited. Corrections are new notes.
  *
- * @property int    $id
+ * @property int $id
  * @property string $notable_type
- * @property int    $notable_id
- * @property int    $employee_id
+ * @property int $notable_id
+ * @property int|null $employee_id
  * @property string $content
  * @property Carbon $created_at
- *
- * @property-read \Illuminate\Database\Eloquent\Model $notable
- * @property-read Employee $employee
+ * @property-read Model $notable
+ * @property-read Employee|null $employee
  */
 class Note extends Model
 {
@@ -35,7 +34,6 @@ class Note extends Model
         'content',
     ];
 
-    /** @return MorphTo */
     public function notable(): MorphTo
     {
         return $this->morphTo();

@@ -8,6 +8,7 @@ use App\Models\AdPlatformAccount as AdPlatformAccountModel;
 use App\Support\Advertising\Contracts\AdPlatformAccount;
 use App\Support\Advertising\Contracts\CapturesClickIds;
 use App\Support\Advertising\Contracts\ListsCampaigns;
+use App\Support\Advertising\Contracts\ListsConversionTargets;
 use App\Support\Advertising\Contracts\ReportsConversions;
 use App\Support\Advertising\Contracts\ReportsSpend;
 use App\Support\Advertising\Providers\GoogleAds\GoogleAdsAccount;
@@ -91,6 +92,11 @@ final class AdPlatformRegistry
     public function listsCampaigns(AdPlatform $platform): bool
     {
         return $this->implements($platform, ListsCampaigns::class);
+    }
+
+    public function listsConversionTargets(AdPlatform $platform): bool
+    {
+        return $this->implements($platform, ListsConversionTargets::class);
     }
 
     public function capturesClickIds(AdPlatform $platform): bool

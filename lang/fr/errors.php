@@ -198,6 +198,7 @@ return [
         'import_evidence' => 'Un accord d’import exige le lot et la source d’origine.',
         'pending_source' => 'Le consentement en attente n’est enregistré que depuis un formulaire d’inscription.',
         'text_missing' => 'Le texte de consentement n’existe pas.',
+        'soft_opt_in' => 'Le consentement tacite ne peut pas accorder le consentement publicitaire.',
     ],
     'subscription_lists' => [
         'key_immutable' => 'La clé de la liste d’abonnement ne peut pas changer.',
@@ -213,6 +214,8 @@ return [
         'list_unavailable' => 'Une liste choisie est archivée ou n’accepte pas l’e-mail.',
         'consent_text' => 'Ce formulaire n’a pas de texte de consentement.',
         'site_required' => 'Le double opt-in exige un site pour l’expéditeur de l’e-mail.',
+        'enquiry_site_required' => 'Un formulaire de demande exige un site.',
+        'purpose_locked' => 'La finalité du formulaire ne peut pas changer après un envoi.',
         'fields' => 'Chaque champ ne peut figurer qu’une fois.',
     ],
     'segments' => [
@@ -264,6 +267,13 @@ return [
         'duplicate_account' => 'Un compte existe déjà pour ce fournisseur et cet identifiant externe.',
         'currency_missing' => 'Vérifiez le compte publicitaire avant de lire la dépense. La devise manque.',
         'spend_invalid' => 'La plateforme a renvoyé un montant de dépense qui n’est pas un décimal.',
+        'mappings_required' => 'Envoyez les trois événements de conversion ensemble.',
+        'value_rule_move_in_only' => 'Une règle de valeur autre que none n’est autorisée que pour l’emménagement.',
+        'meta_event_name' => 'Un nom d’événement Meta doit contenir 1 à 40 lettres, chiffres ou underscores.',
+        'test_event_code_required' => 'Les conversions de test Meta exigent un code d’événement de test.',
+        'mapping_missing' => 'Enregistrez d’abord un mapping de conversion pour cet événement.',
+        'retry_only_failed' => 'Seule une livraison en échec peut être relancée.',
+        'not_conversion_capable' => 'Ce compte publicitaire ne peut pas recevoir de conversions.',
     ],
     'units' => [
         'csv_import_failed' => 'Le CSV des unités n’a pas pu être importé.',

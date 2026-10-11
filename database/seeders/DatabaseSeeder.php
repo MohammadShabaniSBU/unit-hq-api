@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
         $this->call(InsightReportSeeder::class);
         $this->call(RbacSystemRoleSeeder::class);
         $this->call(SubscriptionListSeeder::class);
+        $this->call(ConsentTextSeeder::class);
         $this->call(AiAgentSeeder::class);
 
         Employee::factory()->manager()->create();
@@ -170,7 +171,7 @@ class DatabaseSeeder extends Seeder
             foreach ($sites as $site) {
                 $rate = UnitClassRate::query()->create([
                     'unit_class_id' => $unitClass->id,
-                    'site_id'       => $site->id,
+                    'site_id' => $site->id,
                 ]);
 
                 $from = now()->subMonths(6)->toDateString();
@@ -180,26 +181,26 @@ class DatabaseSeeder extends Seeder
                 if (! $seededHistorical) {
                     Price::query()->create([
                         'priceable_type' => 'unit_class_rate',
-                        'priceable_id'   => $rate->id,
-                        'scope'          => Price::SCOPE_CATALOGUE,
-                        'amount'         => round($amount * 0.9, 2),
-                        'currency'       => $site->currency,
+                        'priceable_id' => $rate->id,
+                        'scope' => Price::SCOPE_CATALOGUE,
+                        'amount' => round($amount * 0.9, 2),
+                        'currency' => $site->currency,
                         'effective_from' => now()->subYear()->toDateString(),
-                        'effective_to'   => $from,
-                        'created_by'     => $manager->id,
+                        'effective_to' => $from,
+                        'created_by' => $manager->id,
                     ]);
                     $seededHistorical = true;
                 }
 
                 $price = Price::query()->create([
                     'priceable_type' => 'unit_class_rate',
-                    'priceable_id'   => $rate->id,
-                    'scope'          => Price::SCOPE_CATALOGUE,
-                    'amount'         => $amount,
-                    'currency'       => $site->currency,
+                    'priceable_id' => $rate->id,
+                    'scope' => Price::SCOPE_CATALOGUE,
+                    'amount' => $amount,
+                    'currency' => $site->currency,
                     'effective_from' => $from,
-                    'effective_to'   => null,
-                    'created_by'     => $manager->id,
+                    'effective_to' => null,
+                    'created_by' => $manager->id,
                 ]);
 
                 CurrencyGuard::assertRateJunction($site->currency, $price->currency);
@@ -226,18 +227,18 @@ class DatabaseSeeder extends Seeder
             foreach ($sites as $site) {
                 $rate = InsuranceRate::query()->create([
                     'insurance_id' => $insurance->id,
-                    'site_id'      => $site->id,
+                    'site_id' => $site->id,
                 ]);
 
                 $price = Price::query()->create([
                     'priceable_type' => 'insurance_rate',
-                    'priceable_id'   => $rate->id,
-                    'scope'          => Price::SCOPE_CATALOGUE,
-                    'amount'         => $insuranceData['amount'],
-                    'currency'       => $site->currency,
+                    'priceable_id' => $rate->id,
+                    'scope' => Price::SCOPE_CATALOGUE,
+                    'amount' => $insuranceData['amount'],
+                    'currency' => $site->currency,
                     'effective_from' => now()->subMonths(6)->toDateString(),
-                    'effective_to'   => null,
-                    'created_by'     => $manager->id,
+                    'effective_to' => null,
+                    'created_by' => $manager->id,
                 ]);
 
                 CurrencyGuard::assertRateJunction($site->currency, $price->currency);
@@ -249,11 +250,11 @@ class DatabaseSeeder extends Seeder
             foreach ($sites as $site) {
                 foreach (range(1, 5) as $n) {
                     Unit::factory()->create([
-                        'site_id'       => $site->id,
+                        'site_id' => $site->id,
                         'unit_class_id' => $unitClass->id,
-                        'unit_number'   => sprintf('%s-%s-%02d', $site->code, $unitClass->code, $n),
-                        'actual_width'  => fake()->randomFloat(2, 1.5, 5.0),
-                        'actual_depth'  => fake()->randomFloat(2, 2.0, 6.0),
+                        'unit_number' => sprintf('%s-%s-%02d', $site->code, $unitClass->code, $n),
+                        'actual_width' => fake()->randomFloat(2, 1.5, 5.0),
+                        'actual_depth' => fake()->randomFloat(2, 2.0, 6.0),
                         'actual_height' => fake()->randomFloat(2, 2.0, 3.5),
                     ]);
                 }
@@ -273,5 +274,4 @@ class DatabaseSeeder extends Seeder
 
         $this->command?->info("RNG seed: {$rngSeed}");
     }
-
 }

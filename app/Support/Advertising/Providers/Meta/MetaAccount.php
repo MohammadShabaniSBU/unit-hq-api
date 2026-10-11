@@ -10,6 +10,7 @@ use App\Support\Advertising\AdPlatformException;
 use App\Support\Advertising\Contracts\AdPlatformAccount;
 use App\Support\Advertising\Contracts\CapturesClickIds;
 use App\Support\Advertising\Contracts\ListsCampaigns;
+use App\Support\Advertising\Contracts\ListsConversionTargets;
 use App\Support\Advertising\Contracts\ReportsConversions;
 use App\Support\Advertising\Contracts\ReportsSpend;
 use App\Support\Advertising\Results\AccountInfo;
@@ -23,7 +24,7 @@ use Carbon\CarbonImmutable;
 /**
  * Meta Marketing API and Conversions API over the Graph REST API.
  */
-final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCampaigns, ReportsConversions, ReportsSpend
+final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCampaigns, ListsConversionTargets, ReportsConversions, ReportsSpend
 {
     private const PAGE_CAP = 50;
 
@@ -188,7 +189,20 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
         return $spend;
     }
 
-    public function deliver(array $payloads): array
+    /**
+     * @return list<array{ref: string, name: string, kind: string}>
+     */
+    public function conversionTargets(): array
+    {
+        return [
+            ['ref' => 'Lead', 'name' => 'Lead', 'kind' => 'standard'],
+            ['ref' => 'Schedule', 'name' => 'Schedule', 'kind' => 'standard'],
+            ['ref' => 'SubmitApplication', 'name' => 'SubmitApplication', 'kind' => 'standard'],
+            ['ref' => 'Purchase', 'name' => 'Purchase', 'kind' => 'standard'],
+        ];
+    }
+
+    public function deliver(array $payloads, bool $validateOnly = false, ?string $testEventCode = null): array
     {
         if ($payloads === []) {
             return [];
@@ -212,14 +226,33 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
             $data[] = $event;
         }
 
+        $query = null;
+        if ($testEventCode !== null && $testEventCode !== '') {
+            $query = ['test_event_code' => $testEventCode];
+        }
+
         $response = AdHttp::request('POST', $this->url($this->pixelId().'/events'), [
             'Authorization' => 'Bearer '.$this->capiToken(),
         ], [
             'data' => $data,
-        ]);
+        ], $query);
 
         $requestId = $response->header('x-fb-trace-id');
         $requestId = $requestId !== '' ? $requestId : null;
+        $received = $response->json('events_received');
+
+        if (is_numeric($received) && (int) $received < count($payloads)) {
+            return array_map(
+                fn (ConversionPayload $payload): DeliveryResult => new DeliveryResult(
+                    dedupeId: $payload->dedupeId,
+                    ok: false,
+                    retryable: false,
+                    error: 'events_rejected',
+                    providerRequestId: $requestId,
+                ),
+                $payloads,
+            );
+        }
 
         return array_map(
             fn (ConversionPayload $payload): DeliveryResult => new DeliveryResult(

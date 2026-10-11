@@ -39,7 +39,7 @@ final class PreferenceCenter
     }
 
     /**
-     * @return array{contact_first_name: string|null, locale: string|null, lists: list<array<string, mixed>>}
+     * @return array{contact_first_name: string|null, locale: string|null, lists: list<array<string, mixed>>, advertising: array{list_id: int, subscribed: bool, label: string, description: string}|null}
      */
     public static function payload(PreferenceClaims $claims): array
     {
@@ -49,6 +49,10 @@ final class PreferenceCenter
 
         $lists = [];
         foreach (self::lists() as $list) {
+            if ($list->kind === SubscriptionListKind::Advertising) {
+                continue;
+            }
+
             $channels = [];
             $anySubscribed = false;
 
@@ -82,6 +86,7 @@ final class PreferenceCenter
             'contact_first_name' => $display?->first_name,
             'locale' => $locale,
             'lists' => $lists,
+            'advertising' => self::advertisingPayload($contacts, $locale),
         ];
     }
 
@@ -103,6 +108,12 @@ final class PreferenceCenter
                 $list = SubscriptionList::query()->find($change['list_id']);
                 if ($list === null) {
                     throw new ConsentRuleException('list_channel');
+                }
+
+                if ($change['channel'] === ConsentChannel::Ads->value) {
+                    self::applyAdvertising($display, $contacts, $list, $change['subscribed'], $evidence);
+
+                    continue;
                 }
 
                 $channel = Channel::from($change['channel']);
@@ -251,6 +262,96 @@ final class PreferenceCenter
         $latest = $contacts->sortByDesc('id')->first();
 
         return $latest instanceof Contact ? $latest : null;
+    }
+
+    /**
+     * @param  Collection<int, Contact>  $contacts
+     * @return array{list_id: int, subscribed: bool, label: string, description: string}|null
+     */
+    private static function advertisingPayload(Collection $contacts, ?string $locale): ?array
+    {
+        $list = AdvertisingConsent::list();
+        if ($list === null) {
+            return null;
+        }
+
+        $subscribed = false;
+        foreach ($contacts as $contact) {
+            if (ConsentState::isGranted($contact->id, ConsentChannel::Ads, $list->id)) {
+                $subscribed = true;
+                break;
+            }
+        }
+
+        if ($list->isArchived() && ! $subscribed) {
+            return null;
+        }
+
+        return [
+            'list_id' => $list->id,
+            'subscribed' => $subscribed,
+            'label' => self::text($list->labels, $locale, $list->key),
+            'description' => self::text($list->descriptions, $locale, ''),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Contact>  $contacts
+     * @param  array<string, mixed>  $evidence
+     */
+    private static function applyAdvertising(
+        ?Contact $display,
+        Collection $contacts,
+        SubscriptionList $list,
+        bool $subscribed,
+        array $evidence,
+    ): void {
+        if ($list->kind !== SubscriptionListKind::Advertising || ! $list->allows(ConsentChannel::Ads)) {
+            throw new ConsentRuleException('list_channel');
+        }
+
+        if ($subscribed) {
+            if ($display === null || $list->isArchived()) {
+                throw new ConsentRuleException($list->isArchived() ? 'list_archived' : 'consent_text');
+            }
+
+            if (ConsentState::isGranted($display->id, ConsentChannel::Ads, $list->id)) {
+                return;
+            }
+
+            $text = SignupSubmission::consentText(
+                AdvertisingConsent::TEXT_KEY,
+                SignupSubmission::locale($display->locale),
+            );
+            if ($text === null) {
+                throw new ConsentRuleException('consent_text');
+            }
+
+            ConsentWriter::grant(
+                $display,
+                ConsentChannel::Ads,
+                $list,
+                ConsentSource::PreferenceCenter,
+                $text->id,
+                $evidence,
+            );
+
+            return;
+        }
+
+        foreach ($contacts as $contact) {
+            if (! ConsentState::isGranted($contact->id, ConsentChannel::Ads, $list->id)) {
+                continue;
+            }
+
+            ConsentWriter::withdraw(
+                $contact,
+                ConsentChannel::Ads,
+                $list,
+                ConsentSource::PreferenceCenter,
+                $evidence,
+            );
+        }
     }
 
     /**

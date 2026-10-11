@@ -104,6 +104,26 @@ class SignupForm extends Model
             ->count();
     }
 
+    /**
+     * A submission is a form consent event, a touch, or an enquiry activity
+     * that names this form. Purpose cannot change after one exists.
+     */
+    public function hasSubmissions(): bool
+    {
+        if ($this->submissionsCount() > 0) {
+            return true;
+        }
+
+        if (MarketingTouch::query()->where('signup_form_id', $this->id)->exists()) {
+            return true;
+        }
+
+        return Activity::query()
+            ->whereIn('description', ['deal.created', 'deal.web_enquiry'])
+            ->where('properties->signup_form_id', $this->id)
+            ->exists();
+    }
+
     public function marketingChannel(): Channel
     {
         return Channel::tryFrom($this->channel) ?? Channel::Email;

@@ -9,8 +9,8 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Stores a ConsentChannel. Accepts a comms Channel on write so existing
- * callers keep passing Channel::Email until task 03.
+ * Stores a ConsentChannel. Accepts a comms Channel on write so email, SMS,
+ * and WhatsApp callers can keep passing Channel.
  *
  * @implements CastsAttributes<ConsentChannel, Channel|ConsentChannel|string|null>
  */

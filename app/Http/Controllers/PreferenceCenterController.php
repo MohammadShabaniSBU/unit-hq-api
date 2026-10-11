@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Support\Communications\Channel;
+use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\ConsentRuleException;
 use App\Support\Marketing\PreferenceCenter;
 use App\Support\Marketing\PreferenceToken;
@@ -41,6 +42,7 @@ class PreferenceCenterController extends Controller
                 Channel::Email->value,
                 Channel::Sms->value,
                 Channel::Whatsapp->value,
+                ConsentChannel::Ads->value,
             ])],
             'changes.*.subscribed' => ['required', 'boolean'],
             'unsubscribe_all' => ['sometimes', 'boolean'],

@@ -49,7 +49,7 @@ final class ConsentState
         })->values();
     }
 
-    public static function isGranted(int $contactId, Channel $channel, int $listId): bool
+    public static function isGranted(int $contactId, Channel|ConsentChannel $channel, int $listId): bool
     {
         $latest = DB::table('consent_events')
             ->where('contact_id', $contactId)
@@ -66,7 +66,7 @@ final class ConsentState
      * Contact ids whose latest event on this list and channel is granted.
      * Postgres uses DISTINCT ON so the filter can ride ce_list_idx.
      */
-    public static function grantedQuery(Channel $channel, int $listId): Builder
+    public static function grantedQuery(Channel|ConsentChannel $channel, int $listId): Builder
     {
         if (DB::getDriverName() !== 'pgsql') {
             return DB::table('consent_events as e')
