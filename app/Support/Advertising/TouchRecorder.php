@@ -174,7 +174,12 @@ final class TouchRecorder
                 continue;
             }
 
-            $pairs[] = [$platform, $adapter->clickIdKeys()];
+            $keys = $adapter->clickIdKeys();
+            if ($platform === AdPlatform::Meta) {
+                $keys[] = 'fbclid';
+            }
+
+            $pairs[] = [$platform, $keys];
         }
 
         $pairs[] = [AdPlatform::OpenAi, ['oai_ref']];
