@@ -16,6 +16,9 @@ final readonly class ReportFilters
 {
     /**
      * @param  list<int>|null  $siteIds
+     * @param  string|null  $platform  null means google_ads and meta
+     * @param  int  $attributionWindow  30, 60, or 90 days
+     * @param  string  $acquisition  all, paid, or organic (funnel only)
      */
     public function __construct(
         public ?array $siteIds = null,
@@ -23,6 +26,9 @@ final readonly class ReportFilters
         public ?string $to = null,
         public ?string $asOf = null,
         public string $locale = 'en',
+        public ?string $platform = null,
+        public int $attributionWindow = 90,
+        public string $acquisition = 'all',
     ) {}
 
     /**
@@ -38,6 +44,9 @@ final readonly class ReportFilters
             'as_of' => ['sometimes', 'nullable', 'date'],
             'locale' => ['sometimes', 'nullable', 'string', Rule::in(['en', 'es'])],
             'format' => ['sometimes', 'nullable', 'string', Rule::in(['json', 'csv'])],
+            'platform' => ['sometimes', 'nullable', 'string', Rule::in(['all', 'google_ads', 'meta'])],
+            'attribution_window' => ['sometimes', 'nullable', Rule::in([30, 60, 90, '30', '60', '90'])],
+            'acquisition' => ['sometimes', 'nullable', 'string', Rule::in(['all', 'paid', 'organic'])],
         ];
     }
 
@@ -73,12 +82,31 @@ final readonly class ReportFilters
             ? $validated['locale']
             : 'en';
 
+        $platform = isset($validated['platform']) && is_string($validated['platform'])
+            ? $validated['platform']
+            : null;
+        if ($platform === 'all' || $platform === '') {
+            $platform = null;
+        }
+
+        $window = 90;
+        if (isset($validated['attribution_window']) && $validated['attribution_window'] !== '' && $validated['attribution_window'] !== null) {
+            $window = (int) $validated['attribution_window'];
+        }
+
+        $acquisition = isset($validated['acquisition']) && is_string($validated['acquisition']) && $validated['acquisition'] !== ''
+            ? $validated['acquisition']
+            : 'all';
+
         return new self(
             siteIds: $siteIds,
             from: self::nullableDate($validated['from'] ?? null),
             to: self::nullableDate($validated['to'] ?? null),
             asOf: self::nullableDate($validated['as_of'] ?? null),
             locale: $locale,
+            platform: $platform,
+            attributionWindow: $window,
+            acquisition: $acquisition,
         );
     }
 
@@ -101,6 +129,9 @@ final readonly class ReportFilters
                 to: $this->to,
                 asOf: $this->asOf,
                 locale: $this->locale,
+                platform: $this->platform,
+                attributionWindow: $this->attributionWindow,
+                acquisition: $this->acquisition,
             );
         }
 
@@ -115,6 +146,9 @@ final readonly class ReportFilters
             to: $this->to,
             asOf: $this->asOf,
             locale: $this->locale,
+            platform: $this->platform,
+            attributionWindow: $this->attributionWindow,
+            acquisition: $this->acquisition,
         );
     }
 

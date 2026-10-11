@@ -27,6 +27,7 @@ use App\Models\Employee;
 use App\Models\EsignEnvelope;
 use App\Models\EsignProviderAccount;
 use App\Models\LegalEntity;
+use App\Models\MarketingTouch;
 use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Playbook;
@@ -34,9 +35,11 @@ use App\Models\Site;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
 use App\Models\UnitClass;
+use App\Support\Advertising\AdPlatform;
 use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use App\Support\Reports\FunnelReport;
 use App\Support\Reports\ReportFilters;
+use App\Support\Reports\ReportResult;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ContractDocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,6 +162,56 @@ class FunnelTest extends TestCase
         $this->assertNotNull($d5->id);
     }
 
+    public function test_acquisition_filter_uses_attributed_touch(): void
+    {
+        $paid = $this->makeDeal('2026-05-10 10:00:00');
+        $organic = $this->makeDeal('2026-05-12 10:00:00');
+
+        MarketingTouch::factory()->create([
+            'contact_id' => $paid->contact_id,
+            'site_id' => $this->site->id,
+            'platform' => AdPlatform::GoogleAds,
+            'occurred_at' => '2026-05-01 10:00:00',
+            'utm_campaign' => 'brand',
+        ]);
+        MarketingTouch::factory()->create([
+            'contact_id' => $organic->contact_id,
+            'site_id' => $this->site->id,
+            'platform' => AdPlatform::GoogleAds,
+            'occurred_at' => '2026-01-12 10:00:00',
+            'utm_campaign' => 'old',
+        ]);
+
+        $all = (new FunnelReport)->run(new ReportFilters(
+            siteIds: [$this->site->id],
+            from: '2026-05-01',
+            to: '2026-05-31',
+        ));
+        $explicit = (new FunnelReport)->run(new ReportFilters(
+            siteIds: [$this->site->id],
+            from: '2026-05-01',
+            to: '2026-05-31',
+            acquisition: 'all',
+        ));
+        $paidOnly = (new FunnelReport)->run(new ReportFilters(
+            siteIds: [$this->site->id],
+            from: '2026-05-01',
+            to: '2026-05-31',
+            acquisition: 'paid',
+        ));
+        $organicOnly = (new FunnelReport)->run(new ReportFilters(
+            siteIds: [$this->site->id],
+            from: '2026-05-01',
+            to: '2026-05-31',
+            acquisition: 'organic',
+        ));
+
+        $this->assertSame($this->dealCount($all), $this->dealCount($explicit));
+        $this->assertSame(2, $this->dealCount($all));
+        $this->assertSame(1, $this->dealCount($paidOnly));
+        $this->assertSame(1, $this->dealCount($organicOnly));
+    }
+
     public function test_enrolment_consistency_with_s09(): void
     {
         $playbook = Playbook::query()->create([
@@ -217,6 +270,13 @@ class FunnelTest extends TestCase
         $api = $this->getJson('/api/playbooks/'.$playbook->id.'/enrolments?per_page=50');
         $api->assertOk();
         $api->assertJsonPath('meta.total', 2);
+    }
+
+    private function dealCount(ReportResult $result): int
+    {
+        $row = collect($result->rows)->firstWhere('stage', 'deals');
+
+        return (int) ($row['count'] ?? 0);
     }
 
     private function makeDeal(string $createdAt): Deal

@@ -154,6 +154,44 @@ One row per `campaign_recipients` row. Delivery flags are derived from
 | `status`, `skip_reason`, `processed_at` | Recipient outcome |
 | `delivered`, `bounced`, `opened`, `clicked`, `complained` | Boolean. False when no message or no matching event |
 
+### `analytics.v_ad_spend_daily`
+
+One row per campaign per civil spend date. Derived from the restated spend cache. Cost stays in the ad account currency.
+
+| Column | Notes |
+|--------|--------|
+| `campaign_id`, `campaign_name` | Synced campaign |
+| `provider` | `google_ads` or `meta` |
+| `site_id`, `unit_class_id` | Operator mapping. Null `site_id` is unmapped spend |
+| `spend_date` | Civil date in the ad account timezone |
+| `impressions`, `clicks`, `cost`, `currency` | `cost` is `NUMERIC(12,2)`, not ledger money |
+| `account_timezone` | Timezone that owns `spend_date` |
+
+### `analytics.v_marketing_touches`
+
+One row per touch. Attribution is not stored here. BI must compute it.
+
+| Column | Notes |
+|--------|--------|
+| `touch_id`, `contact_id`, `occurred_at`, `site_id` | Fact |
+| `platform` | Null when the visit was not a paid click |
+| `utm_source`, `utm_medium`, `utm_campaign` | As captured |
+
+`click_ids`, `landing_url`, and `visitor_key` are absent. They are redaction-sensitive and BI does not need them.
+
+### `analytics.v_ad_conversion_deliveries`
+
+One row per delivery attempt. No identifier values and no provider payload.
+
+| Column | Notes |
+|--------|--------|
+| `event_key` | `lead`, `reservation`, or `move_in` |
+| `provider` | Ad account provider |
+| `status`, `skip_reason` | Outcome. `skip_reason` is null when the row was sent |
+| `occurred_at` | Event time |
+| `processed_at` | Delivery attempt time |
+| `value`, `currency` | Conversion value from the event. Both null, or both set |
+
 ## Known additive follow-ups
 
 These are gaps, not defects in the objects that ship:

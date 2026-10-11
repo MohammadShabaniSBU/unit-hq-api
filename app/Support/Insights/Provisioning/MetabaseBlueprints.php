@@ -44,6 +44,7 @@ final class MetabaseBlueprints
         'movement' => 'needs analytics.v_movement_events',
         'daily-close' => 'needs analytics.v_allocations plus till/cash breakdown',
         'funnel' => 'conversion half needs deal_id correlation and offer.viewed on v_pipeline_events',
+        'paid-acquisition' => 'native by design, attribution window is computed per query',
         'dashboard' => 'native by design (card-zoom of live query classes)',
         'demo' => 'native by design',
     ];

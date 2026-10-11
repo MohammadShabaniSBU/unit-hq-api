@@ -22,7 +22,7 @@ class InsightReportSeederTest extends TestCase
         $this->seed(InsightReportSeeder::class);
 
         $keys = NativeReports::keys();
-        $this->assertCount(14, $keys);
+        $this->assertCount(15, $keys);
 
         $rows = InsightReport::query()
             ->where('source', 'native')
@@ -30,12 +30,12 @@ class InsightReportSeederTest extends TestCase
             ->orderBy('id')
             ->get();
 
-        $this->assertCount(14, $rows);
+        $this->assertCount(15, $rows);
         $this->assertSame($keys, $rows->pluck('native_key')->all());
         $this->assertSame($keys, $rows->pluck('key')->all());
         $this->assertTrue($rows->every(fn (InsightReport $r) => $r->is_system));
         $this->assertTrue($rows->every(fn (InsightReport $r) => $r->labels === null));
-        $this->assertSame(range(0, 13), $rows->pluck('sort_order')->all());
+        $this->assertSame(range(0, 14), $rows->pluck('sort_order')->all());
     }
 
     #[Test]
@@ -57,7 +57,7 @@ class InsightReportSeederTest extends TestCase
         $this->assertSame(99, $report->sort_order);
         $this->assertSame(['es' => 'Cartera'], $report->labels);
         $this->assertSame(InsightVisibility::CompanyOnly, $report->visibility);
-        $this->assertSame(14, InsightReport::query()->where('source', 'native')->count());
+        $this->assertSame(15, InsightReport::query()->where('source', 'native')->count());
     }
 
     #[Test]

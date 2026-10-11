@@ -11,6 +11,7 @@ use App\Models\Deal;
 use App\Models\Offer;
 use App\Models\OfferOption;
 use App\Models\Playbook;
+use App\Support\Advertising\AttributedTouch;
 use App\Support\Billing\BillingMath;
 use App\Support\Playbooks\PlaybookEnrolmentSummary;
 use Carbon\CarbonImmutable;
@@ -46,6 +47,22 @@ final class FunnelReport extends AbstractReport
             ->when($filters->siteIds !== null, static fn (Builder $q) => $q->whereIn('site_id', $filters->siteIds))
             ->orderBy('id')
             ->get();
+
+        if ($filters->acquisition !== 'all') {
+            $touches = AttributedTouch::latestPaid(
+                $deals->map(static fn (Deal $deal): array => [
+                    'id' => (int) $deal->id,
+                    'contact_id' => (int) $deal->contact_id,
+                    'anchor' => CarbonImmutable::parse($deal->created_at),
+                ])->all(),
+                AttributedTouch::DEFAULT_WINDOW_DAYS,
+                null,
+            );
+            $wantPaid = $filters->acquisition === 'paid';
+            $deals = $deals
+                ->filter(static fn (Deal $deal): bool => (($touches[(int) $deal->id] ?? null) !== null) === $wantPaid)
+                ->values();
+        }
 
         $dealIds = $deals->pluck('id')->map(static fn ($id): int => (int) $id)->all();
 

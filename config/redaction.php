@@ -36,6 +36,13 @@ return [
     | every deal belonging to it (current and superseded). Rows are kept;
     | content is destroyed. See RedactContactCommand — not a property_keys path.
     |
+    | Marketing touches (S32 / invariant 86): contacts:redact sets click_ids
+    | to {} and nulls landing_url, referrer_host, utm_term, and utm_content
+    | on that contact's touches. The row stays. utm_source, platform, and
+    | occurred_at stay. ad_conversion_deliveries are not touched: they store
+    | identifier names, never values. See RedactContactCommand — not a
+    | property_keys path.
+    |
     | contact_verifications (S27-04 / AR-03): the table holds a contact id, a
     | channel id and a code hash — no plaintext PII in JSON properties, so it
     | is not a property_keys entry. It is still a record that a named person

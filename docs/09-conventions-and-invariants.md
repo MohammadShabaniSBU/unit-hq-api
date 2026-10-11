@@ -522,6 +522,72 @@
     Enforced by
     `CampaignPanelReadTest::report_totals_reconcile_and_a_later_bounce_updates_them`
     and `a_sending_report_stays_cached_for_sixty_seconds`.
+85. **Enquiry forms may create a contact and at most one open deal per
+    contact and site.** Extends 79. `EnquirySubmission` matches by email,
+    then phone, creates a contact with `source = enquiry_form` when none
+    matches, and creates a deal only when no open deal exists for that
+    contact and the form's site. Otherwise it adds a note. Enquiry forms
+    require a site. Subscribe forms still never create deals. Enforced by
+    `EnquiryFormTest` (`second_enquiry_same_site_adds_note_not_deal`,
+    `enquiry_form_requires_site`). `SignupFormTest` stays as cited on 79.
+86. **Marketing touches are append-only facts. Attribution is computed.**
+    The only updates are `contact_id` null → id (visitor stitching, once)
+    and redaction of `click_ids`, `landing_url`, `referrer_host`,
+    `utm_term`, and `utm_content`. No table stores a deal's or contact's
+    winning touch. A touch is written only when the submission snapshot
+    has `ad_storage`. Click ids live only in `marketing_touches.click_ids`,
+    never in `landing_url`. Enforced by `AdvertisingSchemaTest`
+    (`touch_rejects_utm_source_and_delete_and_stitches_contact_once`),
+    `Pgsql\AdvertisingSchemaTest`
+    (`touch_trigger_rejects_utm_source_and_allows_one_stitch`),
+    `EnquiryFormTest` (`a_submission_without_ad_storage_writes_no_touch`,
+    `a_gclid_touch_is_stored_without_the_click_id_in_the_landing_url`),
+    `TouchRecorderTest` (`ad_storage_off_writes_no_touch`,
+    `click_id_is_stripped_from_the_landing_url`,
+    `platform_comes_from_the_click_id_then_the_utm_source`,
+    `occurred_at_clamps_to_ninety_days_and_to_now`,
+    `a_prior_visitor_row_stitches_once`), and
+    `RedactContactCommandTest::redaction_clears_touch_identifiers_and_leaves_deliveries`.
+87. **Ad platforms receive data only with granted `ads` consent, checked
+    at delivery time.** `ConsentState::isGranted(contact, 'ads', advertising
+    list)` gates every delivery (and S33 audience sync). Identifiers are
+    hashed in process. `ad_conversion_deliveries` stores identifier names,
+    never values. Soft opt-in is rejected for the advertising list. `ads`
+    is a `ConsentChannel` case, not a comms `Channel`. Enforced by
+    `AdvertisingConsentTest::soft_opt_in_on_the_advertising_list_is_rejected`,
+    `PreferenceCenterTest::preference_center_can_grant_advertising_consent`,
+    `ConversionDeliveryTest`
+    (`withdrawn_ads_consent_skips_no_consent_and_sends_nothing`,
+    `delivery_rows_store_identifier_names_only`).
+88. **One delivery per (ad account, conversion event), claim-before-send.**
+    Unique `(ad_platform_account_id, ad_conversion_event_id)`. `dedupe_id`
+    is stable, unique, and sent as Google `orderId` / Meta `event_id`.
+    Conversion events are written inside the business transaction that
+    produced them (deal insert, reservation insert,
+    `ContractSigning::complete`). A rolled-back transaction leaves no
+    event. Enforced by `ConversionOutboxTest`
+    (`signing_writes_the_event_inside_the_transaction_and_rollback_leaves_nothing`,
+    `a_second_record_does_not_duplicate_and_lead_ignores_value`) and
+    `ConversionDeliveryTest` (`a_claimed_row_cannot_be_claimed_again`,
+    `the_job_and_the_sweeper_send_each_account_event_once`,
+    `move_in_payloads_carry_value_and_the_dedupe_id`).
+89. **Ad spend is an external, restated cache.** `ad_spend_daily` is
+    upserted inside the trailing sync window only. Cost is converted from
+    the platform's units with bcmath and never floats. Each row carries
+    its account's currency. No report sums spend across currencies, and
+    ROAS shows only when spend and revenue share a currency. `cost` is
+    `NUMERIC(12,2)`, the documented exception to invariant 10's `(10,2)`,
+    because it is not a ledger amount. Enforced by `AdSyncTest`
+    (`spend_sync_is_idempotent_rounds_micros_and_leaves_older_rows`,
+    `currency_mismatch_writes_nothing`) and `PaidAcquisitionReportTest`
+    (`test_totals_stay_inside_one_currency_and_unmapped_spend_is_its_own_row`).
+90. **Keevaris does not write to ad accounts' campaigns in v1.** Adapters
+    expose read and conversion upload only. Any future write capability
+    (S33) needs its own interface, confirmation, and Tier-3 audit.
+    Enforced by `AdPlatformAdapterTest`
+    (`google_lists_customers_campaigns_spend_and_posts_conversions`,
+    `meta_verify_requires_both_tokens_and_posts_events`): list, spend, and
+    conversion post. No campaign mutate call.
 
 ## Code conventions
 

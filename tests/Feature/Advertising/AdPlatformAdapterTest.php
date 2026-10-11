@@ -87,7 +87,9 @@ class AdPlatformAdapterTest extends TestCase
                 return Http::response(['results' => []], 200, ['request-id' => 'req-1']);
             }
 
-            if (str_contains($url, 'googleAds:searchStream') && str_contains((string) $request->body(), 'metrics.cost_micros')) {
+            $body = (string) $request->body();
+
+            if (str_contains($url, 'googleAds:searchStream') && str_contains($body, 'metrics.cost_micros')) {
                 return Http::response([[
                     'results' => [[
                         'campaign' => ['id' => '11'],
@@ -97,6 +99,14 @@ class AdPlatformAdapterTest extends TestCase
                         'campaign' => ['id' => '12'],
                         'segments' => ['date' => '2026-10-02'],
                         'metrics' => ['costMicros' => '1235000', 'impressions' => '1', 'clicks' => '0'],
+                    ]],
+                ]]);
+            }
+
+            if (str_contains($url, 'googleAds:searchStream') && str_contains($body, 'currency_code FROM customer')) {
+                return Http::response([[
+                    'results' => [[
+                        'customer' => ['currencyCode' => 'EUR'],
                     ]],
                 ]]);
             }
@@ -133,6 +143,11 @@ class AdPlatformAdapterTest extends TestCase
         $this->assertSame('enabled', $campaigns[0]->status->value);
         $this->assertSame('search', $campaigns[0]->channelType);
         $this->assertSame('removed', $campaigns[1]->status->value);
+
+        Http::assertSent(function (Request $request): bool {
+            return str_contains((string) $request->body(), "campaign.status IN ('ENABLED', 'PAUSED', 'REMOVED')")
+                && ! str_contains((string) $request->body(), 'metrics.cost_micros');
+        });
 
         $spend = iterator_to_array($this->google()->spend(
             CarbonImmutable::parse('2026-10-01'),
@@ -285,6 +300,57 @@ class AdPlatformAdapterTest extends TestCase
         });
 
         $this->assertSame(['fbc', 'fbp'], $this->meta()->clickIdKeys());
+    }
+
+    #[Test]
+    public function meta_spend_over_30_days_uses_an_async_report(): void
+    {
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+
+            if ($request->method() === 'POST' && str_contains($url, '/insights')) {
+                return Http::response(['report_run_id' => '9001']);
+            }
+
+            if (str_contains($url, '/9001/insights')) {
+                return Http::response([
+                    'data' => [[
+                        'campaign_id' => '77',
+                        'spend' => '3.50',
+                        'impressions' => '9',
+                        'clicks' => '2',
+                        'date_start' => '2026-01-02',
+                        'account_currency' => 'EUR',
+                    ]],
+                ]);
+            }
+
+            if (str_contains($url, '/9001')) {
+                return Http::response([
+                    'async_status' => 'Job Completed',
+                    'async_percent_completion' => 100,
+                ]);
+            }
+
+            if (str_contains($url, 'act_99')) {
+                return Http::response(['currency' => 'EUR']);
+            }
+
+            return Http::response(['error' => 'unexpected'], 500);
+        });
+
+        $spend = iterator_to_array($this->meta()->spend(
+            CarbonImmutable::parse('2026-01-01'),
+            CarbonImmutable::parse('2026-04-01'),
+        ));
+
+        $this->assertSame('3.50', $spend[0]->cost);
+        $this->assertSame('EUR', $spend[0]->currency);
+        $this->assertSame('EUR', $this->meta()->reportedCurrency());
+
+        Http::assertSent(function (Request $request): bool {
+            return $request->method() === 'POST' && str_contains($request->url(), '/act_99/insights');
+        });
     }
 
     #[Test]

@@ -6,19 +6,24 @@ namespace Tests\Feature;
 
 use App\Enums\LogChannel;
 use App\Models\Activity;
+use App\Models\AdConversionDelivery;
 use App\Models\ConsentEvent;
 use App\Models\ConsentText;
 use App\Models\Contact;
+use App\Models\MarketingTouch;
 use App\Models\SubscriptionList;
 use App\Models\SystemEvent;
+use App\Support\Advertising\AdPlatform;
 use App\Support\Communications\Channel;
 use App\Support\Marketing\ConsentChannel;
 use App\Support\Marketing\ConsentSource;
 use App\Support\Marketing\ConsentState;
 use App\Support\Marketing\ConsentWriter;
 use App\Support\RecordsActivity;
+use Carbon\CarbonImmutable;
 use Database\Seeders\SubscriptionListSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class RedactContactCommandTest extends TestCase
@@ -117,5 +122,51 @@ class RedactContactCommandTest extends TestCase
                 ->where('channel', 'ads')
                 ->count(),
         );
+    }
+
+    #[Test]
+    public function redaction_clears_touch_identifiers_and_leaves_deliveries(): void
+    {
+        $contact = Contact::factory()->create();
+        $occurredAt = CarbonImmutable::parse('2026-06-01 12:00:00');
+        $touch = MarketingTouch::factory()->create([
+            'contact_id' => $contact->id,
+            'platform' => AdPlatform::GoogleAds,
+            'utm_source' => 'google',
+            'utm_term' => 'secret-term',
+            'utm_content' => 'secret-content',
+            'click_ids' => ['gclid' => 'secret-click'],
+            'landing_url' => 'https://example.test/landing?gclid=secret-click',
+            'referrer_host' => 'ads.google.com',
+            'occurred_at' => $occurredAt,
+        ]);
+        $other = MarketingTouch::factory()->create([
+            'contact_id' => Contact::factory()->create()->id,
+            'click_ids' => ['gclid' => 'keep-click'],
+            'landing_url' => 'https://example.test/keep',
+        ]);
+        $delivery = AdConversionDelivery::factory()->create([
+            'identifiers_used' => ['email', 'phone'],
+        ]);
+
+        $this->artisan('contacts:redact', ['contact' => $contact->id])->assertSuccessful();
+
+        $touch->refresh();
+        $this->assertSame([], $touch->click_ids);
+        $this->assertNull($touch->landing_url);
+        $this->assertNull($touch->referrer_host);
+        $this->assertNull($touch->utm_term);
+        $this->assertNull($touch->utm_content);
+        $this->assertSame('google', $touch->utm_source);
+        $this->assertSame(AdPlatform::GoogleAds, $touch->platform);
+        $this->assertTrue($touch->occurred_at->equalTo($occurredAt));
+
+        $other->refresh();
+        $this->assertSame(['gclid' => 'keep-click'], $other->click_ids);
+        $this->assertSame('https://example.test/keep', $other->landing_url);
+
+        $delivery->refresh();
+        $this->assertSame(['email', 'phone'], $delivery->identifiers_used);
+        $this->assertStringNotContainsString('secret-click', (string) json_encode($delivery->getAttributes()));
     }
 }

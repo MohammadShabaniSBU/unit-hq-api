@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\SystemEvent;
 use App\Support\Advertising\AdPlatformRegistry;
 use App\Support\Advertising\Contracts\ListsCampaigns;
 use App\Support\Advertising\Contracts\ListsConversionTargets;
@@ -56,10 +57,20 @@ class AdPlatformAccountResource extends BaseResource
             'lists_campaigns' => $listsCampaigns,
             'lists_conversion_targets' => $listsConversionTargets,
             'last_verified_at' => $this->datetime($this->last_verified_at),
+            'last_synced_at' => $this->datetime($this->lastSyncedAt()),
             'last_error' => $this->last_error,
             'archived_at' => $this->datetime($this->archived_at),
             'created_at' => $this->datetime($this->created_at),
             'updated_at' => $this->datetime($this->updated_at),
         ];
+    }
+
+    private function lastSyncedAt(): mixed
+    {
+        return SystemEvent::query()
+            ->where('event', 'ads.sync.committed')
+            ->where('subject_type', $this->resource->getMorphClass())
+            ->where('subject_id', $this->id)
+            ->max('created_at');
     }
 }

@@ -47,6 +47,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('campaigns:dispatch-due')->everyMinute()->withoutOverlapping()->skip($skipMismatch);
         $schedule->command('campaigns:complete-sends')->everyMinute()->withoutOverlapping()->skip($skipMismatch);
         $schedule->command('ads:deliver-conversions')->everyFiveMinutes()->skip($skipMismatch);
+        $schedule->command('ads:sync-campaigns')->hourly()->skip($skipMismatch);
+        $schedule->command('ads:sync-spend')->everySixHours()->skip($skipMismatch);
         $schedule->command('analytics:refresh')->daily()->skip($skipMismatch);
         $schedule->command('insights:validate')->daily()->skip($skipMismatch);
         $schedule->command('agents:check-model-prices')->daily()->skip($skipMismatch);

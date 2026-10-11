@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('roles/{role}/archive', [Controllers\RbacController::class, 'archive']);
     Route::post('roles/{role}/unarchive', [Controllers\RbacController::class, 'unarchive']);
     Route::get('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'index']);
+    Route::get('contacts/{contact}/marketing-touches', [Controllers\ContactMarketingTouchController::class, 'index']);
     Route::post('contacts/{contact}/interactions', [Controllers\ContactInteractionController::class, 'store']);
 
     Route::get('comms-triage', [Controllers\CommsTriageController::class, 'index']);
@@ -187,6 +188,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('ad-conversion-deliveries/summary', [Controllers\AdConversionDeliveryController::class, 'summary']);
     Route::get('ad-conversion-deliveries', [Controllers\AdConversionDeliveryController::class, 'index']);
     Route::post('ad-conversion-deliveries/{adConversionDelivery}/retry', [Controllers\AdConversionDeliveryController::class, 'retry']);
+    Route::get('advertising/setup', [Controllers\AdvertisingSetupController::class, 'show']);
+    Route::get('advertising/tag-probe', [Controllers\AdvertisingSetupController::class, 'tagProbe']);
+    Route::get('ad-campaigns', [Controllers\AdCampaignController::class, 'index']);
+    Route::post('ad-campaigns/mapping/bulk', [Controllers\AdCampaignController::class, 'bulkMapping']);
+    Route::put('ad-campaigns/{adCampaign}/mapping', [Controllers\AdCampaignController::class, 'updateMapping']);
 
     Route::get('settings/ai-providers', [Controllers\AiProviderAccountController::class, 'providers']);
     Route::get('settings/ai-provider-accounts', [Controllers\AiProviderAccountController::class, 'index']);

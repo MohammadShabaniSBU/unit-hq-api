@@ -350,6 +350,8 @@ class SignupFormController extends Controller
             'allowed_origins' => $form->allowed_origins,
             'archived_at' => $form->archived_at?->toIso8601String(),
             'submissions_count' => $form->submissionsCount(),
+            'purpose_locked' => $form->hasSubmissions(),
+            'enquiry_count' => $form->enquiryCount(),
             'created_at' => $form->created_at->toIso8601String(),
             'updated_at' => $form->updated_at->toIso8601String(),
         ];

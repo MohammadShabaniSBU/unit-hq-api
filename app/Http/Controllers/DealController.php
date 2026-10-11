@@ -10,11 +10,15 @@ use App\Http\Controllers\Concerns\AppliesPortalSiteFilter;
 use App\Http\Controllers\Concerns\SearchesWithFilters;
 use App\Http\Resources\DealCardResource;
 use App\Http\Resources\DealResource;
+use App\Models\AdCampaign;
 use App\Models\Deal;
 use App\Models\Employee;
+use App\Models\MarketingTouch;
+use App\Support\Advertising\AttributedTouch;
 use App\Support\Attributes\AppliesCreateAttributes;
 use App\Support\Auth\Permission;
 use App\Support\RecordsActivity;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +161,8 @@ class DealController extends Controller
         return $this->success(
             DealResource::make($deal)->additional([
                 'include_playbook_enrolment' => true,
+                'include_acquired_via' => true,
+                'acquired_via' => $this->acquiredVia($deal),
             ]),
             'Deal retrieved successfully.'
         );
@@ -281,5 +287,34 @@ class DealController extends Controller
         ]);
 
         return $this->success($options, 'Deal options retrieved successfully.');
+    }
+
+    /**
+     * @return array{platform: string, campaign_name: string|null}|null
+     */
+    private function acquiredVia(Deal $deal): ?array
+    {
+        if ($deal->created_at === null) {
+            return null;
+        }
+
+        $touches = AttributedTouch::latestPaid([[
+            'id' => (int) $deal->id,
+            'contact_id' => $deal->contact_id,
+            'anchor' => CarbonImmutable::parse($deal->created_at),
+        ]], AttributedTouch::DEFAULT_WINDOW_DAYS, null);
+
+        $touch = $touches[(int) $deal->id] ?? null;
+
+        if (! $touch instanceof MarketingTouch || $touch->platform === null) {
+            return null;
+        }
+
+        $campaign = AdCampaign::query()->matchingTouch($touch)->orderBy('id')->first();
+
+        return [
+            'platform' => $touch->platform->value,
+            'campaign_name' => $campaign?->name,
+        ];
     }
 }

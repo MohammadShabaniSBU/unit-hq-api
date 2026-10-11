@@ -49,6 +49,14 @@ final class AdPlatformRegistry
     /**
      * @param  array<string, mixed>  $credentials
      */
+    /**
+     * @param  class-string<AdPlatformAccount>  $class
+     */
+    public function register(AdPlatform $platform, string $class): void
+    {
+        $this->map[$platform->value] = $class;
+    }
+
     public function make(AdPlatform $platform, array $credentials): AdPlatformAccount
     {
         $class = $this->adapterClass($platform);

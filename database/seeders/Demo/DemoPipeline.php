@@ -12,6 +12,7 @@ use Database\Seeders\Demo\Crowd\DemoRng;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Laravel\Telescope\Telescope;
 
 /**
  * Programmatic demo seed (command + tests share one path).
@@ -91,6 +92,10 @@ final class DemoPipeline
         InboxStaging::apply($world);
         (new AgentInboxDraftSeeder)->run();
 
+        if ($withCrowd) {
+            AdvertisingDemo::apply($world);
+        }
+
         return [
             'world' => $world,
             'days' => $result['days'],
@@ -132,9 +137,9 @@ final class DemoPipeline
     {
         Config::set('telescope.enabled', false);
 
-        if (class_exists(\Laravel\Telescope\Telescope::class)) {
-            \Laravel\Telescope\Telescope::stopRecording();
-            \Laravel\Telescope\Telescope::flushEntries();
+        if (class_exists(Telescope::class)) {
+            Telescope::stopRecording();
+            Telescope::flushEntries();
         }
 
         foreach (DB::getConnections() as $connection) {

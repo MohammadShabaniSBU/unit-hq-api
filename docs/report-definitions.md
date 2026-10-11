@@ -226,7 +226,30 @@ Stage membership is “ever reached,” not mutually exclusive. Median days betw
 | Correlation caveat | Aviso de correlación | Enrolled vs not comparison is **correlation, not causation**. |
 | Price band | Banda de precio | Catalogue option amount buckets: `<50`, `50–99.99`, `≥100` in the option’s currency (S03 price rows; no stored band table). |
 
-Source attribution uses `contacts.source` (join via deal) — there is no `deals.source` column.
+`contacts.source` stays the coarse origin. There is no `deals.source` column. Paid versus organic comes from the attributed touch (see Paid acquisition). The funnel filter `acquisition` uses that touch at a fixed 90-day window.
+
+---
+
+## Paid acquisition / Adquisición de pago
+
+Live queries over spend, touches, deals, and contracts. No rollup table. Changing the attribution window does not write.
+
+Filters: `from` / `to`, site set, platform (`all`, `google_ads`, `meta`), attribution window (30 / 60 / 90, default 90). `all` means Google Ads and Meta only.
+
+| Term (EN) | Term (ES) | Definition |
+|---|---|---|
+| Spend | Inversión | Σ `ad_spend_daily.cost` for campaigns mapped to the site set, `spend_date` in range (account-local dates). Grouped by currency. |
+| Paid leads | Leads de pago | Deals created in range whose contact's attributed touch is paid on the selected platform(s). |
+| Paid move-ins | Altas de pago | Contracts with `signed_at` in range whose contact's attributed touch is paid. Site is the contract site (the unit's site, or the deal site when the contract has no unit yet). |
+| Attributed touch | Contacto atribuido | Latest touch with non-null `platform`, `occurred_at` ≤ the deal's `created_at` and ≥ `created_at` minus the window. Computed per query. Move-ins use the contract's deal `created_at`, not `signed_at`. |
+| Cost per lead | Coste por lead | Spend ÷ paid leads, per currency, per site. `—` when leads = 0. |
+| Cost per move-in | Coste por alta | Spend ÷ paid move-ins, same rules. |
+| ROAS (first period) | ROAS (primer periodo) | Σ first-period revenue net of paid move-ins ÷ spend. First-period net is `charges.net_amount` where `ChargeType::isRevenue()` on the earliest revenue period (deposit, write-off, and refund excluded). Shown only when spend and that revenue share one currency. Otherwise `—`. Invariants 30 and 35. |
+| Unmapped spend | Inversión sin asignar | Spend on campaigns with no `site_id`. Its own row. Never spread across sites. Hidden when the request is a proper subset of sites. |
+
+Spend dates are civil dates in the ad account's timezone. Leads and move-ins use the site's timezone. At day granularity across zones the edges can shift by one day. The report prints that caveat. It does not correct the dates.
+
+A lead joins a campaign when `utm_campaign` matches `utm_campaign_hint`, or the platform campaign id (`external_id`) on the same provider. Unmatched paid leads stay on the site row only.
 
 ---
 

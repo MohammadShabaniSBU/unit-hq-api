@@ -14,6 +14,7 @@ Before writing code, consult the doc that matches the task:
 | Contract billing (cadence / anchor / tax / deposit), charges / payments / billing periods | `05-billing-ledger.md` |
 | Payments, fiscal identity, invoice issuance (authoritative) | `roadmap/architecture-payments-and-fiscal.md` |
 | Messaging / timeline / offer sends | `06-communications.md` |
+| Paid advertising (Google Ads, Meta), touches, conversion upload | `15-advertising.md` |
 | Insights, embedded analytics, reporting schema | `11-insights.md` |
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
 | Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
@@ -68,5 +69,16 @@ Before writing code, consult the doc that matches the task:
   An announcement stays inside its fence: current tenants of the chosen
   sites, `announcement` templates, no promotion (invariant 83). Campaign
   statistics are derived (invariant 84).
+- Enquiry forms create at most one open deal per contact and site.
+  Subscribe forms still never create a deal (invariant 85).
+- Marketing touches are append-only. Attribution is computed. Click ids
+  stay in `click_ids` (invariant 86).
+- Ad platforms receive data only with granted `ads` consent, checked at
+  delivery (invariant 87).
+- One conversion delivery per account and event, claimed before send
+  (invariant 88).
+- Ad spend is a restated cache in the account currency. Never sum across
+  currencies (invariant 89).
+- Keevaris does not write to ad campaigns in v1 (invariant 90).
 
 If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.

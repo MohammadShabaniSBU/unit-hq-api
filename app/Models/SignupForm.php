@@ -124,6 +124,23 @@ class SignupForm extends Model
             ->exists();
     }
 
+    /**
+     * Deals opened by this form, plus later enquiries matched onto an open deal.
+     * deal.created is also written on the contact, so only the deal subject counts.
+     */
+    public function enquiryCount(): int
+    {
+        return Activity::query()
+            ->where('properties->signup_form_id', $this->id)
+            ->where(function (Builder $query): void {
+                $query->where(function (Builder $created): void {
+                    $created->where('description', 'deal.created')
+                        ->where('subject_type', 'deal');
+                })->orWhere('description', 'deal.web_enquiry');
+            })
+            ->count();
+    }
+
     public function marketingChannel(): Channel
     {
         return Channel::tryFrom($this->channel) ?? Channel::Email;

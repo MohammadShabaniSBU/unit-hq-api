@@ -336,6 +336,7 @@ final class DemoWorld
         app(ESignProviderRegistry::class)->register('signable', FakeESignProvider::class);
         app(AccessProviderRegistry::class)->register('sensorberg', FakeAccessProvider::class);
         app(AccessProviderRegistry::class)->set(FakeAccessProvider::make(['api_key' => 'fake_key_demo']));
+        AdvertisingDemo::installFakes();
     }
 
     private function resolveCommunicationAccount(

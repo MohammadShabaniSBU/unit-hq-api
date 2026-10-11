@@ -25,6 +25,7 @@ final class ReportRegistry
         'daily-close' => DailyCloseReport::class,
         'movement' => MovementReport::class,
         'funnel' => FunnelReport::class,
+        'paid-acquisition' => PaidAcquisitionReport::class,
         'dashboard' => DashboardReport::class,
         'revenue' => RevenueReport::class,
         'rate-management' => RateManagementReport::class,

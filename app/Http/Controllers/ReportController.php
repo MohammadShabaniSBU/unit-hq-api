@@ -21,6 +21,11 @@ use Illuminate\Support\Facades\Gate;
 class ReportController extends Controller
 {
     /** @var list<string> */
+    private const ADVERTISING_REPORTS = [
+        'paid-acquisition',
+    ];
+
+    /** @var list<string> */
     private const FINANCIAL_REPORTS = [
         'rent-roll',
         'ageing',
@@ -40,6 +45,11 @@ class ReportController extends Controller
 
         Gate::authorize($permission->value);
 
+        $advertising = in_array($name, self::ADVERTISING_REPORTS, true);
+        if ($advertising) {
+            Gate::authorize(Permission::AdvertisingView->value);
+        }
+
         if (! ReportRegistry::has($name)) {
             return $this->notFound('Report not found.');
         }
@@ -55,8 +65,13 @@ class ReportController extends Controller
         /** @var Employee $employee */
         $employee = $request->user();
 
+        $granted = $employee->siteIdsFor($permission);
+        if ($advertising) {
+            $granted = self::intersectSites($granted, $employee->siteIdsFor(Permission::AdvertisingView));
+        }
+
         $filters = ReportFilters::fromValidated($request->validate(ReportFilters::rules()))
-            ->constrainToGranted($employee->siteIdsFor($permission));
+            ->constrainToGranted($granted);
         $report = ReportRegistry::make($name);
         $result = $report->run($filters);
 
@@ -72,5 +87,29 @@ class ReportController extends Controller
         }
 
         return $this->success($result->toArray(), 'Report retrieved successfully.');
+    }
+
+    /**
+     * null means company-wide. An empty list means nowhere.
+     *
+     * @param  list<int>|null  $left
+     * @param  list<int>|null  $right
+     * @return list<int>|null
+     */
+    private static function intersectSites(?array $left, ?array $right): ?array
+    {
+        if ($left === [] || $right === []) {
+            return [];
+        }
+
+        if ($left === null) {
+            return $right;
+        }
+
+        if ($right === null) {
+            return $left;
+        }
+
+        return array_values(array_intersect($left, $right));
     }
 }

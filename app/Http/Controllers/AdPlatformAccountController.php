@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Resources\AdPlatformAccountResource;
+use App\Jobs\SyncAdAccountCatalogue;
 use App\Models\AdPlatformAccount;
 use App\Models\Employee;
 use App\Models\SystemEvent;
@@ -136,6 +137,7 @@ class AdPlatformAccountController extends Controller
         }
 
         $this->auditCreated($account, $credentials);
+        $this->backfill($account);
 
         return $this->created(
             AdPlatformAccountResource::make($account)->resolve(),
@@ -441,11 +443,21 @@ class AdPlatformAccountController extends Controller
         Cache::forget($cacheKey);
 
         $this->auditCreated($account, $credentials);
+        $this->backfill($account);
 
         return $this->created(
             AdPlatformAccountResource::make($account)->resolve(),
             'Ad platform account created successfully.',
         );
+    }
+
+    private function backfill(AdPlatformAccount $account): void
+    {
+        if (! $account->is_active || $account->archived_at !== null) {
+            return;
+        }
+
+        SyncAdAccountCatalogue::dispatch($account->id)->afterCommit();
     }
 
     /**

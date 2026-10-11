@@ -9,6 +9,12 @@ use Carbon\CarbonImmutable;
 
 interface ReportsSpend
 {
+    /**
+     * Currency the platform reports now. Compared with the currency stored
+     * at verify. A mismatch fails the spend sync before any row is written.
+     */
+    public function reportedCurrency(): string;
+
     /** @return iterable<SpendRow> */
     public function spend(CarbonImmutable $from, CarbonImmutable $to): iterable;
 }

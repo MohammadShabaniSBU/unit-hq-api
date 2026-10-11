@@ -28,6 +28,10 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
 {
     private const PAGE_CAP = 50;
 
+    private const ASYNC_POLL_CAP = 30;
+
+    private const ASYNC_RANGE_DAYS = 30;
+
     /**
      * @param  array<string, mixed>  $credentials
      */
@@ -152,19 +156,31 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
         return $campaigns;
     }
 
+    public function reportedCurrency(): string
+    {
+        $response = AdHttp::request('GET', $this->url('act_'.$this->actId()), [
+            'Authorization' => 'Bearer '.$this->systemToken(),
+        ], query: [
+            'fields' => 'currency',
+        ]);
+
+        $currency = self::currencyCode($response->json('currency'));
+
+        if ($currency === null) {
+            throw new AdPlatformException(__('errors.advertising.currency_missing'), false);
+        }
+
+        return $currency;
+    }
+
     public function spend(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $currency = $this->accountCurrency();
-        $rows = $this->pages('act_'.$this->actId().'/insights', $this->systemToken(), [
-            'level' => 'campaign',
-            'time_increment' => 1,
-            'time_range' => json_encode([
-                'since' => $from->toDateString(),
-                'until' => $to->toDateString(),
-            ], JSON_THROW_ON_ERROR),
-            'fields' => 'campaign_id,spend,impressions,clicks',
-            'limit' => 100,
-        ]);
+        $fallback = $this->reportedCurrency();
+        $query = $this->insightQuery($from, $to);
+        $inclusive = BillingMath::daysBetween($from->startOfDay(), $to->startOfDay()) + 1;
+        $rows = $inclusive > self::ASYNC_RANGE_DAYS
+            ? $this->asyncInsights($query)
+            : $this->pages('act_'.$this->actId().'/insights', $this->systemToken(), $query);
 
         $spend = [];
 
@@ -182,7 +198,7 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
                 cost: self::decimalCost($row['spend'] ?? '0'),
                 impressions: self::whole($row['impressions'] ?? 0),
                 clicks: self::whole($row['clicks'] ?? 0),
-                currency: $currency,
+                currency: self::currencyCode($row['account_currency'] ?? null) ?? $fallback,
             );
         }
 
@@ -263,6 +279,66 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
             ),
             $payloads,
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function insightQuery(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return [
+            'level' => 'campaign',
+            'time_increment' => 1,
+            'time_range' => json_encode([
+                'since' => $from->toDateString(),
+                'until' => $to->toDateString(),
+            ], JSON_THROW_ON_ERROR),
+            'fields' => 'campaign_id,spend,impressions,clicks,account_currency',
+            'limit' => 100,
+        ];
+    }
+
+    /**
+     * Graph rejects a synchronous insights read once the range exceeds 30 days.
+     *
+     * @param  array<string, mixed>  $query
+     * @return list<array<string, mixed>>
+     */
+    private function asyncInsights(array $query): array
+    {
+        $response = AdHttp::request('POST', $this->url('act_'.$this->actId().'/insights'), [
+            'Authorization' => 'Bearer '.$this->systemToken(),
+        ], query: $query);
+
+        $runId = self::digits(self::stringValue($response->json('report_run_id')));
+
+        if ($runId === '') {
+            throw new AdPlatformException(__('errors.advertising.spend_invalid'), false);
+        }
+
+        for ($attempt = 0; $attempt < self::ASYNC_POLL_CAP; $attempt++) {
+            $status = AdHttp::request('GET', $this->url($runId), [
+                'Authorization' => 'Bearer '.$this->systemToken(),
+            ], query: [
+                'fields' => 'async_status,async_percent_completion',
+            ]);
+
+            $async = $status->json('async_status');
+
+            if ($async === 'Job Completed') {
+                return $this->pages($runId.'/insights', $this->systemToken(), ['limit' => 100]);
+            }
+
+            if (in_array($async, ['Job Failed', 'Job Skipped'], true)) {
+                throw new AdPlatformException(__('errors.advertising.spend_invalid'), false);
+            }
+
+            if ($attempt < self::ASYNC_POLL_CAP - 1) {
+                usleep(2_000_000);
+            }
+        }
+
+        throw new AdPlatformException(__('errors.advertising.spend_invalid'), true);
     }
 
     /**
@@ -370,17 +446,6 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
         return $token;
     }
 
-    private function accountCurrency(): string
-    {
-        $currency = strtoupper((string) ($this->credentials['currency'] ?? ''));
-
-        if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
-            throw new AdPlatformException(__('errors.advertising.currency_missing'), false);
-        }
-
-        return $currency;
-    }
-
     private static function apiBase(): string
     {
         return rtrim((string) config('advertising.meta.api_base'), '/');
@@ -400,6 +465,17 @@ final class MetaAccount implements AdPlatformAccount, CapturesClickIds, ListsCam
     private static function digits(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    private static function currencyCode(mixed $value): ?string
+    {
+        $string = self::stringValue($value);
+
+        if (preg_match('/^[A-Za-z]{3}$/', $string) !== 1) {
+            return null;
+        }
+
+        return strtoupper($string);
     }
 
     private static function stringValue(mixed $value): string

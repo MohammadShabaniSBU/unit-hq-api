@@ -38,6 +38,8 @@ class HeadlessWriteTest extends TestCase
             'automations:run-scheduled' => ['automations:run-scheduled', []],
             'campaigns:dispatch-due' => ['campaigns:dispatch-due', []],
             'campaigns:complete-sends' => ['campaigns:complete-sends', []],
+            'ads:sync-campaigns' => ['ads:sync-campaigns', []],
+            'ads:sync-spend' => ['ads:sync-spend', []],
         ];
     }
 

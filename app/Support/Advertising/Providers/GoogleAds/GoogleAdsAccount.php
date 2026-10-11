@@ -26,6 +26,8 @@ use Carbon\CarbonImmutable;
  */
 final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, ListsCampaigns, ListsConversionTargets, ReportsConversions, ReportsSpend
 {
+    private const CAMPAIGN_STATUSES = "campaign.status IN ('ENABLED', 'PAUSED', 'REMOVED')";
+
     private ?string $accessToken = null;
 
     /**
@@ -171,7 +173,8 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
     public function campaigns(): array
     {
         $rows = $this->search(
-            'SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type FROM campaign'
+            'SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type'
+            .' FROM campaign WHERE '.self::CAMPAIGN_STATUSES
         );
 
         $campaigns = [];
@@ -202,13 +205,28 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
         return $campaigns;
     }
 
+    public function reportedCurrency(): string
+    {
+        $rows = $this->search('SELECT customer.currency_code FROM customer LIMIT 1');
+        $customer = $rows[0]['customer'] ?? null;
+        $currency = is_array($customer) ? self::currencyCode($customer['currencyCode'] ?? null) : null;
+
+        if ($currency === null) {
+            throw new AdPlatformException(__('errors.advertising.currency_missing'), false);
+        }
+
+        return $currency;
+    }
+
     public function spend(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $currency = $this->accountCurrency();
+        $fallback = $this->reportedCurrency();
         $start = self::civilDate($from);
         $end = self::civilDate($to);
-        $query = 'SELECT campaign.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks'
-            .' FROM campaign WHERE segments.date BETWEEN \''.$start.'\' AND \''.$end.'\'';
+        $query = 'SELECT campaign.id, customer.currency_code, segments.date, metrics.cost_micros,'
+            .' metrics.impressions, metrics.clicks'
+            .' FROM campaign WHERE segments.date BETWEEN \''.$start.'\' AND \''.$end.'\''
+            .' AND '.self::CAMPAIGN_STATUSES;
 
         $spend = [];
 
@@ -228,13 +246,16 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
                 continue;
             }
 
+            $customer = $row['customer'] ?? null;
+            $currency = is_array($customer) ? self::currencyCode($customer['currencyCode'] ?? null) : null;
+
             $spend[] = new SpendRow(
                 externalCampaignId: $id,
                 spendDate: $date,
                 cost: self::microsToCost(self::stringValue($metrics['costMicros'] ?? '0')),
                 impressions: self::whole($metrics['impressions'] ?? 0),
                 clicks: self::whole($metrics['clicks'] ?? 0),
-                currency: $currency,
+                currency: $currency ?? $fallback,
             );
         }
 
@@ -611,17 +632,6 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
         return $id;
     }
 
-    private function accountCurrency(): string
-    {
-        $currency = strtoupper((string) ($this->credentials['currency'] ?? ''));
-
-        if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
-            throw new AdPlatformException(__('errors.advertising.currency_missing'), false);
-        }
-
-        return $currency;
-    }
-
     private static function apiBase(): string
     {
         return rtrim((string) config('advertising.google.api_base'), '/');
@@ -672,6 +682,17 @@ final class GoogleAdsAccount implements AdPlatformAccount, CapturesClickIds, Lis
         }
 
         return BillingMath::round2(bcdiv($micros, '1000000', 8));
+    }
+
+    private static function currencyCode(mixed $value): ?string
+    {
+        $string = self::stringValue($value);
+
+        if (preg_match('/^[A-Za-z]{3}$/', $string) !== 1) {
+            return null;
+        }
+
+        return strtoupper($string);
     }
 
     private static function stringValue(mixed $value): string

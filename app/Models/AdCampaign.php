@@ -79,6 +79,38 @@ class AdCampaign extends Model
         $query->whereIn('site_id', $siteIds);
     }
 
+    /**
+     * A touch joins a campaign by the operator hint, or by the platform campaign id.
+     * The id match requires the same provider so a shared numeric id does not cross platforms.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeMatchingTouch(Builder $query, MarketingTouch $touch): void
+    {
+        $utm = $touch->utm_campaign;
+
+        if ($utm === null || $utm === '') {
+            $query->whereNull('id');
+
+            return;
+        }
+
+        $query->where(function (Builder $match) use ($touch, $utm): void {
+            $match->where('utm_campaign_hint', $utm);
+
+            if ($touch->platform === null) {
+                return;
+            }
+
+            $match->orWhere(function (Builder $byId) use ($touch, $utm): void {
+                $byId->where('external_id', $utm)
+                    ->whereHas('account', function (Builder $account) use ($touch): void {
+                        $account->where('provider', $touch->platform);
+                    });
+            });
+        });
+    }
+
     /** @return BelongsTo<AdPlatformAccount, $this> */
     public function account(): BelongsTo
     {

@@ -16,6 +16,7 @@ Keevaris is a **mono-tenant** (single-company) self-storage operations platform.
 | Payments | Stripe credentials per legal entity — each entity is the merchant of record (`architecture-payments-and-fiscal.md`) |
 | Insights | Operator-ordered registry of native reports and embedded analytics (Metabase / iframe); native vocabulary in `report-definitions.md`, surface in `11-insights.md` |
 | Marketing | One broadcast engine for campaigns, newsletters, and announcements (email and SMS). Consent, lists, and segments are the audience (`06-communications.md`). Drip sequences stay automations |
+| Advertising | Google Ads and Meta accounts, append-only touches, enquiry forms, conversion upload, and the paid-acquisition report (`15-advertising.md`). Keevaris reads spend and uploads conversions. It does not write campaigns |
 | Extras | Settings (incl. tax rates, custom attributes, object customization), email templates, automation engine (flow graph: triggers/actions/logic, `12-automation-engine.md`), Playbooks (compiled linear automations for debt process / lead chase, `13-playbooks.md`), AI copilot and the customer-facing concierge agent (`14-ai-agents.md`), tasks/notes |
 
 ## Workspace layout
@@ -44,7 +45,7 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 | Comments | `Notes` (`HasNotes`) |
 | Pipeline end "Lease" | `/contracts` API + panel pages |
 
-**Always use `Contract` in code.** Domain docs live in this folder (`00`–`14`); there is no separate `product.md` / `erd.md` in-repo.
+**Always use `Contract` in code.** Domain docs live in this folder (`00`–`15`); there is no separate `product.md` / `erd.md` in-repo.
 
 ## Doc set index
 
@@ -62,4 +63,5 @@ Contact → Deal → Offer → OfferOption (selected) → Reservation → Contra
 - `12-automation-engine.md` — automation nodes/edges/runs, triggers, node handlers, run lifecycle
 - `13-playbooks.md` — Playbooks (debt process / lead chase), compiled onto the automation engine
 - `14-ai-agents.md` — customer-facing concierge agent, principal, verification, tools, guardrails, demo `/demo/chat`; employee copilot voice (Vocal Bridge)
+- `15-advertising.md` — Google Ads and Meta accounts, touches, enquiry forms, conversion upload, spend sync, paid-acquisition report
 - `AGENTS.md` — short index for AI assistants

@@ -138,6 +138,7 @@ final class RoutePermissions
             'GET /api/contacts/{contact}/consents' => Permission::ContactView, // ContactConsentController@index
             'GET /api/contacts/{contact}/ai-summary/history' => Permission::AiSummaryView, // AiSummaryController@history
             'GET /api/contacts/{contact}/interactions' => Permission::ContactView, // ContactInteractionController@index
+            'GET /api/contacts/{contact}/marketing-touches' => Permission::ContactView, // ContactMarketingTouchController@index
             'GET /api/deals' => Permission::DealManage, // DealController@index
             'GET /api/deals/board' => Permission::DealManage, // DealBoardController@index
             'GET /api/deals/board/columns/{status}' => Permission::DealManage, // DealBoardController@column
@@ -481,7 +482,7 @@ final class RoutePermissions
             'GET /api/playbooks' => Permission::PlaybookManage, // PlaybookController@index
             'GET /api/playbooks/{playbook}' => Permission::PlaybookManage, // PlaybookController@show
             'GET /api/playbooks/{playbook}/enrolments' => Permission::PlaybookManage, // PlaybookController@enrolments
-            'GET /api/reports/{name}' => Permission::ReportView, // ReportController@show — branch to ReportFinancialView by report name in controller
+            'GET /api/reports/{name}' => Permission::ReportView, // ReportController@show — branch to ReportFinancialView, and AdvertisingView for paid-acquisition, by report name in controller
             'GET /api/settings/access' => Permission::CredentialManage, // AccessProviderAccountController@show — provider account
             'GET /api/settings/access/points' => Permission::AccessManage, // AccessPointController@index — access point catalogue
             'GET /api/settings/activity-log' => Permission::SettingsManage, // Facility\SettingController@showActivityLog
@@ -573,6 +574,11 @@ final class RoutePermissions
             'GET /api/ad-conversion-deliveries/summary' => Permission::AdvertisingView, // AdConversionDeliveryController@summary
             'GET /api/ad-conversion-deliveries' => Permission::AdvertisingView, // AdConversionDeliveryController@index
             'POST /api/ad-conversion-deliveries/{adConversionDelivery}/retry' => Permission::AdvertisingManage, // AdConversionDeliveryController@retry
+            'GET /api/ad-campaigns' => Permission::AdvertisingView, // AdCampaignController@index
+            'GET /api/advertising/setup' => Permission::AdvertisingView, // AdvertisingSetupController@show
+            'GET /api/advertising/tag-probe' => Permission::AdvertisingConnect, // AdvertisingSetupController@tagProbe
+            'POST /api/ad-campaigns/mapping/bulk' => Permission::AdvertisingManage, // AdCampaignController@bulkMapping
+            'PUT /api/ad-campaigns/{adCampaign}/mapping' => Permission::AdvertisingManage, // AdCampaignController@updateMapping
 
             // ===== RBAC =====
             'DELETE /api/employees/{employee}/invitations/{invitation}' => Permission::RbacManage, // EmployeeController@destroyInvitation

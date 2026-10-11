@@ -14,7 +14,9 @@ Multi-channel contact identity: email, phone, WhatsApp.
 
 `consent_texts` stores the exact wording shown to a person (`key`, `version`, `locale`, `body`). Rows are immutable: no `updated_at`; a trigger rejects UPDATE and DELETE. A new wording is a new version.
 
-`consent_events` is the append-only ledger (invariant 75). A row names the contact, channel (`email` | `sms` | `whatsapp`), subscription list, action (`granted` | `pending` | `withdrawn`), source, optional `consent_text_id`, `evidence` JSON, causer, and `occurred_at`. A trigger rejects DELETE and any UPDATE except nulling `evidence`. Current consent is not a column: `ConsentState` reads the latest event per (contact, channel, list), tie-broken by `id`. Marketing never reads `contact_channels.opted_in`.
+`consent_events` is the append-only ledger (invariant 75). A row names the contact, channel (`email` | `sms` | `whatsapp` | `ads`), subscription list, action (`granted` | `pending` | `withdrawn`), source, optional `consent_text_id`, `evidence` JSON, causer, and `occurred_at`. A trigger rejects DELETE and any UPDATE except nulling `evidence`. Current consent is not a column: `ConsentState` reads the latest event per (contact, channel, list), tie-broken by `id`. Marketing never reads `contact_channels.opted_in`.
+
+`ads` is a case of `App\Support\Marketing\ConsentChannel`. It is not a send channel. `App\Support\Communications\Channel` has no `ads` case, and no message is sent on it. Granted `ads` consent on the system list `advertising` is what allows a conversion upload (invariant 87). Detail: `15-advertising.md`.
 
 `ConsentWriter` is the only insert path (invariant 76). `grant()` accepts `form`, `double_opt_in`, `operator` (employee causer and a note), `import` (`import_batch` and `original_source`), `preference_center`, and `soft_opt_in` (default off). Every grant except `operator` requires `consent_text_id`. Automations, AI tools, and inbound triage may call `withdraw()` only. `contacts:redact` nulls `evidence` on existing rows and appends a `withdrawn` event with `source = redaction`. The original grant row stays `granted`.
 

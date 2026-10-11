@@ -63,6 +63,11 @@ final class NativeReports
             'icon' => 'i-lucide-filter',
             'section' => 'operations',
         ],
+        'paid-acquisition' => [
+            'label_key' => 'insights.reports.paid_acquisition.label',
+            'icon' => 'i-lucide-megaphone',
+            'section' => 'operations',
+        ],
         'demo' => [
             'label_key' => 'insights.reports.demo.label',
             'icon' => 'i-lucide-table',

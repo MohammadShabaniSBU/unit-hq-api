@@ -31,8 +31,10 @@ Financial-category native reports (`rent-roll`, `ageing`, `collections`,
 `delinquency-trend`) are gated behind the stricter
 `Permission::ReportFinancialView` rather than the baseline
 `Permission::ReportView` that every other native report requires — enforced in
-`ReportController::show`. `length-of-stay` stays on `ReportView`. See
-`report-definitions.md` for the full list.
+`ReportController::show`. `length-of-stay` stays on `ReportView`.
+`paid-acquisition` is the exception: `ReportController::show` requires
+`Permission::AdvertisingView`, not `ReportView` or `ReportFinancialView`.
+See `report-definitions.md` for the full list.
 
 ---
 
@@ -203,6 +205,9 @@ Objects that ship:
 | `analytics.v_consent_events` | Every consent event, without evidence |
 | `analytics.v_campaigns` | One row per campaign, with per-channel template pins |
 | `analytics.v_campaign_recipients` | Recipient outcome and derived delivery flags |
+| `analytics.v_ad_spend_daily` | Daily ad spend with mapped site, currency, and account timezone |
+| `analytics.v_marketing_touches` | Touch facts for BI. No click ids, landing URL, or visitor key |
+| `analytics.v_ad_conversion_deliveries` | Conversion delivery status, skip reason, value, and currency |
 
 Every monetary view exposes `currency`. Never sum across currencies. There is
 no conversion layer.
@@ -267,3 +272,6 @@ environment had run it. **Deploy requires `migrate:fresh`.**
 | `analytics.v_consent_events` | Reporting contract — consent events over time, no evidence |
 | `analytics.v_campaigns` | Reporting contract — one row per campaign |
 | `analytics.v_campaign_recipients` | Reporting contract — recipient outcome and delivery flags |
+| `analytics.v_ad_spend_daily` | Reporting contract — daily ad spend, mapped site, currency |
+| `analytics.v_marketing_touches` | Reporting contract — touches without click ids or landing URLs |
+| `analytics.v_ad_conversion_deliveries` | Reporting contract — delivery status, skip reason, value, currency |

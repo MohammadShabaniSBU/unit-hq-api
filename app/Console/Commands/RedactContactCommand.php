@@ -11,6 +11,7 @@ use App\Models\AutomationRunStep;
 use App\Models\CallWrapup;
 use App\Models\Contact;
 use App\Models\Deal;
+use App\Models\MarketingTouch;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\SystemEvent;
@@ -24,7 +25,7 @@ class RedactContactCommand extends Command
 {
     protected $signature = 'contacts:redact {contact : Contact id to redact from logs}';
 
-    protected $description = 'Null allowlisted PII keys in activity_log, system_events, and automation run payloads for a contact; null ai_summaries content for the contact and its deals; log contact.redacted';
+    protected $description = 'Null allowlisted PII keys in activity_log, system_events, and automation run payloads for a contact; null ai_summaries content for the contact and its deals; clear click ids and landing URLs on the contact\'s marketing touches; log contact.redacted';
 
     public function handle(): int
     {
@@ -125,6 +126,7 @@ class RedactContactCommand extends Command
 
         $wrapupCount = $this->redactCallWrapupsAndRecordings($contact);
         $summaryCount = $this->redactAiSummaries($contact);
+        $touchCount = $this->redactMarketingTouches($contact);
         ConsentWriter::redact($contact);
 
         RecordsActivity::core('contact.redacted', $contact, [
@@ -133,11 +135,38 @@ class RedactContactCommand extends Command
             'automation_rows' => $automationCount,
             'call_wrapup_rows' => $wrapupCount,
             'ai_summary_rows' => $summaryCount,
+            'marketing_touch_rows' => $touchCount,
         ]);
 
-        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation, {$wrapupCount} call wrap-up/recording, {$summaryCount} ai_summary row(s). Logged contact.redacted.");
+        $this->info("Redacted {$activityCount} activity, {$systemCount} system_event, {$automationCount} automation, {$wrapupCount} call wrap-up/recording, {$summaryCount} ai_summary, {$touchCount} marketing touch row(s). Logged contact.redacted.");
 
         return self::SUCCESS;
+    }
+
+    private function redactMarketingTouches(Contact $contact): int
+    {
+        $count = 0;
+
+        $touches = MarketingTouch::query()
+            ->where('contact_id', $contact->id)
+            ->get();
+
+        foreach ($touches as $touch) {
+            $touch->click_ids = [];
+            $touch->landing_url = null;
+            $touch->referrer_host = null;
+            $touch->utm_term = null;
+            $touch->utm_content = null;
+
+            if (! $touch->isDirty()) {
+                continue;
+            }
+
+            $touch->save();
+            $count++;
+        }
+
+        return $count;
     }
 
     private function redactCallWrapupsAndRecordings(Contact $contact): int
