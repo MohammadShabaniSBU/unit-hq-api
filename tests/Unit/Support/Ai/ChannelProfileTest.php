@@ -67,6 +67,7 @@ class ChannelProfileTest extends TestCase
         $this->assertSame(2, $voice->targetSentences);
         $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voice->promptAddendum);
         $this->assertStringContainsString('Do not use markdown, asterisks, or bullet markers', $voice->promptAddendum);
+        $this->assertStringContainsString('Address them as "you"', $voice->promptAddendum);
         $this->assertStringContainsString('sales.send_quote', $voice->promptAddendum);
         $this->assertStringContainsString('never read the public link aloud', $voice->promptAddendum);
         $this->assertStringContainsString('never open with a welcome, a brand tagline, or a self-introduction', $voice->promptAddendum);

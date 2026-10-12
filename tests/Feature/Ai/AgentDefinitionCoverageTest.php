@@ -213,6 +213,7 @@ class AgentDefinitionCoverageTest extends TestCase
         $voicePrompt = $definition->systemPrompt($voiceCtx);
         $this->assertStringContainsString('Speak grounded sizes, prices, dates, and counts aloud', $voicePrompt);
         $this->assertStringContainsString('Do not use markdown, asterisks, or bullet markers', $voicePrompt);
+        $this->assertStringContainsString('Address them as "you"', $voicePrompt);
         $this->assertStringContainsString('sales.send_quote', $voicePrompt);
         $this->assertStringContainsString('never read the public link aloud', $voicePrompt);
         $this->assertStringContainsString('crm.update_contact', $anonymous);
