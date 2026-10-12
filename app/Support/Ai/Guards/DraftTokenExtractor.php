@@ -164,6 +164,59 @@ final class DraftTokenExtractor
                 $tokens[] = new DraftToken(DraftToken::Date, $raw, $iso);
             }
         }
+
+        $this->collectYearlessWrittenDates($text, $months, $ordinal, $tokens);
+    }
+
+    /**
+     * Day and month with no year ("19 October"). Runs after the yearful
+     * patterns so "19 October 2026" stays one ISO date. The span is claimed
+     * so the day is not also emitted as a bare number.
+     *
+     * @param  list<DraftToken>  $tokens
+     */
+    private function collectYearlessWrittenDates(string $text, string $months, string $ordinal, array &$tokens): void
+    {
+        $patterns = [
+            'day_month' => '/\b(\d{1,2})'.$ordinal.'\s+(?:of\s+)?('.$months.')\b/iu',
+            'month_day' => '/\b('.$months.')\s+(\d{1,2})'.$ordinal.'\b/iu',
+            'es_de' => '/\b(\d{1,2})\s+de\s+('.$months.')\b/iu',
+            'fr_le' => '/\ble\s+(\d{1,2})\s+('.$months.')\b/iu',
+        ];
+
+        foreach ($patterns as $kind => $pattern) {
+            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE) === false) {
+                continue;
+            }
+
+            foreach ($matches[0] as $i => [$raw, $offset]) {
+                $day = $kind === 'month_day'
+                    ? (string) $matches[2][$i][0]
+                    : (string) $matches[1][$i][0];
+                $monthName = $kind === 'month_day'
+                    ? (string) $matches[1][$i][0]
+                    : (string) $matches[2][$i][0];
+                if (! $this->plausibleDayMonth($day, $monthName)) {
+                    continue;
+                }
+                if (! $this->claim((int) $offset, strlen($raw))) {
+                    continue;
+                }
+
+                $tokens[] = new DraftToken(DraftToken::Date, $raw, $raw);
+            }
+        }
+    }
+
+    private function plausibleDayMonth(string $day, string $monthName): bool
+    {
+        if (RelativeDatePhrase::monthNumber($monthName) === null) {
+            return false;
+        }
+
+        $d = (int) $day;
+
+        return $d >= 1 && $d <= 31;
     }
 
     private function writtenIso(string $day, string $monthName, string $year): ?string

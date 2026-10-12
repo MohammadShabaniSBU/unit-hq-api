@@ -60,10 +60,22 @@ class FactBagTest extends TestCase
         $this->assertTrue($bag->contains('2026-09-14'));
         $this->assertTrue($bag->contains('14/09/2026'));
         $this->assertTrue($bag->contains('14 September 2026'));
+        $this->assertTrue($bag->contains('14 September'));
+        $this->assertTrue($bag->contains('September 14'));
+        $this->assertTrue($bag->contains('14th of September'));
         $this->assertTrue($bag->contains('14 de septiembre de 2026'));
+        $this->assertTrue($bag->contains('14 de septiembre'));
         $this->assertTrue($bag->contains('le 14 septembre 2026'));
+        $this->assertTrue($bag->contains('le 14 septembre'));
         $this->assertFalse($bag->contains('2026'));
         $this->assertFalse($bag->contains('14'));
         $this->assertFalse($bag->contains('9'));
+        $this->assertFalse($bag->contains('September'));
+        $this->assertFalse($bag->contains('14 November'));
+
+        $rehydrated = FactBag::fromKeys($bag->all());
+        $this->assertTrue($rehydrated->contains('14 September'));
+        $this->assertFalse($rehydrated->contains('14'));
+        $this->assertFalse($rehydrated->contains('14 November'));
     }
 }

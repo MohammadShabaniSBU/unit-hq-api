@@ -426,4 +426,61 @@ class GroundingGuardTest extends TestCase
         );
         $this->assertTrue($pass->passed);
     }
+
+    #[Test]
+    public function yearless_spoken_date_passes_when_that_iso_is_licensed(): void
+    {
+        $tokens = (new DraftTokenExtractor)->extract('available from 19 October');
+        $this->assertCount(1, $tokens);
+        $this->assertSame(DraftToken::Date, $tokens[0]->type);
+        $this->assertSame('19 October', $tokens[0]->raw);
+
+        $facts = (new FactBag)->date('2026-10-19');
+        $context = $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales');
+
+        $english = app(GroundingGuard::class)->check('available from 19 October', $facts, $context);
+        $this->assertTrue($english->passed);
+
+        $spanish = app(GroundingGuard::class)->check(
+            'disponible desde el 19 de octubre',
+            $facts,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'es'), 'sales'),
+        );
+        $this->assertTrue($spanish->passed);
+
+        $french = app(GroundingGuard::class)->check(
+            'disponible à partir du 19 octobre',
+            $facts,
+            $this->writeContext(AgentPrincipal::anonymous(null, 'fr'), 'sales'),
+        );
+        $this->assertTrue($french->passed);
+    }
+
+    #[Test]
+    public function bare_day_of_a_licensed_date_still_blocks(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'Move in on the 19.',
+            (new FactBag)->date('2026-10-19'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertNull($verdict->retry);
+        $this->assertSame('19', $verdict->detail['token'] ?? null);
+    }
+
+    #[Test]
+    public function yearless_date_in_the_wrong_month_is_not_grounded(): void
+    {
+        $verdict = app(GroundingGuard::class)->check(
+            'Move in on 19 November.',
+            (new FactBag)->date('2026-10-19'),
+            $this->writeContext(AgentPrincipal::anonymous(null, 'en'), 'sales'),
+        );
+
+        $this->assertFalse($verdict->passed);
+        $this->assertNotNull($verdict->retry);
+        $this->assertSame('19 November', $verdict->detail['token'] ?? null);
+    }
 }

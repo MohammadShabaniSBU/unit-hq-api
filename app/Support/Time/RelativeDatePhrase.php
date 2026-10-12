@@ -148,8 +148,9 @@ final class RelativeDatePhrase
     }
 
     /**
-     * Spoken civil-date strings for a licensed ISO date. Never the bare year,
-     * month number, or day of month.
+     * Spoken civil-date strings for a licensed ISO date. Includes the year-less
+     * day-and-month phrase ("19 October") and the same phrase with the year.
+     * Never the bare year, month number, or day of month.
      *
      * @return list<string>
      */
@@ -200,6 +201,13 @@ final class RelativeDatePhrase
             $forms[] = $dayStr.$ordinal.' of '.$name.' '.$yearStr;
             $forms[] = $dayStr.' de '.$name.' de '.$yearStr;
             $forms[] = 'le '.$dayStr.' '.$name.' '.$yearStr;
+            $forms[] = $dayStr.' '.$name;
+            $forms[] = $dayStr.$ordinal.' '.$name;
+            $forms[] = $dayStr.$ordinal.' of '.$name;
+            $forms[] = $name.' '.$dayStr;
+            $forms[] = $name.' '.$dayStr.$ordinal;
+            $forms[] = $dayStr.' de '.$name;
+            $forms[] = 'le '.$dayStr.' '.$name;
         }
 
         return $forms;

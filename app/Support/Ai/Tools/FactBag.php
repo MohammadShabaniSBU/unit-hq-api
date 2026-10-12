@@ -146,9 +146,13 @@ final class FactBag
         foreach ($keys as $key) {
             $key = (string) $key;
             $bag->addToken($key);
-            $amount = self::tryNormalizeAmount($key);
-            if ($amount !== null) {
-                $bag->moneyAmounts[$amount] = true;
+            // "19 October" strips to the digits 19. A written date must not
+            // rehydrate as that amount, or the bare day grounds itself.
+            if (! self::embedsMonthName($key)) {
+                $amount = self::tryNormalizeAmount($key);
+                if ($amount !== null) {
+                    $bag->moneyAmounts[$amount] = true;
+                }
             }
             if (str_contains($key, '%')) {
                 $bag->percents[self::normalizePercent($key)] = true;
@@ -179,6 +183,11 @@ final class FactBag
     public static function fromCustomerMessage(string $input, ?Site $site = null): self
     {
         return (new self)->absorb($input, $site);
+    }
+
+    private static function embedsMonthName(string $key): bool
+    {
+        return preg_match('/\b('.RelativeDatePhrase::monthAlternation().')\b/iu', $key) === 1;
     }
 
     private function addToken(string $token): void
