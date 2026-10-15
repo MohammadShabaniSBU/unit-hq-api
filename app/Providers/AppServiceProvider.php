@@ -8,6 +8,9 @@ use App\Events\ModelDeleted;
 use App\Events\ModelUpdated;
 use App\Listeners\BroadcastCopilotFailed;
 use App\Listeners\BroadcastCopilotToolInvoking;
+use App\Listeners\BroadcastTemplateAssistWorking;
+use App\Listeners\CompleteTemplateAssistTurn;
+use App\Listeners\FailTemplateAssistTurn;
 use App\Listeners\IncrementAiUsageToolCalls;
 use App\Listeners\QueueAutomationMatching;
 use App\Listeners\RecordAdConversion;
@@ -312,10 +315,14 @@ class AppServiceProvider extends ServiceProvider
         // listen here runs it twice; consent withdrawals are not idempotent.
         Event::listen(InboundMessageReceived::class, RespondWithAgent::class);
         Event::listen(InvokingTool::class, [BroadcastCopilotToolInvoking::class, 'handle']);
+        Event::listen(InvokingTool::class, [BroadcastTemplateAssistWorking::class, 'handle']);
         Event::listen(JobFailed::class, [BroadcastCopilotFailed::class, 'handle']);
         Event::listen(JobFailed::class, [SettleFailedAiUsage::class, 'handle']);
+        Event::listen(JobFailed::class, [FailTemplateAssistTurn::class, 'handle']);
         Event::listen(AgentPrompted::class, [RecordAgentUsage::class, 'handle']);
         Event::listen(AgentStreamed::class, [RecordAgentUsage::class, 'handle']);
+        Event::listen(AgentPrompted::class, [CompleteTemplateAssistTurn::class, 'handle']);
+        Event::listen(AgentStreamed::class, [CompleteTemplateAssistTurn::class, 'handle']);
         Event::listen(ToolInvoked::class, [IncrementAiUsageToolCalls::class, 'handle']);
         Event::listen(AgentFailedOver::class, [RecordAgentFailoverUsage::class, 'handle']);
 

@@ -384,7 +384,9 @@ final class RoutePermissions
             'GET /api/settings/esign' => Permission::CredentialManage, // EsignProviderAccountController@show
             'GET /api/sites/{site}/sender-identities' => Permission::CredentialManage, // Facility\SiteSenderIdentityController@index
             'GET /api/sites/{site}/voice-bridge-tokens' => Permission::CredentialManage, // Facility\VoiceBridgeTokenController@index
+            'GET /api/template-assist/turns/{turn}' => Permission::TemplateAssistUse, // TemplateAssistController@showTurn
             'GET /api/template-builder/sample-contexts' => Permission::TemplateManage, // TemplateFamilyController@sampleContexts
+            'GET /api/template-families/{templateFamily}/assist/session' => Permission::TemplateAssistUse, // TemplateAssistController@showSession
             'GET /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@index
             'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
             'GET /api/template-families/{templateFamily}/tokens' => Permission::TemplateManage, // TemplateFamilyController@tokens
@@ -425,7 +427,10 @@ final class RoutePermissions
             'POST /api/settings/communications/call/aircall/users/sync' => Permission::CredentialManage, // AircallUserLinkController@sync
             'POST /api/settings/communications/{channel}/webhook' => Permission::CredentialManage, // Facility\CommunicationAccountController@createWebhook
             'POST /api/settings/esign/webhook' => Permission::CredentialManage, // EsignProviderAccountController@createWebhook
+            'POST /api/template-assist/sessions/{session}/turns' => Permission::TemplateAssistUse, // TemplateAssistController@storeTurn
+            'POST /api/template-assist/turns/{turn}/status' => Permission::TemplateAssistUse, // TemplateAssistController@updateStatus
             'POST /api/template-assets' => Permission::TemplateManage, // TemplateAssetController@store
+            'POST /api/template-families/{templateFamily}/assist/sessions' => Permission::TemplateAssistUse, // TemplateAssistController@storeSession
             'POST /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@store
             'POST /api/template-families/{templateFamily}/archive' => Permission::TemplateManage, // TemplateFamilyController@archive
             'POST /api/template-families/{templateFamily}/versions' => Permission::TemplateManage, // TemplateFamilyController@storeVersion

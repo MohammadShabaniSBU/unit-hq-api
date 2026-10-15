@@ -1,0 +1,401 @@
+{
+  "base_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_aaaaaaaa",
+        "layout": "100",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_bbbbbbbb",
+            "blocks": []
+          }
+        ]
+      }
+    ]
+  },
+  "ops": [
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 0,
+        "blocks": [
+          {
+            "id": "blk_00000001",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 1</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000001"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 1,
+        "blocks": [
+          {
+            "id": "blk_00000002",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 2</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000002"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 2,
+        "blocks": [
+          {
+            "id": "blk_00000003",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 3</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000003"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 3,
+        "blocks": [
+          {
+            "id": "blk_00000004",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 4</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000004"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 4,
+        "blocks": [
+          {
+            "id": "blk_00000005",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 5</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000005"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 5,
+        "blocks": [
+          {
+            "id": "blk_00000006",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 6</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000006"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 6,
+        "blocks": [
+          {
+            "id": "blk_00000007",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 7</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000007"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 7,
+        "blocks": [
+          {
+            "id": "blk_00000008",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 8</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000008"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 8,
+        "blocks": [
+          {
+            "id": "blk_00000009",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 9</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_00000009"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 9,
+        "blocks": [
+          {
+            "id": "blk_0000000a",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 10</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_0000000a"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 10,
+        "blocks": [
+          {
+            "id": "blk_0000000b",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 11</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_0000000b"
+        }
+      ]
+    },
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_bbbbbbbb",
+        "index": 11,
+        "blocks": [
+          {
+            "id": "blk_0000000c",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>Line 12</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_0000000c"
+        }
+      ]
+    }
+  ],
+  "working_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_aaaaaaaa",
+        "layout": "100",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_bbbbbbbb",
+            "blocks": [
+              {
+                "id": "blk_00000001",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 1</p>"
+                }
+              },
+              {
+                "id": "blk_00000002",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 2</p>"
+                }
+              },
+              {
+                "id": "blk_00000003",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 3</p>"
+                }
+              },
+              {
+                "id": "blk_00000004",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 4</p>"
+                }
+              },
+              {
+                "id": "blk_00000005",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 5</p>"
+                }
+              },
+              {
+                "id": "blk_00000006",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 6</p>"
+                }
+              },
+              {
+                "id": "blk_00000007",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 7</p>"
+                }
+              },
+              {
+                "id": "blk_00000008",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 8</p>"
+                }
+              },
+              {
+                "id": "blk_00000009",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 9</p>"
+                }
+              },
+              {
+                "id": "blk_0000000a",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 10</p>"
+                }
+              },
+              {
+                "id": "blk_0000000b",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 11</p>"
+                }
+              },
+              {
+                "id": "blk_0000000c",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Line 12</p>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "status": "completed",
+  "tool_call_count": 12
+}

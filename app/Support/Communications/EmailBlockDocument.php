@@ -506,12 +506,42 @@ final class EmailBlockDocument
     }
 
     /**
-     * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * Block types and param rules for the assistant. Types follow {@see TYPES}.
+     *
+     * @return list<array{type: string, params: list<array{name: string, rules: string}>}>
      */
-    private static function validateParams(string $type, array $params, string $path): array
+    public static function describeForAssistant(): array
     {
-        $rules = match ($type) {
+        $rules = self::paramRules();
+        $described = [];
+
+        foreach (self::TYPES as $type) {
+            $params = [];
+            foreach ($rules[$type] ?? [] as $name => $fieldRules) {
+                $parts = [];
+                foreach ($fieldRules as $rule) {
+                    $parts[] = self::compactRule($rule);
+                }
+                $params[] = [
+                    'name' => $name,
+                    'rules' => implode(' ', $parts),
+                ];
+            }
+            $described[] = [
+                'type' => $type,
+                'params' => $params,
+            ];
+        }
+
+        return $described;
+    }
+
+    /**
+     * @return array<string, array<string, list<mixed>>>
+     */
+    private static function paramRules(): array
+    {
+        return [
             'heading' => [
                 'text' => ['required', 'string'],
                 'level' => ['required', 'integer', 'in:1,2'],
@@ -566,8 +596,29 @@ final class EmailBlockDocument
                 'links.*.url' => ['required', 'string', 'max:2000'],
                 'address' => ['nullable', 'string', 'max:500'],
             ],
-            default => [],
-        };
+        ];
+    }
+
+    private static function compactRule(mixed $rule): string
+    {
+        if (is_string($rule)) {
+            return $rule;
+        }
+
+        if ($rule instanceof \Stringable) {
+            return (string) $rule;
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function validateParams(string $type, array $params, string $path): array
+    {
+        $rules = self::paramRules()[$type] ?? [];
 
         if ($rules === []) {
             return [];

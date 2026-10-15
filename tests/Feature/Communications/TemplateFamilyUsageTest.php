@@ -13,6 +13,8 @@ use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Models\Automation;
 use App\Models\AutomationNode;
+use App\Models\Campaign;
+use App\Models\CampaignSend;
 use App\Models\Contract;
 use App\Models\ContractDocument;
 use App\Models\Playbook;
@@ -103,6 +105,21 @@ class TemplateFamilyUsageTest extends TestCase
             'status' => ContractDocumentStatus::Draft,
         ]);
 
+        $campaign = Campaign::factory()->create(['name' => 'Spring mail']);
+        CampaignSend::factory()->create([
+            'campaign_id' => $campaign->id,
+            'template_family_id' => $family->id,
+            'template_version_id' => $variant->template_version_id,
+        ]);
+
         $this->assertSame(5, TemplateFamilyUsage::count($family));
+
+        $references = TemplateFamilyUsage::references($family);
+        $this->assertSame(2, $references['automations']['count']);
+        $this->assertSame(['Usage'], $references['automations']['names']);
+        $this->assertSame(2, $references['playbooks']['count']);
+        $this->assertSame(['Usage'], $references['playbooks']['names']);
+        $this->assertSame(1, $references['campaigns']['count']);
+        $this->assertSame(['Spring mail'], $references['campaigns']['names']);
     }
 }

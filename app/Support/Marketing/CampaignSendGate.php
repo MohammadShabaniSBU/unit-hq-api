@@ -135,8 +135,6 @@ final class CampaignSendGate
 
     public static function sendClass(Campaign $campaign): SendClass
     {
-        return $campaign->type === CampaignType::Announcement
-            ? SendClass::Transactional
-            : SendClass::Marketing;
+        return SendClass::forTemplatePurpose($campaign->type->templatePurpose());
     }
 }

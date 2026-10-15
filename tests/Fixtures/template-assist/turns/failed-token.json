@@ -1,0 +1,81 @@
+{
+  "base_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_11111111",
+        "layout": "100",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_22222222",
+            "blocks": []
+          }
+        ]
+      }
+    ]
+  },
+  "ops": [
+    {
+      "op": {
+        "op": "insert_blocks",
+        "column_id": "col_22222222",
+        "index": 0,
+        "blocks": [
+          {
+            "id": "blk_33333333",
+            "type": "paragraph",
+            "params": {
+              "html": "<p>{{newsletter.name}} is out. {{unsubscribe_url}}</p>"
+            }
+          }
+        ]
+      },
+      "inverse": [
+        {
+          "op": "remove_block",
+          "block_id": "blk_33333333"
+        }
+      ]
+    }
+  ],
+  "working_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_11111111",
+        "layout": "100",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_22222222",
+            "blocks": [
+              {
+                "id": "blk_33333333",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>{{newsletter.name}} is out. {{unsubscribe_url}}</p>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "status": "completed"
+}

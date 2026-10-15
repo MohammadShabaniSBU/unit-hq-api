@@ -1,0 +1,189 @@
+{
+  "base_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_a1b2c3d4",
+        "layout": "50_50",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_a1b2c3d1",
+            "blocks": [
+              {
+                "id": "blk_a1b2c3d1",
+                "type": "heading",
+                "params": {
+                  "text": "Your rate",
+                  "level": 2
+                }
+              },
+              {
+                "id": "blk_a1b2c3d2",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Hello {{contact.first_name}}, your rate is {{contract.unit_rate}}.</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "col_a1b2c3d2",
+            "blocks": [
+              {
+                "id": "blk_a1b2c3d3",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>The rate on your agreement is {{contract.unit_rate}}.</p>"
+                }
+              },
+              {
+                "id": "blk_a1b2c3d4",
+                "type": "button",
+                "params": {
+                  "label": "View account",
+                  "url": "https://example.test/account",
+                  "style": "primary"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "ops": [
+    {
+      "op": {
+        "op": "set_section_layout",
+        "section_id": "sec_a1b2c3d4",
+        "layout": "100"
+      },
+      "inverse": [
+        {
+          "op": "remove_section",
+          "section_id": "sec_a1b2c3d4"
+        },
+        {
+          "op": "add_section",
+          "index": 0,
+          "section": {
+            "id": "sec_a1b2c3d4",
+            "layout": "50_50",
+            "params": {
+              "background_color": null,
+              "padding": "md",
+              "stack_on_mobile": true
+            },
+            "columns": [
+              {
+                "id": "col_a1b2c3d1",
+                "blocks": [
+                  {
+                    "id": "blk_a1b2c3d1",
+                    "type": "heading",
+                    "params": {
+                      "text": "Your rate",
+                      "level": 2
+                    }
+                  },
+                  {
+                    "id": "blk_a1b2c3d2",
+                    "type": "paragraph",
+                    "params": {
+                      "html": "<p>Hello {{contact.first_name}}, your rate is {{contract.unit_rate}}.</p>"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "col_a1b2c3d2",
+                "blocks": [
+                  {
+                    "id": "blk_a1b2c3d3",
+                    "type": "paragraph",
+                    "params": {
+                      "html": "<p>The rate on your agreement is {{contract.unit_rate}}.</p>"
+                    }
+                  },
+                  {
+                    "id": "blk_a1b2c3d4",
+                    "type": "button",
+                    "params": {
+                      "label": "View account",
+                      "url": "https://example.test/account",
+                      "style": "primary"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "working_document": {
+    "version": 2,
+    "settings": {
+      "background_color": null
+    },
+    "sections": [
+      {
+        "id": "sec_a1b2c3d4",
+        "layout": "100",
+        "params": {
+          "background_color": null,
+          "padding": "md",
+          "stack_on_mobile": true
+        },
+        "columns": [
+          {
+            "id": "col_a1b2c3d1",
+            "blocks": [
+              {
+                "id": "blk_a1b2c3d1",
+                "type": "heading",
+                "params": {
+                  "text": "Your rate",
+                  "level": 2
+                }
+              },
+              {
+                "id": "blk_a1b2c3d2",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>Hello {{contact.first_name}}, your rate is {{contract.unit_rate}}.</p>"
+                }
+              },
+              {
+                "id": "blk_a1b2c3d3",
+                "type": "paragraph",
+                "params": {
+                  "html": "<p>The rate on your agreement is {{contract.unit_rate}}.</p>"
+                }
+              },
+              {
+                "id": "blk_a1b2c3d4",
+                "type": "button",
+                "params": {
+                  "label": "View account",
+                  "url": "https://example.test/account",
+                  "style": "primary"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "status": "completed"
+}

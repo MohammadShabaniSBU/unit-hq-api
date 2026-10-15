@@ -175,6 +175,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Template assistant
+    |--------------------------------------------------------------------------
+    |
+    | Per-employee daily turn cap and agent bounds. prompt_version is stamped
+    | on every template_assist_turns row. Cost stays on ai_usage_events.
+    |
+    */
+
+    'template_assist' => [
+        'daily_turn_limit' => 100,
+        'max_tool_calls' => 12,
+        'max_prompt_chars' => 4000,
+        'prompt_version' => 'ta-1',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Conversations (laravel/ai SDK storage)
     |--------------------------------------------------------------------------
     |

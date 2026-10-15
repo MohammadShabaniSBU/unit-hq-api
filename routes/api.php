@@ -592,6 +592,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('unit-class-rates', Facility\UnitClassRateController::class)->only(['index', 'store']);
 
     Route::apiResource('template-families', Controllers\TemplateFamilyController::class);
+    Route::get('template-families/{templateFamily}/assist/session', [Controllers\TemplateAssistController::class, 'showSession']);
+    Route::post('template-families/{templateFamily}/assist/sessions', [Controllers\TemplateAssistController::class, 'storeSession']);
+    Route::post('template-assist/sessions/{session}/turns', [Controllers\TemplateAssistController::class, 'storeTurn']);
+    Route::get('template-assist/turns/{turn}', [Controllers\TemplateAssistController::class, 'showTurn']);
+    Route::post('template-assist/turns/{turn}/status', [Controllers\TemplateAssistController::class, 'updateStatus']);
     Route::post('template-families/{templateFamily}/archive', [Controllers\TemplateFamilyController::class, 'archive']);
     Route::get('template-families/{templateFamily}/tokens', [Controllers\TemplateFamilyController::class, 'tokens']);
     Route::get('template-families/{templateFamily}/versions', [Controllers\TemplateFamilyController::class, 'versions']);

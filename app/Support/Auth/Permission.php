@@ -53,6 +53,7 @@ enum Permission: string
     case InboxAssign = 'inbox.assign';
     case CallPlace = 'call.place';
     case TemplateManage = 'template.manage';
+    case TemplateAssistUse = 'template_assist.use';
     case ConsentManage = 'consent.manage';
     case MarketingView = 'marketing.view';
     case MarketingManage = 'marketing.manage';

@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Collection<int, TemplateVersion> $versions
+ * @property-read Collection<int, TemplateAssistSession> $assistSessions
  * @property-read TemplateVersion|null $currentVersion
  * @property-read TemplateVersion|null $draft
  */
@@ -55,6 +56,12 @@ class TemplateFamily extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
+    }
+
+    /** @return HasMany<TemplateAssistSession, $this> */
+    public function assistSessions(): HasMany
+    {
+        return $this->hasMany(TemplateAssistSession::class);
     }
 
     /**

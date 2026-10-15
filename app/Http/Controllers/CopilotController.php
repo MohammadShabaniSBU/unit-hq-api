@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CopilotConversation;
 use App\Models\Employee;
+use App\Models\TemplateAssistSession;
 use App\Support\Ai\CopilotDispatcher;
 use App\Support\Auth\Permission;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class CopilotController extends Controller
 
         $conversations = $employee->conversations()
             ->whereNull('deleted_at')
+            ->whereNotIn('id', TemplateAssistSession::query()->select('conversation_id'))
             ->latest('updated_at')
             ->paginate($this->perPage(20));
 
@@ -63,6 +65,7 @@ class CopilotController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
         Gate::authorize('view', $conversation);
+        $this->abortIfAssistConversation($conversation);
 
         $messages = $conversation->messages()
             ->orderBy('created_at')
@@ -86,6 +89,7 @@ class CopilotController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
         Gate::authorize('view', $conversation);
+        $this->abortIfAssistConversation($conversation);
 
         /** @var Employee $employee */
         $employee = $request->user();
@@ -106,6 +110,7 @@ class CopilotController extends Controller
     {
         Gate::authorize(Permission::ContactView->value);
         Gate::authorize('view', $conversation);
+        $this->abortIfAssistConversation($conversation);
 
         /** @var Employee $employee */
         $employee = $request->user();
@@ -136,5 +141,16 @@ class CopilotController extends Controller
             ),
             'Copilot decisions accepted.',
         );
+    }
+
+    private function abortIfAssistConversation(CopilotConversation $conversation): void
+    {
+        $linked = TemplateAssistSession::query()
+            ->where('conversation_id', $conversation->id)
+            ->exists();
+
+        if ($linked) {
+            abort(404);
+        }
     }
 }

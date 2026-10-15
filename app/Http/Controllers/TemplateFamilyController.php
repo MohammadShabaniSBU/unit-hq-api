@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\LogChannel;
+use App\Enums\TemplateAssistTurnStatus;
 use App\Enums\TemplateChannel;
 use App\Enums\TemplatePurpose;
 use App\Enums\TemplateVersionStatus;
@@ -13,6 +14,7 @@ use App\Http\Resources\TemplateVersionResource;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\Site;
+use App\Models\TemplateAssistTurn;
 use App\Models\TemplateFamily;
 use App\Models\TemplateVariant;
 use App\Models\TemplateVersion;
@@ -302,12 +304,20 @@ class TemplateFamilyController extends Controller
 
             $warnings = TemplatePublishValidator::warnings($draft);
 
+            $aiTurns = TemplateAssistTurn::query()
+                ->where('template_version_id', $draft->id)
+                ->where('status', TemplateAssistTurnStatus::Applied)
+                ->count();
+
             $draft->status = TemplateVersionStatus::Published;
             $draft->published_at = now();
             $draft->published_by = $request->user()?->getKey();
             $draft->save();
 
-            $this->logVersion($templateFamily, 'template.version.published', $draft, $request->user());
+            $this->logVersion($templateFamily, 'template.version.published', $draft, $request->user(), [
+                'ai_assisted' => $aiTurns > 0,
+                'ai_turns' => $aiTurns,
+            ]);
 
             return $warnings;
         });
@@ -457,6 +467,7 @@ class TemplateFamilyController extends Controller
         $validated = $request->validate([
             'contact_id' => ['required', 'integer', 'exists:contacts,id'],
             'contract_id' => ['sometimes', 'nullable', 'integer', 'exists:contracts,id'],
+            'blocks' => ['sometimes', 'nullable', 'array'],
         ]);
 
         $contact = Contact::query()->findOrFail($validated['contact_id']);
@@ -485,7 +496,11 @@ class TemplateFamilyController extends Controller
         }
 
         $context = TemplateBuilderContext::for($contact, $contract);
-        $rendered = EmailTemplateRenderer::render($this->openedVariant($variant, $contact, null), $context, previewMarkers: true);
+        $rendered = EmailTemplateRenderer::render(
+            $this->previewVariant($templateFamily, $variant, $contact, $validated['blocks'] ?? null),
+            $context,
+            previewMarkers: true,
+        );
 
         return response($rendered['html'], 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
@@ -723,6 +738,36 @@ class TemplateFamilyController extends Controller
     }
 
     /**
+     * Render-only overlay. The posted document is not written onto the variant.
+     *
+     * @param  array<string, mixed>|null  $blocks
+     */
+    private function previewVariant(
+        TemplateFamily $family,
+        TemplateVariant $variant,
+        Contact $contact,
+        ?array $blocks,
+    ): TemplateVariant {
+        $opened = $this->openedVariant($variant, $contact, null);
+        if ($blocks === null || $family->channel === TemplateChannel::Document) {
+            return $opened;
+        }
+
+        $purpose = $family->purpose instanceof TemplatePurpose
+            ? $family->purpose
+            : TemplatePurpose::from((string) $family->purpose);
+        $channel = $family->channel instanceof TemplateChannel
+            ? $family->channel
+            : TemplateChannel::from((string) $family->channel);
+
+        $overlay = clone $opened;
+        $overlay->blocks = $this->validateBlocksForChannel($channel, $blocks, $purpose);
+        $overlay->legacy_html = null;
+
+        return $overlay;
+    }
+
+    /**
      * Resolve the opened locale tab inside its own version, drafts included.
      */
     private function openedVariant(TemplateVariant $variant, Contact $contact, ?Site $site): TemplateVariant
@@ -956,15 +1001,19 @@ class TemplateFamilyController extends Controller
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $properties
+     */
     private function logVersion(
         TemplateFamily $family,
         string $event,
         TemplateVersion $version,
         mixed $causer,
+        array $properties = [],
     ): void {
-        RecordsActivity::log(LogChannel::Comms, $event, $family, [
+        RecordsActivity::log(LogChannel::Comms, $event, $family, array_merge([
             'version_number' => $version->version_number,
             'based_on_version_id' => $version->based_on_version_id,
-        ], $causer instanceof Model ? $causer : null);
+        ], $properties), $causer instanceof Model ? $causer : null);
     }
 }
