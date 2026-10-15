@@ -147,4 +147,54 @@ class BuilderFlowTest extends TestCase
         $this->assertStringContainsString('Hello Ada', $after['html']);
         $this->assertStringContainsString('Hello Ada', $after['text']);
     }
+
+    public function test_html_document_saves_on_draft_without_block_wrapper(): void
+    {
+        $employee = Employee::factory()->manager()->create();
+        Sanctum::actingAs($employee);
+
+        $contact = Contact::factory()->create(['first_name' => 'Ada']);
+        $publishedHtml = '<p>published</p>';
+        $html = '<!DOCTYPE html><html><head><title>Custom</title></head><body><p>Hello {{contact.first_name}}</p></body></html>';
+
+        $family = TemplateFamilyFactory::published([
+            'channel' => TemplateChannel::Email,
+            'name' => 'HTML mode',
+            'purpose' => TemplatePurpose::General,
+        ], variants: [[
+            'locale' => 'en',
+            'subject' => 'Hi',
+            'legacy_html' => $publishedHtml,
+            'blocks' => [
+                'version' => 1,
+                'blocks' => [[
+                    'id' => 'p1',
+                    'type' => 'paragraph',
+                    'params' => ['html' => '<p>Published block</p>'],
+                ]],
+            ],
+        ]]);
+        $variant = $family->currentVersion()->firstOrFail()->variants()->firstOrFail();
+
+        $update = $this->putJson("/api/template-families/{$family->id}/variants/{$variant->id}", [
+            'blocks' => null,
+            'legacy_html' => $html,
+        ]);
+        $update->assertOk();
+
+        $this->assertSame($publishedHtml, $update->json('data.current_version.variants.0.legacy_html'));
+        $this->assertSame('p1', $update->json('data.current_version.variants.0.blocks.blocks.0.id'));
+        $this->assertSame($html, $update->json('data.draft_version.variants.0.legacy_html'));
+        $this->assertNull($update->json('data.draft_version.variants.0.blocks'));
+
+        $draftVariant = TemplateVariant::query()->findOrFail((int) $update->json('data.draft_version.variants.0.id'));
+        $rendered = EmailTemplateRenderer::render(
+            $draftVariant,
+            TemplateBuilderContext::for($contact),
+        );
+
+        $this->assertStringContainsString('Hello Ada', $rendered['html']);
+        $this->assertStringContainsString('<title>Custom</title>', $rendered['html']);
+        $this->assertStringNotContainsString('width="600"', $rendered['html']);
+    }
 }
