@@ -20,6 +20,7 @@ Before writing code, consult the doc that matches the task:
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
 | Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
 | AI agents, Copilot, agent tools, guards, write policies, **channel bindings / live channels** | `14-ai-agents.md` |
+| Template assistant | `14-ai-agents.md` § Internal agents |
 | Voice media bridge / call path (`keevaris-voice`) | `keevaris-voice/AGENTS.md` — delegation, guards, and `AgentRuntime` stay governed by `09-conventions-and-invariants.md` |
 | Auth / roles / site selector | `07-people-and-auth.md` |
 | Logging / events | `08-activity-logging.md` |

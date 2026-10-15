@@ -178,6 +178,18 @@ Brand stays on `GeneralSettings` and is read through `EmailBrand::current()`. Ke
 
   `contract` (documents) keeps contact, contract, `pay_link`, and the two marketing URLs so existing document publish warnings stay the same. An unavailable token in a draft is a publish warning, not an error.
 
+### Template assistant (S34)
+
+Email, Blocks mode only. The builder Assistant tab needs `template_assist.use` and `template.manage`. It stays hidden for the `document` channel, SMS, and HTML mode.
+
+Tools edit `template_assist_turns.working_document`. They never update `template_versions` or `template_variants` (invariant 93). Save writes the draft. Publish makes it live.
+
+A turn starts `running`. Content columns freeze once status leaves `running` (`TemplateAssistTurnFrozen`). Completion sets `completed` or `failed`. The panel then reports `applied`, `conflict`, `discarded`, or `undone`.
+
+Apply compares the turn's `base_hash` to the canvas. The same hash applies the ops as one undo entry. If the canvas changed during the turn, the panel rebases: ops whose targets still exist are applied, and a missing target opens a conflict view. Manual edits stay.
+
+A token outside the family purpose is `assist.token_unavailable` for the assistant. An operator may still save that token; publish warns (invariant 94). Context is template structure, `TokenCatalog`, brand settings, and usage names. No contacts, contracts, billing, or messages. Previews use catalogue sample values.
+
 ### WhatsApp template registry (S13-03)
 
 Local `whatsapp_templates` rows are the operator-facing registry; Meta's approval state is authoritative and synced through the provider:

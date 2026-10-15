@@ -605,6 +605,22 @@
     path resolves through the send-time token bags. Enforced by
     `TokenCatalogTest::every_path_resolves` and
     `TemplatePublishValidatorTest::uses_catalogue_samples`.
+93. **The template assistant never writes a template.** Its tools edit a
+    working document on `template_assist_turns`. The panel applies the result
+    to editor state. Only the employee's Save writes the draft, and only
+    Publish makes it live. No assistant endpoint, job, or tool updates
+    `template_versions` or `template_variants`. Turn content is frozen once
+    the turn leaves `running`. Enforced by `TemplateAssistNoWritesTest` and
+    `TemplateAssistSchemaTest` (`turn_content_frozen_after_running`).
+94. **Template assistant context contains no business records.**
+    `AssistContext` and the assistant's tools read template structure,
+    `TokenCatalog`, brand settings, and usage names only. They never read
+    contacts, contracts, billing, or messages. Token previews use catalogue
+    sample values. Tokens outside the family's purpose are rejected for the
+    assistant even though an operator may save them with a warning.
+    Enforced by `AssistContextTest::no_crm_tables_queried`,
+    `TemplateAssistantAgentTest::tool_surface_is_closed`, and
+    `DocumentWorkspaceTest::assistant_only_checks`.
 
 ## Code conventions
 

@@ -36,6 +36,25 @@ matched inbound address is `channel_asserted`, not `verified`. Asking "what's
 my balance?" at `channel_asserted` is refused; the same question at `verified`
 returns a ledger figure. See D-AI-2 and D-AI-23 in `10-open-decisions.md`.
 
+## Internal agents
+
+Three employee agents sit on the Laravel AI SDK. They are not the
+customer-facing runtime. None of them uses `AgentRuntime` or
+`agent_conversations`.
+
+`CrmCopilotAgent` is the employee sidebar (`ai_purpose = copilot`).
+`SummaryAgent` writes CRM summaries (`ai_purpose = summarize`).
+`TemplateAssistantAgent` edits an email in the builder, Blocks mode only
+(`ai_purpose = template_assist`).
+
+They share the SDK conversation store: `copilot_conversations` and
+`copilot_conversation_messages` (`config/ai.php`). An assist session links
+a conversation to a template family and a locale. The copilot sidebar
+excludes linked conversations. `GenerateCopilotConversationTitle` meters
+a fourth purpose, `title`.
+
+Detail for the template assistant: `06-communications.md`.
+
 ## Principal and verification
 
 `App\Support\Ai\AgentPrincipal` is an immutable value object, constructed once
