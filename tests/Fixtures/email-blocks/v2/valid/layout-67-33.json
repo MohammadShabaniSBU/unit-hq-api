@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "sec_aaaaaaa2",
+      "layout": "67_33",
+      "params": { "background_color": null, "padding": "none", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_aaaaaaa3",
+          "blocks": [
+            { "id": "blk_aaaaaaa4", "type": "divider", "params": {} }
+          ]
+        },
+        {
+          "id": "col_aaaaaaa5",
+          "blocks": [
+            { "id": "blk_aaaaaaa6", "type": "spacer", "params": { "height": 16 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

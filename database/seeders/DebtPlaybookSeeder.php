@@ -11,8 +11,8 @@ use App\Enums\TemplatePurpose;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
 use App\Models\TemplateFamily;
-use App\Support\Communications\LegacyEmailBlocksHtml;
 use Database\Factories\TemplateFamilyFactory;
+use Database\Support\EmailDocBuilder;
 use Illuminate\Database\Seeder;
 
 /**
@@ -29,15 +29,11 @@ class DebtPlaybookSeeder extends Seeder
             ->first();
 
         if ($family === null) {
-            $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
-                'type' => 'text',
-                'props' => [
-                    'content' => 'Hello {{contact.first_name}}, your balance of {{contract.balance_owed}} is overdue. Pay here: {{pay_link}}',
-                    'align' => 'left',
-                    'fontSize' => 16,
-                    'color' => '#000000',
-                ],
-            ]]);
+            $blocks = EmailDocBuilder::make('Payment reminder')
+                ->section('100', fn ($column) => $column->paragraph(
+                    '<p>Hello {{contact.first_name}}, your balance of {{contract.balance_owed}} is overdue. Pay here: {{pay_link}}</p>',
+                ))
+                ->toArray();
 
             $family = TemplateFamilyFactory::published([
                 'name' => 'Payment reminder',
@@ -46,7 +42,8 @@ class DebtPlaybookSeeder extends Seeder
             ], variants: [[
                 'locale' => 'en',
                 'subject' => 'Payment reminder',
-                'legacy_html' => $legacyHtml,
+                'blocks' => $blocks,
+                'legacy_html' => null,
             ]]);
         }
 

@@ -18,11 +18,11 @@ use App\Models\AutomationEdge;
 use App\Models\AutomationNode;
 use App\Models\LayoutField;
 use App\Models\TemplateFamily;
-use App\Support\Communications\EmailBlockDocument;
 use App\Support\Filtering\AttributeFieldResolver;
 use App\Support\Filtering\FilterSchemaResponder;
 use App\Support\Layout\NativeFields;
 use Database\Factories\TemplateFamilyFactory;
+use Database\Support\EmailDocBuilder;
 use Illuminate\Database\Seeder;
 
 /**
@@ -204,26 +204,11 @@ class CelebrationAutomationsSeeder extends Seeder
 
         $variants = [];
         foreach ($locales as $locale => $copy) {
-            $blocks = EmailBlockDocument::validate([
-                'version' => 1,
-                'blocks' => [
-                    [
-                        'id' => $locale.'-heading',
-                        'type' => 'heading',
-                        'params' => [
-                            'text' => $copy['heading'],
-                            'level' => 1,
-                        ],
-                    ],
-                    [
-                        'id' => $locale.'-body',
-                        'type' => 'paragraph',
-                        'params' => [
-                            'html' => $copy['html'],
-                        ],
-                    ],
-                ],
-            ]);
+            $blocks = EmailDocBuilder::make($name.':'.$locale)
+                ->section('100', fn ($column) => $column
+                    ->heading($copy['heading'], 1)
+                    ->paragraph($copy['html']))
+                ->toArray();
 
             $variants[] = [
                 'locale' => $locale,

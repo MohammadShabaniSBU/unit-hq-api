@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_b1000050",
+      "layout": "50_50",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_b1000051",
+          "blocks": [
+            {
+              "id": "blk_b1000051",
+              "type": "list",
+              "params": {
+                "style": "numbered",
+                "items": ["First", "Second"]
+              }
+            }
+          ]
+        },
+        { "id": "col_b1000052", "blocks": [] }
+      ]
+    }
+  ]
+}

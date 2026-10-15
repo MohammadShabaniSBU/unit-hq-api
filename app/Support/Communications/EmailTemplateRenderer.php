@@ -90,7 +90,7 @@ final class EmailTemplateRenderer
         }
 
         if (is_array($variant->blocks) && $variant->blocks !== []) {
-            $doc = EmailBlockDocument::validate($variant->blocks);
+            $doc = self::documentForRenderer(EmailBlockDocument::validate($variant->blocks));
             $accent = Setting::general()->emailAccentColor;
             $rendered = EmailBlockRenderer::render($doc, $context, $accent, $previewMarkers);
 
@@ -110,6 +110,33 @@ final class EmailTemplateRenderer
             'text' => '',
             'warnings' => [],
             'needs_token_pass' => false,
+        ];
+    }
+
+    /**
+     * Task 02 replaces this flatten with section markup. v1 documents are unchanged.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array{version: int, blocks: list<array{id: string, type: string, params: array<string, mixed>}>}
+     */
+    private static function documentForRenderer(array $doc): array
+    {
+        if (($doc['version'] ?? null) !== EmailBlockDocument::VERSION_2) {
+            return $doc;
+        }
+
+        $blocks = [];
+        foreach ($doc['sections'] as $section) {
+            foreach ($section['columns'] as $column) {
+                foreach ($column['blocks'] as $block) {
+                    $blocks[] = $block;
+                }
+            }
+        }
+
+        return [
+            'version' => EmailBlockDocument::VERSION_1,
+            'blocks' => $blocks,
         ];
     }
 

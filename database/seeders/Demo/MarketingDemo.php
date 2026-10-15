@@ -25,7 +25,6 @@ use App\Models\Setting;
 use App\Models\SubscriptionList;
 use App\Models\TemplateFamily;
 use App\Support\Communications\Channel;
-use App\Support\Communications\EmailBlockDocument;
 use App\Support\Communications\MessageDirection;
 use App\Support\Communications\MessageSource;
 use App\Support\Communications\MessageStatus;
@@ -35,6 +34,7 @@ use App\Support\Marketing\ConsentState;
 use App\Support\Marketing\ConsentWriter;
 use Carbon\CarbonImmutable;
 use Database\Factories\TemplateFamilyFactory;
+use Database\Support\EmailDocBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -671,21 +671,11 @@ final class MarketingDemo
         string $heading,
         string $html,
     ): TemplateFamily {
-        $blocks = EmailBlockDocument::validate([
-            'version' => 1,
-            'blocks' => [
-                [
-                    'id' => 'heading',
-                    'type' => 'heading',
-                    'params' => ['text' => $heading, 'level' => 1],
-                ],
-                [
-                    'id' => 'body',
-                    'type' => 'paragraph',
-                    'params' => ['html' => $html],
-                ],
-            ],
-        ]);
+        $blocks = EmailDocBuilder::make($name)
+            ->section('100', fn ($column) => $column
+                ->heading($heading, 1)
+                ->paragraph($html))
+            ->toArray();
 
         return TemplateFamilyFactory::published([
             'name' => $name,

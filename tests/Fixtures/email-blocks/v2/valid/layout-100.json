@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "settings": { "background_color": "#F7F5F2" },
+  "sections": [
+    {
+      "id": "sec_4f9a1c2e",
+      "layout": "100",
+      "params": { "background_color": "#F7F5F2", "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_8b21d0aa",
+          "blocks": [
+            { "id": "blk_1e7c9f30", "type": "heading", "params": { "text": "Current rate", "level": 2 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -387,6 +387,7 @@ final class RoutePermissions
             'GET /api/template-builder/sample-contexts' => Permission::TemplateManage, // TemplateFamilyController@sampleContexts
             'GET /api/template-families' => Permission::TemplateManage, // TemplateFamilyController@index
             'GET /api/template-families/{template_family}' => Permission::TemplateManage, // TemplateFamilyController@show
+            'GET /api/template-families/{templateFamily}/tokens' => Permission::TemplateManage, // TemplateFamilyController@tokens
             'GET /api/template-families/{templateFamily}/versions' => Permission::TemplateManage, // TemplateFamilyController@versions
             'GET /api/template-families/{templateFamily}/versions/{templateVersion}' => Permission::TemplateManage, // TemplateFamilyController@showVersion
             'GET /api/whatsapp-templates' => Permission::TemplateManage, // WhatsappTemplateController@index

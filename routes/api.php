@@ -593,6 +593,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::apiResource('template-families', Controllers\TemplateFamilyController::class);
     Route::post('template-families/{templateFamily}/archive', [Controllers\TemplateFamilyController::class, 'archive']);
+    Route::get('template-families/{templateFamily}/tokens', [Controllers\TemplateFamilyController::class, 'tokens']);
     Route::get('template-families/{templateFamily}/versions', [Controllers\TemplateFamilyController::class, 'versions']);
     Route::post('template-families/{templateFamily}/versions', [Controllers\TemplateFamilyController::class, 'storeVersion']);
     Route::get('template-families/{templateFamily}/versions/{templateVersion}', [Controllers\TemplateFamilyController::class, 'showVersion']);

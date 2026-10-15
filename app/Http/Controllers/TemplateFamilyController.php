@@ -32,11 +32,14 @@ use App\Support\Communications\TemplateResolver;
 use App\Support\Documents\ContractDocumentRenderer;
 use App\Support\Documents\DocumentBlockDocument;
 use App\Support\RecordsActivity;
+use App\Support\Templates\TokenCatalog;
+use App\Support\Templates\TokenDefinition;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -567,6 +570,33 @@ class TemplateFamilyController extends Controller
         ], 'Test email sent.');
     }
 
+    public function tokens(Request $request, TemplateFamily $templateFamily): JsonResponse
+    {
+        Gate::authorize(Permission::TemplateManage->value, $templateFamily);
+
+        $locale = $request->getPreferredLanguage(['en', 'es', 'fr']) ?? 'en';
+        App::setLocale($locale);
+
+        $purpose = $templateFamily->purpose instanceof TemplatePurpose
+            ? $templateFamily->purpose
+            : TemplatePurpose::from((string) $templateFamily->purpose);
+
+        $items = array_map(
+            fn (TokenDefinition $token): array => [
+                'path' => $token->path,
+                'group' => $token->group->value,
+                'type' => $token->type->value,
+                'label' => __($token->labelKey),
+                'description' => __($token->descriptionKey),
+                'sample' => $token->sample,
+                'available' => $token->availableFor($purpose),
+            ],
+            TokenCatalog::all(),
+        );
+
+        return $this->success($items, 'Template tokens retrieved.');
+    }
+
     public function sampleContexts(Request $request): JsonResponse
     {
         Gate::authorize(Permission::TemplateManage->value);
@@ -679,7 +709,7 @@ class TemplateFamilyController extends Controller
 
     /**
      * @param  array<string, mixed>  $blocks
-     * @return array{version: int, blocks: list<array{id: string, type: string, params: array<string, mixed>}>}
+     * @return array<string, mixed>
      */
     private function validateBlocksForChannel(
         TemplateChannel $channel,
@@ -688,7 +718,7 @@ class TemplateFamilyController extends Controller
     ): array {
         return match ($channel) {
             TemplateChannel::Document => DocumentBlockDocument::validate($blocks, $purpose),
-            default => EmailBlockDocument::validate($blocks),
+            default => EmailBlockDocument::validateForWrite($blocks),
         };
     }
 
@@ -779,6 +809,23 @@ class TemplateFamilyController extends Controller
     }
 
     /**
+     * v1 email documents become v2 only on the new draft. Published rows are not saved.
+     */
+    private function blocksForDraftCopy(TemplateFamily $family, mixed $blocks): mixed
+    {
+        if ($family->channel !== TemplateChannel::Email || ! is_array($blocks)) {
+            return $blocks;
+        }
+
+        $version = $blocks['version'] ?? null;
+        if ($version === EmailBlockDocument::VERSION_1 || $version === (string) EmailBlockDocument::VERSION_1) {
+            return EmailBlockDocument::upcast($blocks);
+        }
+
+        return $blocks;
+    }
+
+    /**
      * @return array{version: TemplateVersion, created: bool}
      */
     private function openDraft(TemplateFamily $family, ?int $fromVersionId, ?Model $causer): array
@@ -814,7 +861,7 @@ class TemplateFamilyController extends Controller
                             'template_family_id' => $family->id,
                             'locale' => $variant->locale,
                             'subject' => $variant->subject,
-                            'blocks' => $variant->blocks,
+                            'blocks' => $this->blocksForDraftCopy($family, $variant->blocks),
                             'legacy_html' => $variant->legacy_html,
                             'body_text' => $variant->body_text,
                             'updated_by' => $causer?->getKey(),

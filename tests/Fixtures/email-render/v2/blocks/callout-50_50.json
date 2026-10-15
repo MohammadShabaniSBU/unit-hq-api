@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_c1000050",
+      "layout": "50_50",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_c1000051",
+          "blocks": [
+            {
+              "id": "blk_c1000051",
+              "type": "callout",
+              "params": {
+                "tone": "danger",
+                "title": null,
+                "html": "<p>Lien</p>"
+              }
+            }
+          ]
+        },
+        { "id": "col_c1000052", "blocks": [] }
+      ]
+    }
+  ]
+}

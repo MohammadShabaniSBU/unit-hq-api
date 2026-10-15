@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "settings": { "background_color": "#AABBCC" },
+  "sections": [
+    {
+      "id": "sec_33670001",
+      "layout": "33_67",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_33670002",
+          "blocks": [
+            { "id": "blk_33670003", "type": "heading", "params": { "text": "Narrow", "level": 2 } }
+          ]
+        },
+        {
+          "id": "col_33670004",
+          "blocks": [
+            { "id": "blk_33670005", "type": "heading", "params": { "text": "Wide", "level": 2 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_10000011",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": false },
+      "columns": [
+        {
+          "id": "col_10000012",
+          "blocks": [
+            { "id": "blk_10000013", "type": "heading", "params": { "text": "Full", "level": 1 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

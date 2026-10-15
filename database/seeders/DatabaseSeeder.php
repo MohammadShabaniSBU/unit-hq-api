@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
         $this->call(InsightReportSeeder::class);
         $this->call(RbacSystemRoleSeeder::class);
         $this->call(SubscriptionListSeeder::class);
+        $this->call(SocialIconSeeder::class);
         $this->call(ConsentTextSeeder::class);
         $this->call(AiAgentSeeder::class);
 

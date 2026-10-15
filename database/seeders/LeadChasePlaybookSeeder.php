@@ -11,8 +11,8 @@ use App\Enums\TemplatePurpose;
 use App\Models\Playbook;
 use App\Models\PlaybookStep;
 use App\Models\TemplateFamily;
-use App\Support\Communications\LegacyEmailBlocksHtml;
 use Database\Factories\TemplateFamilyFactory;
+use Database\Support\EmailDocBuilder;
 use Illuminate\Database\Seeder;
 
 /**
@@ -28,15 +28,11 @@ class LeadChasePlaybookSeeder extends Seeder
             ->first();
 
         if ($thanks === null) {
-            $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
-                'type' => 'text',
-                'props' => [
-                    'content' => 'Hola {{contact.first_name}}, gracias por su consulta. Estamos aquí para ayudarle a encontrar el trastero ideal.',
-                    'align' => 'left',
-                    'fontSize' => 16,
-                    'color' => '#000000',
-                ],
-            ]]);
+            $thanksBlocks = EmailDocBuilder::make('Enquiry thanks')
+                ->section('100', fn ($column) => $column->paragraph(
+                    '<p>Hola {{contact.first_name}}, gracias por su consulta. Estamos aquí para ayudarle a encontrar el trastero ideal.</p>',
+                ))
+                ->toArray();
 
             $thanks = TemplateFamilyFactory::published([
                 'name' => 'Enquiry thanks',
@@ -45,7 +41,8 @@ class LeadChasePlaybookSeeder extends Seeder
             ], variants: [[
                 'locale' => 'es',
                 'subject' => 'Gracias por su consulta',
-                'legacy_html' => $legacyHtml,
+                'blocks' => $thanksBlocks,
+                'legacy_html' => null,
             ]]);
         }
 
@@ -55,15 +52,11 @@ class LeadChasePlaybookSeeder extends Seeder
             ->first();
 
         if ($offers === null) {
-            $legacyHtml = LegacyEmailBlocksHtml::fromBlocks([[
-                'type' => 'text',
-                'props' => [
-                    'content' => 'Hola {{contact.first_name}}, este mes tenemos disponibilidad y ofertas en varias medidas. ¿Quiere que le enviemos una propuesta?',
-                    'align' => 'left',
-                    'fontSize' => 16,
-                    'color' => '#000000',
-                ],
-            ]]);
+            $offersBlocks = EmailDocBuilder::make('Offers this month')
+                ->section('100', fn ($column) => $column->paragraph(
+                    '<p>Hola {{contact.first_name}}, este mes tenemos disponibilidad y ofertas en varias medidas. ¿Quiere que le enviemos una propuesta?</p>',
+                ))
+                ->toArray();
 
             $offers = TemplateFamilyFactory::published([
                 'name' => 'Offers this month',
@@ -72,7 +65,8 @@ class LeadChasePlaybookSeeder extends Seeder
             ], variants: [[
                 'locale' => 'es',
                 'subject' => 'Ofertas de este mes',
-                'legacy_html' => $legacyHtml,
+                'blocks' => $offersBlocks,
+                'legacy_html' => null,
             ]]);
         }
 

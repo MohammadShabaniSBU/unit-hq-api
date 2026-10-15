@@ -9,9 +9,9 @@ use App\Enums\TemplatePurpose;
 use App\Models\TemplateVariant;
 use App\Models\TemplateVersion;
 use App\Support\Automation\RunContext;
-use App\Support\Automation\SubjectTokenBag;
 use App\Support\Automation\TokenResolver;
 use App\Support\Documents\DocumentBlockDocument;
+use App\Support\Templates\TokenCatalog;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -110,6 +110,6 @@ final class TemplatePublishValidator
 
     private static function sampleContext(TemplatePurpose $purpose): RunContext
     {
-        return new RunContext(subjectBag: SubjectTokenBag::sample($purpose));
+        return TokenCatalog::sampleContext($purpose, 'en');
     }
 }

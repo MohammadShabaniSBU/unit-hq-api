@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_d1000001",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_d1000001",
+          "blocks": [
+            {
+              "id": "blk_d1000001",
+              "type": "logo_header",
+              "params": {
+                "align": "center",
+                "max_width": 120,
+                "link_url": "https://example.test"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

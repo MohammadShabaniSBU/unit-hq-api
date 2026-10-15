@@ -242,9 +242,10 @@ class PreferenceCenterTest extends TestCase
         $this->assertSame($contact->id, $claims->contactId);
         $this->assertStringContainsString('/preferences/'.$token, (string) $bag['preferences_url']);
 
-        $sample = SubjectTokenBag::sample(TemplatePurpose::General);
+        $sample = SubjectTokenBag::sample(TemplatePurpose::Marketing);
         $this->assertArrayHasKey('preferences_url', $sample);
         $this->assertArrayHasKey('unsubscribe_url', $sample);
+        $this->assertArrayNotHasKey('preferences_url', SubjectTokenBag::sample(TemplatePurpose::General));
         $this->assertContains('preferences_url', SubjectTokenBag::vocabulary());
         $this->assertContains('unsubscribe_url', SubjectTokenBag::vocabulary());
     }

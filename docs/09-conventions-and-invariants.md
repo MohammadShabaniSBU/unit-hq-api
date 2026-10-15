@@ -550,7 +550,7 @@
     `RedactContactCommandTest::redaction_clears_touch_identifiers_and_leaves_deliveries`.
 87. **Ad platforms receive data only with granted `ads` consent, checked
     at delivery time.** `ConsentState::isGranted(contact, 'ads', advertising
-    list)` gates every delivery (and S33 audience sync). Identifiers are
+    list)` gates every delivery (and S36 audience sync). Identifiers are
     hashed in process. `ad_conversion_deliveries` stores identifier names,
     never values. Soft opt-in is rejected for the advertising list. `ads`
     is a `ConsentChannel` case, not a comms `Channel`. Enforced by
@@ -583,11 +583,28 @@
     (`test_totals_stay_inside_one_currency_and_unmapped_spend_is_its_own_row`).
 90. **Keevaris does not write to ad accounts' campaigns in v1.** Adapters
     expose read and conversion upload only. Any future write capability
-    (S33) needs its own interface, confirmation, and Tier-3 audit.
+    (S37) needs its own interface, confirmation, and Tier-3 audit.
     Enforced by `AdPlatformAdapterTest`
     (`google_lists_customers_campaigns_spend_and_posts_conversions`,
     `meta_verify_requires_both_tokens_and_posts_events`): list, spend, and
     conversion post. No campaign mutate call.
+91. **Email block documents have a fixed hierarchy.** v2 documents are
+    `sections → columns → blocks`. A section never sits inside a column and
+    columns never nest. Layouts are the presets `100 | 50_50 | 33_67 |
+    67_33 | 33_33_33`; column count matches the preset. `raw_html` appears
+    only in a `100` section. Illegal documents are rejected with an error
+    key, never repaired silently. All writes store v2. v1 is read-only and
+    is upcast only when a new draft is created. Published variants are never
+    rewritten (invariant 74). Enforced by `EmailBlockDocumentV2Test`,
+    `TemplateVariantUpdateTest::test_rejects_v1_write`,
+    `TemplateVersionDraftTest::test_draft_from_v1_published_is_v2`.
+92. **`TokenCatalog` is the single source of template tokens.** The builder
+    token menu, the inbox composer, the publish-time sample context, and
+    (S34) the template assistant read `App\Support\Templates\TokenCatalog`.
+    No other list of token paths or sample values exists. Every catalogue
+    path resolves through the send-time token bags. Enforced by
+    `TokenCatalogTest::every_path_resolves` and
+    `TemplatePublishValidatorTest::uses_catalogue_samples`.
 
 ## Code conventions
 

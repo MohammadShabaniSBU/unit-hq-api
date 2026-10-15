@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_c1000001",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_c1000001",
+          "blocks": [
+            {
+              "id": "blk_c1000001",
+              "type": "callout",
+              "params": {
+                "tone": "warning",
+                "title": "Overdue",
+                "html": "<p>Pay now</p>"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_e1000050",
+      "layout": "50_50",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_e1000051",
+          "blocks": [
+            {
+              "id": "blk_e1000051",
+              "type": "footer_social",
+              "params": {
+                "links": [
+                  { "network": "x", "url": "https://x.com/keevaris" },
+                  { "network": "website", "url": "{{pay_link}}" }
+                ],
+                "address": null
+              }
+            }
+          ]
+        },
+        { "id": "col_e1000052", "blocks": [] }
+      ]
+    }
+  ]
+}

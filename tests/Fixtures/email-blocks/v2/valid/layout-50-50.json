@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "settings": { "background_color": "#112233" },
+  "sections": [
+    {
+      "id": "sec_11111111",
+      "layout": "50_50",
+      "params": { "background_color": "#112233", "padding": "lg", "stack_on_mobile": false },
+      "columns": [
+        {
+          "id": "col_22222222",
+          "blocks": [
+            { "id": "blk_33333333", "type": "heading", "params": { "text": "Current rate", "level": 2 } }
+          ]
+        },
+        {
+          "id": "col_44444444",
+          "blocks": [
+            { "id": "blk_55555555", "type": "heading", "params": { "text": "New rate", "level": 2 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ namespace Tests\Feature\Communications;
 use App\Support\Automation\RunContext;
 use App\Support\Communications\EmailBlockDocument;
 use App\Support\Communications\EmailBlockRenderer;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class BlockRendererTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_golden_per_block_and_kitchen_sink(): void
     {
         $ctx = new RunContext(subjectBag: [

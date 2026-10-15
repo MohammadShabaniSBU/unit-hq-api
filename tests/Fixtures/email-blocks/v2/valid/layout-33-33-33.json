@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "sec_bbbbbbb1",
+      "layout": "33_33_33",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_bbbbbbb2",
+          "blocks": [
+            { "id": "blk_bbbbbbb3", "type": "heading", "params": { "text": "One", "level": 1 } }
+          ]
+        },
+        {
+          "id": "col_bbbbbbb4",
+          "blocks": [
+            { "id": "blk_bbbbbbb5", "type": "heading", "params": { "text": "Two", "level": 1 } }
+          ]
+        },
+        {
+          "id": "col_bbbbbbb6",
+          "blocks": [
+            { "id": "blk_bbbbbbb7", "type": "heading", "params": { "text": "Three", "level": 1 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

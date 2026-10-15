@@ -2,6 +2,7 @@
 
 namespace App\Settings;
 
+use App\Support\Communications\EmailBrand;
 use App\Support\Time\DateFormat;
 
 readonly class GeneralSettings implements SettingsPayload
@@ -14,6 +15,10 @@ readonly class GeneralSettings implements SettingsPayload
         public ?string $sendWindowEnd = null,
         public string $emailAccentColor = '#1d4ed8',
         public string $dateFormat = DateFormat::DEFAULT,
+        public ?int $emailLogoAssetId = null,
+        public string $emailTextColor = EmailBrand::DEFAULT_TEXT,
+        public string $emailBackgroundColor = EmailBrand::DEFAULT_BACKGROUND,
+        public string $emailFontStack = EmailBrand::DEFAULT_FONT,
     ) {}
 
     public static function default(): static
@@ -26,6 +31,10 @@ readonly class GeneralSettings implements SettingsPayload
             sendWindowEnd: null,
             emailAccentColor: '#1d4ed8',
             dateFormat: DateFormat::DEFAULT,
+            emailLogoAssetId: null,
+            emailTextColor: EmailBrand::DEFAULT_TEXT,
+            emailBackgroundColor: EmailBrand::DEFAULT_BACKGROUND,
+            emailFontStack: EmailBrand::DEFAULT_FONT,
         );
     }
 
@@ -34,6 +43,17 @@ readonly class GeneralSettings implements SettingsPayload
         $accent = is_string($data['email_accent_color'] ?? null) && $data['email_accent_color'] !== ''
             ? $data['email_accent_color']
             : '#1d4ed8';
+
+        $logo = $data['email_logo_asset_id'] ?? null;
+        $text = is_string($data['email_text_color'] ?? null) && $data['email_text_color'] !== ''
+            ? $data['email_text_color']
+            : EmailBrand::DEFAULT_TEXT;
+        $background = is_string($data['email_background_color'] ?? null) && $data['email_background_color'] !== ''
+            ? $data['email_background_color']
+            : EmailBrand::DEFAULT_BACKGROUND;
+        $font = is_string($data['email_font_stack'] ?? null) && in_array($data['email_font_stack'], EmailBrand::FONT_STACKS, true)
+            ? $data['email_font_stack']
+            : EmailBrand::DEFAULT_FONT;
 
         return new self(
             companyName: $data['company_name'],
@@ -49,19 +69,27 @@ readonly class GeneralSettings implements SettingsPayload
             dateFormat: DateFormat::normalize(
                 is_string($data['date_format'] ?? null) ? $data['date_format'] : null
             ),
+            emailLogoAssetId: is_numeric($logo) ? (int) $logo : null,
+            emailTextColor: $text,
+            emailBackgroundColor: $background,
+            emailFontStack: $font,
         );
     }
 
     public function toArray(): array
     {
         return [
-            'company_name'          => $this->companyName,
+            'company_name' => $this->companyName,
             'company_contact_email' => $this->companyContactEmail,
-            'phone'                 => $this->phone,
-            'send_window_start'     => $this->sendWindowStart,
-            'send_window_end'       => $this->sendWindowEnd,
-            'email_accent_color'    => $this->emailAccentColor,
-            'date_format'           => $this->dateFormat,
+            'phone' => $this->phone,
+            'send_window_start' => $this->sendWindowStart,
+            'send_window_end' => $this->sendWindowEnd,
+            'email_accent_color' => $this->emailAccentColor,
+            'date_format' => $this->dateFormat,
+            'email_logo_asset_id' => $this->emailLogoAssetId,
+            'email_text_color' => $this->emailTextColor,
+            'email_background_color' => $this->emailBackgroundColor,
+            'email_font_stack' => $this->emailFontStack,
         ];
     }
 
@@ -73,6 +101,10 @@ readonly class GeneralSettings implements SettingsPayload
         mixed $sendWindowEnd = false,
         ?string $emailAccentColor = null,
         ?string $dateFormat = null,
+        mixed $emailLogoAssetId = false,
+        ?string $emailTextColor = null,
+        ?string $emailBackgroundColor = null,
+        ?string $emailFontStack = null,
     ): static {
         return new self(
             companyName: $companyName ?? $this->companyName,
@@ -82,6 +114,12 @@ readonly class GeneralSettings implements SettingsPayload
             sendWindowEnd: $sendWindowEnd === false ? $this->sendWindowEnd : (is_string($sendWindowEnd) && $sendWindowEnd !== '' ? $sendWindowEnd : null),
             emailAccentColor: $emailAccentColor ?? $this->emailAccentColor,
             dateFormat: $dateFormat !== null ? DateFormat::normalize($dateFormat) : $this->dateFormat,
+            emailLogoAssetId: $emailLogoAssetId === false
+                ? $this->emailLogoAssetId
+                : (is_numeric($emailLogoAssetId) ? (int) $emailLogoAssetId : null),
+            emailTextColor: $emailTextColor ?? $this->emailTextColor,
+            emailBackgroundColor: $emailBackgroundColor ?? $this->emailBackgroundColor,
+            emailFontStack: $emailFontStack ?? $this->emailFontStack,
         );
     }
 }

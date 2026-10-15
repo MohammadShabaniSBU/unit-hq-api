@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "sec_ccccccc1",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_ccccccc2",
+          "blocks": [
+            { "id": "blk_ccccccc3", "type": "raw_html", "params": { "html": "<p>Legacy</p>" } }
+          ]
+        }
+      ]
+    }
+  ]
+}

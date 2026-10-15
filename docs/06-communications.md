@@ -157,6 +157,27 @@ template_families (identity) → template_versions (draft | published) → templ
 - A family with no published version is not sendable and is hidden from live pickers. Generating a contract document returns `errors.documents.template_not_published`. Activating an automation or playbook that names such a family is refused. At send time the step succeeds with `skipped_reason: template_not_published`.
 - **Picker allowlists.** `TemplatePurpose::pickerAllowlist()` is what a purpose filter returns. Marketing returns `marketing` and `general`. Newsletter returns `newsletter` and `marketing`. Announcement returns `announcement` only. Debt and lead still include `general`; every other existing purpose matches itself. `CampaignType::templatePurpose()` selects the purpose a broadcast uses: a campaign uses marketing, a newsletter uses newsletter, an announcement uses announcement.
 
+**Email block document (S33).** Email variants store a v2 document: `settings`, then `sections`, then `columns`, then `blocks`. Ids are `sec_` / `col_` / `blk_` plus 8 lowercase hex characters, unique in the document. Layouts are the presets on `EmailBlockDocument::LAYOUTS`: `100`, `50_50`, `33_67`, `67_33`, `33_33_33`. Column count matches the preset. Section `padding` is `none | sm | md | lg`, not pixels. A section never sits inside a column, and columns never nest (invariant 91).
+
+Every write stores v2. A published v1 variant is not rewritten (invariant 74). Creating a draft from that published version upcasts it to v2. The renderer still renders v1. `raw_html` is allowed only in a `100` section. Illegal documents fail with an error key.
+
+Block types are `heading`, `paragraph`, `button`, `image`, `divider`, `spacer`, `unit_summary`, `raw_html`, plus `info_rows`, `list`, `callout`, `logo_header`, and `footer_social`. The five new types are email-only. Contract documents stay on `DocumentBlockDocument` (flat v1) and reject them.
+
+Brand stays on `GeneralSettings` and is read through `EmailBrand::current()`. Keys: existing `email_accent_color`; `email_logo_asset_id` (nullable); `email_text_color` default `#111827`; `email_background_color` default `#F3F4F6`; `email_font_stack` one of `system | arial | georgia | verdana | trebuchet`, default `arial`. Unset brand matches the previous hard-coded colours and font.
+
+- **Token catalogue.** `App\Support\Templates\TokenCatalog` is the only list of template token paths and sample values. `GET /api/template-families/{templateFamily}/tokens` (`template.manage`) returns every token for the family's purpose, with `available: false` on the ones that purpose cannot use. Labels follow the request `Accept-Language` (`en`, `es`, `fr`). Publish samples and `SubjectTokenBag::sample()` read the same catalogue. The inbox composer has no purpose, so it still lists every path. `site.*` is not a token. Availability:
+
+  | Group | general | debt | lead | offer | system | contract | marketing | newsletter | announcement |
+  |---|---|---|---|---|---|---|---|---|---|
+  | contact.* | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+  | contract.* | yes | yes | no | no | yes | yes | no | no | yes |
+  | deal.* | yes | no | yes | yes | no | no | no | no | no |
+  | pay_link | no | yes | no | no | yes | yes | no | no | no |
+  | preferences_url, unsubscribe_url | no | no | no | no | no | yes | yes | yes | yes |
+  | newsletter.* | no | no | no | no | no | no | no | yes | no |
+
+  `contract` (documents) keeps contact, contract, `pay_link`, and the two marketing URLs so existing document publish warnings stay the same. An unavailable token in a draft is a publish warning, not an error.
+
 ### WhatsApp template registry (S13-03)
 
 Local `whatsapp_templates` rows are the operator-facing registry; Meta's approval state is authoritative and synced through the provider:

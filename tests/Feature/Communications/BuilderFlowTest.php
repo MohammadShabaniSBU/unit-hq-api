@@ -125,11 +125,23 @@ class BuilderFlowTest extends TestCase
 
         $update = $this->putJson("/api/template-families/{$family->id}/variants/{$variant->id}", [
             'blocks' => [
-                'version' => 1,
-                'blocks' => [[
-                    'id' => 'legacy',
-                    'type' => 'raw_html',
-                    'params' => ['html' => $legacy],
+                'version' => 2,
+                'sections' => [[
+                    'id' => 'sec_aaaaaaaa',
+                    'layout' => '100',
+                    'params' => [
+                        'background_color' => null,
+                        'padding' => 'md',
+                        'stack_on_mobile' => true,
+                    ],
+                    'columns' => [[
+                        'id' => 'col_bbbbbbbb',
+                        'blocks' => [[
+                            'id' => 'blk_cccccccc',
+                            'type' => 'raw_html',
+                            'params' => ['html' => $legacy],
+                        ]],
+                    ]],
                 ]],
             ],
         ]);

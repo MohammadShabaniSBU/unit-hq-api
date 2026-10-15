@@ -565,9 +565,9 @@ class TemplateVersionLifecycleTest extends TestCase
         $this->assertArrayNotHasKey('contract', $lead);
 
         $general = SubjectTokenBag::sample(TemplatePurpose::General);
-        $this->assertArrayNotHasKey('contract', $general);
-        $this->assertArrayNotHasKey('deal', $general);
-        $this->assertArrayHasKey('pay_link', $general);
+        $this->assertArrayHasKey('contract', $general);
+        $this->assertArrayHasKey('deal', $general);
+        $this->assertArrayNotHasKey('pay_link', $general);
 
         $family = TemplateFamily::factory()->create([
             'channel' => TemplateChannel::Email,

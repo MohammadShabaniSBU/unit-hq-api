@@ -92,11 +92,6 @@ Settings and Forms once 01 and 02 freeze their APIs.
   `marketing_touches` model. Update the "Next" line in the S31 README to point at
   the new sprint number.
 
-## Next (S33, not in this sprint)
+## Next (S36)
 
-Meta Lead Ads and Google lead form intake into **Forms → Ad lead forms**, segment →
-Customer Match / Custom Audience sync (tenant exclusion, lookalike seeds), the
-OpenAI Ads adapter (pixel + Conversions API + insights), call tracking numbers per
-campaign via Aircall, occupancy-aware campaign control (automation actions to
-pause or resume ad groups when a unit class fills or frees up), and projected-LTV
-conversion values.
+Lead-form intake (Google and Meta), audience sync, OpenAI conversions, and projected move-in value: `roadmap/sprint-36-paid-advertising-follow-ups/README.md`. Call tracking numbers per campaign and occupancy-aware pause or resume are S37. Campaign writes stay out (invariant 90).

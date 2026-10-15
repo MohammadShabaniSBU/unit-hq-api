@@ -82,11 +82,23 @@ class BlockDocTest extends TestCase
         $variantId = (int) $create->json('data.draft_version.variants.0.id');
 
         $doc = [
-            'version' => 1,
-            'blocks' => [[
-                'id' => 'p1',
-                'type' => 'paragraph',
-                'params' => ['html' => '<p>Hello</p>'],
+            'version' => 2,
+            'sections' => [[
+                'id' => 'sec_aaaaaaaa',
+                'layout' => '100',
+                'params' => [
+                    'background_color' => null,
+                    'padding' => 'md',
+                    'stack_on_mobile' => true,
+                ],
+                'columns' => [[
+                    'id' => 'col_bbbbbbbb',
+                    'blocks' => [[
+                        'id' => 'blk_cccccccc',
+                        'type' => 'paragraph',
+                        'params' => ['html' => '<p>Hello</p>'],
+                    ]],
+                ]],
             ]],
         ];
 
@@ -95,7 +107,7 @@ class BlockDocTest extends TestCase
         ]);
         $update->assertOk();
         $this->assertNull($update->json('data.draft_version.variants.0.legacy_html'));
-        $this->assertSame(1, $update->json('data.draft_version.variants.0.blocks.version'));
-        $this->assertSame('paragraph', $update->json('data.draft_version.variants.0.blocks.blocks.0.type'));
+        $this->assertSame(2, $update->json('data.draft_version.variants.0.blocks.version'));
+        $this->assertSame('paragraph', $update->json('data.draft_version.variants.0.blocks.sections.0.columns.0.blocks.0.type'));
     }
 }

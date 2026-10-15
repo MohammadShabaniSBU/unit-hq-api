@@ -17,6 +17,8 @@ use App\Support\Communications\Channel;
 use App\Support\Communications\ComposerIdentity;
 use App\Support\Communications\ContactChannelMatcher;
 use App\Support\Marketing\PreferenceToken;
+use App\Support\Templates\TokenCatalog;
+use App\Support\Templates\TokenDefinition;
 
 /**
  * Friendly token roots for playbook sends: contact.*, contract.*, deal.*, pay_link.
@@ -26,30 +28,16 @@ use App\Support\Marketing\PreferenceToken;
 final class SubjectTokenBag
 {
     /**
-     * Friendly token paths surfaced in the inbox composer token menu.
+     * Every catalogue path. The inbox composer has no template purpose, so it lists them all.
      *
      * @return list<string>
      */
     public static function vocabulary(): array
     {
-        return [
-            'contact.first_name',
-            'contact.last_name',
-            'contact.name',
-            'contact.email',
-            'contact.company',
-            'contact.id',
-            'contract.id',
-            'contract.balance_owed',
-            'contract.currency',
-            'contract.unit_name',
-            'contract.unit_rate',
-            'deal.id',
-            'deal.status',
-            'pay_link',
-            'preferences_url',
-            'unsubscribe_url',
-        ];
+        return array_map(
+            fn (TokenDefinition $token): string => $token->path,
+            TokenCatalog::all(),
+        );
     }
 
     /**
@@ -172,51 +160,13 @@ final class SubjectTokenBag
     }
 
     /**
-     * Publish-time stand-in for the real bags. One place to extend when tokens are added.
+     * Publish-time stand-in. Values come from TokenCatalog so there is one sample list.
      *
      * @return array<string, mixed>
      */
     public static function sample(TemplatePurpose $purpose): array
     {
-        $bag = [
-            'contact' => [
-                'id' => 1,
-                'first_name' => 'Ada',
-                'last_name' => 'Lovelace',
-                'name' => 'Ada Lovelace',
-                'email' => 'ada@example.com',
-                'company' => 'Analytical Engines',
-            ],
-            'pay_link' => 'https://example.test/pay',
-            'preferences_url' => 'https://example.test/preferences/sample',
-            'unsubscribe_url' => 'https://example.test/unsubscribe/sample',
-        ];
-
-        if ($purpose === TemplatePurpose::Debt || $purpose === TemplatePurpose::Contract) {
-            $bag['contract'] = [
-                'id' => 1,
-                'balance_owed' => '0.00',
-                'currency' => 'EUR',
-                'unit_name' => 'A1',
-                'unit_rate' => '10.00',
-            ];
-        }
-
-        if ($purpose === TemplatePurpose::Lead || $purpose === TemplatePurpose::Offer) {
-            $bag['deal'] = [
-                'id' => 1,
-                'status' => 'open',
-            ];
-        }
-
-        if ($purpose === TemplatePurpose::Newsletter) {
-            $bag['newsletter'] = [
-                'issue_number' => 1,
-                'name' => 'Newsletter',
-            ];
-        }
-
-        return $bag;
+        return TokenCatalog::sampleBag($purpose);
     }
 
     /**

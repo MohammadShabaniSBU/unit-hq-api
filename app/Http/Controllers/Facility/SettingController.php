@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Settings\MarketingSettings;
 use App\Support\Auth\Permission;
 use App\Support\Billing\SupportedCurrencies;
+use App\Support\Communications\EmailBrand;
 use App\Support\Country\CountryGuard;
 use App\Support\Time\DateFormat;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,7 @@ class SettingController extends Controller
         Gate::authorize(Permission::SettingsManage->value);
 
         return $this->success(
-            Setting::general()->toArray(),
+            $this->generalPayload(),
             'General settings retrieved successfully.'
         );
     }
@@ -40,6 +41,10 @@ class SettingController extends Controller
             'send_window_end' => ['sometimes', 'nullable', 'date_format:H:i'],
             'email_accent_color' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'date_format' => ['sometimes', 'required', 'string', Rule::in(DateFormat::values())],
+            'email_logo_asset_id' => ['sometimes', 'nullable', 'integer', 'exists:template_assets,id'],
+            'email_text_color' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'email_background_color' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'email_font_stack' => ['sometimes', 'required', 'string', Rule::in(EmailBrand::FONT_STACKS)],
         ]);
 
         Setting::setGeneral(
@@ -51,13 +56,29 @@ class SettingController extends Controller
                 sendWindowEnd: array_key_exists('send_window_end', $validated) ? $validated['send_window_end'] : false,
                 emailAccentColor: $validated['email_accent_color'] ?? null,
                 dateFormat: $validated['date_format'] ?? null,
+                emailLogoAssetId: array_key_exists('email_logo_asset_id', $validated) ? $validated['email_logo_asset_id'] : false,
+                emailTextColor: $validated['email_text_color'] ?? null,
+                emailBackgroundColor: $validated['email_background_color'] ?? null,
+                emailFontStack: $validated['email_font_stack'] ?? null,
             )
         );
 
         return $this->success(
-            Setting::general()->toArray(),
+            $this->generalPayload(),
             'General settings updated successfully.'
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function generalPayload(): array
+    {
+        $settings = Setting::general();
+        $payload = $settings->toArray();
+        $payload['email_logo_url'] = EmailBrand::fromSettings($settings)->logoUrl();
+
+        return $payload;
     }
 
     public function showBilling(): JsonResponse

@@ -54,6 +54,7 @@ use Database\Seeders\InsightReportSeeder;
 use Database\Seeders\LeadChasePlaybookSeeder;
 use Database\Seeders\SiteServiceAreaSeeder;
 use Database\Seeders\SizeGuideSeeder;
+use Database\Seeders\SocialIconSeeder;
 use Database\Seeders\SubscriptionListSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -352,10 +353,13 @@ class StageSeeder extends Seeder
             }
         }
 
+        $this->call(SocialIconSeeder::class);
         $this->call(DebtPlaybookSeeder::class);
         $this->call(LeadChasePlaybookSeeder::class);
         $this->call(ContractDocumentTemplateSeeder::class);
         $this->call(CelebrationAutomationsSeeder::class);
+        DemoBrand::apply();
+        $this->call(DemoEmailTemplateSeeder::class);
 
         $this->seedFakeProviders($sites);
         $this->activateDemoPlaybooks();

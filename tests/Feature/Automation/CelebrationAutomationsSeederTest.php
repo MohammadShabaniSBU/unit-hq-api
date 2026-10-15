@@ -46,8 +46,11 @@ class CelebrationAutomationsSeederTest extends TestCase
         $this->assertNotNull($variant);
         $this->assertNull($variant->legacy_html);
         EmailBlockDocument::validate($variant->blocks);
-        $this->assertSame('heading', $variant->blocks['blocks'][0]['type']);
-        $this->assertSame('paragraph', $variant->blocks['blocks'][1]['type']);
+        $this->assertSame(2, $variant->blocks['version']);
+        $this->assertSame('100', $variant->blocks['sections'][0]['layout']);
+        $blocks = $variant->blocks['sections'][0]['columns'][0]['blocks'];
+        $this->assertSame('heading', $blocks[0]['type']);
+        $this->assertSame('paragraph', $blocks[1]['type']);
 
         $birthday = AttributeDefinition::query()
             ->where('entity_type', AttributeEntityType::Contact)

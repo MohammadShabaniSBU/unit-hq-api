@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_a1000050",
+      "layout": "50_50",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_a1000051",
+          "blocks": [
+            {
+              "id": "blk_a1000051",
+              "type": "info_rows",
+              "params": {
+                "rows": [
+                  { "label": "Gate", "value": "07:00–22:00" }
+                ],
+                "striped": false,
+                "value_align": "left"
+              }
+            }
+          ]
+        },
+        { "id": "col_a1000052", "blocks": [] }
+      ]
+    }
+  ]
+}

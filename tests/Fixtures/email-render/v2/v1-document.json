@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "blocks": [
+    { "id": "h1", "type": "heading", "params": { "text": "Hello {{contact.first_name}}", "level": 1 } },
+    { "id": "p1", "type": "paragraph", "params": { "html": "<p>Dear <strong>{{contact.first_name}}</strong>.</p>" } }
+  ]
+}

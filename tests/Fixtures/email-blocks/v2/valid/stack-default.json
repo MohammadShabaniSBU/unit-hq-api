@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "sec_ddddddd1",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "sm" },
+      "columns": [
+        { "id": "col_ddddddd2", "blocks": [] }
+      ]
+    }
+  ]
+}

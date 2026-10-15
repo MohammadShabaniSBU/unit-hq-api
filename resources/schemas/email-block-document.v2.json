@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keevaris.local/schemas/email-block-document.v2.json",
+  "title": "Email block document v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "sections"],
+  "properties": {
+    "version": { "const": 2 },
+    "settings": { "$ref": "#/$defs/settings" },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "hexColor": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+      ]
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background_color": { "$ref": "#/$defs/hexColor" }
+      }
+    },
+    "sectionParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["padding"],
+      "properties": {
+        "background_color": { "$ref": "#/$defs/hexColor" },
+        "padding": { "enum": ["none", "sm", "md", "lg"] },
+        "stack_on_mobile": { "type": "boolean" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "layout", "params", "columns"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^sec_[0-9a-f]{8}$" },
+        "layout": { "enum": ["100", "50_50", "33_67", "67_33", "33_33_33"] },
+        "params": { "$ref": "#/$defs/sectionParams" },
+        "columns": { "type": "array" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "layout": { "const": "100" } },
+            "required": ["layout"]
+          },
+          "then": {
+            "properties": {
+              "columns": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": { "$ref": "#/$defs/column" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "layout": { "enum": ["50_50", "33_67", "67_33"] } },
+            "required": ["layout"]
+          },
+          "then": {
+            "properties": {
+              "columns": {
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "$ref": "#/$defs/columnNoRaw" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "layout": { "const": "33_33_33" } },
+            "required": ["layout"]
+          },
+          "then": {
+            "properties": {
+              "columns": {
+                "minItems": 3,
+                "maxItems": 3,
+                "items": { "$ref": "#/$defs/columnNoRaw" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "blocks"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^col_[0-9a-f]{8}$" },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/block" }
+        }
+      }
+    },
+    "columnNoRaw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "blocks"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^col_[0-9a-f]{8}$" },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/blockNoRaw" }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "params"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^blk_[0-9a-f]{8}$" },
+        "type": {
+          "enum": ["heading", "paragraph", "button", "image", "divider", "spacer", "unit_summary", "raw_html", "info_rows", "list", "callout", "logo_header", "footer_social"]
+        },
+        "params": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "heading" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/headingParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "paragraph" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/paragraphParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "button" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/buttonParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "image" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/imageParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "divider" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/emptyParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "spacer" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/spacerParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "unit_summary" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/emptyParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "raw_html" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/rawHtmlParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "info_rows" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/infoRowsParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "list" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/listParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "callout" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/calloutParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "logo_header" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/logoHeaderParams" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "footer_social" } }, "required": ["type"] },
+          "then": { "properties": { "params": { "$ref": "#/$defs/footerSocialParams" } } }
+        }
+      ]
+    },
+    "blockNoRaw": {
+      "allOf": [
+        { "$ref": "#/$defs/block" },
+        { "properties": { "type": { "not": { "const": "raw_html" } } } }
+      ]
+    },
+    "headingParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "level"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "level": { "type": "integer", "enum": [1, 2] }
+      }
+    },
+    "paragraphParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["html"],
+      "properties": {
+        "html": { "type": "string", "minLength": 1 }
+      }
+    },
+    "buttonParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "url", "style"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "url": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "style": { "enum": ["primary", "outline"] }
+      }
+    },
+    "imageParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width_percent"],
+      "properties": {
+        "asset_id": { "type": ["integer", "null"] },
+        "url": { "type": ["string", "null"], "maxLength": 2000 },
+        "alt": { "type": ["string", "null"], "maxLength": 255 },
+        "width_percent": { "type": "integer", "minimum": 1, "maximum": 100 }
+      },
+      "anyOf": [
+        {
+          "required": ["asset_id"],
+          "properties": { "asset_id": { "type": "integer" } }
+        },
+        {
+          "required": ["url"],
+          "properties": { "url": { "type": "string", "minLength": 1 } }
+        }
+      ]
+    },
+    "emptyParams": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "spacerParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["height"],
+      "properties": {
+        "height": { "type": "integer", "minimum": 4, "maximum": 200 }
+      }
+    },
+    "rawHtmlParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["html"],
+      "properties": {
+        "html": { "type": "string", "minLength": 1 }
+      }
+    },
+    "infoRowsParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "striped", "value_align"],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/infoRow" }
+        },
+        "striped": { "type": "boolean" },
+        "value_align": { "enum": ["left", "right"] }
+      }
+    },
+    "infoRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "value": { "type": "string", "minLength": 1, "maxLength": 255 }
+      }
+    },
+    "listParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["style", "items"],
+      "properties": {
+        "style": { "enum": ["bullet", "numbered"] },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "calloutParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tone", "html"],
+      "properties": {
+        "tone": { "enum": ["info", "warning", "danger"] },
+        "title": { "type": ["string", "null"], "maxLength": 120 },
+        "html": { "type": "string", "minLength": 1 }
+      }
+    },
+    "logoHeaderParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["align", "max_width"],
+      "properties": {
+        "align": { "enum": ["left", "center"] },
+        "max_width": { "type": "integer", "minimum": 60, "maximum": 300 },
+        "link_url": { "type": ["string", "null"], "maxLength": 2000 }
+      }
+    },
+    "footerSocialParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["links"],
+      "properties": {
+        "links": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/socialLink" }
+        },
+        "address": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    },
+    "socialLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["network", "url"],
+      "properties": {
+        "network": { "enum": ["facebook", "instagram", "linkedin", "x", "youtube", "tiktok", "website"] },
+        "url": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    }
+  }
+}

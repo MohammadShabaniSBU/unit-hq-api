@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "settings": { "background_color": null },
+  "sections": [
+    {
+      "id": "sec_e1000001",
+      "layout": "100",
+      "params": { "background_color": null, "padding": "md", "stack_on_mobile": true },
+      "columns": [
+        {
+          "id": "col_e1000001",
+          "blocks": [
+            {
+              "id": "blk_e1000001",
+              "type": "footer_social",
+              "params": {
+                "links": [
+                  { "network": "facebook", "url": "https://facebook.com/keevaris" }
+                ],
+                "address": "{{contact.name}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
