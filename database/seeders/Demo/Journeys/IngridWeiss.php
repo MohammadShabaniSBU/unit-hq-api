@@ -35,7 +35,7 @@ final class IngridWeiss extends Journey
                     'email' => 'ines.valdes@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'ingrid', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS9');
+                $unit = JourneySupport::vacantUnit($site, 'XS9');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'ingrid', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'ingrid');

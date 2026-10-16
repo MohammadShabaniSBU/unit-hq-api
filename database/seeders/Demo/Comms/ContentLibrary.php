@@ -49,7 +49,7 @@ final class ContentLibrary
         'Llamadme porfa',
         'Sigo interesado',
         'Pago hecho ya',
-        '¿Precio SS8?',
+        '¿Precio XS8?',
         'Necesito factura',
         'Visita ok el jueves',
         'No me llega el email',

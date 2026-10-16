@@ -41,7 +41,7 @@ final class NadiaRahal extends Journey
                     'email' => 'nadia.rahal@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'nadia', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS9');
+                $unit = JourneySupport::vacantUnit($site, 'XS9');
                 $date = CastExecutor::civilDate($startDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::Percent)

@@ -35,7 +35,7 @@ final class ReservationExpiredCompiler
                     $world,
                     $handle,
                     $site,
-                    $class?->code ?? 'SS8',
+                    $class?->code ?? 'XS8',
                     'sent',
                     unit: $unit,
                 );

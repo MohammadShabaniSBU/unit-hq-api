@@ -34,7 +34,7 @@ final class ViktorPalenik extends Journey
                     'email' => 'victor.palencia@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'viktor', $site, DealStatus::OfferSent);
-                $unit = JourneySupport::vacantUnit($site, 'SS8');
+                $unit = JourneySupport::vacantUnit($site, 'XS8');
                 $start = CastExecutor::civilDate($startDay);
                 $moveIn = CastExecutor::civilDate($end + 20);
                 JourneySupport::walkInSign(

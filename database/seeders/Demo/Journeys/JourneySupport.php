@@ -210,7 +210,7 @@ final class JourneySupport
 
     public static function vacantUnit(
         Site $site,
-        string $unitClassCode = 'SS8',
+        string $unitClassCode = 'XS8',
         CarbonInterface|string|null $from = null,
         CarbonInterface|string|null $to = null,
     ): Unit {
@@ -1469,7 +1469,7 @@ final class JourneySupport
         DemoWorld $world,
         string $handle,
         Site $site,
-        string $unitClassCode = 'SS8',
+        string $unitClassCode = 'XS8',
         string $status = 'sent',
         ?int $discountId = null,
         ?Unit $unit = null,

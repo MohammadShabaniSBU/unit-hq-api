@@ -38,7 +38,7 @@ final class BeaTorres extends Journey
                     'email' => 'bea.torres@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'bea', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS6');
+                $unit = JourneySupport::vacantUnit($site, 'XS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'bea', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'bea');

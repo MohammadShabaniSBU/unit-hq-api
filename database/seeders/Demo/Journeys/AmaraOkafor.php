@@ -40,7 +40,7 @@ final class AmaraOkafor extends Journey
                     'email' => 'amara.okafor@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'amara', $site, DealStatus::Qualified);
-                $unit = JourneySupport::vacantUnit($site, 'SS9');
+                $unit = JourneySupport::vacantUnit($site, 'XS9');
                 $date = CastExecutor::civilDate($signDay);
                 $discountId = Discount::query()
                     ->where('kind', DiscountKind::FreeTime)

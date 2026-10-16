@@ -36,7 +36,7 @@ final class RafaNunez extends Journey
                     'email' => 'rafa.nunez@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'rafa', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS6');
+                $unit = JourneySupport::vacantUnit($site, 'XS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'rafa', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'rafa');

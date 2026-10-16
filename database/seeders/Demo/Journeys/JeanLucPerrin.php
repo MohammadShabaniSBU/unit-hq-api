@@ -41,7 +41,7 @@ final class JeanLucPerrin extends Journey
                     'billing_postal_code' => '28001',
                 ]);
                 JourneySupport::openDeal($world, 'jean_luc', $site, DealStatus::OfferSent);
-                $unit = JourneySupport::vacantUnit($site, 'SS8');
+                $unit = JourneySupport::vacantUnit($site, 'XS8');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'jean_luc', $unit, $date, mode: 'remote');
                 JourneySupport::sendEnvelope($world, 'jean_luc');

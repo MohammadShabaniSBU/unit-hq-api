@@ -40,7 +40,7 @@ final class TheKellys extends Journey
                     'company' => 'Los Keller',
                 ]);
                 JourneySupport::openDeal($world, 'kellys', $site);
-                $unitA = JourneySupport::vacantUnit($site, 'SS7');
+                $unitA = JourneySupport::vacantUnit($site, 'XS7');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'kellys', $unitA, $date, deposit: 100.0);
                 $world->remember('kellys.contract_a', JourneySupport::contract($world, 'kellys'));
@@ -48,7 +48,7 @@ final class TheKellys extends Journey
             },
             $secondDay => static function (DemoWorld $world) use ($secondDay): void {
                 $site = $world->site('madrid');
-                $unitB = JourneySupport::vacantUnit($site, 'SS8');
+                $unitB = JourneySupport::vacantUnit($site, 'XS8');
                 $date = CastExecutor::civilDate($secondDay);
                 // Second contract under a sibling handle so helpers don't overwrite.
                 $world->remember('kellys_b.contact', $world->contact('kellys.contact'));

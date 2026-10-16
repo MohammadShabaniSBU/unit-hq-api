@@ -47,7 +47,7 @@ final class LuciaFerrer extends Journey
                     'email' => 'lucia.ferrer@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'lucia', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS7');
+                $unit = JourneySupport::vacantUnit($site, 'XS7');
                 JourneySupport::walkInSign(
                     $world,
                     'lucia',

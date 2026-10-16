@@ -39,7 +39,7 @@ final class HannahCole extends Journey
                     'email' => 'ana.coloma@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'hannah', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS7');
+                $unit = JourneySupport::vacantUnit($site, 'XS7');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'hannah', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'hannah');

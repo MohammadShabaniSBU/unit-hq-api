@@ -43,7 +43,7 @@ final class PilarSantos extends Journey
                     'email' => 'pilar.santos@demo.keevaris.test',
                 ]);
                 JourneySupport::openDeal($world, 'pilar', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS6');
+                $unit = JourneySupport::vacantUnit($site, 'XS6');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'pilar', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'pilar');

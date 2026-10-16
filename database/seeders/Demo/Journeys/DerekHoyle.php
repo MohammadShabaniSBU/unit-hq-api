@@ -44,7 +44,7 @@ final class DerekHoyle extends Journey
                     'billing_postal_code' => '28008',
                 ]);
                 JourneySupport::openDeal($world, 'derek', $site);
-                $unit = JourneySupport::vacantUnit($site, 'SS7');
+                $unit = JourneySupport::vacantUnit($site, 'XS7');
                 $date = CastExecutor::civilDate($startDay);
                 JourneySupport::walkInSign($world, 'derek', $unit, $date);
                 JourneySupport::markSteadyPayer($world, 'derek');

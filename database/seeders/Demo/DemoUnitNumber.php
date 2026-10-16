@@ -13,29 +13,29 @@ use RuntimeException;
 final class DemoUnitNumber
 {
     /**
-     * Highest index StageSeeder writes (SS2 / B74 on the box plan).
+     * Highest index StageSeeder writes (XS2 / B74 on the box plan).
      * Legacy `{SITE}-{CLASS}-{NN}` numbers only ever ran 01–10.
      */
     private const MAX_INDEX = 74;
 
     /** @var array<string, string> */
     private const PREFIXES = [
-        'SS1.5' => 'A',
-        'SS2' => 'B',
-        'SS2.5' => 'C',
-        'SS3' => 'D',
-        'SS5' => 'G',
-        'SS6' => 'H',
-        'SS7' => 'J',
-        'SS8' => 'K',
-        'SS9' => 'L',
-        'SS10' => 'M',
-        'SS11' => 'N',
-        'SS12' => 'P',
-        'AL10' => 'AL',
-        'AL12' => 'AM',
-        'AL14' => 'AN',
-        'AL16' => 'AP',
+        'XS1.5' => 'A',
+        'XS2' => 'B',
+        'XS2.5' => 'C',
+        'XS3' => 'D',
+        'XS5' => 'G',
+        'XS6' => 'H',
+        'XS7' => 'J',
+        'XS8' => 'K',
+        'XS9' => 'L',
+        'XS10' => 'M',
+        'XS11' => 'N',
+        'XS12' => 'P',
+        'XL10' => 'AL',
+        'XL12' => 'AM',
+        'XL14' => 'AN',
+        'XL16' => 'AP',
     ];
 
     public static function format(string $classCode, int $n): string

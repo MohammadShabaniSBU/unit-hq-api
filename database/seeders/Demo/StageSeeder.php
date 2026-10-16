@@ -71,30 +71,30 @@ class StageSeeder extends Seeder
 
     /** @var array<string, string> */
     private const CATALOGUE_NET = [
-        'SS1.5' => '36.00',
-        'SS2' => '44.00',
-        'SS2.5' => '52.00',
-        'SS3' => '60.00',
-        'SS5' => '72.00',
-        'SS6' => '82.00',
-        'SS7' => '92.00',
-        'SS8' => '104.00',
-        'SS9' => '116.00',
-        'SS10' => '128.00',
-        'SS11' => '140.00',
-        'SS12' => '152.00',
-        'AL10' => '138.00',
-        'AL12' => '168.00',
-        'AL14' => '192.00',
-        'AL16' => '218.00',
+        'XS1.5' => '36.00',
+        'XS2' => '44.00',
+        'XS2.5' => '52.00',
+        'XS3' => '60.00',
+        'XS5' => '72.00',
+        'XS6' => '82.00',
+        'XS7' => '92.00',
+        'XS8' => '104.00',
+        'XS9' => '116.00',
+        'XS10' => '128.00',
+        'XS11' => '140.00',
+        'XS12' => '152.00',
+        'XL10' => '138.00',
+        'XL12' => '168.00',
+        'XL14' => '192.00',
+        'XL16' => '218.00',
     ];
 
     /** @var list<array{code: string, label: string, size: float}> */
     private const SMALL_CLASSES = [
-        ['code' => 'SS1.5', 'label' => 'Trastero 1.5 m²', 'size' => 1.50],
-        ['code' => 'SS2', 'label' => 'Trastero 2 m²', 'size' => 2.00],
-        ['code' => 'SS2.5', 'label' => 'Trastero 2.5 m²', 'size' => 2.50],
-        ['code' => 'SS3', 'label' => 'Trastero 3 m²', 'size' => 3.00],
+        ['code' => 'XS1.5', 'label' => 'Trastero 1.5 m²', 'size' => 1.50],
+        ['code' => 'XS2', 'label' => 'Trastero 2 m²', 'size' => 2.00],
+        ['code' => 'XS2.5', 'label' => 'Trastero 2.5 m²', 'size' => 2.50],
+        ['code' => 'XS3', 'label' => 'Trastero 3 m²', 'size' => 3.00],
     ];
 
     public function run(): void
@@ -237,18 +237,18 @@ class StageSeeder extends Seeder
         $unitClasses = collect();
         foreach (
             [
-                ['code' => 'SS5', 'label' => 'Trastero 5 m²', 'size' => 5.00],
-                ['code' => 'SS6', 'label' => 'Trastero 6 m²', 'size' => 6.00],
-                ['code' => 'SS7', 'label' => 'Trastero 7 m²', 'size' => 7.00],
-                ['code' => 'SS8', 'label' => 'Trastero 8 m²', 'size' => 8.00],
-                ['code' => 'SS9', 'label' => 'Trastero 9 m²', 'size' => 9.00],
-                ['code' => 'SS10', 'label' => 'Trastero 10 m²', 'size' => 10.00],
-                ['code' => 'SS11', 'label' => 'Trastero 11 m²', 'size' => 11.00],
-                ['code' => 'SS12', 'label' => 'Trastero 12 m²', 'size' => 12.00],
-                ['code' => 'AL10', 'label' => 'Trastero 10 m² XL', 'size' => 10.00],
-                ['code' => 'AL12', 'label' => 'Trastero 12 m² XL', 'size' => 12.00],
-                ['code' => 'AL14', 'label' => 'Trastero 14 m² XL', 'size' => 14.00],
-                ['code' => 'AL16', 'label' => 'Trastero 16 m² XL', 'size' => 16.00],
+                ['code' => 'XS5', 'label' => 'Trastero 5 m²', 'size' => 5.00],
+                ['code' => 'XS6', 'label' => 'Trastero 6 m²', 'size' => 6.00],
+                ['code' => 'XS7', 'label' => 'Trastero 7 m²', 'size' => 7.00],
+                ['code' => 'XS8', 'label' => 'Trastero 8 m²', 'size' => 8.00],
+                ['code' => 'XS9', 'label' => 'Trastero 9 m²', 'size' => 9.00],
+                ['code' => 'XS10', 'label' => 'Trastero 10 m²', 'size' => 10.00],
+                ['code' => 'XS11', 'label' => 'Trastero 11 m²', 'size' => 11.00],
+                ['code' => 'XS12', 'label' => 'Trastero 12 m²', 'size' => 12.00],
+                ['code' => 'XL10', 'label' => 'Trastero 10 m² XL', 'size' => 10.00],
+                ['code' => 'XL12', 'label' => 'Trastero 12 m² XL', 'size' => 12.00],
+                ['code' => 'XL14', 'label' => 'Trastero 14 m² XL', 'size' => 14.00],
+                ['code' => 'XL16', 'label' => 'Trastero 16 m² XL', 'size' => 16.00],
             ] as $classDef
         ) {
             $unitClasses->push(UnitClass::factory()->create([
@@ -299,7 +299,7 @@ class StageSeeder extends Seeder
         }
 
         // 120 larger units/site. Crowd + cast rent only these classes, so the
-        // RNG stream stays put. Cast still prefers SS6–SS10 at MAD-01;
+        // RNG stream stays put. Cast still prefers XS6–XS10 at MAD-01;
         // vacantUnit falls back if a class is full.
         foreach ($unitClasses as $unitClass) {
             foreach ($sites as $site) {
