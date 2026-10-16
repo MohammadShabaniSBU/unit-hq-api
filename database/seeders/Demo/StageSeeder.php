@@ -266,8 +266,8 @@ class StageSeeder extends Seeder
 
         foreach (
             [
-                ['name' => 'Básico', 'coverage' => 3000, 'amount' => 3],
-                ['name' => 'Premium', 'coverage' => 5000, 'amount' => 5],
+                ['name' => 'Simple', 'coverage' => 5000, 'amount' => 5],
+                ['name' => 'VIP', 'coverage' => 10000, 'amount' => 10],
             ] as $insuranceData
         ) {
             $insurance = Insurance::query()->create([
