@@ -74,3 +74,15 @@ Tasks live in `docs/tasks/active/`. Read the task file first. A task is not done
 ## When in doubt
 
 If a request conflicts with an invariant, flag it instead of complying. Uncertain requirements go to `docs/reference/10-open-decisions.md`.
+
+## Related repos
+
+Three git repos sit side by side. This directory is not a monorepo.
+
+| Repo | Role |
+|---|---|
+| `unit-hq-api` | This API |
+| `unit-hq-panel` | Nuxt 4 panel. Its own `AGENTS.md` does not exist yet. |
+| `keevaris-voice` | Voice media bridge. Its `AGENTS.md` governs the call path. Delegation and guards stay under `docs/reference/09-conventions-and-invariants.md`. |
+
+There is no shared-type codegen. Types that must match, such as the permission enum, are hand-mirrored and checked by a parity test.

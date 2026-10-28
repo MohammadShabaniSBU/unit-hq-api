@@ -42,6 +42,8 @@ Three employee agents sit on the Laravel AI SDK. They are not the
 customer-facing runtime. None of them uses `AgentRuntime` or
 `agent_conversations`.
 
+Code lives in `app/Ai/Agents/`, `app/Ai/Tools/`, and `app/Ai/Middleware/MetersUsage.php`. New agents and tools scaffold from `stubs/`.
+
 `CrmCopilotAgent` is the employee sidebar (`ai_purpose = copilot`).
 `SummaryAgent` writes CRM summaries (`ai_purpose = summarize`).
 `TemplateAssistantAgent` edits an email in the builder, Blocks mode only

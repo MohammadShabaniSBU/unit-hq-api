@@ -8,6 +8,9 @@
 - **Architecture:** business logic lives in **controllers + models** — there is deliberately **no `app/Services/` layer**. Multi-step operations use explicit DB transactions. Shared billing math / orchestration: `App\Support\Billing\` (`BillingMath`, `ContractBilling`).
 - **API response shape** via `ApiResponsable`: `{ message, data }`, paginated responses include `{ meta }`.
 - **Tests:** PHPUnit with SQLite in-memory.
+- **Style:** 4-space indent. `declare(strict_types=1)` on every PHP file.
+- **Formatting:** `./vendor/bin/pint` (dev dependency, no `pint.json`, defaults apply). No PHPStan.
+- **Bootstrap:** Laravel 13. There is no `app/Http/Kernel.php`. Middleware, routing, the scheduler, and exception rendering are wired in `bootstrap/app.php`.
 - **AI:** internal Copilot plus one customer-facing concierge agent on a
   shared tool-and-guardrail runtime in `App\Support\Ai\`. Conversations and
   traces stored in DB. The concierge may persist Offer and Reservation under
@@ -49,7 +52,7 @@
 ```bash
 # API
 composer setup   # install, .env, migrate, vite build
-composer dev     # serve + queue + pail + vite
+composer dev     # serve, queue:listen, queue:work --queue=ai, reverb:start, pail, vite
 php artisan demo:seed --fresh   # optional living demo world (+ storage/demo-script.md)
 
 # Panel
