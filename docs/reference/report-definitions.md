@@ -2,7 +2,7 @@
 
 Canonical vocabulary for **native** Insights reports (keyed by `native_key` in
 the `insight_reports` registry). The Insights surface itself — registry, embeds,
-analytics accounts — is documented in `11-insights.md`. Every native report page
+analytics accounts — is documented in `../domain/11-insights.md`. Every native report page
 footer links the section it uses. Figures are computed live from fact tables —
 nothing here is stored as a rollup.
 

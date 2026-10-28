@@ -118,3 +118,5 @@ The operational and billing anchor. Creation accepts `signature_mode: immediate 
 - `reservation_id` is **nullable** to support walk-ins.
 - The ledger attaches to the Contract: every charge, payment, and allocation references it.
 - Core activity: `contract.signed` via `RecordsActivity::core` (money in properties as strings).
+
+History: S02, S14, S24 — [sprint index](../history/README.md).

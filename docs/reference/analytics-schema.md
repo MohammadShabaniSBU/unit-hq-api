@@ -5,7 +5,7 @@ migrations under Postgres; SQLite migrations are a no-op.
 
 **Nothing in `app/` may query `analytics.*`.** Application code owns the DDL and
 the `analytics:refresh` command only. Consumers are external reporting tools via
-the `metabase_ro` role ([ops runbook](ops/metabase-ro-role.sql)).
+the `metabase_ro` role ([ops runbook](../ops/metabase-ro-role.sql)).
 
 Changes are **additive**: new views/columns may appear; existing view names and
 column meanings do not change in place. Altering a view ships as a new migration
@@ -206,5 +206,5 @@ These are gaps, not defects in the objects that ship:
 
 ## Role
 
-See [docs/ops/metabase-ro-role.sql](ops/metabase-ro-role.sql). The role can
+See [docs/ops/metabase-ro-role.sql](../ops/metabase-ro-role.sql). The role can
 `SELECT` everything in `analytics` and must not read `public` business tables.

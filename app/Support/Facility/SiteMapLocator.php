@@ -13,7 +13,7 @@ use App\Models\Unit;
  *
  * A site may have several `site_maps` (one per floor). Identity is the same
  * join as upload validation: `data-unit-number` (legacy fallback: element `id`).
- * See SiteMapIdMatcher and docs/02-facility.md.
+ * See SiteMapIdMatcher and docs/domain/02-facility.md.
  */
 final class SiteMapLocator
 {

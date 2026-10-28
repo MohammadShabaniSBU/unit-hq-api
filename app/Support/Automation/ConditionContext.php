@@ -9,7 +9,7 @@ use App\Enums\ConditionSource;
 /**
  * Explicit evaluation context for ConditionEvaluator.
  *
- * @see docs/automation-conditions.md
+ * @see docs/reference/automation-conditions.md
  */
 final class ConditionContext
 {

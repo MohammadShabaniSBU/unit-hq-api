@@ -61,4 +61,4 @@ Do not edit application code. Do not invent a fixture.
 | `requires_db` | `any` (default) or `pgsql`. Skip — do not pass — when the resolved driver does not match. |
 | `depends_on` | Other scenario ids that must have passed first. Usually `[]`. |
 | `anchors` | Cast handles and site codes this scenario touches. Two mutating scenarios that share an anchor collide. |
-| `invariants` | Numbers from `docs/09-conventions-and-invariants.md`. Empty is allowed on a pure UI-wiring check. |
+| `invariants` | Numbers from `docs/reference/09-conventions-and-invariants.md`. Empty is allowed on a pure UI-wiring check. |

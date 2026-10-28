@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 /**
  * Typed in-memory condition evaluation for triggers, logic.branch, and run guards.
  *
- * @see docs/automation-conditions.md
+ * @see docs/reference/automation-conditions.md
  */
 final class ConditionEvaluator
 {

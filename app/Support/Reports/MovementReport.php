@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Period tenancy movement: move-ins, move-outs, transfers (neither churn nor acquisition).
- * Definitions: docs/report-definitions.md — Movement section.
+ * Definitions: docs/reference/report-definitions.md — Movement section.
  */
 final class MovementReport extends AbstractReport
 {
@@ -277,7 +277,7 @@ final class MovementReport extends AbstractReport
                 'move_outs' => $moveOuts->count(),
                 'transfers' => $transfers->count(),
             ],
-            'definitions' => 'docs/report-definitions.md#movement--movimiento',
+            'definitions' => 'docs/reference/report-definitions.md#movement--movimiento',
         ]);
     }
 

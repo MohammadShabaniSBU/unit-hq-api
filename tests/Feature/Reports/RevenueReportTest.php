@@ -48,7 +48,7 @@ class RevenueReportTest extends ChartReportTestCase
         $this->assertSame('100.00', $result->meta['headlines_by_currency']['EUR']['rent']);
         $this->assertSame('10.00', $result->meta['headlines_by_currency']['EUR']['rentable_m2']);
         $this->assertStringStartsWith(
-            'Definitions: docs/report-definitions.md — Revenue / Ingresos.',
+            'Definitions: docs/reference/report-definitions.md — Revenue / Ingresos.',
             $result->meta['notes'][0],
         );
     }

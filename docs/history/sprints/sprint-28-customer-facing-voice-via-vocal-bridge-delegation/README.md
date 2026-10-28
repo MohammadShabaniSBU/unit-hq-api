@@ -174,3 +174,5 @@ them possible.
 - **Multi-site voice.** One number, one site. A multi-site number must
   establish the site before quoting and that logic isn't built.
 - **Outbound calling.** Inbound only.
+
+vb-customer-config.json moved to docs/ops/voice-bridge/ — it is written at runtime by ExportVoiceBridgeConfigCommand.

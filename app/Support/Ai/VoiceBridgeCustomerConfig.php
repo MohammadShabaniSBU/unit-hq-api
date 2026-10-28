@@ -12,7 +12,7 @@ use RuntimeException;
  */
 final class VoiceBridgeCustomerConfig
 {
-    public const RELATIVE_PATH = 'docs/roadmap/sprint-28-customer-facing-voice-via-vocal-bridge-delegation/vb-customer-config.json';
+    public const RELATIVE_PATH = 'docs/ops/voice-bridge/vb-customer-config.json';
 
     /** @return array<string, mixed> */
     public static function payload(): array

@@ -120,3 +120,5 @@ See `14-ai-agents.md`.
 - **Notes** — append-only operator comments
 - **`stripe_webhook_events`** — Stripe idempotency only; new rows carry `site_id` (legacy may be null)
 - **Agent traces** — `agent_conversation_messages` / `agent_tool_invocations` / `agent_handoffs` (`14-ai-agents.md`); not these tables
+
+History: [sprint index](../history/README.md).

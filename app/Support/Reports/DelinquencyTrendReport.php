@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Point-in-time overdue balance at each month-end, rebuilt from the ledger.
- * Definitions: docs/report-definitions.md — Delinquency trend / Evolución de morosidad.
+ * Definitions: docs/reference/report-definitions.md — Delinquency trend / Evolución de morosidad.
  */
 final class DelinquencyTrendReport extends AbstractReport
 {
@@ -276,7 +276,7 @@ final class DelinquencyTrendReport extends AbstractReport
                 'occupied_contracts' => $occupiedCounts,
                 'delinquent_contracts' => $delinquentCounts,
                 'notes' => [
-                    'Definitions: docs/report-definitions.md — Delinquency trend / Evolución de morosidad.',
+                    'Definitions: docs/reference/report-definitions.md — Delinquency trend / Evolución de morosidad.',
                     'Allocation timestamps are compared at end of day UTC, not site-local.',
                 ],
             ],

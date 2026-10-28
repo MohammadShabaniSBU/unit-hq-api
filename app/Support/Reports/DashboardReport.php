@@ -177,7 +177,7 @@ final class DashboardReport extends AbstractReport
                 'cards' => $cards,
                 'trends' => $trends,
                 'attention' => $attention,
-                'definitions' => 'docs/report-definitions.md',
+                'definitions' => 'docs/reference/report-definitions.md',
                 'notes' => [
                     'Dashboard KPIs are card-zoom of the full report query classes — one computation, two zoom levels.',
                 ],

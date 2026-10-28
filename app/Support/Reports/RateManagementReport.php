@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * In-place rent against street rate, for an existing-customer rate increase.
- * Definitions: docs/report-definitions.md — Rate management / Gestión de tarifas.
+ * Definitions: docs/reference/report-definitions.md — Rate management / Gestión de tarifas.
  */
 final class RateManagementReport extends AbstractReport
 {
@@ -337,7 +337,7 @@ final class RateManagementReport extends AbstractReport
                 'as_of' => $asOf,
                 'headlines_by_currency' => $headlines,
                 'notes' => [
-                    'Definitions: docs/report-definitions.md — Rate management / Gestión de tarifas.',
+                    'Definitions: docs/reference/report-definitions.md — Rate management / Gestión de tarifas.',
                     'ECRI monthly opportunity is a ceiling that ignores churn.',
                 ],
             ],

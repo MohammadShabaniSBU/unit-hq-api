@@ -56,4 +56,6 @@ php artisan demo:seed --fresh   # optional living demo world (+ storage/demo-scr
 bun install && bun run dev   # http://localhost:3000
 ```
 
-See also root `README.md` § Demo world and `docs/roadmap/seeders/`.
+See also root `README.md` § Demo world and `demo-seeders/`.
+
+History: [sprint index](../history/README.md).

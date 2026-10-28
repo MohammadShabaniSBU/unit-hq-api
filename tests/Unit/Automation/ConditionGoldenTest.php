@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Golden matrix for docs/automation-conditions.md — each row cites a rule number.
+ * Golden matrix for docs/reference/automation-conditions.md — each row cites a rule number.
  */
 class ConditionGoldenTest extends TestCase
 {

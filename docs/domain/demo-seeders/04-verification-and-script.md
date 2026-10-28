@@ -62,4 +62,4 @@ Seed end prints (and writes `storage/demo-script.md`):
 - [ ] Script prints + persists; every cast entry's click-path manually walked once
       (PR checklist with the 15-minute tour timed).
 - [ ] Docs: `README.md` (repo) quickstart gains the demo command;
-      `10-open-decisions.md` notes the seeder as the demo baseline.
+      `../../reference/10-open-decisions.md` notes the seeder as the demo baseline.

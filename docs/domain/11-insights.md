@@ -23,8 +23,8 @@ create / rotate / remove.
    analytics account; bind params; save. The nav picks it up from
    `GET /api/insights`.
 
-Native formula vocabulary lives in `report-definitions.md`. Column-level
-`analytics.*` catalogues live in `analytics-schema.md`.
+Native formula vocabulary lives in `../reference/report-definitions.md`. Column-level
+`analytics.*` catalogues live in `../reference/analytics-schema.md`.
 
 Financial-category native reports (`rent-roll`, `ageing`, `collections`,
 `deposit-liability`, `daily-close`, `revenue`, `rate-management`,
@@ -34,7 +34,7 @@ Financial-category native reports (`rent-roll`, `ageing`, `collections`,
 `ReportController::show`. `length-of-stay` stays on `ReportView`.
 `paid-acquisition` is the exception: `ReportController::show` requires
 `Permission::AdvertisingView`, not `ReportView` or `ReportFinancialView`.
-See `report-definitions.md` for the full list.
+See `../reference/report-definitions.md` for the full list.
 
 ---
 
@@ -180,7 +180,7 @@ A small Postgres schema of views that encode reporting invariants once, plus a
 DB role that can see nothing else. **Nothing in `app/` may query `analytics`.**
 Application code owns the DDL and `php artisan analytics:refresh` only.
 Consumers are external BI tools via `metabase_ro` (operator runbook in
-`docs/ops/`). Column catalogues: `analytics-schema.md`.
+`docs/ops/`). Column catalogues: `../reference/analytics-schema.md`.
 
 | Invariant | What breaks against raw tables |
 |---|---|
@@ -247,7 +247,7 @@ path stays read-only. Bookkeeping lives in `insight_provisioned_resources`
 (definition hash + remote ids), not on the operator-owned `insight_reports` row.
 
 Config: `INSIGHTS_METABASE_DATABASE` (provisioning only). Tested against
-Metabase OSS v0.50+ — see [ops/metabase-ro-role.sql](ops/metabase-ro-role.sql).
+Metabase OSS v0.50+ — see [ops/metabase-ro-role.sql](../ops/metabase-ro-role.sql).
 
 This release's occupancy columns on `analytics.mv_unit_state_daily` (`enabled`,
 `area`) were added by editing the genesis analytics migration because no
@@ -275,3 +275,5 @@ environment had run it. **Deploy requires `migrate:fresh`.**
 | `analytics.v_ad_spend_daily` | Reporting contract — daily ad spend, mapped site, currency |
 | `analytics.v_marketing_touches` | Reporting contract — touches without click ids or landing URLs |
 | `analytics.v_ad_conversion_deliveries` | Reporting contract — delivery status, skip reason, value, currency |
+
+History: S16, S21 — [sprint index](../history/README.md).

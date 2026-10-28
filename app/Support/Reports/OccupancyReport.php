@@ -97,7 +97,7 @@ final class OccupancyReport extends AbstractReport
                 ],
                 'series' => $series,
                 'notes' => [
-                    'Definitions: docs/report-definitions.md — Occupancy / Ocupación.',
+                    'Definitions: docs/reference/report-definitions.md — Occupancy / Ocupación.',
                 ],
             ],
             charts: self::charts($series, $rows),

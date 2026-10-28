@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Point-in-time occupancy snapshot (unit / area / economic) for Insights.
- * Definitions: docs/report-definitions.md — Occupancy section.
+ * Definitions: docs/reference/report-definitions.md — Occupancy section.
  */
 final class OccupancyMetrics
 {

@@ -90,7 +90,7 @@ The operator maps each campaign to a site (`ad_campaigns.site_id`) and may
 set `utm_campaign_hint`. Unmapped spend stays on its own row.
 
 Reporting is the native Insights report `paid-acquisition`
-(`PaidAcquisitionReport`). Definitions: `report-definitions.md` (Paid
+(`PaidAcquisitionReport`). Definitions: `../reference/report-definitions.md` (Paid
 acquisition). The Marketing → Advertising overview renders that report.
 There is no second reporting system. Spend, leads, and move-ins are grouped
 by currency. ROAS is shown only when spend and first-period revenue share
@@ -98,3 +98,5 @@ one currency.
 
 `contacts:redact` clears click ids and landing URLs on that contact's
 touches. Delivery rows hold nothing to redact.
+
+History: S32, S36 — [sprint index](../history/README.md).

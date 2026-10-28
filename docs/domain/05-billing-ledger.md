@@ -92,7 +92,7 @@ that policy lives in a separate collections domain: `delinquencies`, `delinquenc
 suspend/restore access, notices, pause/resume, write-off routes). It runs a per-contract
 ladder of policy steps against overdue charges and writes the resulting fee/enforcement
 actions back onto the ledger described here. See
-`docs/roadmap/sprint-07-delinquency-engine/` for the full design.
+`../history/README.md` (S07) for the full design.
 
 ## Contract billing (cadence, anchor, first period)
 
@@ -209,7 +209,7 @@ Beyond type / due date / gross `amount`:
 Payment credentials, webhook routing, and merchant-of-record status belong to the
 **legal entity**, not to sites. Per-account webhook route tokens follow the `offers.token`
 pattern (crypto-random, never the PK). Full model — Stripe, SEPA bank-file, Verifactu,
-invoice series — is in `roadmap/architecture-payments-and-fiscal.md` (authoritative).
+invoice series — is in `architecture-payments-and-fiscal.md` (authoritative).
 
 Credentials live on `payment_provider_accounts` scoped to `legal_entity_id`
 (Settings → Workspace → Legal entities (entity detail)). Inbound webhooks route by opaque
@@ -319,3 +319,5 @@ forward to a billed period end under the row lock).
   sprint executes the actual payout.
 - Per-contract cadence override.
 - Multi-week / multi-month epoch for `interval_count > 1` on calendar models (boundaries are still every month-day / every weekday).
+
+History: S02, S03, S05, S06, S07 — [sprint index](../history/README.md).

@@ -115,3 +115,5 @@ These share the word “group” but are **unrelated**:
 | `attribute_groups` (`AttributeGroup`) | Overview **cards** in Settings → Data model → Objects → {entity} → Layout. An attribute appears on a card only when a `layout_fields` row places it. |
 
 Do not wire the Properties form `group_name` input to `AttributeGroup`. Archived definitions are excluded from the add-field picker; existing layout placements and values may remain until operators remove them.
+
+History: S18 — [sprint index](../history/README.md).

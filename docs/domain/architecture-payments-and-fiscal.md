@@ -1,7 +1,7 @@
 # Architecture — Payments & Fiscal Identity
 
 > **Status: authoritative.** This document is the single source for payments, fiscal identity
-> and invoice issuance. Where `05-billing-ledger.md`, `10-open-decisions.md` or the roadmap
+> and invoice issuance. Where `05-billing-ledger.md`, `../reference/10-open-decisions.md` or the roadmap
 > README disagree, this document wins. Last reconciled: 2026-07-31, S01-05.
 >
 > Implemented across S03–S07. **Read before writing any invoice, payment or tax code.**
@@ -69,7 +69,7 @@ Installs with a single entity are unaffected in practice.
 | Global scope on models | Plain FK, read explicitly |
 | Routes connections / jobs | No routing |
 
-**New invariant to add to `09-conventions-and-invariants.md`:**
+**New invariant to add to `../reference/09-conventions-and-invariants.md`:**
 
 > **`legal_entities` is a fiscal domain concept, not a tenancy boundary.** It identifies the
 > issuer of an invoice and the holder of payment credentials. It must never appear in a
@@ -85,7 +85,7 @@ Review this invariant at every sprint retro. It is the one that will erode quiet
 **Is the Spanish client one legal entity with several sites, or several entities?**
 S03 builds for several and seeds one (`PENDING-GESTOR`). The answer determines go-live
 data entry (NIFs, addresses, SEPA creditor IDs), not schema or Settings UI. See
-`docs/10-open-decisions.md` gestor confirmations and D-entry.
+`../reference/10-open-decisions.md` gestor confirmations and D-entry.
 
 ---
 
@@ -325,4 +325,6 @@ Enabling a regime starts a chain. Disabling must never break one:
 4. **Which bank, and which file format version** they accept (Cuaderno 19-14 is standard,
    but banks differ on optional fields and some still take 19-43/19-44 variants).
 
-Full gestor confirmation table: `docs/10-open-decisions.md` and sprint-03 README.
+Full gestor confirmation table: `../reference/10-open-decisions.md` and sprint-03 README.
+
+History: S03, S04, S06 — [sprint index](../history/README.md).

@@ -18,7 +18,7 @@ php artisan demo:seed --fresh
 - Prints a presenter sheet and writes `storage/demo-script.md` (cast index, 15-minute tour, numbers that must match).
 - `DEMO_SEED` (default `424242`) varies the crowd only; the named cast is fixed.
 - `--cast-only` skips crowd generation (debug).
-- Design and matrix: [`docs/roadmap/seeders/`](docs/roadmap/seeders/).
+- Design and matrix: [`docs/domain/demo-seeders/`](docs/domain/demo-seeders/).
 
 Per-sprint `php artisan db:seed` fixtures stay separate for the test suite — do not entangle them with the demo pipeline.
 

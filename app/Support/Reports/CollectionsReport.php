@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Period collections rates + graded machinery (promise-kept, autopay recovery).
- * Definitions: docs/report-definitions.md — Collections section.
+ * Definitions: docs/reference/report-definitions.md — Collections section.
  */
 final class CollectionsReport extends AbstractReport
 {

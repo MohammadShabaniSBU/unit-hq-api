@@ -133,7 +133,7 @@
     stubs on the private disk. Auto-Submitted / X-Autoreply messages are stored
     with `auto_generated` and do not increment unread. Auto-lead capture for
     `audience = all` bindings is S26-07b; the "never *untraceably*" amendment
-    lands with that task (see `roadmap/sprint-26-agent-channels/S26-09-invariants-and-docs.md`
+    lands with that task (see `../history/README.md` (S26-09)
     S26-09b).
 41. **Discounts compile at signing; billing never interprets them.** A discount
     materializes as contract-scoped price versions (+ linked provenance) inside the
@@ -234,7 +234,7 @@
     first-period charges, occupancy, and the fiscal identity of the install. That
     stays 54a, unchanged, forever.
 
-    The automation `CreateObjectAllowlist` is unchanged (`12-automation-engine.md`):
+    The automation `CreateObjectAllowlist` is unchanged (`../domain/12-automation-engine.md`):
     still `Contact`, `Deal`, `Task`, `Note`. The agent surface is deliberately
     wider because it calls the named leasing entry points, not a generic field
     map. Do not widen the automation allowlist to "match" — the two surfaces

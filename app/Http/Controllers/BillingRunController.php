@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Billing-run list/detail + manual trigger. Auth: any authenticated Employee
- * (S17 RBAC stopgap — see docs/10-open-decisions.md).
+ * (S17 RBAC stopgap — see docs/reference/10-open-decisions.md).
  */
 class BillingRunController extends Controller
 {

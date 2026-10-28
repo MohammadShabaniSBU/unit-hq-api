@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Delinquency ageing: contract view (oldest-unpaid bucket) + charge-view totals.
- * Definitions: docs/report-definitions.md — Ageing section.
+ * Definitions: docs/reference/report-definitions.md — Ageing section.
  */
 final class AgeingReport extends AbstractReport
 {

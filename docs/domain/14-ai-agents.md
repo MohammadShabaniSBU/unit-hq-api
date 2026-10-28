@@ -34,7 +34,7 @@ decision — "does this row belong to the contact I am talking to, and at what
 verification level?" That promotion is why `VerificationLevel` exists. A
 matched inbound address is `channel_asserted`, not `verified`. Asking "what's
 my balance?" at `channel_asserted` is refused; the same question at `verified`
-returns a ledger figure. See D-AI-2 and D-AI-23 in `10-open-decisions.md`.
+returns a ledger figure. See D-AI-2 and D-AI-23 in `../reference/10-open-decisions.md`.
 
 ## Internal agents
 
@@ -1139,7 +1139,7 @@ These are defects with a home, not open questions.
    system events. **Blocking before a provider channel binding is set to
    `auto` in production. Customer voice does not launch while AR-03 is
    open.** S26-07 already writes real inbound text onto these
-   tables. Detail: `10-open-decisions.md`.
+   tables. Detail: `../reference/10-open-decisions.md`.
 2. **Two authorization systems.** `agent_write_policies` governs what agents
    may write; `roles` / `role_permissions` / `employee_roles` governs what
    people may write. They will drift. Whether an agent should hold a real
@@ -1207,11 +1207,13 @@ Also not built:
   agent drafts only
 - `07-people-and-auth.md` — employee RBAC is a different axis from agent
   authorization (D-AI-2)
-- `09-conventions-and-invariants.md` — invariants 54a/54b, 55–72, amended 38 / 48 / 58 / 64; 40 pointer to S26-07b
+- `../reference/09-conventions-and-invariants.md` — invariants 54a/54b, 55–72, amended 38 / 48 / 58 / 64; 40 pointer to S26-07b
 - `12-automation-engine.md` — `CreateObjectAllowlist` (unchanged; agent surface is deliberately wider)
-- `10-open-decisions.md` — D-AI-1…23, D-V1…4; AR-03 is a known compliance
+- `../reference/10-open-decisions.md` — D-AI-1…23, D-V1…4; AR-03 is a known compliance
   defect (blocking before a provider binding is `auto` in production), not
   an open question
 - `08-activity-logging.md` — tier-2 `ai` channel; tier-3 copilot voice sessions; activity log is not a transcript
 - `01-stack.md` — stack line and `/demo/chat` page map
 
+
+History: S19, S22, S23, S24, S25, S26, S27, S28, S34, S35 — [sprint index](../history/README.md).

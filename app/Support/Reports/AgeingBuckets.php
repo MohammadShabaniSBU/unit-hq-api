@@ -9,7 +9,7 @@ use InvalidArgumentException;
 
 /**
  * Ageing bucket keys and rent/fees/other splits.
- * Definitions: docs/report-definitions.md — Ageing section.
+ * Definitions: docs/reference/report-definitions.md — Ageing section.
  */
 final class AgeingBuckets
 {

@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 /**
  * Site × unit-class occupancy counts for the facility matrix.
  *
- * Denominator is rentable units (docs/report-definitions.md): enabled, and not
+ * Denominator is rentable units (docs/reference/report-definitions.md): enabled, and not
  * under a blocking hold. Same occupied / rentable split as OccupancyMetrics.
  * As-of date is each site's today (invariant 32 / 36). Not an analytics read.
  */

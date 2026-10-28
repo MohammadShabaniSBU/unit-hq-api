@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Pipeline funnel for a deal-created cohort + lead-chase correlation + offer bands.
- * Definitions: docs/report-definitions.md — Funnel section.
+ * Definitions: docs/reference/report-definitions.md — Funnel section.
  */
 final class FunnelReport extends AbstractReport
 {
@@ -353,7 +353,7 @@ final class FunnelReport extends AbstractReport
                     : null,
                 'price_bands' => $bandRows,
             ],
-            'definitions' => 'docs/report-definitions.md#funnel--embudo',
+            'definitions' => 'docs/reference/report-definitions.md#funnel--embudo',
         ]);
     }
 

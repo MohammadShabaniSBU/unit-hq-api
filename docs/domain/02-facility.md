@@ -17,7 +17,7 @@ The physical storage facility (also called "Center").
 - **`sites.currency`** (nullable, ISO 4217, validated/normalized via `SupportedCurrencies`) is live and used for **form prefill only** — new price forms prefill from the site's currency, falling back to org `BillingSettings.default_currency` when the site has none set. Neither is read at transaction time; `prices.currency` remains the sole authority (D1).
 - **`sites.delinquency_policy_id`** (nullable FK → `delinquency_policies`, `delinquencyPolicy()` relation) assigns which delinquency escalation policy applies to contracts at that site.
 - Sites are **archive-only** (`archived_at`) — never hard-deleted. List/options use an explicit `active()` scope; archived sites stay resolvable by id for historical contracts. Archive is refused while the site has active contracts or non-expired reservations.
-- Sites belong to a **legal entity**, which holds payment credentials and fiscal regime (see `roadmap/architecture-payments-and-fiscal.md`). Integration surfaces that remain per-site: floor maps and sender identities — see later phases / `05` / `06`.
+- Sites belong to a **legal entity**, which holds payment credentials and fiscal regime (see `architecture-payments-and-fiscal.md`). Integration surfaces that remain per-site: floor maps and sender identities — see later phases / `05` / `06`.
 - **`sites.latitude` / `sites.longitude`** (`numeric(9,6)`, nullable) are the queryable coordinates used by `SiteResolver` distance fallback. The panel still PATCHes `location.lat` / `location.lng` JSON; `SiteController` dual-writes those into the columns. `php artisan sites:geocode` backfills nulls from a config-selected driver (`FACILITY_GEOCODER`); unconfigured, it skips and reports remaining nulls. The resolver never requires coordinates.
 - **`site_service_areas`** is the operator-declared catchment (archive-only, invariant 28). `kind` is `postcode` | `postcode_prefix` | `admin_region`. Live uniqueness is `(site_id, kind, value) WHERE archived_at IS NULL` (PostgreSQL partial unique; SQLite relies on the API unique rule). Prefix matching is **longest-first** and **country-specific**: `find_sites` returns `postal_code` but not country, and a prefix such as `280` is Madrid in Spain and nothing in the UK. Mono-tenant single-country deployment makes this harmless today; do not later extend the matcher cross-border as if prefixes were globally unique.
 
@@ -51,7 +51,7 @@ The **commercial product definition**, not the physical box.
 
 - Static junction between `UnitClass` and `Site` — created **once** per pairing; never versioned.
 - Catalogue prices (`prices.scope = catalogue`) morph-own the junction (`priceable` → `unit_class_rate`) and carry `effective_from` / `effective_to`.
-- A rate change means: **close the current catalogue price via `effective_to`, insert a successor price owned by the same junction**. Never update a price amount in place; never insert a second junction row. (See `03-pricing.md` and `roadmap/sprint-02-pricing-model/architecture-pricing.md`.)
+- A rate change means: **close the current catalogue price via `effective_to`, insert a successor price owned by the same junction**. Never update a price amount in place; never insert a second junction row. (See `03-pricing.md` and `../history/README.md` (S02, architecture-pricing).)
 
 ## Access points
 
@@ -63,7 +63,7 @@ facility hierarchy (S15).
 - Point types: `unit_door` (requires `unit_id`), `gate`, `zone` (site-level —
   `unit_id` null).
 - **One live door per unit** (partial unique on `unit_id` where not archived).
-  Multi-door units are deferred — see `10-open-decisions.md`.
+  Multi-door units are deferred — see `../reference/10-open-decisions.md`.
 - Mapping is archive-only (`archived_at`); archive releases the unit slot so a
   replacement door can be assigned.
 - Discovery cache lives on `access_provider_accounts.discovered_points`; the
@@ -87,3 +87,5 @@ facility hierarchy (S15).
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |
 | `size_guides` | Operator size-to-contents catalogue (archive-only; null `site_id` = company default) — consumed by `facility.size_guide` (`14-ai-agents.md`) |
+
+History: S01, S15, S20 — [sprint index](../history/README.md).

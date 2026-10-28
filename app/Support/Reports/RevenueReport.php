@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Revenue by stream and RevPAM, one chart set per currency.
- * Definitions: docs/report-definitions.md — Revenue / Ingresos.
+ * Definitions: docs/reference/report-definitions.md — Revenue / Ingresos.
  */
 final class RevenueReport extends AbstractReport
 {
@@ -224,7 +224,7 @@ final class RevenueReport extends AbstractReport
                 'to' => $to,
                 'headlines_by_currency' => $headlines,
                 'notes' => [
-                    'Definitions: docs/report-definitions.md — Revenue / Ingresos.',
+                    'Definitions: docs/reference/report-definitions.md — Revenue / Ingresos.',
                     'RevPAM uses current rentable m², not a reconstructed monthly denominator.',
                 ],
             ],

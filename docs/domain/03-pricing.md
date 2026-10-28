@@ -2,7 +2,7 @@
 
 ## Price — the shared reusable model
 
-Every amount expressing what something costs lives in `prices` and is referenced by `price_id`. Currency lives on the price row. Full model: `roadmap/sprint-02-pricing-model/architecture-pricing.md`.
+Every amount expressing what something costs lives in `prices` and is referenced by `price_id`. Currency lives on the price row. Full model: `../history/README.md` (S02, architecture-pricing).
 
 **Fields:**
 
@@ -101,7 +101,7 @@ See `05-billing-ledger.md` for charge generation.
 Admin-defined catalogue rows operators *pick* — never free-typed at a counter.
 Archive-only (`archived_at`); archived rows vanish from pickers but stay resolvable
 for provenance. Settings → Rentals → Discounts. Decisions: **D-DISC** in
-`10-open-decisions.md`; invariant 41 in `09`.
+`../reference/10-open-decisions.md`; invariant 41 in `09`.
 
 | Kind | `params` | Notes |
 |---|---|---|
@@ -147,3 +147,5 @@ for provenance. Settings → Rentals → Discounts. Decisions: **D-DISC** in
 | `tax_rates` | Immutable exclusive tax versions by `code` |
 | `discounts` | Archive-only percent / free_time catalogue |
 | `unit_classes` | Also carries optional `tax_rate_code` |
+
+History: S02, S17 — [sprint index](../history/README.md).

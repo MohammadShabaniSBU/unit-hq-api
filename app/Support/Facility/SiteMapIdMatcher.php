@@ -19,7 +19,7 @@ use DOMXPath;
  * as orphan shapes). Maps with no `data-unit-number` anywhere fall back to
  * matching element `id`, for plans drawn against the pre-S20 convention.
  *
- * See docs/02-facility.md.
+ * See docs/domain/02-facility.md.
  */
 final class SiteMapIdMatcher
 {

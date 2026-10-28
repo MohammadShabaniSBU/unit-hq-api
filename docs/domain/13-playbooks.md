@@ -102,7 +102,7 @@ intersection check. `DebtPlaybookOverlap::assertCanActivate()` is called on
 the conflicting playbook if any other active debt playbook's coverage
 overlaps. `policy_ids` / `min_days_overdue` do **not** factor into exclusivity
 — only site coverage does. Richer priority/routing across overlapping site
-sets is deferred (`10-open-decisions.md`); `lead_chase` has no equivalent
+sets is deferred (`../reference/10-open-decisions.md`); `lead_chase` has no equivalent
 restriction.
 
 ## Lifecycle
@@ -166,7 +166,9 @@ the same token grammar `TokenResolver` resolves at send time).
 
 - `12-automation-engine.md` — the graph/run engine playbooks compile into;
   node types, run lifecycle, wait/resume, loop suppression
-- `automation-conditions.md` — condition DSL used by kind `trigger()`/`guard()`
+- `../reference/automation-conditions.md` — condition DSL used by kind `trigger()`/`guard()`
 - `06-communications.md` — `SendContext` provenance (`playbook` source),
   WhatsApp template category gating, notice/notification plumbing
-- `10-open-decisions.md` — debt playbook routing, payment-link follow-up
+- `../reference/10-open-decisions.md` — debt playbook routing, payment-link follow-up
+
+History: S09 — [sprint index](../history/README.md).

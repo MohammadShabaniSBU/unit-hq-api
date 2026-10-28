@@ -12,13 +12,13 @@ Before writing code, consult the doc that matches the task:
 | Prices / rates / tax rates / insurance / discounts | `03-pricing.md` |
 | Contacts / deals / offers / reservations / contracts | `04-crm-pipeline.md` |
 | Contract billing (cadence / anchor / tax / deposit), charges / payments / billing periods | `05-billing-ledger.md` |
-| Payments, fiscal identity, invoice issuance (authoritative) | `roadmap/architecture-payments-and-fiscal.md` |
+| Payments, fiscal identity, invoice issuance (authoritative) | `docs/domain/architecture-payments-and-fiscal.md` |
 | Messaging / timeline / offer sends | `06-communications.md` |
 | Email blocks / token catalogue | `06-communications.md` |
 | Paid advertising (Google Ads, Meta), touches, conversion upload | `15-advertising.md` |
 | Insights, embedded analytics, reporting schema | `11-insights.md` |
 | Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
-| Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `roadmap/sprint-09-playbooks/`) |
+| Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `docs/history/README.md` (S09)) |
 | AI agents, Copilot, agent tools, guards, write policies, **channel bindings / live channels** | `14-ai-agents.md` |
 | Template assistant | `14-ai-agents.md` § Internal agents |
 | Voice media bridge / call path (`keevaris-voice`) | `keevaris-voice/AGENTS.md` — delegation, guards, and `AgentRuntime` stay governed by `09-conventions-and-invariants.md` |

@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Daily close / drawer reconciliation: payments by method × employee-causer × site.
- * Definitions: docs/report-definitions.md — Daily close section.
+ * Definitions: docs/reference/report-definitions.md — Daily close section.
  */
 final class DailyCloseReport extends AbstractReport
 {

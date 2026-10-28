@@ -255,3 +255,5 @@ company communication-account credential routes authorize with
 `SubjectSite` and the employee's grants (`employee_roles`); company-level
 credential surfaces use the same permission without a site. There is no separate
 `SiteAccess` helper — grants are the choke point (see `07-people-and-auth.md`).
+
+History: S10, S11, S12, S13, S26, S29, S30, S31, S33 — [sprint index](../history/README.md).

@@ -29,7 +29,7 @@ use Illuminate\Support\Collection;
 /**
  * Paid acquisition: spend, leads, and move-ins by site and platform.
  * Attribution is computed per query. Money is never summed across currencies.
- * Definitions: docs/report-definitions.md — Paid acquisition section.
+ * Definitions: docs/reference/report-definitions.md — Paid acquisition section.
  */
 final class PaidAcquisitionReport extends AbstractReport
 {
@@ -264,7 +264,7 @@ final class PaidAcquisitionReport extends AbstractReport
                 'notes' => [
                     'Spend dates are civil dates in the ad account timezone. Leads and move-ins use the site timezone. At day granularity across zones the edges can shift by one day.',
                 ],
-                'definitions' => 'docs/report-definitions.md#paid-acquisition--adquisición-de-pago',
+                'definitions' => 'docs/reference/report-definitions.md#paid-acquisition--adquisición-de-pago',
             ],
             charts: $charts,
         );

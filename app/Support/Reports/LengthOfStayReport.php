@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Tenure of a contract, not of an occupancy row. A transfer is not an exit.
- * Definitions: docs/report-definitions.md — Length of stay / Duración de estancia.
+ * Definitions: docs/reference/report-definitions.md — Length of stay / Duración de estancia.
  */
 final class LengthOfStayReport extends AbstractReport
 {
@@ -258,7 +258,7 @@ final class LengthOfStayReport extends AbstractReport
                     'median_stay_of_leavers_months' => self::median($leaverMonths),
                 ],
                 'notes' => [
-                    'Definitions: docs/report-definitions.md — Length of stay / Duración de estancia.',
+                    'Definitions: docs/reference/report-definitions.md — Length of stay / Duración de estancia.',
                     'A tenancy is a contract. Transfers are not exits.',
                 ],
             ],

@@ -12,7 +12,7 @@ use App\Support\Filtering\FilterableFields;
 /**
  * Resolves a condition field key to an evaluator type string.
  *
- * @see docs/automation-conditions.md Rule 1 / Rule 6
+ * @see docs/reference/automation-conditions.md Rule 1 / Rule 6
  */
 final class FieldTypeResolver
 {

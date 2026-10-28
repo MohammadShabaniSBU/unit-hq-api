@@ -6,7 +6,7 @@ namespace App\Enums;
 
 /**
  * Explicit value source for ConditionEvaluator — never ambient.
- * @see docs/automation-conditions.md Rule 5
+ * @see docs/reference/automation-conditions.md Rule 5
  */
 enum ConditionSource: string
 {

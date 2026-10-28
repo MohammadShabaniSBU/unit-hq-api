@@ -46,7 +46,7 @@ class LengthOfStayReportTest extends ChartReportTestCase
         $this->assertContains('tenure_current', $this->chartKeys($result));
         $this->assertContains('cohort_retention', $this->chartKeys($result));
         $this->assertStringStartsWith(
-            'Definitions: docs/report-definitions.md — Length of stay / Duración de estancia.',
+            'Definitions: docs/reference/report-definitions.md — Length of stay / Duración de estancia.',
             $result->meta['notes'][0],
         );
     }

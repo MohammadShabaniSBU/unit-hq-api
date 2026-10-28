@@ -10,7 +10,7 @@ namespace App\Support\Facility;
  * The output is the same shape as hand-authored plans: every unit is a
  * <g class="storage-unit"> carrying BOTH id="{unit_number}" and
  * data-unit-number="{unit_number}". SiteMapIdMatcher joins on
- * data-unit-number (id is legacy fallback only); see docs/02-facility.md.
+ * data-unit-number (id is legacy fallback only); see docs/domain/02-facility.md.
  *
  * Deliberately NOT emitted: data-status. Unit state is derived at read time
  * (invariant 5) — the panel stamps data-status from Availability::stateOn()
