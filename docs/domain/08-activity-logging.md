@@ -101,7 +101,7 @@ Voice minutes are per-install COGS. Turns persist as normal
 | `copilot.voice.session_started` | `CopilotVoiceSession` | `employee_id` |
 | `copilot.voice.session_ended` | `CopilotVoiceSession` | `employee_id`, `duration_seconds`, `turn_count`, `end_reason` (`hangup` \| `error` \| `timeout`) — **never the transcript** |
 
-See `14-ai-agents.md`.
+See `ai-agents/README.md`.
 
 ## API
 
@@ -119,6 +119,6 @@ See `14-ai-agents.md`.
 - **Interaction** — CRM comms timeline (`06-communications.md`)
 - **Notes** — append-only operator comments
 - **`stripe_webhook_events`** — Stripe idempotency only; new rows carry `site_id` (legacy may be null)
-- **Agent traces** — `agent_conversation_messages` / `agent_tool_invocations` / `agent_handoffs` (`14-ai-agents.md`); not these tables
+- **Agent traces** — `agent_conversation_messages` / `agent_tool_invocations` / `agent_handoffs` (`ai-agents/README.md`); not these tables
 
 History: [sprint index](../history/README.md).

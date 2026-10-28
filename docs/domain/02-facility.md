@@ -76,8 +76,8 @@ facility hierarchy (S15).
 
 | Table | Purpose |
 |---|---|
-| `sites` | Facilities (address, timezone, currency prefill, `latitude`/`longitude`) — coordinates consumed by agent site resolution (`14-ai-agents.md`) |
-| `site_service_areas` | Operator-declared catchment (`postcode` / `postcode_prefix` / `admin_region`; archive-only) — consumed by agent tools (`14-ai-agents.md`) |
+| `sites` | Facilities (address, timezone, currency prefill, `latitude`/`longitude`) — coordinates consumed by agent site resolution (`ai-agents/README.md`) |
+| `site_service_areas` | Operator-declared catchment (`postcode` / `postcode_prefix` / `admin_region`; archive-only) — consumed by agent tools (`ai-agents/README.md`) |
 | `unit_classes` | Sellable products |
 | `units` | Physical boxes |
 | `site_maps` | Visual facility maps (SVG; `data-unit-number` ↔ `unit_number`) |
@@ -86,6 +86,6 @@ facility hierarchy (S15).
 | `payment_provider_accounts` | Per-entity Stripe (and future debit) credentials + webhook routing — see `05-billing-ledger.md` |
 | `site_sender_identities` | Per-site comms from-address / from-number |
 | `communication_accounts` | Provider API credentials (company- or site-scoped) |
-| `size_guides` | Operator size-to-contents catalogue (archive-only; null `site_id` = company default) — consumed by `facility.size_guide` (`14-ai-agents.md`) |
+| `size_guides` | Operator size-to-contents catalogue (archive-only; null `site_id` = company default) — consumed by `facility.size_guide` (`ai-agents/README.md`) |
 
 History: S01, S15, S20 — [sprint index](../history/README.md).

@@ -28,7 +28,7 @@ Junctions (`unit_class_rates` / `insurance_rates`) are created once per pairing 
 
 A customer-facing quote names the immutable `prices` row (`price_id`). A later
 agent offer for that class is matched against the price this conversation quoted;
-a superseded row refuses (invariant 66). Mechanics: `14-ai-agents.md`.
+a superseded row refuses (invariant 66). Mechanics: `ai-agents/README.md`.
 
 ## TaxRate — exclusive tax catalogue
 

@@ -101,7 +101,7 @@ acceptance transaction for offers) that a generic field-mapping handler cannot
 safely replicate. Dedicated nodes calling those paths are the intended future
 extension, not a widened allowlist (`../reference/10-open-decisions.md`). Customer-facing
 agents may create Offer and Reservation only through named entry points in
-`App\Support\Leasing\` under invariant 54b (`14-ai-agents.md`); they still
+`App\Support\Leasing\` under invariant 54b (`ai-agents/README.md`); they still
 never create a Contract. Dedicated automation nodes for Offer / Reservation
 are the obvious S25 candidate now that those entry points exist. Do not widen
 this allowlist to match the agent surface — the two diverged on purpose.
@@ -202,7 +202,7 @@ server-side for those.
   pre-filters, `logic.branch`, and run guards (this is the authoritative
   reference; don't restate operator/typing rules here)
 - `13-playbooks.md` — linear playbook definitions that compile into automations
-- `14-ai-agents.md` — customer-facing agent writes reuse the same four
+- `ai-agents/README.md` — customer-facing agent writes reuse the same four
   `CreateObjectAllowlist` types (`Contact`, `Deal`, `Task`, `Note`)
 - `../reference/10-open-decisions.md` — decided/deferred items for the engine (fan-out,
   email-received activation, `create_object` allowlist scope)

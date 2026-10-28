@@ -94,7 +94,7 @@ A **global site selector** scopes the portal context, with two carve-outs:
 not authorize agent tools. A Contact principal is gated on `VerificationLevel`
 + ownership of the row, never on `employee_roles`. The operator running
 `/demo/chat` holds `Permission::AiAgentUse`; that is harness access, not the
-principal the agent is talking to. See `14-ai-agents.md`.
+principal the agent is talking to. See `ai-agents/README.md`.
 
 ## Extensibility models
 

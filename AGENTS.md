@@ -43,9 +43,9 @@ Keevaris is a mono-tenant self-storage operations platform: one company, one dat
 | Insights, embedded analytics, reporting schema | `docs/domain/11-insights.md`, `docs/reference/report-definitions.md`, `docs/reference/analytics-schema.md` |
 | Automation engine / flow builder | `docs/domain/12-automation-engine.md`, `docs/reference/automation-conditions.md` |
 | Playbooks / debt process / lead chase | `docs/domain/13-playbooks.md` (history: `docs/history/README.md`, S09) |
-| AI agents, Copilot, tools, guards, write policies, channel bindings | `docs/domain/14-ai-agents.md` |
-| Template assistant | `docs/domain/14-ai-agents.md` § Internal agents |
-| Voice media bridge / call path | `keevaris-voice/AGENTS.md`. Delegation and guards stay governed by `docs/reference/09-conventions-and-invariants.md`. Runtime voice config: `docs/ops/voice-bridge/`. |
+| AI agents, Copilot, tools, guards, write policies, channel bindings | `docs/domain/ai-agents/README.md` |
+| Template assistant | `docs/domain/ai-agents/internal-agents.md` |
+| Voice media bridge / call path | `keevaris-voice/AGENTS.md`. Delegation and guards stay governed by `docs/reference/09-conventions-and-invariants.md`. Customer voice: `docs/domain/ai-agents/voice.md`. Runtime voice config: `docs/ops/voice-bridge/`. |
 | Auth / roles / site selector | `docs/domain/07-people-and-auth.md` |
 | Logging / events | `docs/domain/08-activity-logging.md` |
 | Always, before committing | `docs/reference/09-conventions-and-invariants.md` |

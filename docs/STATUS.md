@@ -17,7 +17,7 @@ Current truth lives in `docs/domain/` and `docs/reference/`. Sprint history is i
 - Native reports and embedded analytics — `docs/domain/11-insights.md`
 - Automation engine — `docs/domain/12-automation-engine.md`
 - Playbooks (debt process, lead chase) — `docs/domain/13-playbooks.md`
-- Copilot, concierge agent, live channels, customer voice, template assistant — `docs/domain/14-ai-agents.md`
+- Copilot, concierge agent, live channels, customer voice, template assistant — `docs/domain/ai-agents/README.md`
 - Paid advertising read path and conversion upload (Google Ads, Meta) — `docs/domain/15-advertising.md`
 
 ## Known gaps
