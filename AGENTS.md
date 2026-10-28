@@ -1,91 +1,76 @@
 # AI Assistant Instructions (Cursor / Claude)
 
-You are working on **Keevaris**, a mono-tenant self-storage operations platform (Laravel 13 API + Nuxt 4 panel + voice media bridge, three side-by-side repos).
+## Project in three sentences
 
-Before writing code, consult the doc that matches the task:
+Keevaris is a mono-tenant self-storage operations platform: one company, one database, one country per deployment. This repo is the Laravel 13 API. The Nuxt 4 panel and the `keevaris-voice` media bridge are sibling repos; they do not reinterpret these rules.
+
+## Environment and commands
+
+### Backend
+
+- NEVER start, restart, or run the backend yourself — it runs in Docker.
+- To check its status: `docker compose ps`
+- To run a command inside the backend container, use the alias: `drun <command>`
+
+### Frontend
+
+- Run with `bun run dev`
+
+### Tests
+
+- Run with `docker compose -f docker-compose.test.yml run --rm test`
+- Arguments can be passed through, e.g. `docker compose -f docker-compose.test.yml run --rm test path/to/test_file`
+- Don't run the full test suite, always try to only test the related tests
+
+### Packages
+
+- NEVER install packages or run any package manager install command.
+- If a dependency is missing, stop and tell me which package is needed — I will install it.
+
+## Knowledge map
 
 | Working on… | Read |
 |---|---|
-| Anything (first time) | `00-overview.md` |
-| Repo setup, conventions, panel structure | `01-stack.md` |
-| Sites / units / unit classes | `02-facility.md` |
-| Prices / rates / tax rates / insurance / discounts | `03-pricing.md` |
-| Contacts / deals / offers / reservations / contracts | `04-crm-pipeline.md` |
-| Contract billing (cadence / anchor / tax / deposit), charges / payments / billing periods | `05-billing-ledger.md` |
-| Payments, fiscal identity, invoice issuance (authoritative) | `docs/domain/architecture-payments-and-fiscal.md` |
-| Messaging / timeline / offer sends | `06-communications.md` |
-| Email blocks / token catalogue | `06-communications.md` |
-| Paid advertising (Google Ads, Meta), touches, conversion upload | `15-advertising.md` |
-| Insights, embedded analytics, reporting schema | `11-insights.md` |
-| Automation engine / flow builder (nodes, edges, runs, triggers, node handlers) | `12-automation-engine.md` + `automation-conditions.md` |
-| Playbooks / debt process / lead chase | `13-playbooks.md` (sprint history: `docs/history/README.md` (S09)) |
-| AI agents, Copilot, agent tools, guards, write policies, **channel bindings / live channels** | `14-ai-agents.md` |
-| Template assistant | `14-ai-agents.md` § Internal agents |
-| Voice media bridge / call path (`keevaris-voice`) | `keevaris-voice/AGENTS.md` — delegation, guards, and `AgentRuntime` stay governed by `09-conventions-and-invariants.md` |
-| Auth / roles / site selector | `07-people-and-auth.md` |
-| Logging / events | `08-activity-logging.md` |
-| **Always, before committing** | `09-conventions-and-invariants.md` |
-| Uncertain requirements | `10-open-decisions.md` |
+| Anything (first time) | `docs/domain/00-overview.md` |
+| Repo setup, conventions, panel structure | `docs/domain/01-stack.md` |
+| Sites / units / unit classes | `docs/domain/02-facility.md` |
+| Prices / rates / tax / insurance / discounts | `docs/domain/03-pricing.md` |
+| Contacts / deals / offers / reservations / contracts | `docs/domain/04-crm-pipeline.md` |
+| Contract billing, charges, payments, billing periods | `docs/domain/05-billing-ledger.md` |
+| Payments, fiscal identity, invoice issuance | `docs/domain/architecture-payments-and-fiscal.md` |
+| Messaging, timeline, email blocks, token catalogue | `docs/domain/06-communications.md` |
+| Paid advertising | `docs/domain/15-advertising.md` |
+| Insights, embedded analytics, reporting schema | `docs/domain/11-insights.md`, `docs/reference/report-definitions.md`, `docs/reference/analytics-schema.md` |
+| Automation engine / flow builder | `docs/domain/12-automation-engine.md`, `docs/reference/automation-conditions.md` |
+| Playbooks / debt process / lead chase | `docs/domain/13-playbooks.md` (history: `docs/history/README.md`, S09) |
+| AI agents, Copilot, tools, guards, write policies, channel bindings | `docs/domain/14-ai-agents.md` |
+| Template assistant | `docs/domain/14-ai-agents.md` § Internal agents |
+| Voice media bridge / call path | `keevaris-voice/AGENTS.md`. Delegation and guards stay governed by `docs/reference/09-conventions-and-invariants.md`. Runtime voice config: `docs/ops/voice-bridge/`. |
+| Auth / roles / site selector | `docs/domain/07-people-and-auth.md` |
+| Logging / events | `docs/domain/08-activity-logging.md` |
+| Always, before committing | `docs/reference/09-conventions-and-invariants.md` |
+| Uncertain requirements | `docs/reference/10-open-decisions.md` |
+| What is shipped, partial, or still a gap | `docs/STATUS.md` |
 
-## Non-negotiables (summary — full list in 09)
+## Top non-negotiables
 
-- Mono-tenant: no `company_id`/`tenant_id`, no tenancy package.
-- Never update prices, tax rates, or ledger rows in place — new rows / reversals only.
-- Never store derived state (availability, balances, overdue) as columns (`billed_through` cursor is the deliberate exception — a date, not money).
-- Money is `NUMERIC(10,2)`, never floats; PHP money math via `BillingMath` (bcmath).
-- Payment confirmation is rail-specific (Stripe webhook / SEPA at settlement / manual with causer) — never optimistic from the client (invariant 11).
-- Payment credentials and fiscal regime scope to `legal_entities`, never to sites, and `legal_entity_id` never scopes a query (invariant 34).
-- Entity is `Contract` in code, not Lease.
-- Attribute definitions are archive-only (`archived_at`) — never hard-delete. `group_name` on definitions is free-text catalog metadata, **not** an `AttributeGroup` / overview card. Managed in Settings → Data model → Objects → {entity} → Properties / Layout.
-- No `app/Services/` layer; shared helpers under `App\Support\`; transactions for multi-step ops.
-- Panel: i18n for all strings; `Array<T>` typing; `useApi()` for HTTP.
-- Currency lives on the price row; site and org currency are prefill only; site country is `country_id`, never a denormalised code.
-- Never branch on a literal country code (`'ES'`, `'FR'`, `'GB'`, …) outside `App\Support\Country\`. Read country-dependent behaviour from `CountryProfiles::current()` (D9 / invariant 73).
-- Embed tokens are minted server-side only; dynamic params are always locked.
-- Customer-facing agents never write to the ledger, mutate contracts, grant
-  access, or confirm payment. No money, date, or unit identifier in agent output
-  originates from the model.
-- Entity identifiers in agent tool arguments must be licensed (invariant 64)
-  — never inferred, never sequential, never carried only in the model's
-  bookkeeping.
-- Offer / Reservation creation goes through `App\Support\Leasing\`, with the
-  operator Copilot tools as a known, allowlisted exception
-  (`10-open-decisions.md`, Copilot vs `App\Support\Leasing\`).
-- Copilot tool approvals are click-only; voice never authorises a write
-  (invariant 60).
-- Agent channel bindings default to off; an absent `agent_channel_bindings`
-  row means the agent does not answer that channel (invariant 68).
-- A human-owned thread is silent for agents until an explicit click
-  hand-back; never a model or inbound event (invariant 70).
-- Verification is earned inside a conversation and never asserted
-  (invariant 72). A principal reaches `verified` only by consuming an OTP
-  delivered to a channel already on the contact; demo origin is excluded
-  from every metric (invariant 59).
-- Published template content is immutable (invariant 74). Edits land on the
-  single draft; publish freezes it. Current version is the highest published
-  `version_number`, never a stored pointer.
-- Never grant consent except through `ConsentWriter` grant sources
-  (invariant 76). Automations, AI tools, and inbound triage may withdraw only.
-- A scheduled campaign pins its template version and audience snapshot.
-  Both stay immutable. Edit means cancel and duplicate (invariant 80).
-  An announcement stays inside its fence: current tenants of the chosen
-  sites, `announcement` templates, no promotion (invariant 83). Campaign
-  statistics are derived (invariant 84).
-- Enquiry forms create at most one open deal per contact and site.
-  Subscribe forms still never create a deal (invariant 85).
-- Marketing touches are append-only. Attribution is computed. Click ids
-  stay in `click_ids` (invariant 86).
-- Ad platforms receive data only with granted `ads` consent, checked at
-  delivery (invariant 87).
-- One conversion delivery per account and event, claimed before send
-  (invariant 88).
-- Ad spend is a restated cache in the account currency. Never sum across
-  currencies (invariant 89).
-- Keevaris does not write to ad campaigns in v1 (invariant 90).
-- Email block documents are sections, then columns, then blocks. Layouts
-  are presets. Writes store v2. Published v1 is never rewritten
-  (invariant 91).
-- `TokenCatalog` is the only list of template token paths and sample
-  values (invariant 92).
+- Mono-tenant: no `company_id` / `tenant_id`, no tenancy package (invariant 1).
+- Never update prices, tax rates, or ledger rows in place — new rows or reversals only (invariants 2, 3, 17).
+- Never store derived state (availability, balances, overdue) as columns (invariant 5).
+- Money is `NUMERIC(10,2)`, never floats; PHP money math goes through `BillingMath` (invariant 10).
+- Payment confirmation is rail-specific and never optimistic from the client (invariant 11).
+- No `app/Services/` layer; shared helpers live under `App\Support\` (code conventions in 09).
+- A customer-facing agent never writes the ledger, mutates a contract, grants access, or confirms a payment (invariant 54a).
+- Never grant consent except through `ConsentWriter` (invariant 76).
+- Published template content is immutable (invariant 74).
+- Never branch on a literal country code outside `App\Support\Country\`. Read country behaviour from `CountryProfiles::current()` (invariant 73).
 
-If a request conflicts with `09-conventions-and-invariants.md`, flag the conflict instead of silently complying.
+Full list: `docs/reference/09-conventions-and-invariants.md` — read before committing.
+
+## How work is done here
+
+Tasks live in `docs/tasks/active/`. Read the task file first. A task is not done until the domain docs it affects are updated, and `docs/reference/09-conventions-and-invariants.md` too if an invariant was added or changed. Finished task files move to `docs/history/tasks/`.
+
+## When in doubt
+
+If a request conflicts with an invariant, flag it instead of complying. Uncertain requirements go to `docs/reference/10-open-decisions.md`.
